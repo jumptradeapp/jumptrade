@@ -107,7 +107,7 @@ function watch(key, tool, input, onData, every) {
   if (watches[key]) { if (watches[key].sig === sig) return; watches[key].off(); }
   let iv = Math.max(30000, every || 30000); let dead = false, busy = false;
   // Web version: our own server can refresh prices every few seconds (Claude's runtime capped polling at ~30s).
-  if (window.JT_WEB) { if (/^(m:|d:snap|h:idx|wl:q|fl:q|pm:q|fd:q|jr:q|tp:wl|ip:snap)/.test(key)) iv = 3000; else if (/^d:bars/.test(key)) iv = 15000; }
+  if (window.JT_WEB) { if (/^(m:|d:snap|h:idx|wl:q|fl:q|pm:q|fd:q|jr:q|tp:wl|ip:snap)/.test(key)) iv = /^(d:snap|h:idx|wl:q)/.test(key) ? 1000 : 3000; else if (/^d:bars/.test(key)) iv = 15000; }
   const low = /^(dp|va|s|dl|tp|wl):/.test(key);
   const run = () => {
     if (dead || busy) return; busy = true;
@@ -1562,4 +1562,23 @@ document.addEventListener('DOMContentLoaded', () => {
   loadMovers();
   if (S.tab !== 'movers') goTab(S.tab);
   render();
+})();
+
+/* Web version: tick the prices on screen every second. The ranking refreshes every few seconds; in between,
+   one quote call for the visible names keeps every price live. */
+(function () {
+  if (!window.JT_WEB) return;
+  let busy = false;
+  setInterval(() => {
+    if (busy || document.hidden || !mcp || S.tab !== 'movers') return;
+    const rows = [].concat(S.lists.p1 || [], S.lists.p2 || [], S.large || []); if (!rows.length) return;
+    const ids = Array.from(new Set(moverRows().slice(0, 60).map((r) => r.sym))); if (!ids.length) return;
+    busy = true;
+    mcp.callTool(SERVER, 'get_stock_snapshot', { symbols: ids.join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: false }).then((res) => {
+      const p = payloadOf(res); const by = {}; (Array.isArray(p) ? p : []).forEach((x) => { by[x.symbol] = x; });
+      const sess = view(); let changed = false;
+      rows.forEach((r) => { const x = by[r.sym]; if (!x) return; const n = snapRow(x, sess); if (isFinite(n.price) && n.price && n.price !== r.price) { r.price = n.price; r.chg = n.chg; r.pct = n.pct; changed = true; } if (+x.volume) r.vol = +x.volume; });
+      S.stamp['m:tick'] = Date.now(); if (changed) render();
+    }).catch(() => {}).finally(() => { busy = false; });
+  }, 1000);
 })();

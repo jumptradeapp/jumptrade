@@ -190,7 +190,7 @@ T.get_fund_rating = async () => [];
   'get_market_sentiment', 'get_macroeconomic_calendar', 'get_community_hot_stocks', 'get_financial_indicators'].forEach((k) => { T[k] = async () => []; });
 
 // How long each answer may be reused (seconds). Prices: short. Fundamentals: long.
-const TTL = { get_stock_snapshot: 3, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 300, search_news: 300,
+const TTL = { get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 300, search_news: 300,
   get_company_profile: 86400, get_analyst_target_price: 21600, get_analyst_rating: 21600, get_stock_forecast_eps: 21600, get_stock_earnings_calendar: 21600,
   get_fund_brief: 86400, get_fund_holdings: 86400, get_fund_performance: 86400 };
 
