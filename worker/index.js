@@ -285,6 +285,7 @@ export class Vault {
 
 async function wbRoutes(url, env) {
   const wb = new Webull(env);
+  if (url.pathname === '/api/wb/keys') { return new Response('build 13d94a2+1\nwebull env names: ' + (wb.names.join(', ') || '(none)') + '\nready: ' + wb.ready + '\nall string env names: ' + Object.keys(env || {}).filter((k) => typeof env[k] === 'string').join(', '), { headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } }); }
   if (url.pathname === '/api/wb/status') {
     if (!wb.ready) return json({ keys: false, seen: wb.names, all_names: Object.keys(env || {}).filter((k) => typeof env[k] === 'string'), message: 'Add WEBULL_APP_KEY and WEBULL_APP_SECRET as secrets in Cloudflare.' });
     const cfg = await wb.raw('GET', '/openapi/config');
