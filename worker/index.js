@@ -210,15 +210,31 @@ T.get_stock_news = async (i) => {
   ]);
   return { data: mergeNews(lists, 30) };
 };
+// Market-wide headline feeds. Each is fail-soft; /api/newsdiag shows which ones are answering.
+const FEEDS = [
+  ['CNBC', 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114'],
+  ['CNBC Markets', 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258'],
+  ['CNBC Investing', 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=15839069'],
+  ['MarketWatch', 'https://feeds.content.dowjones.io/public/rss/mw_topstories'],
+  ['MarketWatch Pulse', 'https://feeds.content.dowjones.io/public/rss/mw_marketpulse'],
+  ['MarketWatch Bulletins', 'https://feeds.content.dowjones.io/public/rss/mw_bulletins'],
+  ['WSJ Markets', 'https://feeds.content.dowjones.io/public/rss/RSSMarketsMain'],
+  ['Seeking Alpha', 'https://seekingalpha.com/market_currents.xml'],
+  ['Yahoo Finance', 'https://finance.yahoo.com/news/rssindex'],
+  ['Investing.com', 'https://www.investing.com/rss/news_25.rss'],
+  ['Nasdaq', 'https://www.nasdaq.com/feed/rssoutbound?category=Markets'],
+  ['Benzinga', 'https://www.benzinga.com/feed'],
+  ['Google News', 'https://news.google.com/rss/search?q=stock+market+when:1d&hl=en-US&gl=US&ceid=US:en'],
+  ['Fed', 'https://www.federalreserve.gov/feeds/press_all.xml'],
+];
 T.search_news = async (i) => {
   const kw = i.keyword || i.query || '';
-  if (kw && kw !== 'stock market') return T.get_stock_news({ symbol: kw });
-  const lists = await Promise.all([
-    ySearchNews('stock market', null).catch(() => []),
-    rss('https://finance.yahoo.com/news/rssindex', 'Yahoo Finance').catch(() => []),
-    rss('https://news.google.com/rss/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGx6TVdZU0FtVnVHZ0pWVXlnQVAB?hl=en-US&gl=US&ceid=US:en', 'Google News').catch(() => []),
-  ]);
-  return { data: mergeNews(lists, 40) };
+  if (kw && kw !== 'stock market' && /^[A-Za-z.\-]{1,6}$/.test(kw)) return T.get_stock_news({ symbol: kw });
+  const lists = await Promise.all(FEEDS.map((f) => rss(f[1], f[0]).catch(() => [])));
+  let all = mergeNews(lists, 80).filter((n) => Date.now() - Date.parse(n.publish_time) < 36 * 3600000);
+  if (kw && kw !== 'stock market') { const re = new RegExp(kw.split(/\s+/).filter(Boolean).map((w) => w.replace(/[^\w]/g, '')).join('|'), 'i'); const hit = all.filter((n) => re.test(n.title)); if (hit.length >= 3) all = hit; else { const g = await rss('https://news.google.com/rss/search?q=' + encodeURIComponent(kw) + '+when:2d&hl=en-US&gl=US&ceid=US:en', 'Google News').catch(() => []); all = mergeNews([hit, g], 40); } }
+  if (all.length < 5) all = mergeNews([all, await ySearchNews('stock market', null).catch(() => [])], 40);
+  return { data: all.slice(0, 50) };
 };
 T.get_stock_earnings_calendar = async (i) => {
   const list = syms(i.symbols || i.symbol || '').slice(0, 25); const out = [];
@@ -542,6 +558,7 @@ export default {
     const url = new URL(req.url);
     if (Date.now() - UPK > 600000) { UPK = Date.now(); ctx.waitUntil(wbUpkeep(env).catch(() => {})); }
     if (req.method === 'OPTIONS') return new Response(null, { headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'POST, GET' } });
+    if (url.pathname === '/api/newsdiag') { const out = await Promise.all(FEEDS.map(async (f) => { const t0 = Date.now(); try { const r = await fetch(f[1], { headers: { 'user-agent': NUA, accept: 'application/rss+xml, text/xml' } }); const x = await r.text(); const a = await rss(f[1], f[0]); return f[0] + ': http ' + r.status + ', ' + x.length + ' bytes, ' + a.length + ' items, newest ' + (a[0] ? a.map((n) => n.publish_time).sort().pop() : '-') + ', ' + (Date.now() - t0) + 'ms'; } catch (e) { return f[0] + ': error ' + e.message; } })); return new Response('build news2\n' + out.join('\n'), { headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } }); }
     if (url.pathname === '/api/wbstate') { const s = (await vget(env, 'tokstate')) || {}; const cr = (await vget(env, 'cron')) || {}; return json({ upkeep: cr.t ? new Date(cr.t).toISOString() : null, keys: cr.ready == null ? null : cr.ready, status: s.status || 'none', http: s.http || null, code: s.code || null, created: s.created ? new Date(s.created).toISOString() : null, checked: s.checked ? new Date(s.checked).toISOString() : null }); }
     if (url.pathname.startsWith('/api/wb/')) { const r = await wbRoutes(url, env); if (r) return r; }
     if (url.pathname === '/api/selftest') return json(await selftest());
