@@ -316,6 +316,14 @@ async function wbRoutes(url, env) {
     if (r.status === 200 && r.data) await vput(env, 'token', { token: old.token, expires: r.data.expires || old.expires, status: r.data.status || old.status });
     return json({ status: r.status, token_status: r.data && r.data.status, body: r.data });
   }
+  if (url.pathname === '/api/wb/tokprobe') {
+    const out = [];
+    for (const p of ['/auth/tokens/create', '/openapi/auth/token/create', '/auth/token/create', '/openapi/auth/tokens/create']) for (const b of [null, {}]) {
+      try { const r = await wb.raw('POST', p, {}, b); const d = r.data || {}; out.push(p + ' body=' + (b ? '{}' : 'none') + ' -> ' + r.status + ' ' + (d.error_code || d.code || '') + ' ' + (d.status || (d.token ? 'TOKEN_RETURNED status=' + (d.status || '') : '')) + ' ' + String(d.message || d.msg || '').slice(0, 60)); } catch (e) { out.push(p + ' err ' + e.message); }
+    }
+    const c = await wb.raw('GET', '/openapi/config'); out.push('config -> ' + c.status + ' ' + JSON.stringify(c.data).slice(0, 200));
+    return new Response(out.join('\n'), { headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } });
+  }
   if (url.pathname === '/api/wb/raw') { // market-data only (never account tools)
     const tool = url.searchParams.get('tool'); if (!WBMAP[tool]) return json({ error: 'not a market-data tool' }, 400);
     let inp = {}; try { inp = JSON.parse(url.searchParams.get('input') || '{}'); } catch (e) {}
