@@ -203,7 +203,7 @@ const $ = (id) => document.getElementById(id);
 let rowsCache = [];
 function rankedRows() {
   const rows = moverRows(); const ids = rows.map((r) => r.sym);
-  const frozen = touching || Date.now() - lastScroll < 800;
+  const frozen = touching || Date.now() - lastScroll < 250;
   if (frozen && S.order.length) {
     const keep = S.order.filter((id) => ids.indexOf(id) >= 0); const add = ids.filter((id) => keep.indexOf(id) < 0);
     S.held = keep.concat(add).join() !== ids.join();
@@ -234,7 +234,7 @@ function renderMovers() {
   if (!rows.length) { box.innerHTML = '<div class="empty"><b>' + (mcp ? (S.ready ? 'No movers in this filter yet' : 'Loading live movers…') : 'Live data needs claude.ai') + '</b><span>' + (mcp ? (S.ready ? (S.cap === 'mid' ? 'Only names in the top 200 movers plus the 100 largest stocks are scanned for mid caps.' : 'Try another cap size or session.') : 'Pulling today’s movers.') : 'Open this page on claude.ai or in the Claude app, signed in with Webull connected.') + '</span></div>'; box.style.height = 'auto'; return; }
   const W = box.clientWidth || 358, gap = 12, colW = (W - gap) / 2;
   const scEl = $('scroller'), szKey = scEl.clientHeight + 'x' + W;
-  if (S.tileKey !== szKey && !touching && $('ptr1').offsetHeight === 0 && scEl.clientHeight > 0) { S.tileKey = szKey; const nv = document.querySelector('nav.main, .nav, nav'); const bt = box.getBoundingClientRect().top + scEl.scrollTop - scEl.getBoundingClientRect().top; const vb = nv && nv.getBoundingClientRect().height ? Math.min(scEl.clientHeight, nv.getBoundingClientRect().top - scEl.getBoundingClientRect().top) : scEl.clientHeight; const avail = vb - bt - 10; S.tileH = Math.max(118, Math.min(146, Math.floor((avail - 2 * 12) / 3))); }
+  if (S.tileKey !== szKey && !touching && $('ptr1').offsetHeight === 0 && scEl.clientHeight > 0) { S.tileKey = szKey; S.fitDone = 0; S.fitN = 0; const nv = document.querySelector('nav.main, .nav, nav'); const bt = box.getBoundingClientRect().top + scEl.scrollTop - scEl.getBoundingClientRect().top; const vb = nv && nv.getBoundingClientRect().height ? Math.min(scEl.clientHeight, nv.getBoundingClientRect().top - scEl.getBoundingClientRect().top) : scEl.clientHeight; const avail = vb - bt - 10; S.tileH = Math.max(118, Math.min(146, Math.floor((avail - 2 * 12) / 3))); }
   const tileH = S.tileH || 140;
   const rowH = 74;
   const existing = {}; Array.from(box.children).forEach((el) => { if (el.dataset.sym) existing[el.dataset.sym] = el; else el.remove(); });
@@ -265,6 +265,7 @@ function renderMovers() {
   });
   Object.keys(existing).forEach((k) => { if (!seen[k]) existing[k].remove(); });
   box.style.height = (S.layout === 'tiles' ? Math.ceil(rows.length / 2) * (tileH + gap) : rows.length * rowH) + 'px';
+  if (S.layout === 'tiles' && !S.fitDone) { const tt = [...box.querySelectorAll('.tile')].slice(0, 8); let need = 0; for (const t of tt) { const tb = t.getBoundingClientRect().bottom - 6; for (const c of t.querySelectorAll('.tsig')) { const r = c.getBoundingClientRect(); if (r.height && c.offsetParent) need = Math.max(need, r.bottom - tb); } need = Math.max(need, t.scrollHeight - t.clientHeight); } if (tt.length) { S.fitDone = 1; if (need > 0) { S.tileH = Math.min(170, tileH + Math.ceil(need) + 2); S.fitDone = 0; S.fitN = (S.fitN || 0) + 1; if (S.fitN < 4) requestAnimationFrame(() => render()); } } }
   // headline news for the first six visible
   if (window.ENR) ENR.needAvg(rows.slice(0, 40).map((r) => r.sym));
   rows.slice(0, 24).forEach((r, i) => { if (!watches['n:' + r.sym] && !S.newsQ[r.sym]) { S.newsQ[r.sym] = 1; setTimeout(() => newsFor(r.sym, 600000), i * 350); } });
@@ -1546,7 +1547,7 @@ document.addEventListener('DOMContentLoaded', () => {
   render();
   // session clock: re-evaluate every 20s and switch data automatically when the session changes
   setInterval(() => { const s = sessionAt(); if (s !== S.auto) { S.auto = s; if (!S.manual) { S.order = []; S.lists = {}; S.large = null; S.ovnSnap = null; loadMovers(); } } render(); }, 20000);
-  setInterval(() => { if (!touching && Date.now() - lastScroll > 800 && S.held) render(); }, 400);
+  setInterval(() => { if (!touching && Date.now() - lastScroll > 250 && S.held) render(); }, 150);
 });
 (async () => {
   if (!window.claude || !window.claude.use) { mcpTried = true; if (!(await goDelayed())) render(); return; }

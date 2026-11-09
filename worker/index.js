@@ -294,7 +294,7 @@ async function wbRoutes(url, env) {
     }
     return new Response('key length ' + (wb.key || '').length + ' (dashes: ' + ((wb.key || '').match(/-/g) || []).length + ', looks like ' + (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(wb.key || '') ? 'a UUID/App ID' : 'not a UUID') + '), secret length ' + (wb.secret || '').length + '\n' + out.join('\n'), { headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } });
   }
-  if (url.pathname === '/api/wb/keys') { return new Response('build 13d94a2+1\nwebull env names: ' + (wb.names.join(', ') || '(none)') + '\nready: ' + wb.ready + '\nall string env names: ' + Object.keys(env || {}).filter((k) => typeof env[k] === 'string').join(', '), { headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } }); }
+  if (url.pathname === '/api/wb/keys') { return new Response('build 13d94a2+1\nwebull env names: ' + (wb.names.join(', ') || '(none)') + '\nready: ' + wb.ready + '\nkey shape: ' + shape(wb.key) + '\nsecret shape: ' + shape(wb.secret) + '\nall string env names: ' + Object.keys(env || {}).filter((k) => typeof env[k] === 'string').join(', '), { headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } }); }
   if (url.pathname === '/api/wb/status') {
     if (!wb.ready) return json({ keys: false, seen: wb.names, all_names: Object.keys(env || {}).filter((k) => typeof env[k] === 'string'), message: 'Add WEBULL_APP_KEY and WEBULL_APP_SECRET as secrets in Cloudflare.' });
     const cfg = await wb.raw('GET', '/openapi/config');
@@ -374,6 +374,7 @@ async function selftest() {
   return out;
 }
 
+const shape = (v) => { if (!v) return '(none)'; const s = String(v); return s.length + ' chars, pattern ' + [...s].map((c) => /[0-9a-f]/.test(c) ? 'h' : /[A-F]/.test(c) ? 'H' : /[a-zA-Z]/.test(c) ? 'L' : /\s/.test(c) ? '_' : /["'`]/.test(c) ? 'Q' : c === '-' ? '-' : '?').join(''); };
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
