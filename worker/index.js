@@ -234,11 +234,73 @@ T.get_fund_rating = async () => [];
 // Personal / brokerage tools: the public version has no brokerage. Return empty so screens show their in-app versions.
 ['get_watchlists', 'get_watchlist_instruments', 'get_account_list', 'get_account_positions', 'get_account_balance'].forEach((k) => { T[k] = async () => []; });
 // Not available from this provider yet: answer empty, the app hides those sections.
-['get_market_sectors', 'get_market_sectors_detail', 'get_stock_capital_flow', 'get_stock_unusual_activities', 'get_insider_transactions', 'get_income_statement',
+['get_stock_capital_flow', 'get_stock_unusual_activities', 'get_insider_transactions', 'get_income_statement',
   'get_market_sentiment', 'get_macroeconomic_calendar', 'get_community_hot_stocks', 'get_financial_indicators'].forEach((k) => { T[k] = async () => []; });
 
+
+// ---------- sectors: industry groups built from ETFs + their leading stocks ----------
+const GROUPS = [
+  [1, 'Semiconductors', 'SMH', 'NVDA,AVGO,AMD,TSM,QCOM,MU,INTC,TXN,ADI,LRCX,AMAT,KLAC,MRVL,ARM'],
+  [2, 'Software', 'IGV', 'MSFT,ORCL,CRM,ADBE,NOW,INTU,PLTR,PANW,SNOW,CRWD,DDOG,WDAY'],
+  [3, 'Internet', 'FDN', 'GOOGL,META,AMZN,NFLX,UBER,ABNB,DASH,SHOP,SPOT,PINS,SNAP,RDDT'],
+  [4, 'Tech hardware', 'XLK', 'AAPL,DELL,SMCI,HPE,ANET,VRT,CSCO,HPQ,WDC,STX,NTAP,PSTG'],
+  [5, 'Cybersecurity', 'CIBR', 'PANW,CRWD,FTNT,ZS,NET,OKTA,S,CYBR,QLYS,TENB'],
+  [6, 'Banks', 'KBE', 'JPM,BAC,WFC,C,GS,MS,USB,PNC,TFC,COF,SCHW,BK'],
+  [7, 'Regional banks', 'KRE', 'FITB,HBAN,RF,KEY,CFG,MTB,ZION,WAL,EWBC,CMA,FHN,WBS'],
+  [8, 'Insurance', 'KIE', 'BRK-B,PGR,CB,TRV,ALL,AIG,MET,PRU,AFL,HIG,MMC,AON'],
+  [9, 'Biotech', 'XBI', 'AMGN,GILD,VRTX,REGN,BIIB,MRNA,ALNY,INCY,EXEL,SRPT,BMRN,NBIX'],
+  [10, 'Pharma', 'PPH', 'LLY,JNJ,MRK,ABBV,PFE,BMY,NVO,AZN,NVS,GSK,SNY,ZTS'],
+  [11, 'Medical devices', 'IHI', 'ISRG,SYK,BSX,MDT,ABT,EW,DXCM,ZBH,BDX,PODD,RMD,GEHC'],
+  [12, 'Health care services', 'IHF', 'UNH,ELV,CI,HUM,CVS,CNC,HCA,MOH,THC,UHS,DVA,LH'],
+  [13, 'Oil & gas', 'XOP', 'XOM,CVX,COP,EOG,OXY,DVN,FANG,APA,MRO,CTRA,EQT,AR'],
+  [14, 'Utilities', 'XLU', 'NEE,SO,DUK,CEG,VST,AEP,SRE,D,EXC,XEL,PCG,NRG'],
+  [15, 'Nuclear & uranium', 'URA', 'CCJ,OKLO,SMR,NNE,LEU,UEC,BWXT,NXE,UUUU,DNN'],
+  [16, 'Solar & clean energy', 'TAN', 'FSLR,ENPH,SEDG,RUN,NXT,ARRY,BE,PLUG,CSIQ,SHLS'],
+  [17, 'Homebuilders', 'XHB', 'DHI,LEN,PHM,NVR,TOL,KBH,MTH,TMHC,BLD,HD,LOW'],
+  [18, 'Retail', 'XRT', 'WMT,COST,TGT,TJX,ROST,DG,DLTR,BBY,ULTA,LULU,GPS,ANF'],
+  [19, 'Consumer staples', 'XLP', 'PG,KO,PEP,PM,MO,MDLZ,CL,KMB,GIS,KHC,STZ,MNST'],
+  [20, 'Aerospace & defense', 'ITA', 'RTX,LMT,BA,NOC,GD,LHX,TDG,HWM,AXON,KTOS,RKLB,HII'],
+  [21, 'Industrials', 'XLI', 'GE,CAT,DE,HON,UNP,ETN,PH,ITW,EMR,GEV,PWR,URI'],
+  [22, 'Transports', 'IYT', 'UPS,FDX,ODFL,CSX,NSC,DAL,UAL,LUV,JBHT,CHRW,XPO,SAIA'],
+  [23, 'Materials & metals', 'XLB', 'LIN,SHW,FCX,NEM,NUE,DOW,DD,APD,ECL,STLD,AA,MP'],
+  [24, 'Gold miners', 'GDX', 'NEM,AEM,GOLD,WPM,FNV,KGC,AU,RGLD,PAAS,AGI'],
+  [25, 'Real estate', 'XLRE', 'PLD,AMT,EQIX,WELL,SPG,O,PSA,CCI,DLR,VICI,EXR,AVB'],
+  [26, 'Telecom & media', 'XLC', 'T,VZ,TMUS,CMCSA,CHTR,DIS,WBD,PARA,EA,TTWO,LYV,ROKU'],
+  [27, 'Crypto stocks', 'BITQ', 'COIN,MSTR,MARA,RIOT,CLSK,HUT,HOOD,CIFR,IREN,WULF,CORZ,BTDR'],
+  [28, 'Quantum', 'QTUM', 'IONQ,RGTI,QBTS,QUBT,IBM,HON,ARQQ,LAES'],
+  [29, 'China tech', 'KWEB', 'BABA,PDD,JD,BIDU,NTES,TCOM,BILI,LI,NIO,XPEV,TME,FUTU'],
+  [30, 'Autos & EVs', 'CARZ', 'TSLA,GM,F,RIVN,LCID,TM,STLA,HMC,APTV,BWA,LKQ,QS'],
+];
+const PERDAYS = { D1: 1, D5: 5, MO1: 21, MO3: 63 };
+async function etfChange(sym, days) {
+  const d = await yget('/v8/finance/chart/' + encodeURIComponent(sym) + '?interval=1d&range=6mo', { base: Y1 });
+  const r = ((d.chart || {}).result || [])[0]; const c = (((r || {}).indicators || {}).quote || [{}])[0].close || [];
+  const cl = c.filter((x) => x != null); if (cl.length <= days) return null;
+  return cl[cl.length - 1] / cl[cl.length - 1 - days] - 1;
+}
+T.get_market_sectors = async (i) => {
+  const per = PERDAYS[i.period] ? i.period : 'D1';
+  const all = [...new Set(GROUPS.flatMap((g) => g[3].split(',')))];
+  const q = await quotes(all); const by = {}; q.forEach((x) => { by[x.symbol] = x; });
+  const etfQ = per === 'D1' ? await quotes(GROUPS.map((g) => g[2])) : [];
+  const eBy = {}; etfQ.forEach((x) => { eBy[x.symbol] = x; });
+  const changes = per === 'D1' ? null : await Promise.all(GROUPS.map((g) => etfChange(g[2], PERDAYS[per]).catch(() => null)));
+  return GROUPS.map((g, k) => {
+    const m = g[3].split(',').map((s) => by[s]).filter(Boolean);
+    const cap = m.reduce((a, x) => a + (+x.market_value || 0), 0);
+    const wavg = cap ? m.reduce((a, x) => a + (+x.market_value || 0) * (+x.change_ratio || 0), 0) / cap : 0;
+    const cr = per === 'D1' ? (eBy[g[2]] && eBy[g[2]].change_ratio != null ? eBy[g[2]].change_ratio : wavg) : changes[k];
+    return { id: g[0], name: g[1], etf: g[2], change_ratio: cr == null ? wavg : cr, market_value: cap, advanced: m.filter((x) => x.change_ratio > 0).length, declined: m.filter((x) => x.change_ratio < 0).length };
+  }).filter((s) => s.market_value > 0);
+};
+T.get_market_sectors_detail = async (i) => {
+  const g = GROUPS.find((x) => String(x[0]) === String(i.sector_id)); if (!g) return { data: [] };
+  const rows = await quotes(g[3].split(','));
+  rows.sort((a, b) => (b.change_ratio || 0) - (a.change_ratio || 0));
+  return { data: rows };
+};
 // How long each answer may be reused (seconds). Prices: short. Fundamentals: long.
-const TTL = { get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 300, search_news: 300,
+const TTL = { get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 300, search_news: 300,
   get_company_profile: 86400, get_analyst_target_price: 21600, get_analyst_rating: 21600, get_stock_forecast_eps: 21600, get_stock_earnings_calendar: 21600,
   get_fund_brief: 86400, get_fund_holdings: 86400, get_fund_performance: 86400 };
 

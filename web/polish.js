@@ -48,3 +48,11 @@
   let waited = 0; function show() { const sp = D.getElementById('splash'); if (sp && getComputedStyle(sp).display !== 'none' && !sp.classList.contains('gone')) { setTimeout(show, 400); return; } if (window.SYNC && !SYNC.loaded && waited < 4000) { waited += 300; setTimeout(show, 300); return; } if (seenNow()) return; paint(); D.body.appendChild(w); }
   setTimeout(show, 900);
 })();
+
+/* horizontal tab rows: fade only while more is hidden; keep the selected tab in view */
+(function () {
+  const upd = (el) => { const ov = el.scrollWidth > el.clientWidth + 4; el.classList.toggle('noOv', !ov); el.classList.toggle('atEnd', ov && el.scrollLeft + el.clientWidth >= el.scrollWidth - 4); };
+  document.addEventListener('scroll', (e) => { const el = e.target; if (el && el.classList && (el.classList.contains('chips') || el.classList.contains('intelseg'))) upd(el); }, true);
+  let last = '';
+  setInterval(() => { document.querySelectorAll('.segs.intelseg, .chips').forEach((el) => { if (!el.offsetParent) return; upd(el); const on = el.querySelector('.on'); const k = (el.id || '') + (on ? on.textContent : ''); if (on && el.dataset.k !== k) { el.dataset.k = k; const l = on.offsetLeft - el.offsetLeft, r = l + on.offsetWidth; if (l < el.scrollLeft || r > el.scrollLeft + el.clientWidth - 28) el.scrollTo({ left: Math.max(0, l - 40), behavior: 'smooth' }); } }); }, 500);
+})();
