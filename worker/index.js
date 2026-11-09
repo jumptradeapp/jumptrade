@@ -167,11 +167,57 @@ T.get_stock_forecast_eps = async (i) => {
   ((s.earningsTrend || {}).trend || []).filter((t) => /q$/.test(t.period)).forEach((t) => { const dt = new Date(t.endDate); out.push({ fiscal_year: dt.getUTCFullYear(), fiscal_period: Math.floor(dt.getUTCMonth() / 3) + 1, est: raw((t.earningsEstimate || {}).avg), actual: null, reported: false }); });
   return out;
 };
+// ---------- news: several free sources merged and de-duplicated ----------
+const NUA = 'jumptrade/1.0 (contact: hello@jumptrade.app)';
+const decodeX = (s) => String(s || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&#(\d+);/g, (m, n) => String.fromCharCode(+n)).trim();
+const tag = (x, t) => { const m = x.match(new RegExp('<' + t + '[^>]*>([\\s\\S]*?)</' + t + '>', 'i')); return m ? decodeX(m[1]) : ''; };
+async function rss(url, source, sym) {
+  const r = await fetch(url, { headers: { 'user-agent': NUA, accept: 'application/rss+xml, application/atom+xml, text/xml' }, cf: { cacheTtl: 120 } });
+  if (!r.ok) return [];
+  const x = await r.text(); const items = x.split(/<item[\s>]|<entry[\s>]/i).slice(1);
+  return items.slice(0, 20).map((it) => {
+    let link = tag(it, 'link'); if (!link) { const m = it.match(/<link[^>]*href="([^"]+)"/i); link = m ? m[1] : ''; }
+    let src = tag(it, 'source') || source; let title = tag(it, 'title');
+    if (/news\.google/.test(url)) { const k = title.lastIndexOf(' - '); if (k > 20) { src = title.slice(k + 3); title = title.slice(0, k); } }
+    const when = tag(it, 'pubDate') || tag(it, 'updated') || tag(it, 'published');
+    const t = Date.parse(when) || Date.now();
+    return { title, url: link, publish_time: new Date(t).toISOString(), source: src, source_name: src, related_symbols: sym ? [sym] : [] };
+  }).filter((n) => n.title && n.url);
+}
+async function ySearchNews(q, sym) {
+  const d = await yget('/v1/finance/search?q=' + encodeURIComponent(q) + '&quotesCount=0&newsCount=15', { base: Y1 });
+  return (d.news || []).map((n) => ({ title: n.title, url: n.link, publish_time: iso(n.providerPublishTime), source: n.publisher, source_name: n.publisher, related_symbols: n.relatedTickers || (sym ? [sym] : []) }));
+}
+const normT = (t) => String(t || '').toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').slice(0, 70);
+function mergeNews(lists, max) {
+  const seen = new Set(); const out = [];
+  lists.flat().filter(Boolean).sort((a, b) => Date.parse(b.publish_time) - Date.parse(a.publish_time)).forEach((n) => { const k = normT(n.title); if (!k || seen.has(k)) return; seen.add(k); out.push(n); });
+  return out.slice(0, max || 30);
+}
 T.get_stock_news = async (i) => {
-  const d = await yget('/v1/finance/search?q=' + encodeURIComponent(i.symbol) + '&quotesCount=0&newsCount=12', { base: Y1 });
-  return { data: (d.news || []).map((n) => ({ title: n.title, url: n.link, publish_time: iso(n.providerPublishTime), source: n.publisher, source_name: n.publisher, related_symbols: n.relatedTickers || [] })) };
+  const s = String(i.symbol || '').toUpperCase().trim(); if (!s) return { data: [] };
+  const q = encodeURIComponent(s + ' stock');
+  const lists = await Promise.all([
+    ySearchNews(s, s).catch(() => []),
+    rss('https://feeds.finance.yahoo.com/rss/2.0/headline?s=' + encodeURIComponent(s) + '&region=US&lang=en-US', 'Yahoo Finance', s).catch(() => []),
+    rss('https://news.google.com/rss/search?q=' + q + '+when:7d&hl=en-US&gl=US&ceid=US:en', 'Google News', s).catch(() => []),
+    rss('https://www.globenewswire.com/RssFeed/keyword/' + encodeURIComponent(s), 'GlobeNewswire', s).catch(() => []),
+    rss('https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=' + encodeURIComponent(s) + '&type=8-K&dateb=&owner=include&count=10&output=atom', 'SEC filing', s).then((a) => a.map((n) => ({ ...n, title: n.title.replace(/^8-K\s*-\s*/, '8-K filing: ') }))).catch(() => []),
+  ]);
+  return { data: mergeNews(lists, 30) };
 };
-T.search_news = async (i) => T.get_stock_news({ symbol: i.keyword || i.query || 'stock market' });
+T.search_news = async (i) => {
+  const kw = i.keyword || i.query || '';
+  if (kw && kw !== 'stock market') return T.get_stock_news({ symbol: kw });
+  const lists = await Promise.all([
+    ySearchNews('stock market', null).catch(() => []),
+    rss('https://finance.yahoo.com/news/rssindex', 'Yahoo Finance').catch(() => []),
+    rss('https://news.google.com/rss/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGx6TVdZU0FtVnVHZ0pWVXlnQVAB?hl=en-US&gl=US&ceid=US:en', 'Google News').catch(() => []),
+    rss('https://www.prnewswire.com/rss/financial-services-latest-news/financial-services-latest-news-list.rss', 'PR Newswire').catch(() => []),
+    rss('https://www.globenewswire.com/RssFeed/subjectcode/14-Earnings%20Releases%20And%20Operating%20Results/feedTitle/GlobeNewswire%20-%20Earnings', 'GlobeNewswire').catch(() => []),
+  ]);
+  return { data: mergeNews(lists, 40) };
+};
 T.get_stock_earnings_calendar = async (i) => {
   const list = syms(i.symbols || i.symbol || '').slice(0, 25); const out = [];
   await Promise.all(list.map(async (s) => { try { const c = ((await summary(s, 'calendarEvents')).calendarEvents || {}).earnings || {}; const d0 = (c.earningsDate || [])[0]; if (d0) out.push({ symbol: s, date: new Date(raw(d0) * 1000).toISOString().slice(0, 10), eps_estimate: raw(c.earningsAverage) }); } catch (e) {} }));
@@ -347,7 +393,7 @@ async function runTool(tool, input, ctx, env) {
   const hit = await cache.match(key); if (hit) return hit;
   try {
     let payload;
-    const w = env ? await wbCall(env, tool, input || {}).catch((e) => { WBLAST = { tool, error: String(e.message || e), t: Date.now() }; return null; }) : null;
+    const w = env && !/news/.test(tool) ? await wbCall(env, tool, input || {}).catch((e) => { WBLAST = { tool, error: String(e.message || e), t: Date.now() }; return null; }) : null;
     payload = w ? w.payload : await fn(input || {});
     const res = json({ payload }, 200, { 'cache-control': 'public, max-age=' + (TTL[tool] || 30) });
     ctx.waitUntil(cache.put(key, res.clone()));
@@ -396,6 +442,15 @@ export default {
     if (url.pathname.startsWith('/api/wb/')) { const r = await wbRoutes(url, env); if (r) return r; }
     if (url.pathname === '/api/selftest') return json(await selftest());
     if (url.pathname === '/api/health') return json({ ok: true, provider: 'yahoo', time: new Date().toISOString() });
+    if (url.pathname.indexOf('/api/logo/') === 0) { // backup logos for tickers missing from the built-in set
+      const sym = decodeURIComponent(url.pathname.slice(10)).toUpperCase().replace(/[^A-Z.\-]/g, '').slice(0, 6);
+      const ck = new Request('https://cache.jumptrade/logo/' + sym); const hit = await caches.default.match(ck); if (hit) return hit;
+      for (const src of ['https://assets.parqet.com/logos/symbol/' + sym + '?format=png&size=128', 'https://financialmodelingprep.com/image-stock/' + sym + '.png']) {
+        try { const r = await fetch(src, { headers: { 'user-agent': NUA }, cf: { cacheTtl: 604800 } }); const ct = r.headers.get('content-type') || '';
+          if (r.ok && /image/.test(ct)) { const buf = await r.arrayBuffer(); if (buf.byteLength > 300) { const res = new Response(buf, { headers: { 'content-type': ct, 'cache-control': 'public, max-age=604800' } }); ctx.waitUntil(caches.default.put(ck, res.clone())); return res; } } } catch (e) {}
+      }
+      const miss = new Response('', { status: 404, headers: { 'cache-control': 'public, max-age=86400' } }); ctx.waitUntil(caches.default.put(ck, miss.clone())); return miss;
+    }
     if (url.pathname === '/api/tool' && req.method === 'GET') { let inp = {}; try { inp = JSON.parse(url.searchParams.get('input') || '{}'); } catch (e) {} return runTool(url.searchParams.get('tool'), inp, ctx, env); }
     if (url.pathname === '/api/scan') { try { const f = await scanAll(false); return json({ ok: true, count: f.length, top: f.slice(0, 8).map((q) => q.symbol + ' ' + (q.regularMarketChangePercent || 0).toFixed(1) + '%') }); } catch (e) { return json({ ok: false, error: String(e.message || e) }); } }
     if (url.pathname === '/api/session') { const s2 = await session(true); return json({ cookie: !!s2.cookie, crumb: !!s2.crumb }); }

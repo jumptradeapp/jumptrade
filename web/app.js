@@ -58,7 +58,8 @@ const cleanName = (n) => String(n || '').replace(/\s+(Inc\.?|Corporation|Corp\.?
 /* ---------- logos ---------- */
 let LOGOS = null;
 LOGOS = {}; const LGS = {}; let lgT = 0;
-function lgNeed(sym) { const b = sym.charAt(1); const c = (/^[A-Z]/.test(sym) ? sym[0] : '_') + (!b || b < 'H' ? '1' : b < 'P' ? '2' : '3'); if (LGS[c]) return; LGS[c] = 1; fetch('lg2/' + c + '.json').then((r) => r.json()).then((j) => { Object.assign(LOGOS, j); clearTimeout(lgT); lgT = setTimeout(render, 60); }).catch(() => {}); }
+const LGBAD = window.LGBAD = {};
+function lgNeed(sym) { const b = sym.charAt(1); const c = (/^[A-Z]/.test(sym) ? sym[0] : '_') + (!b || b < 'H' ? '1' : b < 'P' ? '2' : '3'); if (LGS[c]) return; LGS[c] = 1; fetch('lg2/' + c + '.json').then((r) => r.json()).then((j) => { Object.assign(LOGOS, j); LGS[c] = 2; clearTimeout(lgT); lgT = setTimeout(render, 60); }).catch(() => {}); }
 const HUES = [[139, 108, 255], [255, 140, 70], [32, 201, 151], [59, 160, 219], [240, 101, 149], [92, 124, 250], [255, 196, 60], [81, 207, 102], [21, 170, 191], [255, 110, 90]];
 function logoHTML(sym, size) {
   const r = Math.round(size * 0.28);
@@ -67,7 +68,9 @@ function logoHTML(sym, size) {
     return '<span class="logo" style="width:' + size + 'px;height:' + size + 'px;border-radius:' + r + 'px;background:' + (dark ? '#1E2530;border:1px solid rgba(255,255,255,.18)' : '#fff') + '"><img alt="" src="data:image/webp;base64,' + b64 + '" style="width:' + Math.round(size * 0.78) + 'px;height:' + Math.round(size * 0.78) + 'px"></span>'; }
   let h = 0; for (const ch of sym) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   const c = HUES[h % HUES.length];
-  return '<span class="logo mono" style="width:' + size + 'px;height:' + size + 'px;border-radius:' + r + 'px;font-size:' + Math.round(size * (sym.length > 3 ? 0.3 : 0.36)) + 'px;background:linear-gradient(160deg,rgb(' + c.join(',') + '),rgb(' + c.map((x) => Math.round(x * 0.55)).join(',') + '))">' + esc(sym.slice(0, 4)) + '</span>';
+  const sh = (/^[A-Z]/.test(sym) ? sym[0] : '_') + (!sym.charAt(1) || sym.charAt(1) < 'H' ? '1' : sym.charAt(1) < 'P' ? '2' : '3');
+  const fb = window.JT_WEB && LGS[sh] === 2 && /^[A-Z.\-]{1,6}$/.test(sym) && !LGBAD[sym] ? '<img alt="" src="/api/logo/' + encodeURIComponent(sym) + '" onerror="LGBAD[\'' + sym + '\']=1;this.remove()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;padding:' + Math.round(size * 0.11) + 'px;box-sizing:border-box;border-radius:inherit">' : '';
+  return '<span class="logo mono" style="position:relative;overflow:hidden;width:' + size + 'px;height:' + size + 'px;border-radius:' + r + 'px;font-size:' + Math.round(size * (sym.length > 3 ? 0.3 : 0.36)) + 'px;background:linear-gradient(160deg,rgb(' + c.join(',') + '),rgb(' + c.map((x) => Math.round(x * 0.55)).join(',') + '))">' + esc(sym.slice(0, 4)) + fb + '</span>';
 }
 
 /* ---------- state ---------- */
