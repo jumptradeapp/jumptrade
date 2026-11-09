@@ -287,12 +287,12 @@ async function wbRoutes(url, env) {
   const wb = new Webull(env);
   if (url.pathname === '/api/wb/probe') { // try each environment / algorithm / key order and report what Webull accepts
     const out = [];
-    for (const host of ['api.webull.com', 'api.sandbox.webull.com']) for (const algo of ['HMAC-SHA1', 'HMAC-SHA256']) for (const swap of [false, true]) {
-      const w = new Webull(env); w.host = host; w.algo = algo; if (swap) { const t = w.key; w.key = w.secret; w.secret = t; }
-      try { const r = await w.raw('GET', '/market-data/stocks/snapshots/list', { symbols: 'AAPL', category: 'US_STOCK' }); out.push(host + ' ' + algo + (swap ? ' swapped' : '') + ' -> ' + r.status + ' ' + (typeof r.data === 'string' ? r.data : JSON.stringify(r.data)).slice(0, 90)); }
+    for (const host of ['api.webull.com', 'api.sandbox.webull.com']) for (const algo of ['HMAC-SHA1', 'HMAC-SHA256']) for (const swap of [false, 'nodash']) {
+      const w = new Webull(env); w.host = host; w.algo = algo; if (swap === 'nodash') w.key = String(w.key).replace(/-/g, '');
+      try { const r = await w.raw('GET', '/market-data/stocks/snapshots/list', { symbols: 'AAPL', category: 'US_STOCK' }); out.push(host + ' ' + algo + (swap ? ' key-without-dashes' : '') + ' -> ' + r.status + ' ' + (typeof r.data === 'string' ? r.data : JSON.stringify(r.data)).slice(0, 90)); }
       catch (e) { out.push(host + ' ' + algo + (swap ? ' swapped' : '') + ' -> ERR ' + e.message); }
     }
-    return new Response('key length ' + (wb.key || '').length + ', secret length ' + (wb.secret || '').length + '\n' + out.join('\n'), { headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } });
+    return new Response('key length ' + (wb.key || '').length + ' (dashes: ' + ((wb.key || '').match(/-/g) || []).length + ', looks like ' + (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(wb.key || '') ? 'a UUID/App ID' : 'not a UUID') + '), secret length ' + (wb.secret || '').length + '\n' + out.join('\n'), { headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } });
   }
   if (url.pathname === '/api/wb/keys') { return new Response('build 13d94a2+1\nwebull env names: ' + (wb.names.join(', ') || '(none)') + '\nready: ' + wb.ready + '\nall string env names: ' + Object.keys(env || {}).filter((k) => typeof env[k] === 'string').join(', '), { headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } }); }
   if (url.pathname === '/api/wb/status') {
