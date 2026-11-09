@@ -209,10 +209,42 @@ async function runTool(tool, input, ctx) {
   }
 }
 
+
+// GET /api/selftest — runs every tool once with sample input and reports what came back (for checking the live server).
+async function selftest() {
+  const C = [
+    ['get_stock_snapshot', { symbols: 'AAPL,NVDA,SPY', extend_hour_required: true }],
+    ['get_gainers_losers', { rank_type: 'DAY_1', direction: 'DESC', page_size: '100', page_index: '1' }],
+    ['get_gainers_losers', { rank_type: 'DAY_1', direction: 'ASC', page_size: '20', page_index: '1' }],
+    ['get_gainers_losers', { rank_type: 'PRE_MARKET', direction: 'DESC', page_size: '20' }],
+    ['get_stock_bars', { symbols: ['AAPL'], timespan: 'D', count: 260 }],
+    ['get_stock_bars', { symbols: ['AAPL'], timespan: 'M1', count: 390 }],
+    ['get_company_profile', { symbol: 'AAPL' }], ['get_analyst_target_price', { symbol: 'AAPL' }], ['get_analyst_rating', { symbol: 'AAPL' }],
+    ['get_stock_forecast_eps', { symbol: 'AAPL' }], ['get_stock_news', { symbol: 'AAPL' }], ['get_stock_earnings_calendar', { symbols: 'AAPL,MSFT' }],
+    ['get_fund_brief', { symbol: 'SPY' }], ['get_fund_holdings', { symbol: 'SPY' }], ['get_fund_performance', { symbol: 'SPY' }],
+  ];
+  const s = await session(true);
+  const out = { session: { cookie: !!s.cookie, crumb: !!s.crumb } , results: [] };
+  for (const [tool, input] of C) {
+    const t0 = Date.now();
+    try {
+      const p = await T[tool](input); const arr = Array.isArray(p) ? p : (p && (p.data || p.result)) || null;
+      let sample = null;
+      if (Array.isArray(arr) && arr.length) { const f = arr[0]; sample = f.result ? { symbol: f.symbol, bars: f.result.length, newest: f.result[0] } : (f.symbol || f.title || f.stock_name || f.fiscal_year || JSON.stringify(f).slice(0, 120)); }
+      else if (p && !Array.isArray(p)) sample = JSON.stringify(p).slice(0, 160);
+      out.results.push({ tool, input: input.rank_type || input.timespan || '', ok: true, ms: Date.now() - t0, count: Array.isArray(arr) ? arr.length : null, top: Array.isArray(arr) ? arr.slice(0, 6).map((x) => x.symbol && x.change_ratio != null ? x.symbol + ' ' + (x.change_ratio * 100).toFixed(1) + '%' : null).filter(Boolean) : undefined, sample });
+    } catch (e) { out.results.push({ tool, input: input.rank_type || input.timespan || '', ok: false, ms: Date.now() - t0, error: String(e.message || e) }); }
+  }
+  // which source fed the gainers list
+  try { const full = await scanAll(false); out.fullScan = { ok: true, count: full.length, top: full.slice(0, 6).map((q) => q.symbol + ' ' + (q.regularMarketChangePercent || 0).toFixed(1) + '%') }; } catch (e) { out.fullScan = { ok: false, error: String(e.message || e) }; }
+  return out;
+}
+
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'POST, GET' } });
+    if (url.pathname === '/api/selftest') return json(await selftest());
     if (url.pathname === '/api/health') return json({ ok: true, provider: 'yahoo', time: new Date().toISOString() });
     if (url.pathname === '/api/tool' && req.method === 'POST') { const b = await req.json().catch(() => ({})); return runTool(b.tool, b.input, ctx); }
     if (url.pathname.startsWith('/api/')) return json({ error: { code: 'bad_request', message: 'Unknown endpoint' } }, 404);
