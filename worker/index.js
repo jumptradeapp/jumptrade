@@ -3,6 +3,8 @@
    This worker answers them from a swappable provider (Yahoo Finance for now) in the same shapes, and caches every
    answer at the edge so many users share one upstream request. */
 
+import { Webull } from './webull.js';
+
 const Y1 = 'https://query1.finance.yahoo.com';
 const Y2 = 'https://query2.finance.yahoo.com';
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
@@ -194,13 +196,135 @@ const TTL = { get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, 
   get_company_profile: 86400, get_analyst_target_price: 21600, get_analyst_rating: 21600, get_stock_forecast_eps: 21600, get_stock_earnings_calendar: 21600,
   get_fund_brief: 86400, get_fund_holdings: 86400, get_fund_performance: 86400 };
 
-async function runTool(tool, input, ctx) {
-  const fn = T[tool]; if (!fn) return json({ error: { code: 'tool_error', message: 'Unknown tool ' + tool } }, 404);
+
+// ---------- Webull (primary when keys are set) ----------
+// tool -> [method, path, allowed params]. From Webull's official SDK (webull-openapi-python-sdk). Account/trading tools are
+// deliberately NOT here: the owner's portfolio is never served to the public site.
+const WBMAP = {
+  get_stock_snapshot: ['GET', '/market-data/stocks/snapshots/list', ['symbols', 'category', 'extend_hour_required', 'overnight_required']],
+  get_gainers_losers: ['GET', '/market-data/screeners/gainers-losers/list', ['category', 'rank_type', 'sort_by', 'direction']],
+  get_most_active: ['GET', '/market-data/screeners/top-actives/list', ['category', 'rank_type', 'sort_by', 'direction']],
+  get_stock_bars: ['POST', '/market-data/stocks/bars/list', ['symbols', 'category', 'timespan', 'count', 'real_time_required', 'trading_sessions', 'start_time', 'end_time']],
+  get_stock_bars_single: ['GET', '/market-data/stocks/bars/get', ['symbol', 'category', 'timespan', 'count', 'real_time_required', 'trading_sessions', 'start_time', 'end_time']],
+  get_market_sectors: ['GET', '/market-data/screeners/market-sectors/list', ['category', 'period', 'agg_type', 'direction', 'pagination_key']],
+  get_market_sectors_detail: ['GET', '/market-data/screeners/market-sectors/get', ['category', 'sector_id', 'period', 'sort_by', 'direction', 'pagination_key']],
+  get_stock_unusual_activities: ['GET', '/market-data/screeners/unusual-activities/list', ['category', 'symbol', 'alert_types', 'count', 'extended_hours_required']],
+  get_market_sentiment: ['GET', '/market-data/screeners/fear-greed-indexes/get', ['category']],
+  get_company_profile: ['GET', '/market-data/fundamentals/company-profiles/get', ['symbol', 'category']],
+  get_analyst_target_price: ['GET', '/market-data/fundamentals/analysis/target-prices/get', ['symbol', 'category']],
+  get_analyst_rating: ['GET', '/market-data/fundamentals/analysis/ratings/get', ['symbol', 'category']],
+  get_stock_forecast_eps: ['GET', '/market-data/fundamentals/forecast-eps/get', ['symbol', 'category']],
+  get_stock_earnings_calendar: ['GET', '/market-data/fundamentals/earnings-calendars/list', ['symbol', 'category']],
+  get_macroeconomic_calendar: ['GET', '/market-data/fundamentals/economic-calendars/list', ['region', 'start_date', 'end_date', 'pagination_key']],
+  get_stock_capital_flow: ['GET', '/market-data/fundamentals/capital-flows/get', ['symbol', 'category', 'count']],
+  get_insider_transactions: ['GET', '/market-data/fundamentals/insider-transactions/list', ['symbol', 'category', 'side', 'pagination_key']],
+  get_income_statement: ['GET', '/market-data/fundamentals/income-statements/get', ['symbol', 'category', 'type', 'count']],
+  get_financial_indicators: ['GET', '/market-data/fundamentals/indicators/get', ['symbol', 'category', 'type', 'count']],
+  get_stock_industry_comparison: ['GET', '/market-data/fundamentals/industry-comparisons/get', ['symbol', 'category', 'sort_by']],
+  get_stock_news: ['GET', '/market-data/news/stock-news/list', ['symbol', 'category', 'sentiment', 'pagination_key']],
+  search_news: ['GET', '/market-data/news/search/list', ['keyword', 'start_date', 'end_date', 'pagination_key']],
+  get_community_hot_stocks: ['GET', '/market-data/communities/stock-rankings/list', []],
+  get_fund_brief: ['GET', '/market-data/fundamentals/fund-brief/get', ['symbol', 'category']],
+  get_fund_holdings: ['GET', '/market-data/fundamentals/fund-holdings/get', ['symbol', 'category']],
+  get_fund_performance: ['GET', '/market-data/fundamentals/fund-performances/get', ['symbol', 'category']],
+  get_fund_rating: ['GET', '/market-data/fundamentals/fund-ratings/get', ['symbol', 'category']],
+};
+const DEF_CAT = { symbols: 1, symbol: 1 };
+function wbArgs(tool, input) {
+  const [method, path, allow] = WBMAP[tool]; const a = {};
+  allow.forEach((k) => { if (input[k] !== undefined && input[k] !== null && input[k] !== '') a[k] = input[k]; });
+  if (allow.indexOf('category') >= 0 && !a.category) a.category = 'US_STOCK';
+  if (tool === 'get_stock_bars') { a.symbols = syms(a.symbols); if (a.count != null) a.count = String(a.count); }
+  if (method === 'GET' && Array.isArray(a.symbols)) a.symbols = a.symbols.join(',');
+  return { method, path, args: a };
+}
+// Shape Webull's answer the way the app (written against the Claude connector) expects it.
+function wbShape(tool, data, input) {
+  const list = Array.isArray(data) ? data : (data && (data.data || data.list || data.items || data.result)) || null;
+  if (tool === 'get_gainers_losers' || tool === 'get_most_active') {
+    const size = +input.page_size || 100, page = Math.max(1, +input.page_index || 1);
+    return { data: (list || []).slice((page - 1) * size, page * size) };
+  }
+  if (tool === 'get_stock_bars') {
+    if (data && Array.isArray(data.result)) return data;
+    if (Array.isArray(list) && list.length && list[0] && (list[0].result || list[0].bars)) return { result: list.map((x) => ({ symbol: x.symbol, result: x.result || x.bars })) };
+    return data;
+  }
+  return data;
+}
+// The session token lives in a Durable Object so it survives restarts (Webull may require approving it once in the app).
+async function vault(env) { if (!env.VAULT) return null; return env.VAULT.get(env.VAULT.idFromName('main')); }
+async function vget(env, k) { const v = await vault(env); if (!v) return null; const r = await v.fetch('https://v/get?k=' + k); return r.ok ? r.json() : null; }
+async function vput(env, k, val) { const v = await vault(env); if (!v) return; await v.fetch('https://v/put?k=' + k, { method: 'POST', body: JSON.stringify(val) }); }
+let WBCFG = null;
+async function wbToken(env, wb) {
+  if (!WBCFG || Date.now() - WBCFG.t > 3600000) { const r = await wb.raw('GET', '/openapi/config'); WBCFG = { t: Date.now(), status: r.status, need: !!(r.data && r.data.token_check_enabled), data: r.data }; }
+  if (!WBCFG.need) return null;
+  const t = await vget(env, 'token'); return t && t.status === 'NORMAL' ? t.token : null;
+}
+async function wbCall(env, tool, input) {
+  const wb = new Webull(env); if (!wb.ready || !WBMAP[tool]) return null;
+  const token = await wbToken(env, wb);
+  if (WBCFG && WBCFG.need && !token) return null; // not approved yet -> fall back
+  const { method, path, args } = wbArgs(tool, input || {});
+  const r = method === 'GET' ? await wb.raw('GET', path, args, null, token) : await wb.raw('POST', path, {}, args, token);
+  if (r.status !== 200) { WBLAST = { tool, status: r.status, data: typeof r.data === 'string' ? r.data.slice(0, 300) : r.data, t: Date.now() }; return null; }
+  return { payload: wbShape(tool, r.data, input || {}) };
+}
+let WBLAST = null;
+
+export class Vault {
+  constructor(state) { this.state = state; }
+  async fetch(req) {
+    const u = new URL(req.url); const k = u.searchParams.get('k');
+    if (u.pathname === '/get') { const v = await this.state.storage.get(k); return v === undefined ? new Response('null', { status: 404 }) : new Response(JSON.stringify(v)); }
+    if (u.pathname === '/put') { await this.state.storage.put(k, await req.json()); return new Response('ok'); }
+    return new Response('bad', { status: 400 });
+  }
+}
+
+async function wbRoutes(url, env) {
+  const wb = new Webull(env);
+  if (url.pathname === '/api/wb/status') {
+    if (!wb.ready) return json({ keys: false, message: 'Add WEBULL_APP_KEY and WEBULL_APP_SECRET as secrets in Cloudflare.' });
+    const cfg = await wb.raw('GET', '/openapi/config');
+    const tok = await vget(env, 'token');
+    const test = await wb.raw('GET', '/market-data/stocks/snapshots/list', { symbols: 'AAPL', category: 'US_STOCK' }, null, tok && tok.token);
+    return json({ keys: true, vault: !!env.VAULT, config: { status: cfg.status, body: cfg.data }, token: tok ? { status: tok.status, expires: tok.expires } : null,
+      snapshotTest: { status: test.status, body: typeof test.data === 'string' ? test.data.slice(0, 300) : JSON.stringify(test.data).slice(0, 300) }, lastError: WBLAST });
+  }
+  if (url.pathname === '/api/wb/token') { // create (or refresh) the session token; approve it in the Webull app if asked
+    if (!wb.ready) return json({ keys: false });
+    const old = await vget(env, 'token');
+    const r = await wb.raw('POST', '/auth/tokens/create', {}, old && old.token ? { token: old.token } : {});
+    if (r.status === 200 && r.data && r.data.token) await vput(env, 'token', { token: r.data.token, expires: r.data.expires, status: r.data.status });
+    return json({ status: r.status, token_status: r.data && r.data.status, expires: r.data && r.data.expires, message: r.data && r.data.status !== 'NORMAL' ? 'Open the Webull app and approve the API login request, then open /api/wb/check.' : undefined, error: r.status !== 200 ? r.data : undefined });
+  }
+  if (url.pathname === '/api/wb/check') {
+    const old = await vget(env, 'token'); if (!old) return json({ error: 'No token yet. Open /api/wb/token first.' });
+    const r = await wb.raw('POST', '/auth/tokens/check', {}, { token: old.token });
+    if (r.status === 200 && r.data) await vput(env, 'token', { token: old.token, expires: r.data.expires || old.expires, status: r.data.status || old.status });
+    return json({ status: r.status, token_status: r.data && r.data.status, body: r.data });
+  }
+  if (url.pathname === '/api/wb/raw') { // market-data only (never account tools)
+    const tool = url.searchParams.get('tool'); if (!WBMAP[tool]) return json({ error: 'not a market-data tool' }, 400);
+    let inp = {}; try { inp = JSON.parse(url.searchParams.get('input') || '{}'); } catch (e) {}
+    const tok = await vget(env, 'token'); const { method, path, args } = wbArgs(tool, inp);
+    const r = method === 'GET' ? await wb.raw('GET', path, args, null, tok && tok.token) : await wb.raw('POST', path, {}, args, tok && tok.token);
+    return json({ status: r.status, path, args, body: typeof r.data === 'string' ? r.data.slice(0, 1500) : JSON.stringify(r.data).slice(0, 1500) });
+  }
+  return null;
+}
+
+async function runTool(tool, input, ctx, env) {
+  const fn = T[tool] || (WBMAP[tool] ? async () => [] : null); if (!fn) return json({ error: { code: 'tool_error', message: 'Unknown tool ' + tool } }, 404);
   const key = new Request('https://cache.jumptrade/' + tool + '?' + encodeURIComponent(JSON.stringify(input || {})));
   const cache = caches.default;
   const hit = await cache.match(key); if (hit) return hit;
   try {
-    const payload = await fn(input || {});
+    let payload;
+    const w = env ? await wbCall(env, tool, input || {}).catch((e) => { WBLAST = { tool, error: String(e.message || e), t: Date.now() }; return null; }) : null;
+    payload = w ? w.payload : await fn(input || {});
     const res = json({ payload }, 200, { 'cache-control': 'public, max-age=' + (TTL[tool] || 30) });
     ctx.waitUntil(cache.put(key, res.clone()));
     return res;
@@ -244,12 +368,13 @@ export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'POST, GET' } });
+    if (url.pathname.startsWith('/api/wb/')) { const r = await wbRoutes(url, env); if (r) return r; }
     if (url.pathname === '/api/selftest') return json(await selftest());
     if (url.pathname === '/api/health') return json({ ok: true, provider: 'yahoo', time: new Date().toISOString() });
-    if (url.pathname === '/api/tool' && req.method === 'GET') { let inp = {}; try { inp = JSON.parse(url.searchParams.get('input') || '{}'); } catch (e) {} return runTool(url.searchParams.get('tool'), inp, ctx); }
+    if (url.pathname === '/api/tool' && req.method === 'GET') { let inp = {}; try { inp = JSON.parse(url.searchParams.get('input') || '{}'); } catch (e) {} return runTool(url.searchParams.get('tool'), inp, ctx, env); }
     if (url.pathname === '/api/scan') { try { const f = await scanAll(false); return json({ ok: true, count: f.length, top: f.slice(0, 8).map((q) => q.symbol + ' ' + (q.regularMarketChangePercent || 0).toFixed(1) + '%') }); } catch (e) { return json({ ok: false, error: String(e.message || e) }); } }
     if (url.pathname === '/api/session') { const s2 = await session(true); return json({ cookie: !!s2.cookie, crumb: !!s2.crumb }); }
-    if (url.pathname === '/api/tool' && req.method === 'POST') { const b = await req.json().catch(() => ({})); return runTool(b.tool, b.input, ctx); }
+    if (url.pathname === '/api/tool' && req.method === 'POST') { const b = await req.json().catch(() => ({})); return runTool(b.tool, b.input, ctx, env); }
     if (url.pathname.startsWith('/api/')) return json({ error: { code: 'bad_request', message: 'Unknown endpoint' } }, 404);
     return env.ASSETS.fetch(req);
   },
