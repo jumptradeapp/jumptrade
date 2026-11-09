@@ -123,6 +123,8 @@ T.get_gainers_losers = async (i) => {
   } else {
     rows = (await pool(asc)).map(snapOf).filter((r) => (asc ? r.change_ratio < 0 : r.change_ratio > 0));
   }
+  // drop warrants, rights and units (e.g. RGTIW, ABCDR, ABCDU, X.WS) and quotes with no real trading
+  rows = rows.filter((r) => { const s = r.symbol || ''; if (/[.\-](WS|W|R|U|RT|WT)$/.test(s) || /\.(W|U|R)[A-Z]?$/.test(s)) return false; if (s.length === 5 && /[WRU]$/.test(s) && !/^(SNOWU)$/.test(s)) return false; return (r.volume || 0) >= 50000 && (r.price || 0) > 0.1; });
   rows.sort((a, b) => (asc ? 1 : -1) * ((a.change_ratio || 0) - (b.change_ratio || 0)));
   return { data: rows.slice((page - 1) * size, page * size) };
 };
