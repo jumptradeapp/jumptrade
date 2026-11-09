@@ -219,7 +219,8 @@ html body .tsl{gap:3px 8px!important}html body .tsl i{letter-spacing:-.1px!impor
 .scroller>.disc{margin-bottom:8px!important}
 .app>nav.main{background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.02) 45%,rgba(255,255,255,.04)) padding-box,linear-gradient(rgba(14,15,18,.62),rgba(14,15,18,.62)) padding-box,linear-gradient(135deg,rgba(255,255,255,.24),rgba(255,255,255,.07) 30%,rgba(188,210,252,.16) 80%,rgba(255,255,255,.12)) border-box!important;backdrop-filter:blur(18px) saturate(140%)!important;-webkit-backdrop-filter:blur(18px) saturate(140%)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 10px 28px rgba(0,0,0,.45)!important}
 /*slim*/#caps.segs,.segs:has(.grp){padding:3px!important;min-height:0!important}#caps .seg,.seg.grp{padding:5px 4px!important;height:28px!important;font-size:13.5px!important;min-height:0!important;line-height:1.2!important}#sessChips .chip{padding:4px 12px!important;height:28px!important;font-size:13px!important;min-height:0!important;line-height:1.2!important}
-/*webonly*/.askrow,.askx,.askc{display:none!important}</style><style id="cssL" media="not all">
+/*webonly*/.askrow,.askx,.askc{display:none!important}/*hmtools*/.hmTools{display:flex;justify-content:flex-end;padding:4px 16px 10px;position:relative;z-index:2}.hmTools .hmEditBtn.hmEditSm{display:inline-flex!important;align-items:center;width:auto!important;height:30px!important;padding:0 12px 0 9px!important;gap:6px;margin:0!important;font:inherit;font-size:12.5px!important;font-weight:700;letter-spacing:.02em;color:#E6EBF2!important;background:rgba(10,10,12,.55)!important;border:1px solid rgba(255,255,255,.16)!important;border-radius:999px!important;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+</style><style id="cssL" media="not all">
 *{box-sizing:border-box} html,body{margin:0;height:100%;background:#B7DBFB;color:#080F17;font-family:'Inter Tight',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
 button{font-family:inherit;color:inherit} a{color:inherit;text-decoration:none}
 .bg{position:fixed;inset:0;pointer-events:none;overflow:hidden;background:radial-gradient(600px 420px at 85% -10%,rgba(59,123,255,.20),transparent 60%),radial-gradient(500px 400px at -10% 85%,rgba(59,123,255,.12),transparent 60%),#B7DBFB}
@@ -455,7 +456,7 @@ html body .tsl{gap:3px 8px!important}html body .tsl i{letter-spacing:-.1px!impor
 <div class="app">
 <section class="view" id="vMovers" aria-label="Top gainers">
   <div class="top">
-    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><span class="row1"><i id="sessDot"></i><span id="sessLabel">Checking session…</span></span><small id="fresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="url(#askG)" d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5z"/><path fill="url(#askG)" d="M19 14.5c.25 2 1.25 3 3.25 3.25-2 .25-3 1.25-3.25 3.25-.25-2-1.25-3-3.25-3.25 2-.25 3-1.25 3.25-3.25z" opacity=".8"/></svg><span>Search</span></button></div>
+    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><span class="row1"><i id="sessDot"></i><span id="sessLabel">Checking session…</span></span><small id="fresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9DB8FF" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span>Search</span></button></div>
     <div class="title"><h1><span>TOP</span><br><b>GAINERS<em class="dot">.</em></b></h1><div class="sub" id="sub"></div></div>
     <div id="mvTop"></div>
     <div class="chips" id="sessChips" aria-label="Session"></div>
@@ -466,7 +467,7 @@ html body .tsl{gap:3px 8px!important}html body .tsl i{letter-spacing:-.1px!impor
 </section>
 <section class="view" id="vSectors" aria-label="Sector heat map">
   <div class="top">
-    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="sFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="url(#askG)" d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5z"/><path fill="url(#askG)" d="M19 14.5c.25 2 1.25 3 3.25 3.25-2 .25-3 1.25-3.25 3.25-.25-2-1.25-3-3.25-3.25 2-.25 3-1.25 3.25-3.25z" opacity=".8"/></svg><span>Ask</span></button></div>
+    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="sFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9DB8FF" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span>Search</span></button></div>
     <div class="title"><h1><span>MARKET</span><br><b>INTEL<em class="dot">.</em></b></h1><div class="sub">Size = market cap<br>Color = move</div></div>
     <div class="segs intelseg" id="secSeg" role="tablist" aria-label="Intel"></div>
     <div class="segs" id="perChips" role="tablist" aria-label="Period"></div>
@@ -480,7 +481,7 @@ html body .tsl{gap:3px 8px!important}html body .tsl i{letter-spacing:-.1px!impor
 </section>
 <section class="view" id="vDips" aria-label="Dip radar">
   <div class="top">
-    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="dFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="url(#askG)" d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5z"/><path fill="url(#askG)" d="M19 14.5c.25 2 1.25 3 3.25 3.25-2 .25-3 1.25-3.25 3.25-.25-2-1.25-3-3.25-3.25 2-.25 3-1.25 3.25-3.25z" opacity=".8"/></svg><span>Ask</span></button></div>
+    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="dFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9DB8FF" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span>Search</span></button></div>
     <div class="title"><h1><span>TRADE</span><br><b>IDEAS<em class="dot">.</em></b></h1><div class="sub">Beaten-down names<br>turning or breaking</div></div>
     <div class="segs intelseg" id="dipSeg" role="tablist" aria-label="Ideas"></div>
     <div class="chips" id="dipF" aria-label="Signal"></div>
@@ -490,7 +491,7 @@ html body .tsl{gap:3px 8px!important}html body .tsl i{letter-spacing:-.1px!impor
 </section>
 <section class="view" id="vIpos" aria-label="IPO watch">
   <div class="top">
-    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="iFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="url(#askG)" d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5z"/><path fill="url(#askG)" d="M19 14.5c.25 2 1.25 3 3.25 3.25-2 .25-3 1.25-3.25 3.25-.25-2-1.25-3-3.25-3.25 2-.25 3-1.25 3.25-3.25z" opacity=".8"/></svg><span>Ask</span></button></div>
+    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="iFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9DB8FF" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span>Search</span></button></div>
     <div class="title"><h1><span>MARKET</span><br><b>INTEL<em class="dot">.</em></b></h1><div class="sub">Upcoming IPOs and<br>the stocks they move</div></div>
     <div class="segs intelseg" id="ipoSeg" role="tablist" aria-label="Intel"></div>
   </div>
@@ -498,7 +499,7 @@ html body .tsl{gap:3px 8px!important}html body .tsl i{letter-spacing:-.1px!impor
 </section>
 <section class="view" id="vWatch" aria-label="Watchlist">
   <div class="top">
-    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="wFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="url(#askG)" d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5z"/><path fill="url(#askG)" d="M19 14.5c.25 2 1.25 3 3.25 3.25-2 .25-3 1.25-3.25 3.25-.25-2-1.25-3-3.25-3.25 2-.25 3-1.25 3.25-3.25z" opacity=".8"/></svg><span>Ask</span></button></div>
+    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="wFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9DB8FF" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span>Search</span></button></div>
     <div class="title"><h1><span>YOUR</span><br><b>WATCHLIST<em class="dot">.</em></b></h1><div class="sub">Your lists<br><span id="wSum"></span></div></div>
     <div class="chips" id="wlChips" aria-label="Watchlists"></div><div class="segs" id="wSort" role="tablist" aria-label="Sort"></div>
   </div>
@@ -506,7 +507,7 @@ html body .tsl{gap:3px 8px!important}html body .tsl i{letter-spacing:-.1px!impor
 </section>
 <section class="view" id="vResearch" aria-label="Research">
   <div class="top">
-    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="rsFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="url(#askG)" d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5z"/><path fill="url(#askG)" d="M19 14.5c.25 2 1.25 3 3.25 3.25-2 .25-3 1.25-3.25 3.25-.25-2-1.25-3-3.25-3.25 2-.25 3-1.25 3.25-3.25z" opacity=".8"/></svg><span>Ask</span></button></div>
+    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="rsFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9DB8FF" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span>Search</span></button></div>
     <div class="title"><h1><span>MARKET</span><br><b>INTEL<em class="dot">.</em></b></h1><div class="sub">Deep dives on<br>what moves stocks</div></div>
     <div class="segs intelseg" id="resSeg" role="tablist" aria-label="Intel"></div>
   </div>
@@ -514,7 +515,7 @@ html body .tsl{gap:3px 8px!important}html body .tsl i{letter-spacing:-.1px!impor
 </section>
 <section class="view" id="vNews" aria-label="News">
   <div class="top">
-    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="nFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="url(#askG)" d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5z"/><path fill="url(#askG)" d="M19 14.5c.25 2 1.25 3 3.25 3.25-2 .25-3 1.25-3.25 3.25-.25-2-1.25-3-3.25-3.25 2-.25 3-1.25 3.25-3.25z" opacity=".8"/></svg><span>Ask</span></button></div>
+    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="nFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9DB8FF" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span>Search</span></button></div>
     <div class="title"><h1><span>MARKET</span><br><b>INTEL<em class="dot">.</em></b></h1><div class="sub">Live headlines</div></div>
     <div class="segs intelseg" id="newsSeg" role="tablist" aria-label="Intel"></div><div class="chips" id="newsK" aria-label="Topic"></div>
   </div>
@@ -522,7 +523,7 @@ html body .tsl{gap:3px 8px!important}html body .tsl i{letter-spacing:-.1px!impor
 </section>
 <section class="view" id="vRatings" aria-label="Analyst ratings">
   <div class="top">
-    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="rFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="url(#askG)" d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5z"/><path fill="url(#askG)" d="M19 14.5c.25 2 1.25 3 3.25 3.25-2 .25-3 1.25-3.25 3.25-.25-2-1.25-3-3.25-3.25 2-.25 3-1.25 3.25-3.25z" opacity=".8"/></svg><span>Ask</span></button></div>
+    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="rFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9DB8FF" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span>Search</span></button></div>
     <div class="title"><h1><span>MARKET</span><br><b>INTEL<em class="dot">.</em></b></h1><div class="sub">Analyst calls<br><span id="rWeek"></span></div></div>
     <div class="segs intelseg" id="ratSeg" role="tablist" aria-label="Intel"></div><div class="chips" id="ratF" aria-label="Type"></div>
   </div>
@@ -530,7 +531,7 @@ html body .tsl{gap:3px 8px!important}html body .tsl i{letter-spacing:-.1px!impor
 </section>
 <section class="view" id="vCompare" aria-label="Compare">
   <div class="top">
-    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="cmpFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="url(#askG)" d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5z"/><path fill="url(#askG)" d="M19 14.5c.25 2 1.25 3 3.25 3.25-2 .25-3 1.25-3.25 3.25-.25-2-1.25-3-3.25-3.25 2-.25 3-1.25 3.25-3.25z" opacity=".8"/></svg><span>Ask</span></button></div>
+    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="cmpFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9DB8FF" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span>Search</span></button></div>
     <div class="title"><h1><span>MARKET</span><br><b>INTEL<em class="dot">.</em></b></h1><div class="sub">Side by side,<br>stocks or ETFs</div></div>
     <div class="segs intelseg" id="cmpSeg" role="tablist" aria-label="Intel"></div>
   </div>
@@ -538,7 +539,7 @@ html body .tsl{gap:3px 8px!important}html body .tsl i{letter-spacing:-.1px!impor
 </section>
 <section class="view" id="vExtra" aria-label="Market intel">
   <div class="top">
-    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="xFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="url(#askG)" d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5z"/><path fill="url(#askG)" d="M19 14.5c.25 2 1.25 3 3.25 3.25-2 .25-3 1.25-3.25 3.25-.25-2-1.25-3-3.25-3.25 2-.25 3-1.25 3.25-3.25z" opacity=".8"/></svg><span>Ask</span></button></div>
+    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="xFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9DB8FF" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span>Search</span></button></div>
     <div class="title"><h1><span>MARKET</span><br><b>INTEL<em class="dot">.</em></b></h1><div class="sub"><span id="xSub"></span></div></div>
     <div class="segs intelseg" id="xSeg" role="tablist" aria-label="Intel"></div><div class="chips" id="xF" aria-label="Type"></div>
   </div>
@@ -546,7 +547,7 @@ html body .tsl{gap:3px 8px!important}html body .tsl i{letter-spacing:-.1px!impor
 </section>
 <section class="view" id="vCatalysts" aria-label="Catalysts">
   <div class="top">
-    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="cFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="url(#askG)" d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5z"/><path fill="url(#askG)" d="M19 14.5c.25 2 1.25 3 3.25 3.25-2 .25-3 1.25-3.25 3.25-.25-2-1.25-3-3.25-3.25 2-.25 3-1.25 3.25-3.25z" opacity=".8"/></svg><span>Ask</span></button></div>
+    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="cFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9DB8FF" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span>Search</span></button></div>
     <div class="title"><h1><span>MARKET</span><br><b>INTEL<em class="dot">.</em></b></h1><div class="sub">Earnings, FDA,<br>economy, IPOs</div></div>
     <div class="segs intelseg" id="catSeg" role="tablist" aria-label="Intel"></div><div class="chips" id="catF" aria-label="Type"></div>
   </div>
@@ -554,7 +555,7 @@ html body .tsl{gap:3px 8px!important}html body .tsl i{letter-spacing:-.1px!impor
 </section>
 <section class="view" id="vPort" aria-label="Portfolios">
   <div class="top">
-    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="pFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="url(#askG)" d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5z"/><path fill="url(#askG)" d="M19 14.5c.25 2 1.25 3 3.25 3.25-2 .25-3 1.25-3.25 3.25-.25-2-1.25-3-3.25-3.25 2-.25 3-1.25 3.25-3.25z" opacity=".8"/></svg><span>Ask</span></button></div>
+    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="pFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9DB8FF" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span>Search</span></button></div>
     <div class="title"><h1><span>MODEL</span><br><b>PORTFOLIOS<em class="dot">.</em></b></h1><div class="sub">Your models &amp;<br>the pros</div></div>
     <div class="segs" id="pSeg" role="tablist" aria-label="Portfolios"></div><div class="chips" id="pChips" aria-label="Fund style"></div>
   </div>
@@ -562,15 +563,15 @@ html body .tsl{gap:3px 8px!important}html body .tsl i{letter-spacing:-.1px!impor
 </section>
 <section class="view" id="vHome" aria-label="Today">
   <div class="top">
-    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="hmFresh"></small></div><button class="hmEditBtn" data-hmedit="1" aria-label="Customize Today"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></button><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="url(#askG)" d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5z"/><path fill="url(#askG)" d="M19 14.5c.25 2 1.25 3 3.25 3.25-2 .25-3 1.25-3.25 3.25-.25-2-1.25-3-3.25-3.25 2-.25 3-1.25 3.25-3.25z" opacity=".8"/></svg><span>Ask</span></button></div>
+    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="hmFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9DB8FF" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span>Search</span></button></div>
     <div class="title"><h1 id="hmTitle"><span>GOOD</span><br><b>MORNING<em class="dot">.</em></b></h1><div class="sub" id="hmSub"></div></div>
     
   </div>
-  <div class="scroller" id="hmScroller"><div class="ptr" id="ptrxH" role="status" aria-live="polite"><span class="ico"><span class="spin"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"></path><path d="M20 4v5h-5"></path></svg></span></span><span class="lbl">Pull to refresh</span></div><div class="inner" id="hmList"></div></div>
+  <div class="scroller" id="hmScroller"><div class="ptr" id="ptrxH" role="status" aria-live="polite"><span class="ico"><span class="spin"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"></path><path d="M20 4v5h-5"></path></svg></span></span><span class="lbl">Pull to refresh</span></div><div class="hmTools"><button class="hmEditBtn hmEditSm" data-hmedit="1" aria-label="Customize Today"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg><span>Customize</span></button></div><div class="inner" id="hmList"></div></div>
 </section>
 <section class="view" id="vValue" aria-label="Valuation">
   <div class="top">
-    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="vFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="url(#askG)" d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5z"/><path fill="url(#askG)" d="M19 14.5c.25 2 1.25 3 3.25 3.25-2 .25-3 1.25-3.25 3.25-.25-2-1.25-3-3.25-3.25 2-.25 3-1.25 3.25-3.25z" opacity=".8"/></svg><span>Ask</span></button></div>
+    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="vFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9DB8FF" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span>Search</span></button></div>
     <div class="title"><h1><span>TRADE</span><br><b>IDEAS<em class="dot">.</em></b></h1><div class="sub">Cheap or rich<br>for its growth</div></div>
     <div class="segs intelseg" id="valSeg" role="tablist" aria-label="Ideas"></div><div class="chips" id="valF" aria-label="Verdict"></div>
   </div>
@@ -578,7 +579,7 @@ html body .tsl{gap:3px 8px!important}html body .tsl i{letter-spacing:-.1px!impor
 </section>
 <section class="view" id="vRecord" aria-label="Track record">
   <div class="top">
-    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="recFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="url(#askG)" d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5z"/><path fill="url(#askG)" d="M19 14.5c.25 2 1.25 3 3.25 3.25-2 .25-3 1.25-3.25 3.25-.25-2-1.25-3-3.25-3.25 2-.25 3-1.25 3.25-3.25z" opacity=".8"/></svg><span>Ask</span></button></div>
+    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="recFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9DB8FF" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span>Search</span></button></div>
     <div class="title"><h1><span>TRADE</span><br><b>IDEAS<em class="dot">.</em></b></h1><div class="sub"><span id="recSub">Did the signals<br>actually work?</span></div></div>
     <div class="segs intelseg" id="recSeg" role="tablist" aria-label="Ideas"></div>
   </div>
@@ -586,7 +587,7 @@ html body .tsl{gap:3px 8px!important}html body .tsl i{letter-spacing:-.1px!impor
 </section>
 <section class="view" id="vBuzz" aria-label="Social buzz">
   <div class="top">
-    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="bFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="url(#askG)" d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5z"/><path fill="url(#askG)" d="M19 14.5c.25 2 1.25 3 3.25 3.25-2 .25-3 1.25-3.25 3.25-.25-2-1.25-3-3.25-3.25 2-.25 3-1.25 3.25-3.25z" opacity=".8"/></svg><span>Ask</span></button></div>
+    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="bFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9DB8FF" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span>Search</span></button></div>
     <div class="title"><h1><span>TRADE</span><br><b>IDEAS<em class="dot">.</em></b></h1><div class="sub">Most discussed<br>by traders</div></div>
     <div class="segs intelseg" id="buzzSeg" role="tablist" aria-label="Ideas"></div>
   </div>
@@ -594,7 +595,7 @@ html body .tsl{gap:3px 8px!important}html body .tsl i{letter-spacing:-.1px!impor
 </section>
 <section class="view" id="vSetups" aria-label="Setups">
   <div class="top">
-    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="stFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="url(#askG)" d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5z"/><path fill="url(#askG)" d="M19 14.5c.25 2 1.25 3 3.25 3.25-2 .25-3 1.25-3.25 3.25-.25-2-1.25-3-3.25-3.25 2-.25 3-1.25 3.25-3.25z" opacity=".8"/></svg><span>Ask</span></button></div>
+    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="stFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9DB8FF" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span>Search</span></button></div>
     <div class="title"><h1><span>TRADE</span><br><b>IDEAS<em class="dot">.</em></b></h1><div class="sub">Best setups<br>right now</div></div>
     <div class="segs intelseg" id="setSeg" role="tablist" aria-label="Ideas"></div>
   </div>
@@ -602,7 +603,7 @@ html body .tsl{gap:3px 8px!important}html body .tsl i{letter-spacing:-.1px!impor
 </section>
 <section class="view" id="vLeaders" aria-label="Leaders">
   <div class="top">
-    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="lFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="url(#askG)" d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5z"/><path fill="url(#askG)" d="M19 14.5c.25 2 1.25 3 3.25 3.25-2 .25-3 1.25-3.25 3.25-.25-2-1.25-3-3.25-3.25 2-.25 3-1.25 3.25-3.25z" opacity=".8"/></svg><span>Ask</span></button></div>
+    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="lFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9DB8FF" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span>Search</span></button></div>
     <div class="title"><h1><span>TRADE</span><br><b>IDEAS<em class="dot">.</em></b></h1><div class="sub">Strongest stocks<br>near their highs</div></div>
     <div class="segs intelseg" id="leadSeg" role="tablist" aria-label="Ideas"></div>
   </div>
@@ -610,7 +611,7 @@ html body .tsl{gap:3px 8px!important}html body .tsl i{letter-spacing:-.1px!impor
 </section>
 <section class="view" id="vInsiders" aria-label="Insider buying">
   <div class="top">
-    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="nsFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="url(#askG)" d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5z"/><path fill="url(#askG)" d="M19 14.5c.25 2 1.25 3 3.25 3.25-2 .25-3 1.25-3.25 3.25-.25-2-1.25-3-3.25-3.25 2-.25 3-1.25 3.25-3.25z" opacity=".8"/></svg><span>Ask</span></button></div>
+    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="nsFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9DB8FF" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span>Search</span></button></div>
     <div class="title"><h1><span>TRADE</span><br><b>IDEAS<em class="dot">.</em></b></h1><div class="sub">Executives buying<br>their own stock</div></div>
     <div class="segs intelseg" id="insSeg" role="tablist" aria-label="Ideas"></div>
   </div>
@@ -618,7 +619,7 @@ html body .tsl{gap:3px 8px!important}html body .tsl i{letter-spacing:-.1px!impor
 </section>
 <section class="view" id="vFlow" aria-label="Unusual flow">
   <div class="top">
-    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="flFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="url(#askG)" d="M12 2.5c.5 4.6 2.9 7 7.5 7.5-4.6.5-7 2.9-7.5 7.5-.5-4.6-2.9-7-7.5-7.5 4.6-.5 7-2.9 7.5-7.5z"/><path fill="url(#askG)" d="M19 14.5c.25 2 1.25 3 3.25 3.25-2 .25-3 1.25-3.25 3.25-.25-2-1.25-3-3.25-3.25 2-.25 3-1.25 3.25-3.25z" opacity=".8"/></svg><span>Ask</span></button></div>
+    <div class="bar"><div class="brand"><span class="jm" data-px="40" role="img" aria-label="jumptrade logo"></span><span class="wm"><b>jump</b><span>trade</span><em>.</em></span></div><div class="live"><small id="flFresh"></small></div><button class="searchBtn askPill" aria-label="Search stocks"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9DB8FF" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span>Search</span></button></div>
     <div class="title"><h1><span>MARKET</span><br><b>INTEL<em class="dot">.</em></b></h1><div class="sub">Big block<br>trades</div></div>
     <div class="segs intelseg" id="flowSeg" role="tablist" aria-label="Ideas"></div><div class="chips" id="flowF" aria-label="Flow filter"></div>
   </div>
