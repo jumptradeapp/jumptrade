@@ -252,7 +252,7 @@
     const hid = MODELS.filter((m) => isHidden('strat:' + m.id)).length;
     let h = '<div class="pact"><span class="small dim" style="padding-left:2px">' + (ST.done ? 'Tested ' + ago(ST.stamp) : ST.running ? 'Running backtests…' : '') + '</span><span class="pr">' + (S.pEdit && hid ? '<button class="pbtn" data-prestore="strats">Restore ' + hid + ' hidden</button>' : '') + (ST.done && !S.pEdit ? '<button class="pbtn" data-strun="1">Re-run</button>' : '') + '<button class="pbtn' + (S.pEdit ? ' on' : '') + '" data-pedit="1">' + (S.pEdit ? 'Done' : 'Edit') + '</button></span></div>';
     if (window.QM) h += QM.renderCards();
-    if (!mcp || mcp.delayed) h += '<div class="empty"><b>Needs a Webull connection</b><span>The strategies pull five years of prices, filings and estimates from your Webull account.</span></div>';
+    if (!mcp || mcp.delayed) h += '<div class="empty"><b>Coming soon to the web version</b><span>The strategies pull five years of prices, filings and estimates.</span></div>';
     if (ST.prog) { const p = ST.prog; h += '<div class="glass"><div class="ih"><span class="cap">' + esc(p.label.toUpperCase()) + '</span><span class="cap">' + p.done + ' / ' + p.total + '</span></div><span class="wbar" style="height:6px"><i style="height:6px;width:' + (p.total ? p.done / p.total * 100 : 0).toFixed(1) + '%;background:#A8C8E8"></i></span><span class="small dim">First run pulls about 5 years of data for ' + (ST.U ? ST.U.length : '~250') + ' stocks. Later runs use the cache.</span></div>'; }
     if (ST.err) h += '<div class="empty"><b>' + esc(ST.err) + '</b></div>';
     const ORD = { BEATS: 0, SAFER: 1, BUILDING: 2, MIXED: 3, LAGS: 4 };

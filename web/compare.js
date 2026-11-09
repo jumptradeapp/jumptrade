@@ -117,7 +117,7 @@
       '<div class="chips cmpq">' + PAIRS.map((p) => '<button class="chip' + (p[0] === C.a && p[1] === C.b ? ' on' : '') + '" data-cmpp="' + p.join(',') + '">' + p[0] + ' vs ' + p[1] + '</button>').join('') + '</div>';
     const box = $('cmpList');
     if (document.activeElement && (document.activeElement.id === 'cmpA' || document.activeElement.id === 'cmpB')) return;
-    if (typeof mcp === 'undefined' || !mcp) { setHTML(box, top + '<div class="empty"><b>Live data needs claude.ai</b></div>'); return; }
+    if (typeof mcp === 'undefined' || !mcp) { setHTML(box, top + '<div class="empty"><b>Can’t reach live data</b></div>'); return; }
     const a = C.a, b = C.b; load(a); load(b); loadBars(a, b);
     const A = C.data[a], B = C.data[b];
     if (!A || !B) { setHTML(box, top + '<div class="glass sec"><div class="skel"></div><div class="skel" style="width:70%"></div></div><div class="glass sec"><div class="skel" style="height:120px"></div></div>'); return; }

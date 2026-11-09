@@ -137,7 +137,7 @@
     const box = $('recList'); let h = '';
     if (!REC.res) {
       if (!REC.busy) setTimeout(() => REC.run(), 30);
-      box.innerHTML = '<div class="empty"><b>' + (REC.busy ? 'Testing every signal… ' + Math.round(REC.prog * 100) + '%' : (typeof mcp !== 'undefined' && mcp ? 'Starting…' : 'Live data needs claude.ai')) + '</b><span>Replaying two years of daily prices for every stock the scanners watch.</span></div>'; return;
+      box.innerHTML = '<div class="empty"><b>' + (REC.busy ? 'Testing every signal… ' + Math.round(REC.prog * 100) + '%' : (typeof mcp !== 'undefined' && mcp ? 'Starting…' : 'Can’t reach live data')) + '</b><span>Replaying two years of daily prices for every stock the scanners watch.</span></div>'; return;
     }
     const X = REC.res; $('recSub').innerHTML = 'Did the signals<br>actually work?';
     const lv = REC.liveStats();

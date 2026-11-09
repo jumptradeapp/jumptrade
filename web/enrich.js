@@ -335,7 +335,7 @@
     const box = $('results'); ENR.askRes = { q: q, html: '<div class="askc"><div class="cap ci" style="--c:#3B7BFF">ASK JUMPTRADE</div><p class="small" style="margin-top:6px">Reading today’s data for “' + esc(q) + '”…</p><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>' };
     box.innerHTML = ENR.askRes.html;
     let sample = null; try { sample = await claude.use('sample'); } catch (e) {}
-    if (!sample) { ENR.askRes.html = '<div class="askc"><p class="small">Ask jumptrade isn’t available in this view.</p></div>'; box.innerHTML = ENR.askRes.html; return; }
+    if (!sample) { ENR.askRes.html = '<div class="askc"><p class="small">Ask isn’t available in the web version yet.</p></div>'; box.innerHTML = ENR.askRes.html; return; }
     const prompt = 'You are the stock scanner inside a day-trading app called jumptrade. Answer the user\'s question using ONLY the stocks in the DATA below; never invent tickers or numbers. ' +
       'Pick up to 8 stocks that best match. If nothing matches, return an empty list and say so plainly. Keep "why" under 14 words, concrete, citing the numbers. ' +
       'Return JSON only: {"title": short title, "summary": one sentence, "picks": [{"s": ticker, "why": text}]}.\n\nQUESTION: ' + q + '\n\nDATA: ' + JSON.stringify(dataset());
@@ -348,7 +348,7 @@
       h += '<p class="foot" style="text-align:left">Answers use only the app’s live data: movers, Dip Radar and your watchlists. Not advice.</p></div>';
       ENR.askRes.html = h;
     } catch (e) {
-      ENR.askRes.html = '<div class="askc"><p class="small">' + (e && e.code === 'rate_limited' ? 'Too many questions in a row. Try again in a minute.' : e && e.code === 'not_granted' ? 'Ask jumptrade needs permission to use Claude. Tap a question again to allow it.' : 'Couldn’t answer that right now. Try rephrasing.') + '</p></div>';
+      ENR.askRes.html = '<div class="askc"><p class="small">' + (e && e.code === 'rate_limited' ? 'Too many questions in a row. Try again in a minute.' : e && e.code === 'not_granted' ? 'Ask isn’t available in the web version yet.' : 'Couldn’t answer that right now. Try rephrasing.') + '</p></div>';
     }
     if (($('q').value || '').trim() === q || !($('q').value || '').trim()) box.innerHTML = ENR.askRes.html;
   };

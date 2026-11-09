@@ -117,7 +117,7 @@ function watch(key, tool, input, onData, every) {
   };
   run();
   const t = setInterval(() => { if (!document.hidden) run(); }, iv);
-  watches[key] = { off: () => { dead = true; clearInterval(t); }, sig: sig };
+  watches[key] = { off: () => { dead = true; clearInterval(t); }, sig: sig, run: run };
 }
 function unwatch(prefix) { Object.keys(watches).forEach((k) => { if (k.indexOf(prefix) === 0) { watches[k].off(); delete watches[k]; } }); }
 async function call(tool, input, fresh) {
@@ -135,15 +135,15 @@ function handleErr(e, key) {
   render();
 }
 const ERRCOPY = {
-  needs_reauth: 'Your Webull connection needs to be reconnected. Reconnect Webull in claude.ai Settings → Connectors, then pull to refresh.',
-  server_not_connected: 'Webull isn’t connected for this account. Add Webull in claude.ai Settings → Connectors.',
-  selection_required: 'You have more than one Webull connector. Choose which one this page should use when claude.ai asks.',
-  blocked_by_policy: 'Your organization’s settings block Webull for this page.',
-  approval_required: 'This page needs your OK to read Webull data.',
-  not_in_manifest: 'Webull access was turned off for this page. Turn it back on from the page’s connector settings.',
-  not_granted: 'Open this page in claude.ai, signed in, to load live data.',
-  capability_disabled: 'Live data isn’t available in this view. Open the page on claude.ai or in the Claude app.',
-  consent_required: 'Allow Webull for this page to load live data.'
+  needs_reauth: 'Live data isn’t available right now. Pull down to retry.',
+  server_not_connected: 'Live data isn’t available right now. Pull down to retry.',
+  selection_required: 'Live data isn’t available right now. Pull down to retry.',
+  blocked_by_policy: 'Live data isn’t available right now. Pull down to retry.',
+  approval_required: 'Live data isn’t available right now. Pull down to retry.',
+  not_in_manifest: 'Live data isn’t available right now. Pull down to retry.',
+  not_granted: 'Live data isn’t available right now. Pull down to retry.',
+  capability_disabled: 'Live data isn’t available right now. Pull down to retry.',
+  consent_required: 'Live data isn’t available right now. Pull down to retry.'
 };
 
 /* ---------- data loading ---------- */
@@ -229,9 +229,9 @@ function renderMovers() {
   $('layTiles').classList.toggle('on', S.layout === 'tiles'); $('layList').classList.toggle('on', S.layout === 'list');
   const box = $('grid');
   if (window.TODAY && $('mvTop')) $('mvTop').innerHTML = TODAY.healthBar();
-  if (S.err) { box.innerHTML = '<div class="empty"><b>Can’t load Webull data</b><span>' + esc(ERRCOPY[S.err] || 'Something went wrong loading Webull data. Pull to refresh.') + '</span>' + (S.err === 'approval_required' || S.err === 'consent_required' ? '<button class="cta" id="allow">Allow Webull</button>' : '') + '</div>'; box.style.height = 'auto'; return; }
-  if (!rows.length && S.transient && mcp && !Object.keys(S.stamp || {}).some((k) => k.indexOf('m:') === 0)) { box.innerHTML = '<div class="empty"><b>Market data isn’t coming through</b><span>jumptrade can’t reach Webull right now (' + esc(S.transient) + '). It keeps retrying on its own. If this lasts, reconnect Webull in your Claude connector settings.</span><button class="pbtn" id="retryData" style="margin-top:12px">Retry now</button></div>'; return; }
-  if (!rows.length) { box.innerHTML = '<div class="empty"><b>' + (mcp ? (S.ready ? 'No movers in this filter yet' : 'Loading live movers…') : 'Live data needs claude.ai') + '</b><span>' + (mcp ? (S.ready ? (S.cap === 'mid' ? 'Only names in the top 200 movers plus the 100 largest stocks are scanned for mid caps.' : 'Try another cap size or session.') : 'Pulling today’s movers.') : 'Open this page on claude.ai or in the Claude app, signed in with Webull connected.') + '</span></div>'; box.style.height = 'auto'; return; }
+  if (S.err) { box.innerHTML = '<div class="empty"><b>Can’t load live data</b><span>' + esc(ERRCOPY[S.err] || 'Something went wrong loading data. Pull to refresh.') + '</span>' + (S.err === 'approval_required' || S.err === 'consent_required' ? '<button class="cta" id="allow">Retry</button>' : '') + '</div>'; box.style.height = 'auto'; return; }
+  if (!rows.length && S.transient && mcp && !Object.keys(S.stamp || {}).some((k) => k.indexOf('m:') === 0)) { box.innerHTML = '<div class="empty"><b>Market data isn’t coming through</b><span>jumptrade can’t reach the data server right now (' + esc(S.transient) + '). It keeps retrying on its own. If this lasts, try again in a few minutes.</span><button class="pbtn" id="retryData" style="margin-top:12px">Retry now</button></div>'; return; }
+  if (!rows.length) { box.innerHTML = '<div class="empty"><b>' + (mcp ? (S.ready ? 'No movers in this filter yet' : 'Loading live movers…') : 'Can’t reach live data') + '</b><span>' + (mcp ? (S.ready ? (S.cap === 'mid' ? 'Only names in the top 200 movers plus the 100 largest stocks are scanned for mid caps.' : 'Try another cap size or session.') : 'Pulling today’s movers.') : 'Couldn’t reach the server. Pull down to retry.') + '</span></div>'; box.style.height = 'auto'; return; }
   const W = box.clientWidth || 358, gap = 12, colW = (W - gap) / 2;
   const scEl = $('scroller'), szKey = scEl.clientHeight + 'x' + W;
   if (S.tileKey !== szKey && !touching && $('ptr1').offsetHeight === 0 && scEl.clientHeight > 0) { S.tileKey = szKey; S.fitDone = 0; S.fitN = 0; const nv = document.querySelector('nav.main, .nav, nav'); const bt = box.getBoundingClientRect().top + scEl.scrollTop - scEl.getBoundingClientRect().top; const vb = nv && nv.getBoundingClientRect().height ? Math.min(scEl.clientHeight, nv.getBoundingClientRect().top - scEl.getBoundingClientRect().top) : scEl.clientHeight; const avail = vb - bt - 10; S.tileH = Math.max(118, Math.min(146, Math.floor((avail - 2 * 12) / 3))); }
@@ -494,7 +494,7 @@ function renderSectors() {
   const newest = Math.max.apply(null, Object.keys(S.stamp).filter((k) => k.indexOf('s:') === 0).map((k) => S.stamp[k]).concat([0]));
   $('sFresh').textContent = newest ? 'Updated ' + ago(newest) : (mcp ? 'Loading…' : '');
   const map = $('treemap');
-  if (!list.length) { map.innerHTML = '<div class="empty"><b>' + (S.err ? 'Can’t load Webull data' : S.delayed ? 'Sectors arrive with the next refresh' : 'Loading sectors…') + '</b><span>' + esc(S.err ? (ERRCOPY[S.err] || '') : 'Industry performance, live.') + '</span></div>'; $('seesaw').innerHTML = ''; $('rotation').innerHTML = ''; return; }
+  if (!list.length) { map.innerHTML = '<div class="empty"><b>' + (S.err ? 'Can’t load live data' : S.delayed ? 'Sectors arrive with the next refresh' : 'Loading sectors…') + '</b><span>' + esc(S.err ? (ERRCOPY[S.err] || '') : 'Industry performance, live.') + '</span></div>'; $('seesaw').innerHTML = ''; $('rotation').innerHTML = ''; return; }
   const W = map.clientWidth || 358, H = 420;
   const items = list.map((s) => ({ id: s.id, name: s.name, p: +s.change_ratio * 100, v: Math.sqrt(+s.market_value), adv: +s.advanced, dec: +s.declined })).sort((a, b) => b.v - a.v);
   const rects = squarify(items, 0, 0, W, H);
@@ -606,7 +606,7 @@ function renderDips() {
   if (S.dipG && S.dipG !== 'All groups') list = list.filter((a) => U.group[a.sym] === S.dipG);
   list.sort((a, b) => (STATE_ORDER.indexOf(a.state) - STATE_ORDER.indexOf(b.state)) || (b.score - a.score));
   const box = $('dipList');
-  if (!all.length) { box.innerHTML = '<div class="empty"><b>' + (S.err ? 'Can’t load Webull data' : mcp ? 'Scanning ' + U.all.length + ' stocks…' : 'Live data needs claude.ai') + '</b><span>' + esc(S.err ? (ERRCOPY[S.err] || '') : 'Pulling a year of daily prices for each name.') + '</span></div>'; return; }
+  if (!all.length) { box.innerHTML = '<div class="empty"><b>' + (S.err ? 'Can’t load live data' : mcp ? 'Scanning ' + U.all.length + ' stocks…' : 'Can’t reach live data') + '</b><span>' + esc(S.err ? (ERRCOPY[S.err] || '') : 'Pulling a year of daily prices for each name.') + '</span></div>'; return; }
   let h = '', lastSt = null;
   list.forEach((a) => {
     if (a.state !== lastSt) { lastSt = a.state; h += '<div class="dipH">' + dipBadge(a.state) + '<span>' + ({ turning: 'RSI bouncing off oversold with a higher low or a close above yesterday’s high', reclaiming: 'Just closed back above a key moving average', support: 'Oversold and sitting near a key line', oversold: 'Oversold, but no floor under it yet', basing: 'Holding up after a big drop, no trigger yet', extended: 'Already bounced hard. Wait for a pullback', falling: 'Still sliding below its 10-day average', breaking: 'Broke a support level in the last 3 days', 'near-high': 'Within 18% of its 52-week high' }[a.state] || '') + '</span></div>'; }
@@ -755,7 +755,7 @@ function renderNews() {
   const KRE = { 'Market': /./, 'AI': /\bai\b|artificial intelligence|nvidia|chip|semiconductor|anthropic|openai|data center/i, 'Fed & rates': /\bfed\b|federal reserve|rate|treasur|yield|inflation|jobs|payroll/i, 'Earnings': /earnings|revenue|guidance|quarter|profit/i, 'Anthropic IPO': /anthropic/i, 'Crypto': /bitcoin|crypto|ether|coinbase/i };
   const web = ((S.webNews && S.webNews.items) || []).filter((w) => (KRE[S.newsK] || /./).test(w.title + ' ' + (w.summary || ''))).map((w) => ({ title: w.title, source: w.source, url: w.url, publish_time: w.time || (S.webNews && S.webNews.updated), summary: w.summary, related_symbols: w.tickers || [], web: true }));
   const items = (S.newsItems || (S.delayed ? [] : null)) ? (S.newsItems || []).concat(web).sort((a, b) => Date.parse(b.publish_time) - Date.parse(a.publish_time)) : null; const box = $('newsList');
-  if (!items) { box.innerHTML = '<div class="empty"><b>' + (S.err ? 'Can’t load Webull data' : mcp ? 'Loading news…' : 'Live data needs claude.ai') + '</b><span>' + esc(S.err ? (ERRCOPY[S.err] || '') : 'Live market headlines.') + '</span></div>'; return; }
+  if (!items) { box.innerHTML = '<div class="empty"><b>' + (S.err ? 'Can’t load live data' : mcp ? 'Loading news…' : 'Can’t reach live data') + '</b><span>' + esc(S.err ? (ERRCOPY[S.err] || '') : 'Live market headlines.') + '</span></div>'; return; }
   const now = Date.now();
   const TOPIC = [['Crypto', /bitcoin|crypto|ether|coinbase|stablecoin/i, '#F2C27A'], ['Fed & rates', /\bfed\b|federal reserve|rate (cut|hike)|treasur|yield|inflation|cpi|payroll|jobs report/i, '#C3A8FF'], ['AI & chips', /\bai\b|nvidia|semiconductor|chip|anthropic|openai|data center/i, '#8CB8E0'], ['Energy', /oil|crude|opec|energy|natural gas|nuclear|power/i, '#FFB38A'], ['Healthcare', /fda|pharma|biotech|drug|trial|health/i, '#5EE0A0'], ['Earnings', /earnings|revenue|guidance|eps|quarter/i, '#8CE3B5'], ['Consumer', /retail|consumer|restaurant|apparel|travel|airline/i, '#E58BD0'], ['Deals', /acquir|merger|buyout|ipo|deal/i, '#9AA8FF'], ['Markets', /./, '#A0A9B8']];
   box.innerHTML = items.map((n) => {
@@ -836,7 +836,7 @@ function renderWatch() {
   setHTML($('wlChips'), (S.wlists || []).map((w) => '<button class="chip' + (S.wl === w.watchlist_id ? ' on' : '') + '" data-wl="' + esc(w.watchlist_id) + '">' + esc(w.name) + '</button>').join(''));
   $('wSort').innerHTML = [['move', 'Biggest move'], ['up', 'Gainers'], ['down', 'Losers'], ['az', 'A–Z']].map((x) => '<button class="seg' + (S.wSort === x[0] ? ' on' : '') + '" data-wsort="' + x[0] + '">' + x[1] + '</button>').join('');
   const box = $('wlList');
-  if (!S.wlists) { box.innerHTML = '<div class="empty"><b>' + (S.err ? 'Can’t load Webull data' : mcp ? 'Loading your watchlists…' : 'Live data needs claude.ai') + '</b><span>' + esc(S.err ? (ERRCOPY[S.err] || '') : 'Your watchlists, live.') + '</span></div>'; return; }
+  if (!S.wlists) { box.innerHTML = '<div class="empty"><b>' + (S.err ? 'Can’t load live data' : mcp ? 'Loading your watchlists…' : 'Can’t reach live data') + '</b><span>' + esc(S.err ? (ERRCOPY[S.err] || '') : 'Your watchlists, live.') + '</span></div>'; return; }
   const syms = S.wlSyms || []; if (!syms.length) { box.innerHTML = '<div class="empty"><b>' + (S.wlSyms ? 'This list is empty' : 'Loading…') + '</b></div>'; return; }
   const rows = syms.map((s) => Object.assign({ sym: s }, (S.wlQ && S.wlQ[s]) || {}));
   const so = S.wSort; rows.sort((a, b) => so === 'az' ? a.sym.localeCompare(b.sym) : so === 'up' ? (b.pct || -1e9) - (a.pct || -1e9) : so === 'down' ? (a.pct || 1e9) - (b.pct || 1e9) : Math.abs(b.pct || 0) - Math.abs(a.pct || 0));
@@ -924,9 +924,9 @@ function renderPortfolios() {
     if (spy) h += '<div class="glass" style="flex-direction:row;align-items:center;justify-content:space-between"><span class="cap">S&amp;P 500 (SPY)</span><b style="color:' + gc(spy.pct) + '">' + pctS(spy.pct) + '</b></div>';
     h += mine.map((p) => { const st = statsOf(p.h, q);
       return pCard('mine:' + p.id, 'data-mine="' + esc(p.id) + '"', p.name, p.h.length + ' holdings · ' + (p.eq ? 'equal' : 'custom') + ' weight' + (st && st.since != null ? ' · <span style="color:' + gc(st.since) + '">' + pctS(st.since) + ' since ' + shortDate(p.created) + '</span>' : ''), st, spy, p.h.map((x) => x[0]), '<span class="ytag">YOURS</span>'); }).join('');
-    if (!S.models) h += '<div class="empty"><b>' + (S.delayed ? 'Webull models need a Webull connection' : mcp ? 'Loading your model books…' : 'Live data needs claude.ai') + '</b><span>Read from your watchlists.</span></div>';
-    else h += vis.map((m) => pCard('model:' + m.watchlist_id, 'data-model="' + esc(m.watchlist_id) + '"', m.name, (m.syms ? m.syms.length + ' holdings · equal weight' : Date.now() - (S.modelsAt || 0) > 25000 ? 'Couldn’t load from Webull · pull down to retry' : 'Loading holdings…'), statsOf(modelH(m), q), spy, m.syms || [])).join('');
-    h += '<p class="foot">Models come from your watchlists, priced live and equal-weighted. Portfolios you build here are saved to your claude.ai account (private to you) and track from the day you save them. Tap Edit to hide or delete anything.</p>';
+    if (!S.models) h += '<div class="empty"><b>' + (S.delayed ? 'These models aren’t in the web version yet' : mcp ? 'Loading your model books…' : 'Can’t reach live data') + '</b><span>Read from your watchlists.</span></div>';
+    else h += vis.map((m) => pCard('model:' + m.watchlist_id, 'data-model="' + esc(m.watchlist_id) + '"', m.name, (m.syms ? m.syms.length + ' holdings · equal weight' : Date.now() - (S.modelsAt || 0) > 25000 ? 'Couldn’t load data · pull down to retry' : 'Loading holdings…'), statsOf(modelH(m), q), spy, m.syms || [])).join('');
+    h += '<p class="foot">Models come from your watchlists, priced live and equal-weighted. Portfolios you build here are saved on this device and track from the day you save them. Tap Edit to hide or delete anything.</p>';
     setHTML(box, h); return;
   }
   const F = file('funds.json');
@@ -1237,7 +1237,7 @@ async function goDelayed() {
 }
 function delayedOverlay() {
   if (!S.delayed) return;
-  const note = '<div class="empty"><b>Needs a Webull connection</b><span>This part uses your own Webull account. Connect Webull in Claude to unlock it. Movers, sectors, IPOs, copy funds, ratings and news work without it.</span></div>';
+  const note = '<div class="empty"><b>Coming soon to the web version</b><span>This part isn’t in the web version yet. Movers, sectors, IPOs, copy funds, ratings and news work without it.</span></div>';
   const id = PERSONAL_TABS[S.tab]; if (id && $(id)) $(id).innerHTML = note;
   const ago2 = DELAYED ? ago(Date.parse(DELAYED.updated)) : '';
   ['fresh', 'sFresh', 'wFresh', 'pFresh', 'dFresh', 'vFresh', 'bFresh'].forEach((x) => { const el = $(x); if (el && ago2) el.textContent = 'Delayed · updated ' + ago2; });
@@ -1300,7 +1300,7 @@ function renderValue() {
   $('valF').innerHTML = VF.map((x) => { const n = x[0] === 'all' ? all.length : x[0] === 'hype' ? all.filter((v) => v.hype).length : all.filter((v) => v.verdict === x[0]).length; return '<button class="chip' + (S.valF === x[0] ? ' on' : '') + '" data-valf="' + x[0] + '">' + x[1] + ' <small>' + n + '</small></button>'; }).join('');
   const list = all.filter((v) => S.valF === 'all' || (S.valF === 'hype' ? v.hype : v.verdict === S.valF)).sort((a, b) => b.score - a.score);
   const box = $('valList');
-  if (!all.length) { box.innerHTML = '<div class="empty"><b>' + (mcp ? 'Scoring ' + u.length + ' stocks…' : 'Live data needs claude.ai') + '</b><span>Forward P/E, growth, PEG and analyst targets for each name.</span></div>'; return; }
+  if (!all.length) { box.innerHTML = '<div class="empty"><b>' + (mcp ? 'Scoring ' + u.length + ' stocks…' : 'Can’t reach live data') + '</b><span>Forward P/E, growth, PEG and analyst targets for each name.</span></div>'; return; }
   box.innerHTML = list.map((v) => { const r = S.vRow[v.sym];
     return '<button class="dip" data-open="' + esc(v.sym) + '">' + logoHTML(v.sym, 36) + '<span class="dipM"><span class="dipT"><b>' + esc(v.sym) + '</b><em>$' + px(v.price) + '</em>' + (r ? '<i style="color:' + (r.pct >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + pctS(r.pct) + '</i>' : '') + '</span>' +
       '<span class="pt">' + verdictBadge(v) + (v.hotRank ? '<span class="tag">#' + v.hotRank + ' most discussed</span>' : '') + '</span>' +
@@ -1310,7 +1310,7 @@ function renderBuzz() {
   setHTML($('buzzSeg'), ideasSeg('buzz'));
   $('bFresh').textContent = S.stamp['bz:hot'] ? 'Updated ' + ago(S.stamp['bz:hot']) : (mcp ? 'Loading…' : '');
   const box = $('buzzList'); const L = S.hotList;
-  if (!L) { box.innerHTML = '<div class="empty"><b>' + (mcp ? 'Loading what people are talking about…' : 'Live data needs claude.ai') + '</b><span>The most-discussed stocks among traders.</span></div>'; return; }
+  if (!L) { box.innerHTML = '<div class="empty"><b>' + (mcp ? 'Loading what people are talking about…' : 'Can’t reach live data') + '</b><span>The most-discussed stocks among traders.</span></div>'; return; }
   box.innerHTML = L.map((x) => { const r = S.vRow[x.symbol], v = S.val[x.symbol];
     return '<button class="dip" data-open="' + esc(x.symbol) + '"><span class="rk2">#' + x.rank + '</span>' + logoHTML(x.symbol, 34) + '<span class="dipM"><span class="dipT"><b>' + esc(x.symbol) + '</b>' + (r ? '<em>$' + px(r.price) + '</em><i style="color:' + (r.pct >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + pctS(r.pct) + '</i>' : '') + '</span>' +
       '<small>' + esc(cleanName(symName(x.symbol)) || '') + (r && r.mcap ? ' · ' + money(r.mcap) : '') + '</small>' + (v ? '<span class="pt">' + verdictBadge(v) + '</span><span class="plan">' + esc(valMetrics(v)) + '</span>' : '') + '</span></button>'; }).join('') +
@@ -1415,6 +1415,7 @@ function doRender() {
 
 /* ---------- pull to refresh, collapse, freeze ---------- */
 function ptr(scroller, ind, refresh) {
+  if (!scroller || !ind || scroller.dataset.ptr) return; scroller.dataset.ptr = '1';
   let y0 = 0, pull = 0, active = false, busy = false;
   const set = (h, anim) => { ind.style.transition = anim ? 'height 300ms cubic-bezier(.2,.8,.2,1)' : 'none'; ind.style.height = h + 'px'; ind.style.opacity = Math.min(1, h / 40); ind.querySelector('.ico').style.transform = 'rotate(' + Math.round(h * 4) + 'deg)'; ind.querySelector('.lbl').textContent = busy ? 'Refreshing…' : h >= 58 ? 'Release to refresh' : 'Pull to refresh'; };
   const start = (y) => { touching = true; if (scroller.scrollTop <= 0 && !busy) { active = true; y0 = y; pull = 0; } };
@@ -1439,11 +1440,14 @@ function ptr(scroller, ind, refresh) {
   scroller.addEventListener('mouseup', end); scroller.addEventListener('mouseleave', () => { if (active || touching) end(); });
 }
 async function refreshAll() {
-  if (!mcp) return;
+  if (!mcp) { render(); return; }
   try { await mcp.invalidate(SERVER); } catch (e) {}
   S.auto = sessionAt(); S.modelsAt = Date.now();
   if (window.TODAY) { if (S.tab === 'leaders') { TODAY.lead = null; } if (S.tab === 'insiders') { TODAY.ins = null; } TODAY.sent = null; TODAY.sentLoading = 0; TODAY.macro = null; TODAY.macroLoading = 0; }
   if (S.tab === 'portfolios' && S.pTab === 'strats' && window.STRAT) STRAT.rerun();
+  Object.keys(watches).forEach((k) => { const w = watches[k]; if (w && w.run && !/^(dp|va|s|dl|tp|wl):/.test(k)) try { w.run(); } catch (e) {} });
+  if (window.HOME && HOME.load) try { HOME.load(); } catch (e) {}
+  await new Promise((r) => setTimeout(r, 400)); render();
 }
 
 /* ---------- splash ---------- */
@@ -1542,7 +1546,7 @@ loadSyms();
 document.addEventListener('DOMContentLoaded', () => {
   const sc = $('scroller');
   sc.addEventListener('scroll', () => { lastScroll = Date.now(); }, { passive: true });
-  ptr(sc, $('ptr1'), refreshAll); ptr($('sScroller'), $('ptr2'), refreshAll); ptr($('dScroller'), $('ptr5'), refreshAll); ptr($('iScroller'), $('ptr6'), refreshAll); ['wScroller', 'nScroller', 'rScroller', 'cScroller', 'pScroller', 'fundSheet', 'vScroller', 'bScroller', 'lScroller', 'nsScroller', 'fScroller', 'stScroller'].forEach((id, i) => { if ($(id)) ptr($(id), $('ptrx' + i), refreshAll); });
+  ptr(sc, $('ptr1'), refreshAll); ptr($('sScroller'), $('ptr2'), refreshAll); ptr($('dScroller'), $('ptr5'), refreshAll); ptr($('iScroller'), $('ptr6'), refreshAll); ['wScroller', 'nScroller', 'rScroller', 'cScroller', 'pScroller', 'fundSheet', 'vScroller', 'bScroller', 'lScroller', 'nsScroller', 'fScroller', 'stScroller'].forEach((id, i) => { if ($(id)) ptr($(id), $('ptrx' + i), refreshAll); }); document.querySelectorAll('.scroller, #fundSheet').forEach((el) => { if (el.dataset.ptr) return; let ind = el.querySelector(':scope > .ptr'); if (!ind) { ind = $('ptr1').cloneNode(true); ind.removeAttribute('id'); ind.style.height = '0px'; el.insertBefore(ind, el.firstChild); } ptr(el, ind, refreshAll); });
   $('q').addEventListener('input', renderSearch); $('q').addEventListener('keydown', (e) => { if (e.key === 'Enter' && window.ENR && ENR.looksLikeQ($('q').value)) { ENR.ask($('q').value.trim()); return; } if (e.key === 'Enter') { const v = $('q').value.trim().toUpperCase(); const first = document.querySelector('#results [data-search]'); const s = first ? first.dataset.search : v; if (s) { closeSearch(); openDetail(s, null); } } }); ptr($('sheet'), $('ptr3'), refreshAll); ptr($('secSheet'), $('ptr4'), refreshAll);
   render();
   // session clock: re-evaluate every 20s and switch data automatically when the session changes

@@ -285,6 +285,12 @@ export class Vault {
 
 async function wbRoutes(url, env) {
   const wb = new Webull(env);
+  if (url.pathname.indexOf('/api/wb/') === 0) { // owner-only diagnostics: locked behind a key whose hash is all that lives in code
+    const k = url.searchParams.get('k') || '';
+    const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(k));
+    const hx = [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    if (hx !== 'ca6353c852d6726d83a72504e80cf4860e5ac4c8d585b9d9cdb5465a9fec4439') return new Response('Not found', { status: 404 });
+  }
   if (url.pathname === '/api/wb/probe') { // try each environment / algorithm / key order and report what Webull accepts
     const out = [];
     for (const host of ['api.webull.com', 'api.sandbox.webull.com']) for (const algo of ['HMAC-SHA1', 'HMAC-SHA256']) for (const swap of [false, 'nodash']) {

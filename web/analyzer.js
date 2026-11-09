@@ -160,7 +160,7 @@
   };
   AZ.renderList = function () {
     loadAccounts(); if (!S.models && S.wlists) loadModels(); else if (!S.wlists && mcp && !mcp.delayed) loadWatch();
-    if (!mcp || mcp.delayed) return '<div class="empty"><b>Needs a Webull connection</b><span>The analyzer reads your positions and prices through Webull. It can only read; it can’t place trades.</span></div>';
+    if (!mcp || mcp.delayed) return '<div class="empty"><b>Coming soon to the web version</b><span>The analyzer will read your positions once accounts arrive in the web version.</span></div>';
     if (!AZ.src && !AZ.restoring) { const ss = sources(); const first = ss.find((s) => s.kind === 'webull' && s.id !== 'acct:all' && (AZ.acctData[s.id.slice(5)] || { pos: [] }).pos.length) || ss.find((s) => s.kind === 'mine') || ss.find((s) => s.kind === 'model'); if (first && !AZ.acctLoading) setTimeout(() => analyze(first.id), 0); }
     let h = '<div class="glass"><div class="cap">READ-ONLY</div><div class="small" style="color:#C9D2E0">Pick an account, one of your portfolios or models, or paste holdings. jumptrade only reads positions; it never trades.</div></div>';
     if (AZ.src === 'paste' || AZ.pasteOpen) { const rows = parsePaste(AZ.paste).paste, unit = AZ.unit || 'qty';
