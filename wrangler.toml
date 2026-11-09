@@ -25,3 +25,7 @@ class_name = "Vault"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Vault"]
+
+# Keeps the Webull session alive (requests a login once an hour until approved, then checks it).
+[triggers]
+crons = ["*/10 * * * *"]

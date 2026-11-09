@@ -509,10 +509,31 @@ async function selftest() {
 }
 
 const shape = (v) => { if (!v) return '(none)'; const s = String(v); return s.length + ' chars, pattern ' + [...s].map((c) => /[0-9a-f]/.test(c) ? 'h' : /[A-F]/.test(c) ? 'H' : /[a-zA-Z]/.test(c) ? 'L' : /\s/.test(c) ? '_' : /["'`]/.test(c) ? 'Q' : c === '-' ? '-' : '?').join(''); };
+
+// ---------- Webull session upkeep (runs on a schedule; no public trigger) ----------
+async function wbUpkeep(env) {
+  const wb = new Webull(env); if (!wb.ready || !env.VAULT) return { skipped: 'no keys' };
+  const tok = await vget(env, 'token'); const st = (await vget(env, 'tokstate')) || {};
+  const now = Date.now();
+  if (tok && tok.token) {
+    const r = await wb.raw('POST', '/auth/tokens/check', {}, null, tok.token);
+    const status = (r.data && r.data.status) || (r.status === 200 ? tok.status : 'CHECK_' + r.status);
+    await vput(env, 'token', { ...tok, status, expires: (r.data && r.data.expires) || tok.expires });
+    await vput(env, 'tokstate', { ...st, status, checked: now, http: r.status });
+    if (r.status === 200 && status !== 'INVALID' && status !== 'EXPIRED') return { status };
+  }
+  if (st.created && now - st.created < 3600000) return { waiting: true };
+  const r = await wb.raw('POST', '/auth/tokens/create', {}, null);
+  if (r.status === 200 && r.data && r.data.token) { await vput(env, 'token', { token: r.data.token, expires: r.data.expires, status: r.data.status }); await vput(env, 'tokstate', { status: r.data.status, created: now, http: 200 }); return { created: r.data.status }; }
+  await vput(env, 'tokstate', { ...st, status: 'CREATE_FAILED', created: now, http: r.status, code: r.data && r.data.error_code });
+  return { failed: r.status };
+}
 export default {
+  async scheduled(ev, env, ctx) { ctx.waitUntil(wbUpkeep(env).catch(() => {})); },
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'POST, GET' } });
+    if (url.pathname === '/api/wbstate') { const s = (await vget(env, 'tokstate')) || {}; return json({ status: s.status || 'none', http: s.http || null, code: s.code || null, created: s.created ? new Date(s.created).toISOString() : null, checked: s.checked ? new Date(s.checked).toISOString() : null }); }
     if (url.pathname.startsWith('/api/wb/')) { const r = await wbRoutes(url, env); if (r) return r; }
     if (url.pathname === '/api/selftest') return json(await selftest());
     if (url.pathname === '/api/health') return json({ ok: true, provider: 'yahoo', time: new Date().toISOString() });
