@@ -56,3 +56,16 @@
   let last = '';
   setInterval(() => { document.querySelectorAll('.segs.intelseg, .chips').forEach((el) => { if (!el.offsetParent) return; upd(el); const on = el.querySelector('.on'); const k = (el.id || '') + (on ? on.textContent : ''); if (on && el.dataset.k !== k) { el.dataset.k = k; const l = on.offsetLeft - el.offsetLeft, r = l + on.offsetWidth; if (l < el.scrollLeft || r > el.scrollLeft + el.clientWidth - 28) el.scrollTo({ left: Math.max(0, l - 40), behavior: 'smooth' }); } }); }, 500);
 })();
+
+/* large page titles collapse into the top bar as you scroll (iOS style) */
+(function () {
+  const setup = () => document.querySelectorAll('.view').forEach((v) => {
+    if (v.dataset.tc) return; const sc = v.querySelector(':scope > .scroller'); const t = v.querySelector('.title h1'); const bar = v.querySelector(':scope > .top .bar');
+    if (!sc || !t || !bar) return; v.dataset.tc = '1';
+    const lbl = document.createElement('span'); lbl.className = 'pgname'; bar.querySelector('.brand') && bar.querySelector('.brand').appendChild(lbl);
+    const name = () => { let n = v.getAttribute('aria-label') || ''; if (v.id === 'vExtra') { const on = [...v.querySelectorAll('.segs button.on, .subtabs button.on, [role=tab].on')].pop(); if (on) n = on.textContent.trim(); } lbl.textContent = n || t.textContent.replace(/\s+/g, ' ').trim(); };
+    name();
+    sc.addEventListener('scroll', () => { const y = sc.scrollTop; if (y > 120 && !v.classList.contains('tcol')) { name(); v.classList.add('tcol'); } else if (y < 90 && v.classList.contains('tcol')) v.classList.remove('tcol'); }, { passive: true });
+  });
+  setup(); setInterval(setup, 2000);
+})();
