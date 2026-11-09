@@ -191,9 +191,11 @@ async function ySearchNews(q, sym) {
   return (d.news || []).map((n) => ({ title: n.title, url: n.link, publish_time: iso(n.providerPublishTime), source: n.publisher, source_name: n.publisher, related_symbols: n.relatedTickers || (sym ? [sym] : []) }));
 }
 const normT = (t) => String(t || '').toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').slice(0, 70);
+const notEnglish = (t) => /[àèìòùéâêîôûçñãõäöü]/i.test(t) && ((t.match(/[àèìòùéâêîôûçñãõäöü]/gi) || []).length >= 2 || /\b(della|delle|che|sono|hanno|une|des|pour|avec|und|der|die|das|para|con|los|las|het|een)\b/i.test(t));
+const junkPR = (n) => /hellonation|sponsored|paid post|press release distribution/i.test((n.title || '') + ' ' + (n.source || ''));
 function mergeNews(lists, max) {
   const seen = new Set(); const out = [];
-  lists.flat().filter(Boolean).sort((a, b) => Date.parse(b.publish_time) - Date.parse(a.publish_time)).forEach((n) => { const k = normT(n.title); if (!k || seen.has(k)) return; seen.add(k); out.push(n); });
+  lists.flat().filter(Boolean).filter((n) => !notEnglish(n.title || '') && !junkPR(n)).sort((a, b) => Date.parse(b.publish_time) - Date.parse(a.publish_time)).forEach((n) => { const k = normT(n.title); if (!k || seen.has(k)) return; seen.add(k); out.push(n); });
   return out.slice(0, max || 30);
 }
 T.get_stock_news = async (i) => {
@@ -215,8 +217,6 @@ T.search_news = async (i) => {
     ySearchNews('stock market', null).catch(() => []),
     rss('https://finance.yahoo.com/news/rssindex', 'Yahoo Finance').catch(() => []),
     rss('https://news.google.com/rss/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGx6TVdZU0FtVnVHZ0pWVXlnQVAB?hl=en-US&gl=US&ceid=US:en', 'Google News').catch(() => []),
-    rss('https://www.prnewswire.com/rss/financial-services-latest-news/financial-services-latest-news-list.rss', 'PR Newswire').catch(() => []),
-    rss('https://www.globenewswire.com/RssFeed/subjectcode/14-Earnings%20Releases%20And%20Operating%20Results/feedTitle/GlobeNewswire%20-%20Earnings', 'GlobeNewswire').catch(() => []),
   ]);
   return { data: mergeNews(lists, 40) };
 };
