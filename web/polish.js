@@ -69,3 +69,9 @@
   });
   setup(); setInterval(setup, 2000);
 })();
+
+/* Home: tuck the Customize pill into the title block, under the date, so it doesn't take a row */
+(function () {
+  const mv = () => { const t = document.querySelector('#vHome .title'); const tools = document.querySelector('#vHome .hmTools'); if (t && tools && tools.parentNode !== t) t.appendChild(tools); };
+  mv(); setInterval(mv, 1500);
+})();
