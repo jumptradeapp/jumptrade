@@ -1,6 +1,8 @@
 name = "jumptrade"
 main = "worker/index.js"
 compatibility_date = "2026-11-01"
+# Keep variables/secrets added in the Cloudflare dashboard when deploying from GitHub.
+keep_vars = true
 
 # The app itself (static files) is served from ./web; everything under /api/* goes to the worker.
 [assets]
