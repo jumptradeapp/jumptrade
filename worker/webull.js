@@ -45,7 +45,7 @@ export class Webull {
     const pick = (re) => { const k = names.find((n) => re.test(n.trim())); return k ? String(env[k]).trim() : null; };
     this.secret = pick(/secret/i);
     this.key = pick(/^\s*webull[_ ]*(app|api)?[_ ]*key\s*$/i) || pick(/key/i);
-    if (this.key && !/^[0-9a-f]{32}$/i.test(this.key)) { const m = this.key.replace(/\s+/g, '').match(/[0-9a-f]{32}$/i); if (m) this.key = m[0]; }
+    if (this.key) this.key = this.key.replace(/\s+/g, '');
     if (this.secret && !/^[0-9a-f]{32}$/i.test(this.secret)) { const m = this.secret.replace(/\s+/g, '').match(/[0-9a-f]{32}$/i); if (m) this.secret = m[0]; }
     this.names = names;
     this.host = (env && env.WEBULL_HOST) || WB_HOST; this.algo = (env && env.WEBULL_ALGO) || 'HMAC-SHA1';
