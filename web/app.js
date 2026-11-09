@@ -105,7 +105,9 @@ function watch(key, tool, input, onData, every) {
   if (!mcp) return;
   const sig = JSON.stringify([tool, input]);
   if (watches[key]) { if (watches[key].sig === sig) return; watches[key].off(); }
-  const iv = Math.max(30000, every || 30000); let dead = false, busy = false;
+  let iv = Math.max(30000, every || 30000); let dead = false, busy = false;
+  // Web version: our own server can refresh prices every few seconds (Claude's runtime capped polling at ~30s).
+  if (window.JT_WEB) { if (/^(m:|d:snap|h:idx|wl:q|fl:q|pm:q|fd:q|jr:q|tp:wl|ip:snap)/.test(key)) iv = 3000; else if (/^d:bars/.test(key)) iv = 15000; }
   const low = /^(dp|va|s|dl|tp|wl):/.test(key);
   const run = () => {
     if (dead || busy) return; busy = true;
