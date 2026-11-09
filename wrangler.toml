@@ -1,0 +1,10 @@
+name = "jumptrade"
+main = "worker/index.js"
+compatibility_date = "2026-11-01"
+
+# The app itself (static files) is served from ./web; everything under /api/* goes to the worker.
+[assets]
+directory = "./web"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]

@@ -1,0 +1,491 @@
+{
+ "updated": "2026-11-08",
+ "items": [
+  {
+   "id": "post-selloff-dips",
+   "kicker": "Ideas",
+   "art": "squeeze",
+   "title": "After the selloff: what bounced, what faded, and the live dip list",
+   "dek": "Friday’s rebound split the AI trade in two. Here’s who led, who couldn’t hold the open, and the app’s live entry, stop and target on 20 of the hardest-hit names.",
+   "date": "Nov 8, 2026",
+   "mins": 4,
+   "tickers": [
+    "NVDA",
+    "AMD",
+    "MU",
+    "LRCX",
+    "AMAT",
+    "KLAC",
+    "MRVL",
+    "ALAB",
+    "CRDO",
+    "LITE",
+    "ANET",
+    "AVGO",
+    "WDC",
+    "STX",
+    "BE",
+    "NBIS",
+    "VST",
+    "CEG",
+    "OKLO",
+    "TSLA"
+   ],
+   "cover": {
+    "logos": [
+     "AMD",
+     "VST",
+     "LRCX",
+     "ANET",
+     "CRDO",
+     "OKLO"
+    ],
+    "tags": {
+     "AMD": "+11%",
+     "VST": "+10.6%",
+     "OKLO": "+22.7%"
+    },
+    "tagc": "#1F9D63"
+   },
+   "short": [
+    "Friday’s bounce was led by power and chip equipment: Oklo +22.7%, AMD +11%, Vistra +10.6%, Lam Research +8.2%.",
+    "Storage didn’t bounce at all. Seagate and Western Digital finished lower again, and Broadcom barely moved.",
+    "Many names opened strong and faded into the close, a sign sellers are still using rallies to exit.",
+    "The live list below runs the app’s Dip Radar on 20 of the hardest-hit stocks, with entries, stops and targets that update while you read."
+   ],
+   "body": [
+    {
+     "t": "h",
+     "x": "Friday’s bounce, sorted"
+    },
+    {
+     "t": "p",
+     "x": "After Thursday’s rout, Friday’s rebound was uneven. Money went back first into **AI power and chip equipment**, and much less into storage and the biggest chip names."
+    },
+    {
+     "t": "list",
+     "items": [
+      "**Led the bounce:** Oklo +22.7%, AMD +11.0%, Vistra +10.6%, Lam Research +8.2%, Nebius +7.6%, Arista +7.3%, Credo +7.3%, KLA +6.7%, Astera Labs +6.3%.",
+      "**Middle of the pack:** Marvell +5.7%, Lumentum +5.7%, Micron +5.1%, Constellation +4.3%, Tesla +4.2%, Applied Materials +4.2%, Bloom Energy +3.4%.",
+      "**Lagged:** Nvidia +2.8% and Broadcom +0.7%.",
+      "**Still falling:** Seagate −1.2% and Western Digital −1.4%, even on a green day."
+     ]
+    },
+    {
+     "t": "stat",
+     "items": [
+      [
+       "+22.7%",
+       "Oklo, Friday’s biggest bounce"
+      ],
+      [
+       "+11%",
+       "AMD after Thursday’s −17%"
+      ],
+      [
+       "−1.4%",
+       "Western Digital, still sliding"
+      ]
+     ]
+    },
+    {
+     "t": "h",
+     "x": "The tell: strong opens that faded"
+    },
+    {
+     "t": "p",
+     "x": "Several names gapped up at the open and gave much of it back by the close. Seagate opened near **$506** and closed at **$461**. Western Digital went from **$287** to **$264**, Broadcom from **$311** to **$294**, and Bloom Energy from **$183** to **$173**. When a bounce fades all day like that, sellers are using the strength to get out, which usually means the low isn’t in yet."
+    },
+    {
+     "t": "p",
+     "x": "That’s exactly what Dip Radar is built for. Instead of guessing a bottom, it waits for a stock to **turn**: a bounce off oversold, a higher low, a close above the prior day’s high. Then it gives an entry, a stop under the nearest swing low, and a target with at least 1.5× the risk."
+    },
+    {
+     "t": "live",
+     "k": "dips",
+     "syms": [
+      "NVDA",
+      "AMD",
+      "MU",
+      "LRCX",
+      "AMAT",
+      "KLAC",
+      "MRVL",
+      "ALAB",
+      "CRDO",
+      "LITE",
+      "ANET",
+      "AVGO",
+      "WDC",
+      "STX",
+      "BE",
+      "NBIS",
+      "VST",
+      "CEG",
+      "OKLO",
+      "TSLA"
+     ]
+    },
+    {
+     "t": "call",
+     "x": "Tap any name to open its stock page with the full Dip Radar plan, then use the **Position Sizer** there so a stop-out costs what you planned. **Turning** and **Reclaiming** are the actionable states. **Falling** and **Breaking** mean wait."
+    },
+    {
+     "t": "h",
+     "x": "Breakouts are scarce right now"
+    },
+    {
+     "t": "p",
+     "x": "Setups that break out to new highs are rare after a drop like this, because most stocks are far below their highs. What’s left tends to be outside the AI trade. The live list below is the same one as Ideas › Setups, ranked by the app’s backtested win rates."
+    },
+    {
+     "t": "live",
+     "k": "setups"
+    },
+    {
+     "t": "h",
+     "x": "How to use this week"
+    },
+    {
+     "t": "list",
+     "items": [
+      "**Let the leaders prove it.** Power and chip-equipment names bounced hardest. A second green day that holds its open is a much better entry than Friday’s gap.",
+      "**Avoid storage until it stops falling.** Seagate and Western Digital couldn’t rally even on an up day. Wait for Dip Radar to flag them Turning.",
+      "**Respect the calendar.** Nvidia’s earnings, expected around Nov 17 but not yet confirmed, can reset every name on this list. Keep positions small going into it."
+     ]
+    }
+   ],
+   "sources": [
+    {
+     "t": "Prices: live market data in jumptrade (Friday, Nov 6 close)",
+     "u": "https://claude.ai/artifact/Xj4HqgyvSQWRNYodPKqANb"
+    },
+    {
+     "t": "FXBrokerTrust: full list of Thursday’s movers",
+     "u": "https://www.fxbrokertrust.com/insights/nasdaq-100-sees-worst-singleday-drop-since-2020"
+    },
+    {
+     "t": "Benzinga: Nasdaq 100 rebounds, payrolls beat",
+     "u": "https://www.benzinga.com/markets/equities/26/11/62998202/stock-market-today-nasdaq-100-rebounds-chip-stocks-payrolls-beat"
+    }
+   ]
+  },
+  {
+   "id": "midterm-selloff",
+   "kicker": "Market",
+   "art": "selloff",
+   "title": "The midterm AI selloff: shakeout or breakdown?",
+   "dek": "The Nasdaq 100 just had its worst day since 2020. Here’s what caused it, why credit markets stayed calm, and the levels that decide what happens next.",
+   "date": "Nov 8, 2026",
+   "mins": 4,
+   "tickers": [
+    "NVDA",
+    "TSLA",
+    "MU",
+    "AMD",
+    "WDC",
+    "LRCX",
+    "AMAT",
+    "ALAB",
+    "LITE",
+    "CRDO",
+    "MRVL",
+    "BE",
+    "NBIS"
+   ],
+   "short": [
+    "Thursday: Nasdaq 100 −6.4%, chip stocks −12%. The trigger was Democratic midterm wins in data-center states.",
+    "It wasn’t just chips: optics, data-center power, Tesla, banks and small caps all fell hard. Only defensive names held flat.",
+    "Friday’s bounce was weak. The S&P got back only 0.3% of a 4.4% drop.",
+    "Credit barely moved, which points to a crowded trade unwinding, not broken fundamentals.",
+    "The real test is Nvidia’s earnings, expected around Nov 17. Until then, expect another try at Thursday’s lows."
+   ],
+   "body": [
+    {
+     "t": "h",
+     "x": "What happened"
+    },
+    {
+     "t": "p",
+     "x": "On Thursday, Nov 5, the **Nasdaq 100 fell 6.4%**, its worst day since March 2020. The S&P 500 lost about 4.4% and the Dow dropped 1,833 points, both their worst days since April 2025. The Philadelphia chip index fell 12%, and roughly **$3 trillion** in S&P 500 value disappeared in one session."
+    },
+    {
+     "t": "stat",
+     "items": [
+      [
+       "−6.4%",
+       "Nasdaq 100 on Thursday, worst since 2020"
+      ],
+      [
+       "−12%",
+       "chip index in one day"
+      ],
+      [
+       "~15%",
+       "Nasdaq 100 below its Oct. 6 record at Thursday’s close"
+      ]
+     ]
+    },
+    {
+     "t": "p",
+     "x": "Memory and storage took the worst of it. **SanDisk fell about 22%**, Seagate 16%, and Micron and AMD roughly 17% each. Nvidia dropped 9.3% and gave back its gains for the year."
+    },
+    {
+     "t": "h",
+     "x": "It wasn’t just chips"
+    },
+    {
+     "t": "p",
+     "x": "The selling hit almost everything tied to the data-center buildout, plus plenty that isn’t. In the S&P 500, **411 stocks fell and only 75 rose**, and all 30 Dow stocks closed lower."
+    },
+    {
+     "t": "list",
+     "items": [
+      "**Memory and storage:** SanDisk −22%, Micron −17%, Western Digital −17%.",
+      "**Data-center networking and optics:** Astera Labs −20%, Lumentum −19%, Credo −18%, Marvell −16%, Arista −11%.",
+      "**Chip equipment:** Lam Research −16%, Applied Materials −14%, KLA −13%.",
+      "**Data-center power and compute:** Bloom Energy −16%, Nebius −15%.",
+      "**Megacaps:** Tesla −10.8% and Nvidia −9.3% fell the most, while Apple slipped only 1.5%.",
+      "**Beyond tech:** Goldman Sachs −6.4%, Caterpillar −6.4%, Cisco −7.6%. **Small caps weren’t spared either:** the Russell 2000 lost 4.45%, about the same as the S&P 500.",
+      "**What held up:** defensive names like Verizon and Coca-Cola finished roughly flat."
+     ]
+    },
+    {
+     "t": "call",
+     "x": "The deeper the drop, the more crowded the trade was going in. On jumptrade, names from this list will start showing up in **Dip Radar** as they bounce off oversold levels. Use its entry, stop and target, and size with the Position Sizer, rather than guessing at a bottom."
+    },
+    {
+     "t": "h",
+     "x": "Why it happened"
+    },
+    {
+     "t": "p",
+     "x": "Democrats won in several key data-center states, and investors worried about **tougher AI regulation and a slower data-center buildout**. Data-center spending is the fuel for chip and memory earnings, so those stocks went first. The selling didn’t come out of nowhere, either. AI stocks had been sliding for four weeks, and when everyone heads for the exit at once, the drop gets exaggerated. QQQ traded a record of about $80 billion that day."
+    },
+    {
+     "t": "h",
+     "x": "Why it may not be a breakdown"
+    },
+    {
+     "t": "list",
+     "items": [
+      "**Credit stayed calm.** A key investment-grade credit spread index went from 59 to only 62 basis points. In a real fundamental scare, bond markets usually get nervous too.",
+      "**Valuations, not earnings.** Bank of America says the selloff was about high prices, not falling earnings estimates.",
+      "**Reaction, not reset.** Jefferies called the move “reactionary, not a fundamental reset.”"
+     ]
+    },
+    {
+     "t": "h",
+     "x": "Why it isn’t over yet"
+    },
+    {
+     "t": "p",
+     "x": "Friday’s bounce was thin. The S&P 500 rose just **0.3% to 7,377**, the Nasdaq gained 1.1%, and the Dow still fell 0.5%. One strategist described buyers as not chasing."
+    },
+    {
+     "t": "p",
+     "x": "Rates are the bigger headwind. October payrolls came in at **165,000 versus 65,000 expected**, unemployment fell to 4.1%, and wages rose 0.4% for the month. The 2-year Treasury yield climbed to 4.51%, and a December Fed rate hike is still in play. Higher rates hurt highly valued tech the most."
+    },
+    {
+     "t": "call",
+     "x": "Watch the Risk-on / Risk-off bar on Movers and the Sectors heat map for whether chips lead or lag on bounces. Before buying a chip rebound, check the Money Flow card: if big orders are selling into the rally, it’s an exit, not a bottom."
+    },
+    {
+     "t": "h",
+     "x": "What decides it"
+    },
+    {
+     "t": "list",
+     "items": [
+      "**Nvidia earnings**, expected around Nov 17 (not yet confirmed). This is the cleanest read on whether AI demand is intact.",
+      "**QQQ at $691.95**, its Nov 4 close. Getting back above it after Nvidia would mark Thursday as a one-day forced-selling event.",
+      "**Thursday’s lows.** Big down days usually bounce within a month, but the first bounce often fails. A calm retest of the lows would be a healthy sign."
+     ]
+    },
+    {
+     "t": "p",
+     "x": "Small caps fell just as hard on Thursday, but the Russell 2000 was still the best-performing major index this year as of Thursday’s close, at about **+10%**, versus +7.4% for the S&P 500 and +4.6% for the Nasdaq. Until Nvidia reports, news-driven moves with a clear catalyst look like a better bet than buying dips in the most crowded AI names."
+    }
+   ],
+   "sources": [
+    {
+     "t": "CNN: Tech selloff wipes $2.5 trillion",
+     "u": "https://www.cnn.com/2026/11/05/investing/tech-heavy-nasdaq-plunges"
+    },
+    {
+     "t": "Benzinga: Credit stays calm after worst day since 2020",
+     "u": "https://www.benzinga.com/markets/bonds/26/11/62990235/nasdaq-100-worst-day-credit-markets-coreweave-oracle-spacex-cds"
+    },
+    {
+     "t": "FXBrokerTrust: Nasdaq 100’s worst day since 2020 (full list of movers)",
+     "u": "https://www.fxbrokertrust.com/insights/nasdaq-100-sees-worst-singleday-drop-since-2020"
+    },
+    {
+     "t": "Investing.com: Oversold AI and chip stocks",
+     "u": "https://finance.yahoo.com/markets/stocks/articles/oversold-ai-chip-stocks-nasdaq-144740381.html"
+    },
+    {
+     "t": "CBS News: Stocks rebound after Nasdaq correction",
+     "u": "https://www.cbsnews.com/news/stocks-tech-sell-off-nasdaq-correction-dow/"
+    },
+    {
+     "t": "Benzinga: Nasdaq 100 rebounds, payrolls beat",
+     "u": "https://www.benzinga.com/markets/equities/26/11/62998202/stock-market-today-nasdaq-100-rebounds-chip-stocks-payrolls-beat"
+    },
+    {
+     "t": "24/7 Wall St: Tech stocks’ worst day since 2020",
+     "u": "https://247wallst.com/investing/2026/11/06/tech-stocks-just-had-their-worst-day-since-2020/"
+    },
+    {
+     "t": "CNBC: Live updates, Nov 6",
+     "u": "https://www.cnbc.com/2026/11/05/stock-market-today-live-updates.html"
+    }
+   ],
+   "cover": {
+    "logos": [
+     "NVDA",
+     "MU",
+     "AMD",
+     "LRCX",
+     "MRVL",
+     "STX"
+    ],
+    "tags": {
+     "NVDA": "−9.3%",
+     "MU": "−17%",
+     "AMD": "−17%"
+    },
+    "tagc": "#E05555"
+   }
+  },
+  {
+   "id": "ai-power",
+   "kicker": "Energy & AI",
+   "art": "power",
+   "title": "AI’s power problem is now an energy trade",
+   "dek": "Chips used to be the bottleneck for AI. Now it’s electricity, and the companies that own always-on power are the ones getting paid.",
+   "date": "Nov 8, 2026",
+   "mins": 4,
+   "tickers": [
+    "VST",
+    "CEG",
+    "OKLO",
+    "TLN",
+    "META",
+    "MSFT",
+    "AMZN"
+   ],
+   "short": [
+    "Power, not chips or land, is now the main limit on how fast AI data centers get built.",
+    "Big tech is signing 20-year contracts for nuclear power, because nuclear runs around the clock.",
+    "Plant owners (Vistra, Constellation, Talen) have real contracts. Reactor startups (Oklo) are selling a future.",
+    "The risk: if AI spending slows, the most speculative energy names fall the hardest."
+   ],
+   "body": [
+    {
+     "t": "h",
+     "x": "What changed"
+    },
+    {
+     "t": "p",
+     "x": "A large AI training cluster can draw around **500 megawatts nonstop**, about what a small power plant puts out. Some newer campuses need a full gigawatt or more. Utilities can’t add that much capacity quickly, so they’re telling data center builders there’s a cap on how much they can serve until new supply shows up."
+    },
+    {
+     "t": "p",
+     "x": "Industry forecasters now name power availability as the binding limit on data center growth, ahead of chip supply or land. One widely cited estimate has data centers going from about **4.4% of US electricity in 2024 to as much as 12% by 2028**."
+    },
+    {
+     "t": "stat",
+     "items": [
+      [
+       "6+ GW",
+       "nuclear power Meta locked up in January 2026"
+      ],
+      [
+       "20 yrs",
+       "typical length of these power deals"
+      ],
+      [
+       "833%",
+       "jump in PJM’s capacity auction price for 2025–26"
+      ]
+     ]
+    },
+    {
+     "t": "h",
+     "x": "Why nuclear keeps winning the deals"
+    },
+    {
+     "t": "p",
+     "x": "AI data centers run 24/7, so they need power that doesn’t depend on weather or time of day. Nuclear gives steady output and stable long-term pricing, which is why hyperscalers keep choosing it despite the high upfront cost."
+    },
+    {
+     "t": "list",
+     "items": [
+      "**Meta** signed with Vistra, Oklo and TerraPower in January 2026. That covers more than 2.4 GW over 20 years from three existing Vistra plants, 1.2 GW from Oklo in Ohio, and funding for up to two TerraPower reactors by 2032.",
+      "**Meta** already had a 20-year deal with Constellation for Illinois’ Clinton plant, signed in June 2025.",
+      "**Microsoft** is helping Constellation restart the Three Mile Island plant, which closed in 2019.",
+      "**Amazon** put more than $500M into X-energy’s small reactors and has a power deal tied to Talen’s Susquehanna plant."
+     ]
+    },
+    {
+     "t": "h",
+     "x": "How to think about the stocks"
+    },
+    {
+     "t": "p",
+     "x": "Not every name in this theme is the same kind of bet. **Vistra, Constellation and Talen own operating plants** with signed contracts and cash coming in now. **Oklo sells a promise**: reactors that aren’t built yet, on timelines that depend on regulators. That’s why Oklo moves several times harder than the plant owners on every AI headline, in both directions."
+    },
+    {
+     "t": "call",
+     "x": "On a jumptrade scan, energy names that spike on a new hyperscaler deal often keep going for days, because the contract changes the long-term earnings picture. Spikes on vague partnership news or reactor milestones tend to fade faster. Check the headline before you chase."
+    },
+    {
+     "t": "h",
+     "x": "What could break it"
+    },
+    {
+     "t": "p",
+     "x": "If chip efficiency improves faster than expected, or AI spending slows, forecasts for power demand come down, and so does the premium on these stocks. Regulatory delays are the other big risk, especially for new reactor designs. Demand for electricity should keep rising anyway from electrification and new manufacturing, which cushions the plant owners more than the startups."
+    }
+   ],
+   "sources": [
+    {
+     "t": "AP: Meta lines up nuclear power for AI data centers",
+     "u": "https://www.fredericknewspost.com/public/ap/meta-lines-up-massive-supply-of-nuclear-power-to-energize-ai-data-centers/article_17b13112-88e5-58c1-be3f-f4d5e51453d9.html"
+    },
+    {
+     "t": "Why tech giants are going nuclear (Apr 2026)",
+     "u": "https://www.softwareseni.com/why-tech-giants-are-going-nuclear-the-ai-power-crisis-driving-trillion-dollar-energy-deals/"
+    },
+    {
+     "t": "NGA Nuclear Dispatch: data centers",
+     "u": "https://www.nga.org/publications/nga-nuclear-dispatch-powering-a-new-era-of-innovation/"
+    },
+    {
+     "t": "Big tech locks in nuclear power",
+     "u": "https://btw.media/en/big-tech-locks-in-nuclear-power-to-sustain-ai-growth"
+    },
+    {
+     "t": "S&P Global: data centers and utilities",
+     "u": "https://www.spglobal.com/commodity-insights/en/news-research/latest-news/electric-power/060525-data-center-companies-collaborating-with-us-utilities-on-power-demand-growth"
+    }
+   ],
+   "cover": {
+    "logos": [
+     "VST",
+     "CEG",
+     "OKLO",
+     "META",
+     "TLN",
+     "MSFT"
+    ],
+    "tags": {
+     "VST": "2.4 GW",
+     "OKLO": "1.2 GW"
+    },
+    "tagc": "#0284C7"
+   }
+  }
+ ]
+}
