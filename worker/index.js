@@ -238,6 +238,18 @@ T.get_fund_rating = async () => [];
   'get_market_sentiment', 'get_macroeconomic_calendar', 'get_community_hot_stocks', 'get_financial_indicators'].forEach((k) => { T[k] = async () => []; });
 
 
+
+// ---------- sparklines: intraday closes for many symbols in one call ----------
+T.get_sparks = async (i) => {
+  const list = syms(i.symbols).slice(0, 60); const out = {};
+  await Promise.all(chunk(list, 20).map(async (c) => {
+    const d = await yget('/v8/finance/spark?symbols=' + encodeURIComponent(c.join(',')) + '&range=1d&interval=5m', { base: Y1 }).catch(() => null);
+    if (!d) return;
+    if (d.spark && d.spark.result) d.spark.result.forEach((r) => { const q = (((r.response || [])[0] || {}).indicators || {}).quote; const cl = q && q[0] && q[0].close; const pc = ((r.response || [])[0] || {}).meta; if (cl) out[r.symbol] = { c: cl.filter((x) => x != null).map((x) => +x.toFixed(4)), pc: pc ? pc.chartPreviousClose || pc.previousClose : null }; });
+    else Object.keys(d).forEach((s) => { const r = d[s]; if (r && r.close) out[s] = { c: r.close.filter((x) => x != null).map((x) => +x.toFixed(4)), pc: r.chartPreviousClose || r.previousClose || null }; });
+  }));
+  return out;
+};
 // ---------- sectors: industry groups built from ETFs + their leading stocks ----------
 const GROUPS = [
   [1, 'Semiconductors', 'SMH', 'NVDA,AVGO,AMD,TSM,QCOM,MU,INTC,TXN,ADI,LRCX,AMAT,KLAC,MRVL,ARM'],
@@ -300,7 +312,7 @@ T.get_market_sectors_detail = async (i) => {
   return { data: rows };
 };
 // How long each answer may be reused (seconds). Prices: short. Fundamentals: long.
-const TTL = { get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 300, search_news: 300,
+const TTL = { get_sparks: 60, get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 300, search_news: 300,
   get_company_profile: 86400, get_analyst_target_price: 21600, get_analyst_rating: 21600, get_stock_forecast_eps: 21600, get_stock_earnings_calendar: 21600,
   get_fund_brief: 86400, get_fund_holdings: 86400, get_fund_performance: 86400 };
 

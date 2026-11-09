@@ -73,6 +73,24 @@ function logoHTML(sym, size) {
   return '<span class="logo mono" style="position:relative;overflow:hidden;width:' + size + 'px;height:' + size + 'px;border-radius:' + r + 'px;font-size:' + Math.round(size * (sym.length > 3 ? 0.3 : 0.36)) + 'px;background:linear-gradient(160deg,rgb(' + c.join(',') + '),rgb(' + c.map((x) => Math.round(x * 0.55)).join(',') + '))">' + esc(sym.slice(0, 4)) + fb + '</span>';
 }
 
+
+/* ---------- sparklines (web version: one server call for all visible movers) ---------- */
+const SPK = {}; let spkAt = 0, spkBusy = false;
+function needSparks(list) {
+  if (!window.JT_WEB || !mcp || spkBusy || Date.now() - spkAt < 60000 || !list.length) return;
+  spkBusy = true; spkAt = Date.now();
+  mcp.callTool(SERVER, 'get_sparks', { symbols: list.slice(0, 60).map((r) => r.sym).join(',') }).then((res) => { Object.assign(SPK, payloadOf(res) || {}); spkBusy = false; render(); }).catch(() => { spkBusy = false; });
+}
+function sparkSVG(sym, w, h, col) {
+  const d = SPK[sym]; if (!d || !d.c || d.c.length < 3) return '';
+  const c = d.c, base = d.pc || c[0]; const lo = Math.min(base, ...c), hi = Math.max(base, ...c), rg = hi - lo || 1;
+  const X = (k) => (k / (c.length - 1)) * w, Y = (v) => h - 2 - ((v - lo) / rg) * (h - 4);
+  const pts = c.map((v, k) => X(k).toFixed(1) + ',' + Y(v).toFixed(1)).join(' ');
+  const by = Y(base).toFixed(1); const id = 'sg' + sym.replace(/[^A-Z0-9]/g, '');
+  return '<svg class="tspk" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + col + '" stop-opacity=".28"/><stop offset="1" stop-color="' + col + '" stop-opacity="0"/></linearGradient></defs>' +
+    '<line x1="0" x2="' + w + '" y1="' + by + '" y2="' + by + '" stroke="rgba(255,255,255,.18)" stroke-width="1" stroke-dasharray="2 3" vector-effect="non-scaling-stroke"/>' +
+    '<polygon points="0,' + h + ' ' + pts + ' ' + w + ',' + h + '" fill="url(#' + id + ')"/><polyline points="' + pts + '" fill="none" stroke="' + col + '" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>';
+}
 /* ---------- state ---------- */
 const S = {
   newsQ: {},
@@ -241,6 +259,7 @@ function renderMovers() {
   const tileH = S.tileH || 140;
   const rowH = 74;
   const existing = {}; Array.from(box.children).forEach((el) => { if (el.dataset.sym) existing[el.dataset.sym] = el; else el.remove(); });
+  needSparks(rows.slice(0, 40));
   const seen = {};
   rows.forEach((r, i) => {
     let el = existing[r.sym];
@@ -257,7 +276,7 @@ function renderMovers() {
       const chip = window.TODAY ? TODAY.chip(r) : '';
       el.innerHTML = '<span class="th">' + logoHTML(r.sym, 34) + '<span class="tn"><b>' + esc(r.sym) + '</b>' + '<small>' + esc(cleanName(r.name)) + '</small>' + '</span></span>' +
         '<span class="tb"><span class="tp" style="' + (flash ? 'background:' + flash : '') + '">$' + px(r.price) + '</span>' +
-        '<span class="tc" style="color:' + col + '">' + arrow + (colW < 172 ? pctS(r.pct) : chgS(r.chg, r.pct, r.price)) + '</span></span>' + ((chip || (window.ENR && ENR.rvTag(r.sym, r.vol))) ? '<span class="tsig">' + chip + (window.ENR ? ENR.rvTag(r.sym, r.vol) : '') + '</span>' : '') + (hasWhy ? '<span class="nwb tnw" title="News today" aria-label="News today">★</span>' : '');
+        '<span class="tc" style="color:' + col + '">' + arrow + (colW < 172 ? pctS(r.pct) : chgS(r.chg, r.pct, r.price)) + '</span></span>' + sparkSVG(r.sym, 100, 30, col) + ((chip || (window.ENR && ENR.rvTag(r.sym, r.vol))) ? '<span class="tsig">' + chip + (window.ENR ? ENR.rvTag(r.sym, r.vol) : '') + '</span>' : '') + (hasWhy ? '<span class="nwb tnw" title="News today" aria-label="News today">★</span>' : '');
     } else {
       el.className = 'card row' + (el.classList.contains('fadein') ? ' fadein' : ''); el.style.width = W + 'px'; el.style.height = rowH + 'px'; el.style.left = '0px'; el.style.top = i * rowH + 'px';
       el.innerHTML = '<span class="rk">' + (i + 1) + '</span>' + logoHTML(r.sym, 34) + '<span class="rn"><b>' + esc(r.sym) + ' ' + (window.TODAY ? TODAY.chip(r) : '') + ' <em>' + capOf(r.mcap) + '</em></b><small' + (hasWhy ? ' class="hl"' : '') + '>' + (window.ENR ? ENR.rvTag(r.sym, r.vol) : '') + esc(why) + '</small></span>' +
