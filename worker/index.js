@@ -286,7 +286,7 @@ export class Vault {
 async function wbRoutes(url, env) {
   const wb = new Webull(env);
   if (url.pathname === '/api/wb/status') {
-    if (!wb.ready) return json({ keys: false, message: 'Add WEBULL_APP_KEY and WEBULL_APP_SECRET as secrets in Cloudflare.' });
+    if (!wb.ready) return json({ keys: false, seen: wb.names, all_names: Object.keys(env || {}).filter((k) => typeof env[k] === 'string'), message: 'Add WEBULL_APP_KEY and WEBULL_APP_SECRET as secrets in Cloudflare.' });
     const cfg = await wb.raw('GET', '/openapi/config');
     const tok = await vget(env, 'token');
     const test = await wb.raw('GET', '/market-data/stocks/snapshots/list', { symbols: 'AAPL', category: 'US_STOCK' }, null, tok && tok.token);

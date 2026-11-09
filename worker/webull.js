@@ -34,7 +34,15 @@ export async function signature({ path, query = {}, bodyStr = null, appKey, secr
 }
 
 export class Webull {
-  constructor(env) { this.env = env; this.key = env.WEBULL_APP_KEY; this.secret = env.WEBULL_APP_SECRET; }
+  constructor(env) {
+    this.env = env;
+    // Accept small naming variations (WEBULL_APP_KEY / WEBULL_API_KEY / WEBULL_KEY, ..._SECRET), trimmed.
+    const names = Object.keys(env || {}).filter((k) => /webull/i.test(k));
+    const pick = (re) => { const k = names.find((n) => re.test(n.trim())); return k ? String(env[k]).trim() : null; };
+    this.secret = pick(/secret/i);
+    this.key = pick(/^\s*webull[_ ]*(app|api)?[_ ]*key\s*$/i) || pick(/key/i);
+    this.names = names;
+  }
   get ready() { return !!(this.key && this.secret); }
 
   async raw(method, path, query = {}, body = null, token = null) {
