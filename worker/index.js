@@ -86,19 +86,40 @@ async function screen(id, count = 100) {
   const d = await yget('/v1/finance/screener/predefined/saved?formatted=false&scrIds=' + id + '&count=' + count, { crumb: true });
   return (((d.finance || {}).result || [])[0] || {}).quotes || [];
 }
+// Full-market scan: every US stock ranked by % change (the predefined "day_gainers" list only covers $2B+ companies).
+async function scanAll(asc, field) {
+  const body = { offset: 0, size: 250, sortField: field || 'percentchange', sortType: asc ? 'ASC' : 'DESC', quoteType: 'EQUITY', userId: '', userIdType: 'guid',
+    query: { operator: 'AND', operands: [
+      { operator: 'or', operands: [{ operator: 'EQ', operands: ['exchange', 'NMS'] }, { operator: 'EQ', operands: ['exchange', 'NYQ'] }, { operator: 'EQ', operands: ['exchange', 'ASE'] }, { operator: 'EQ', operands: ['exchange', 'NGM'] }, { operator: 'EQ', operands: ['exchange', 'NCM'] }, { operator: 'EQ', operands: ['exchange', 'PCX'] }, { operator: 'EQ', operands: ['exchange', 'BTS'] }] },
+      { operator: 'gt', operands: ['intradayprice', 0.5] },
+      { operator: 'gt', operands: ['dayvolume', 50000] }] } };
+  const s = await session();
+  const r = await fetch(Y2 + '/v1/finance/screener?formatted=false&lang=en-US&region=US' + (s.crumb ? '&crumb=' + encodeURIComponent(s.crumb) : ''), {
+    method: 'POST', headers: { 'user-agent': UA, 'content-type': 'application/json', accept: 'application/json', ...(s.cookie ? { cookie: s.cookie } : {}) }, body: JSON.stringify(body) });
+  if (!r.ok) throw Object.assign(new Error('screener ' + r.status), { status: r.status });
+  const d = await r.json();
+  return (((d.finance || {}).result || [])[0] || {}).quotes || [];
+}
+async function pool(asc) {
+  // Full scan first; fall back to (and top up with) the predefined lists so the board never goes empty.
+  const lists = await Promise.all([scanAll(asc).catch(() => []), screen(asc ? SCREENS.lose : SCREENS.gain, 250).catch(() => []), asc ? [] : screen(SCREENS.small, 250).catch(() => []), asc ? [] : screen(SCREENS.aggressive, 250).catch(() => [])]);
+  const seen = {}; const out = [];
+  lists.flat().forEach((q) => { if (q && q.symbol && !seen[q.symbol]) { seen[q.symbol] = 1; out.push(q); } });
+  return out;
+}
 T.get_gainers_losers = async (i) => {
   const size = Math.min(100, +i.page_size || 100), page = Math.max(1, +i.page_index || 1), asc = i.direction === 'ASC';
   let rows;
   if (i.rank_type === 'PRE_MARKET' || i.rank_type === 'AFTER_MARKET') {
     // No extended-hours screener upstream: rank a broad pool of active names by their extended-hours move.
-    const pools = await Promise.all([screen(SCREENS.gain, 250), screen(SCREENS.lose, 250), screen(SCREENS.active, 250), screen(SCREENS.small, 250)].map((p) => p.catch(() => [])));
+    const pools = await Promise.all([pool(false), pool(true), screen(SCREENS.active, 250).catch(() => [])]);
     const seen = {}; rows = [];
     pools.flat().forEach((q) => { if (!seen[q.symbol]) { seen[q.symbol] = 1; rows.push(q); } });
     const key = i.rank_type === 'PRE_MARKET' ? 'preMarketChangePercent' : 'postMarketChangePercent';
     rows = rows.filter((q) => q[key] != null).map((q) => Object.assign(snapOf(q), {
       price: num(i.rank_type === 'PRE_MARKET' ? q.preMarketPrice : q.postMarketPrice), change: num(i.rank_type === 'PRE_MARKET' ? q.preMarketChange : q.postMarketChange), change_ratio: q[key] / 100 }));
   } else {
-    rows = (await screen(asc ? SCREENS.lose : SCREENS.gain, 250)).map(snapOf);
+    rows = (await pool(asc)).map(snapOf).filter((r) => (asc ? r.change_ratio < 0 : r.change_ratio > 0));
   }
   rows.sort((a, b) => (asc ? 1 : -1) * ((a.change_ratio || 0) - (b.change_ratio || 0)));
   return { data: rows.slice((page - 1) * size, page * size) };
