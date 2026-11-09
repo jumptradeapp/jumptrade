@@ -174,7 +174,7 @@ const NUA = 'jumptrade/1.0 (contact: hello@jumptrade.app)';
 const decodeX = (s) => String(s || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&#(\d+);/g, (m, n) => String.fromCharCode(+n)).trim();
 const tag = (x, t) => { const m = x.match(new RegExp('<' + t + '[^>]*>([\\s\\S]*?)</' + t + '>', 'i')); return m ? decodeX(m[1]) : ''; };
 async function rss(url, source, sym) {
-  const r = await fetch(url, { headers: { 'user-agent': NUA, accept: 'application/rss+xml, application/atom+xml, text/xml' }, cf: { cacheTtl: 120 } });
+  const r = await fetch(url, { headers: { 'user-agent': NUA, accept: 'application/rss+xml, application/atom+xml, text/xml' }, cf: { cacheTtl: 30 } });
   if (!r.ok) return [];
   const x = await r.text(); const items = x.split(/<item[\s>]|<entry[\s>]/i).slice(1);
   return items.slice(0, 20).map((it) => {
@@ -314,7 +314,7 @@ T.get_market_sectors_detail = async (i) => {
   return { data: rows };
 };
 // How long each answer may be reused (seconds). Prices: short. Fundamentals: long.
-const TTL = { get_sparks: 60, get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 300, search_news: 300,
+const TTL = { get_sparks: 60, get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 60, search_news: 45,
   get_company_profile: 86400, get_analyst_target_price: 21600, get_analyst_rating: 21600, get_stock_forecast_eps: 21600, get_stock_earnings_calendar: 21600,
   get_fund_brief: 86400, get_fund_holdings: 86400, get_fund_performance: 86400 };
 
@@ -384,13 +384,16 @@ async function wbToken(env, wb) {
   if (!WBCFG.need) return null;
   const t = await vget(env, 'token'); return t && t.status === 'NORMAL' ? t.token : null;
 }
+let WBOK = { t: 0, ok: false }, WBFAIL = 0;
 async function wbCall(env, tool, input) {
   const wb = new Webull(env); if (!wb.ready || !WBMAP[tool]) return null;
+  if (Date.now() - WBOK.t > 60000) { const st = await vget(env, 'tokstate').catch(() => null); WBOK = { t: Date.now(), ok: !!(st && st.status === 'NORMAL') }; }
+  if (!WBOK.ok || Date.now() < WBFAIL) return null; // no approved session (or it just failed): go straight to the fallback, no wasted round trip
   const token = await wbToken(env, wb);
   if (WBCFG && WBCFG.need && !token) return null; // not approved yet -> fall back
   const { method, path, args } = wbArgs(tool, input || {});
   const r = method === 'GET' ? await wb.raw('GET', path, args, null, token) : await wb.raw('POST', path, {}, args, token);
-  if (r.status !== 200) { WBLAST = { tool, status: r.status, data: typeof r.data === 'string' ? r.data.slice(0, 300) : r.data, t: Date.now() }; return null; }
+  if (r.status !== 200) { WBFAIL = Date.now() + 120000; WBLAST = { tool, status: r.status, data: typeof r.data === 'string' ? r.data.slice(0, 300) : r.data, t: Date.now() }; return null; }
   return { payload: wbShape(tool, r.data, input || {}) };
 }
 let WBLAST = null;
@@ -514,7 +517,9 @@ const shape = (v) => { if (!v) return '(none)'; const s = String(v); return s.le
 
 // ---------- Webull session upkeep (runs on a schedule; no public trigger) ----------
 async function wbUpkeep(env) {
-  const wb = new Webull(env); if (!wb.ready || !env.VAULT) return { skipped: 'no keys' };
+  const wb = new Webull(env); if (!env.VAULT) return { skipped: 'no vault' };
+  await vput(env, 'cron', { t: Date.now(), ready: wb.ready });
+  if (!wb.ready) return { skipped: 'no keys' };
   const tok = await vget(env, 'token'); const st = (await vget(env, 'tokstate')) || {};
   const now = Date.now();
   if (tok && tok.token) {
@@ -530,12 +535,14 @@ async function wbUpkeep(env) {
   await vput(env, 'tokstate', { ...st, status: 'CREATE_FAILED', created: now, http: r.status, code: r.data && r.data.error_code });
   return { failed: r.status };
 }
+let UPK = 0;
 export default {
   async scheduled(ev, env, ctx) { ctx.waitUntil(wbUpkeep(env).catch(() => {})); },
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
+    if (Date.now() - UPK > 600000) { UPK = Date.now(); ctx.waitUntil(wbUpkeep(env).catch(() => {})); }
     if (req.method === 'OPTIONS') return new Response(null, { headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'POST, GET' } });
-    if (url.pathname === '/api/wbstate') { const s = (await vget(env, 'tokstate')) || {}; return json({ status: s.status || 'none', http: s.http || null, code: s.code || null, created: s.created ? new Date(s.created).toISOString() : null, checked: s.checked ? new Date(s.checked).toISOString() : null }); }
+    if (url.pathname === '/api/wbstate') { const s = (await vget(env, 'tokstate')) || {}; const cr = (await vget(env, 'cron')) || {}; return json({ upkeep: cr.t ? new Date(cr.t).toISOString() : null, keys: cr.ready == null ? null : cr.ready, status: s.status || 'none', http: s.http || null, code: s.code || null, created: s.created ? new Date(s.created).toISOString() : null, checked: s.checked ? new Date(s.checked).toISOString() : null }); }
     if (url.pathname.startsWith('/api/wb/')) { const r = await wbRoutes(url, env); if (r) return r; }
     if (url.pathname === '/api/selftest') return json(await selftest());
     if (url.pathname === '/api/health') return json({ ok: true, provider: 'yahoo', time: new Date().toISOString() });

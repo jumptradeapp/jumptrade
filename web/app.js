@@ -769,7 +769,7 @@ function loadWebNews(force) {
   fetch('news_web.json', { cache: 'no-store' }).then((r) => { if (!r.ok) { webNewsT = Infinity; throw 0; } return r.json(); }).then((j) => { S.webNews = j; render(); }).catch(() => {});
 }
 setInterval(() => { if (S.tab === 'news') loadWebNews(); }, 600000);
-function loadNews() { loadWebNews(); const k = NEWSK.find((x) => x[0] === S.newsK) || NEWSK[0]; watch('nw:feed', 'search_news', { keyword: k[1] }, (p) => { S.newsItems = (p && p.data) || []; }, 120000); }
+function loadNews() { loadWebNews(); const k = NEWSK.find((x) => x[0] === S.newsK) || NEWSK[0]; watch('nw:feed', 'search_news', { keyword: k[1] }, (p) => { S.newsItems = (p && p.data) || []; }, 45000); }
 function renderNews() {
   setHTML($('newsSeg'), intelSeg('news'));
   $('newsK').innerHTML = NEWSK.map((k) => '<button class="chip' + (S.newsK === k[0] ? ' on' : '') + '" data-newsk="' + esc(k[0]) + '">' + esc(k[0]) + '</button>').join('');
