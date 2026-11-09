@@ -306,13 +306,13 @@ async function wbRoutes(url, env) {
   if (url.pathname === '/api/wb/token') { // create (or refresh) the session token; approve it in the Webull app if asked
     if (!wb.ready) return json({ keys: false });
     const old = await vget(env, 'token');
-    const r = await wb.raw('POST', '/auth/tokens/create', {}, old && old.token ? { token: old.token } : {});
+    const r = await wb.raw('POST', '/auth/tokens/create', {}, null);
     if (r.status === 200 && r.data && r.data.token) await vput(env, 'token', { token: r.data.token, expires: r.data.expires, status: r.data.status });
     return json({ status: r.status, token_status: r.data && r.data.status, expires: r.data && r.data.expires, message: r.data && r.data.status !== 'NORMAL' ? 'Open the Webull app and approve the API login request, then open /api/wb/check.' : undefined, error: r.status !== 200 ? r.data : undefined });
   }
   if (url.pathname === '/api/wb/check') {
     const old = await vget(env, 'token'); if (!old) return json({ error: 'No token yet. Open /api/wb/token first.' });
-    const r = await wb.raw('POST', '/auth/tokens/check', {}, { token: old.token });
+    let r = await wb.raw('POST', '/auth/tokens/check', {}, null, old.token); if (r.status !== 200) r = await wb.raw('POST', '/auth/tokens/check', {}, { token: old.token });
     if (r.status === 200 && r.data) await vput(env, 'token', { token: old.token, expires: r.data.expires || old.expires, status: r.data.status || old.status });
     return json({ status: r.status, token_status: r.data && r.data.status, body: r.data });
   }
