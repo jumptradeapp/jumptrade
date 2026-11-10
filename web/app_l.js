@@ -61,10 +61,10 @@ LOGOS = {}; const LGS = {}; let lgT = 0;
 function lgNeed(sym) { const b = sym.charAt(1); const c = (/^[A-Z]/.test(sym) ? sym[0] : '_') + (!b || b < 'H' ? '1' : b < 'P' ? '2' : '3'); if (LGS[c]) return; LGS[c] = 1; fetch('lg2/' + c + '.json').then((r) => r.json()).then((j) => { Object.assign(LOGOS, j); clearTimeout(lgT); lgT = setTimeout(render, 60); }).catch(() => {}); }
 const HUES = [[139, 108, 255], [255, 140, 70], [32, 201, 151], [59, 160, 219], [240, 101, 149], [92, 124, 250], [255, 196, 60], [81, 207, 102], [21, 170, 191], [255, 110, 90]];
 function logoHTML(sym, size) {
-  const r = Math.round(size * 0.28);
+  const r = Math.round(size / 2); // circles everywhere
   let b64 = LOGOS && LOGOS[sym]; if (!b64 && sym) lgNeed(sym);
   if (b64) { const dark = b64.charAt(0) === '!'; if (dark) b64 = b64.slice(1);
-    return '<span class="logo" style="width:' + size + 'px;height:' + size + 'px;border-radius:' + r + 'px;background:' + (dark ? '#1E2530;border:1px solid rgba(17,24,39,0.099)' : '#fff') + '"><img alt="" src="data:image/webp;base64,' + b64 + '" style="width:' + Math.round(size * 0.78) + 'px;height:' + Math.round(size * 0.78) + 'px"></span>'; }
+    return '<span class="logo" style="width:' + size + 'px;height:' + size + 'px;border-radius:' + r + 'px;background:' + (dark ? '#1E2530;border:1px solid rgba(17,24,39,0.099)' : '#fff') + '"><img alt="" src="data:image/webp;base64,' + b64 + '" style="width:' + Math.round(size * 0.66) + 'px;height:' + Math.round(size * 0.66) + 'px"></span>'; }
   let h = 0; for (const ch of sym) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   const c = HUES[h % HUES.length];
   return '<span class="logo mono" style="width:' + size + 'px;height:' + size + 'px;border-radius:' + r + 'px;font-size:' + Math.round(size * (sym.length > 3 ? 0.3 : 0.36)) + 'px;background:linear-gradient(160deg,rgb(' + c.join(',') + '),rgb(' + c.map((x) => Math.round(x * 0.55)).join(',') + '))">' + esc(sym.slice(0, 4)) + '</span>';
@@ -234,7 +234,7 @@ function renderMovers() {
   const scEl = $('scroller'), szKey = W + 'x' + (window.innerHeight > window.innerWidth ? 'p' : 'l'); // width/orientation only: header height changes every second made tiles jump between sizes
   if (S.tileKey !== szKey && !touching && !document.getElementById('vMovers').classList.contains('tcol') && $('ptr1').offsetHeight === 0 && scEl.clientHeight > 0) { S.tileKey = szKey; const nv = document.querySelector('nav.main, .nav, nav'); const bt = box.getBoundingClientRect().top + scEl.scrollTop - scEl.getBoundingClientRect().top; const vb = nv && nv.getBoundingClientRect().height ? Math.min(scEl.clientHeight, nv.getBoundingClientRect().top - scEl.getBoundingClientRect().top) : scEl.clientHeight; const avail = vb - bt - 10; S.tileH = Math.max(118, Math.min(146, Math.floor((avail - 2 * 12) / 3))); }
   const tileH = S.tileH || 140;
-  const rowH = 74;
+  const rowH = 66;
   const existing = {}; Array.from(box.children).forEach((el) => { if (el.dataset.sym) existing[el.dataset.sym] = el; else el.remove(); });
   const seen = {};
   rows.forEach((r, i) => {
@@ -254,9 +254,9 @@ function renderMovers() {
         '<span class="tb"><span class="tp" style="' + (flash ? 'background:' + flash : '') + '">$' + px(r.price) + '</span>' +
         '<span class="tc" style="color:' + col + '">' + arrow + (colW < 172 ? pctS(r.pct) : chgS(r.chg, r.pct, r.price)) + '</span></span>' + ((chip || (window.ENR && ENR.rvTag(r.sym, r.vol))) ? '<span class="tsig">' + chip + (window.ENR ? ENR.rvTag(r.sym, r.vol) : '') + '</span>' : '') + (hasWhy ? '<span class="nwb tnw" title="News today" aria-label="News today">★</span>' : '');
     } else {
-      el.className = 'card row' + (el.classList.contains('fadein') ? ' fadein' : ''); el.style.width = W + 'px'; el.style.height = rowH + 'px'; el.style.left = '0px'; el.style.top = i * rowH + 'px';
+      el.className = 'card row' + (i === 0 ? ' rfirst' : '') + (i === rows.length - 1 ? ' rlast' : '') + (el.classList.contains('fadein') ? ' fadein' : ''); el.style.width = W + 'px'; el.style.height = rowH + 'px'; el.style.left = '0px'; el.style.top = i * rowH + 'px';
       el.innerHTML = '<span class="rk">' + (i + 1) + '</span>' + logoHTML(r.sym, 34) + '<span class="rn"><b>' + esc(r.sym) + ' ' + (window.TODAY ? TODAY.chip(r) : '') + ' <em>' + capOf(r.mcap) + '</em></b><small' + (hasWhy ? ' class="hl"' : '') + '>' + (window.ENR ? ENR.rvTag(r.sym, r.vol) : '') + esc(why) + '</small></span>' +
-        '<span class="rp"><b style="' + (flash ? 'background:' + flash : '') + '">$' + px(r.price) + '</b><small style="color:' + col + '">' + arrow + pctS(r.pct) + '</small></span>';
+        '<span class="rp"><b style="' + (flash ? 'background:' + flash : '') + '">$' + px(r.price) + '</b><small style="color:' + col + '">' + (isFinite(r.chg) ? (r.chg >= 0 ? '+$' : '−$') + px(Math.abs(r.chg)) + ' ' : '') + '<i>' + pctS(r.pct) + '</i></small></span>';
     }
     el.setAttribute('aria-label', r.sym + ' ' + px(r.price) + ' ' + pctS(r.pct));
     if (flash) setTimeout(() => { const t = el.querySelector('.tp,.rp b'); if (t) t.style.background = ''; }, 700);
@@ -409,7 +409,7 @@ function renderDetail() {
   h += '<div class="dTop">';
   if (main) {
     h += '<div class="dPrice">$' + px(main.price) + '</div><div class="dChg" style="color:' + (up ? P.up : P.dn) + '">' + chgS(main.chg, main.pct, main.price) + ' <span>' + (v === 'regular' && S.auto === 'regular' ? 'today' : 'at the close') + '</span></div>';
-    if (ext && ext.price) h += '<div class="dExt"><i style="background:' + SESS[v].color + '"></i>' + SESS[v].label + ' <b>$' + px(ext.price) + '</b> <span style="color:' + (ext.pct >= 0 ? P.up : P.dn) + '">' + pctS(ext.pct) + '</span></div>';
+    if (ext && ext.price) h += '<div class="dExt">' + sessIcon(v, 15) + SESS[v].label + ' <b>$' + px(ext.price) + '</b> <span style="color:' + (ext.pct >= 0 ? P.up : P.dn) + '">' + pctS(ext.pct) + '</span></div>';
   }
   if (window.ENR) h += ENR.stats(sym, main);
   h += '<div class="chart2">' + chartSVG(d.bars, sn ? +sn.pre_close : null, window.ENR && S.chartTf !== 'D' ? ENR.levels(sym) : null) + '<div class="cfoot"><div class="tfs2">' + ['1m', '5m', 'D'].map((t) => '<button class="' + (t === S.chartTf ? 'on' : '') + '" data-tf="' + t + '">' + (t === 'D' ? '1D' : t) + '</button>').join('') + '</div>' +
@@ -819,15 +819,26 @@ function loadWatch() {
   watch('wl:lists', 'get_watchlists', {}, (p) => { S.wlists = (Array.isArray(p) ? p : []).filter((w) => !HIDE_WL.test(w.name)); if (S.pick || S.detail) { S.wlMemTried = 1; memLoad(); } if (S.tab === 'portfolios' && !S.models) loadModels(); if (S.tab === 'value') loadAllWatchSyms(); if (!S.wl && S.wlists.length) { let pref = null; try { pref = localStorage.getItem('jt.wl'); } catch (e) {} const w = S.wlists.find((x) => x.watchlist_id === pref) || S.wlists.find((x) => x.name === 'CORE 25') || S.wlists.find((x) => x.name === 'My Positions') || S.wlists[0]; S.wl = w.watchlist_id; loadWatchItems(); } }, 600000);
   if (S.wl) loadWatchItems();
 }
+/* sun = pre-market, moon = after hours / overnight (same cue TradingView uses) */
+function sessIcon(k, px) { const s = px || 13;
+  return k === 'pre' ? '<svg class="sIc" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="#F2C27A" stroke-width="2.4" stroke-linecap="round" aria-label="Pre-market"><circle cx="12" cy="12" r="4.2" fill="#F2C27A"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7L7 17M17 7l1.7-1.7"/></svg>'
+    : '<svg class="sIc" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" aria-label="' + (k === 'overnight' ? 'Overnight' : 'After hours') + '"><path fill="#B58CFF" d="M20.5 14.6A9 9 0 0 1 9.4 3.5a.7.7 0 0 0-.9-.8A9.5 9.5 0 1 0 21.3 15.5a.7.7 0 0 0-.8-.9z"/></svg>'; }
+function wlRow(x, sess) { // one watchlist quote: regular session on the main line, pre/after/overnight on its own line
+  const ok = !((sess === 'overnight' && !x.ovn_price) || ((sess === 'pre' || sess === 'after') && !x.extend_hour_last_price));
+  const n = snapRow(x, sess); n._s = ok ? sess : 'regular'; n._ok = ok;
+  const g = snapRow(x, 'regular'); n.reg = { price: g.price, chg: g.chg, pct: g.pct };
+  n.ext = ok && sess !== 'regular' && sess !== 'closed' && isFinite(n.price) && n.price ? { price: n.price, chg: n.chg, pct: n.pct, k: sess } : null;
+  if (!n.ext && x.extend_hour_last_price && +x.extend_hour_last_price !== g.price) { const e = snapRow(x, 'after'); n.ext = { price: e.price, chg: e.chg, pct: e.pct, k: x.market_state && /^PRE/.test(x.market_state) ? 'pre' : 'after' }; }
+  return n; }
 function wlQuotes(syms) { // one live quote watch for the open list; rebuilt whenever the list changes
   unwatch('wl:q'); if (!syms || !syms.length) { S.wlQ = {}; return; }
   watch('wl:q', 'get_stock_snapshot', { symbols: syms.slice(0, 100).join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: true }, (q) => {
     const sess = view(); const nq = S.wlQ || {};
     (Array.isArray(q) ? q : []).forEach((x) => {
       // a quote that lacks this session's price would show the regular-day % instead: don't let it replace a good one (that was the flash of wrong %)
-      const ok = !((sess === 'overnight' && !x.ovn_price) || ((sess === 'pre' || sess === 'after') && !x.extend_hour_last_price));
-      const old = nq[x.symbol]; if (old && old._s === sess && !ok) return;
-      const n = snapRow(x, sess); n._s = ok ? sess : 'regular'; nq[x.symbol] = n; });
+      const n = wlRow(x, sess); const old = nq[x.symbol];
+      if (old && old._s === sess && !n._ok) { old.reg = n.reg; return; } // keep the good session quote, refresh the regular line
+      nq[x.symbol] = n; });
     S.wlQ = nq; });
 }
 function loadWatchItems() {
@@ -851,9 +862,12 @@ function renderWatch() {
   $('wSum').textContent = syms.length + ' stocks · ' + up + ' up · ' + dn + ' down';
   const shown = so === 'up' ? rows.filter((r) => r.pct > 0) : so === 'down' ? rows.filter((r) => r.pct < 0) : rows;
   if (!shown.length) { box.innerHTML = '<div class="empty"><b>' + (so === 'up' ? 'Nothing up yet' : 'Nothing down today') + '</b><span>' + (so === 'up' ? 'None of your stocks are green right now.' : 'None of your stocks are red right now.') + '</span></div>'; return; }
-  box.innerHTML = shown.map((r) => { const a = S.dips[r.sym]; const col = (r.pct || 0) >= 0 ? '#15965A' : '#D63B3B';
+  box.innerHTML = '<div class="wlFlat">' + shown.map((r) => { const a = S.dips[r.sym]; const col = (r.pct || 0) >= 0 ? '#15965A' : '#D63B3B';
     return '<button class="wrow" data-open="' + esc(r.sym) + '" data-name="' + esc((S.wlNames || {})[r.sym] || '') + '">' + logoHTML(r.sym, 34) + '<span class="rn"><b>' + esc(r.sym) + ' ' + (window.TODAY && r.price ? TODAY.chip(r) : '') + (window.ENR ? (ENR.need(r.sym), ENR.badge(r.sym)) : '') + '</b><small>' + esc(cleanName(symName(r.sym) || (S.wlNames || {})[r.sym] || '')) + (r.mcap ? ' · ' + money(r.mcap) : '') + '</small></span>' +
-      (S.wlEdit ? '<span class="xdel' + (S.wlRm === r.sym ? ' arm' : '') + '" style="position:static" role="button" aria-label="Remove ' + esc(r.sym) + '" data-wlrm="' + esc(r.sym) + '">' + (S.wlRm === r.sym ? '…' : 'Remove') + '</span>' : '<span class="rp">' + (r.price ? '<b>$' + px(r.price) + '</b><small style="color:' + col + '">' + chgS(r.chg, r.pct, r.price) + '</small>' : '<b class="dim">—</b>') + '</span>') + '</button>'; }).join('') + (window.JT_WEB && so !== 'up' && so !== 'down' && syms.length < 6 && !S.wlEdit ? '<div class="wlMore"><small>Add more</small><div class="wlPick">' + ['NVDA', 'TSLA', 'AAPL', 'AMD', 'PLTR', 'MSFT', 'AMZN', 'META', 'GOOGL', 'SOFI', 'HOOD', 'COIN'].filter((x) => syms.indexOf(x) < 0).slice(0, 8).map((x) => '<button data-wlq="' + x + '">' + logoHTML(x, 22) + x + '</button>').join('') + '</div></div>' : '');
+      (S.wlEdit ? '<span class="xdel' + (S.wlRm === r.sym ? ' arm' : '') + '" style="position:static" role="button" aria-label="Remove ' + esc(r.sym) + '" data-wlrm="' + esc(r.sym) + '">' + (S.wlRm === r.sym ? '…' : 'Remove') + '</span>' : '<span class="rp">' + (r.price ? (() => { const m = r.reg && r.reg.price ? r.reg : r; const mc = (m.pct || 0) >= 0 ? '#15965A' : '#D63B3B'; const sg = (v) => (v >= 0 ? '+' : '−') + '$' + px(Math.abs(v));
+        let o = '<b>$' + px(m.price) + '</b><small style="color:' + mc + '">' + sg(m.chg || 0) + ' <i>' + pctS(m.pct || 0) + '</i></small>';
+        if (r.ext) { const ec = (r.ext.pct || 0) >= 0 ? '#15965A' : '#D63B3B'; o += '<small class="wxt">' + sessIcon(r.ext.k) + '<u>$' + px(r.ext.price) + '</u><span style="color:' + ec + '">' + sg(r.ext.chg || 0) + ' ' + pctS(r.ext.pct || 0) + '</span></small>'; }
+        return o; })() : '<b class="dim">—</b>') + '</span>') + '</button>'; }).join('') + '</div>' + (window.JT_WEB && so !== 'up' && so !== 'down' && syms.length < 6 && !S.wlEdit ? '<div class="wlMore"><small>Add more</small><div class="wlPick">' + ['NVDA', 'TSLA', 'AAPL', 'AMD', 'PLTR', 'MSFT', 'AMZN', 'META', 'GOOGL', 'SOFI', 'HOOD', 'COIN'].filter((x) => syms.indexOf(x) < 0).slice(0, 8).map((x) => '<button data-wlq="' + x + '">' + logoHTML(x, 22) + x + '</button>').join('') + '</div></div>' : '');
 }
 
 /* ---------- portfolios: your models + your own portfolios + copy funds + 13D/G ---------- */
@@ -1139,7 +1153,7 @@ async function wlWrite(id, sym, add) {
   if (S.wl === id && S.wlSyms) {
     S.wlSyms = add ? (S.wlSyms.indexOf(sym) < 0 ? S.wlSyms.concat([sym]) : S.wlSyms) : S.wlSyms.filter((s) => s !== sym);
     if (!add && S.wlQ) delete S.wlQ[sym]; wlQuotes(S.wlSyms);
-    if (add) mcp.callTool(SERVER, 'get_stock_snapshot', { symbols: sym, category: 'US_STOCK', extend_hour_required: true, overnight_required: true }).then(payloadOf).then((q) => { S.wlQ = S.wlQ || {}; (Array.isArray(q) ? q : []).forEach((x) => { S.wlQ[x.symbol] = snapRow(x, view()); }); render(); }).catch(() => {});
+    if (add) mcp.callTool(SERVER, 'get_stock_snapshot', { symbols: sym, category: 'US_STOCK', extend_hour_required: true, overnight_required: true }).then(payloadOf).then((q) => { S.wlQ = S.wlQ || {}; (Array.isArray(q) ? q : []).forEach((x) => { S.wlQ[x.symbol] = wlRow(x, view()); }); render(); }).catch(() => {});
   }
   const md = (S.models || []).find((x) => x.watchlist_id === id); if (md && md.syms) { md.syms = add ? (md.syms.indexOf(sym) < 0 ? md.syms.concat([sym]) : md.syms) : md.syms.filter((s) => s !== sym); priceModels(); }
   render();
