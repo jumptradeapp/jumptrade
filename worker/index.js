@@ -174,7 +174,7 @@ const NUA = 'jumptrade/1.0 (contact: hello@jumptrade.app)';
 const decodeX = (s) => String(s || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&#(\d+);/g, (m, n) => String.fromCharCode(+n)).trim();
 const tag = (x, t) => { const m = x.match(new RegExp('<' + t + '[^>]*>([\\s\\S]*?)</' + t + '>', 'i')); return m ? decodeX(m[1]) : ''; };
 async function rss(url, source, sym) {
-  const r = await fetch(url, { headers: { 'user-agent': NUA, accept: 'application/rss+xml, application/atom+xml, text/xml' }, cf: { cacheTtl: 30 } });
+  const r = await fetch(url, { headers: { 'user-agent': NUA, accept: 'application/rss+xml, application/atom+xml, text/xml' }, cf: { cacheTtl: 30 }, signal: AbortSignal.timeout(2500) });
   if (!r.ok) return [];
   const x = await r.text(); const items = x.split(/<item[\s>]|<entry[\s>]/i).slice(1);
   return items.slice(0, 20).map((it) => {
@@ -564,13 +564,20 @@ async function runTool(tool, input, ctx, env) {
   const key = new Request('https://cache.jumptrade/' + tool + '?' + encodeURIComponent(JSON.stringify(input || {})));
   const cache = caches.default;
   const hit = await cache.match(key); if (hit) return hit;
-  try {
-    let payload;
+  // Slow, many-source tools: answer instantly from the last good copy and refresh it in the background.
+  const SLOW = /^(search_news|get_stock_news|get_runners|get_community_hot_stocks|get_stock_unusual_activities|get_market_sectors)$/.test(tool);
+  const skey = new Request('https://cache.jumptrade/stale/' + tool + '?' + encodeURIComponent(JSON.stringify(input || {})));
+  const produce = async () => {
     const w = env && !/news/.test(tool) ? await wbCall(env, tool, input || {}).catch((e) => { WBLAST = { tool, error: String(e.message || e), t: Date.now() }; return null; }) : null;
-    payload = w ? w.payload : await fn(input || {});
+    const payload = w ? w.payload : await fn(input || {});
     const res = json({ payload }, 200, { 'cache-control': 'public, max-age=' + (TTL[tool] || 30) });
-    ctx.waitUntil(cache.put(key, res.clone()));
+    await cache.put(key, res.clone());
+    if (SLOW) await cache.put(skey, json({ payload }, 200, { 'cache-control': 'public, max-age=86400' }));
     return res;
+  };
+  if (SLOW) { const old = await cache.match(skey); if (old) { ctx.waitUntil(produce().catch(() => {})); return old; } }
+  try {
+    return await produce();
   } catch (e) {
     return json({ error: { code: e.status === 429 ? 'rate_limited' : 'server_unavailable', message: 'Can’t reach the price feed right now (' + (e.message || e) + ').', retryable: true } }, 502);
   }
@@ -625,7 +632,8 @@ async function wbUpkeep(env) {
     await vput(env, 'tokstate', { ...st, status, checked: now, http: r.status });
     if (r.status === 200 && status !== 'INVALID' && status !== 'EXPIRED') return { status };
   }
-  if (st.created && now - st.created < 3600000) return { waiting: true };
+  if (st.created && now - st.created < 3600000 && st.status !== 'INVALID' && st.status !== 'EXPIRED') return { waiting: true };
+  if (st.created && now - st.created < 600000) return { waiting: true };
   const r = await wb.raw('POST', '/auth/tokens/create', {}, null);
   if (r.status === 200 && r.data && r.data.token) { await vput(env, 'token', { token: r.data.token, expires: r.data.expires, status: r.data.status }); await vput(env, 'tokstate', { status: r.data.status, created: now, http: 200 }); return { created: r.data.status }; }
   await vput(env, 'tokstate', { ...st, status: 'CREATE_FAILED', created: now, http: r.status, code: r.data && r.data.error_code });
