@@ -278,7 +278,7 @@ function renderMovers() {
   const scEl = $('scroller'), szKey = W + 'x' + (window.innerHeight > window.innerWidth ? 'p' : 'l'); // width/orientation only: header height changes every second made tiles jump between sizes
   if (S.tileKey !== szKey && !touching && !document.getElementById('vMovers').classList.contains('tcol') && $('ptr1').offsetHeight === 0 && scEl.clientHeight > 0) { S.tileKey = szKey; S.fitDone = 0; S.fitN = 0; const nv = document.querySelector('nav.main, .nav, nav'); const bt = box.getBoundingClientRect().top + scEl.scrollTop - scEl.getBoundingClientRect().top; const vb = nv && nv.getBoundingClientRect().height ? Math.min(scEl.clientHeight, nv.getBoundingClientRect().top - scEl.getBoundingClientRect().top) : scEl.clientHeight; const avail = vb - bt - 8; S.tileH = Math.max(108, Math.min(150, Math.floor((avail - 2 * 10) / 3))); S.fitDone = 1; }
   const tileH = S.tileH || 124;
-  const roomy = tileH >= 120; // tall enough (home-screen app): signal pill gets its own row under the change; Safari's shorter screen: pill sits beside the price so 6 tiles still fit // sized so exactly 3 rows (6 tiles) fit between the header and the nav
+  const roomy = false; // tall enough (home-screen app): signal pill gets its own row under the change; Safari's shorter screen: pill sits beside the price so 6 tiles still fit // sized so exactly 3 rows (6 tiles) fit between the header and the nav
   // each row of two tiles is only as tall as its content: rows without a signal pill are shorter, so no empty space at the bottom
   const chips = S.layout === 'tiles' ? rows.map((r) => isHalted(r.sym) ? HALT_CHIP : (window.TODAY ? TODAY.chip(r) : '')) : [];
   const rowHs = [], rowTop = [0]; for (let k = 0; k < rows.length; k += 2) { const hh = tileH; rowHs.push(hh); rowTop.push(rowTop[rowTop.length - 1] + hh + gap); }
@@ -300,7 +300,7 @@ function renderMovers() {
       el.style.left = (i % 2) * (colW + gap) + 'px'; el.style.top = rowTop[Math.floor(i / 2)] + 'px';
       const chip = chips[i];
       el.innerHTML = '<span class="th">' + logoHTML(r.sym, 32) + '<span class="tn"><b>' + esc(r.sym) + '</b>' + '<small>' + esc(cleanName(symName(r.sym) || r.name || '')) + '</small>' + '</span></span>' +
-        '<span class="tb"><span class="tpr"><span class="tp" style="' + (flash ? 'background:' + flash : '') + '">$' + px(r.price) + '</span>' + (chip && !roomy ? '<span class="tsig2' + (px(r.price).length > 5 ? ' tight' : '') + '">' + chip + '</span>' : '') + '</span>' +
+        '<span class="tb"><span class="tpr"><span class="tp" style="' + (flash ? 'background:' + flash : '') + '">$' + px(r.price) + '</span>' + (chip && !roomy ? '<span class="tsig2' + '' + '">' + chip + '</span>' : '') + '</span>' +
         '<span class="tc" style="color:' + col + '">' + arrow + chgS(r.chg, r.pct, r.price) + '</span></span>' + (chip && roomy ? '<span class="tsig">' + chip + '</span>' : '') + sparkSVG(r.sym, 100, 30, col) + (hasWhy ? '<span class="nwb tnw" title="News today" aria-label="News today">★</span>' : '');
     } else {
       el.className = 'card row' + (i === 0 ? ' rfirst' : '') + (i === rows.length - 1 ? ' rlast' : '') + (el.classList.contains('fadein') ? ' fadein' : ''); el.style.width = W + 'px'; el.style.height = rowH + 'px'; el.style.left = '0px'; el.style.top = i * rowH + 'px';

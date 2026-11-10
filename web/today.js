@@ -21,7 +21,7 @@
     breakout: { label: 'BREAKOUT', icon: '▲', bg: '#5EE0A0', fg: '#06281A' },
     dumping: { label: 'DUMPING', icon: '▼', bg: '#FF6B6B', fg: '#2A0808' },
     fading: { label: 'FADING', icon: '↘', bg: '#F2C27A', fg: '#2A1A04' },
-    newlow: { label: 'NEW LOW', icon: '▼', bg: '#FF6B6B', fg: '#2A0808' }
+    newlow: { label: 'NEW LOW', icon: '↧', bg: '#FF6B6B', fg: '#2A0808' }
   };
   // r: { price, pct, o, h, l, pc, to (fraction of shares traded), hi52, lo52, mcap }
   function sigOf(r) {
@@ -48,7 +48,7 @@
   }
   T.sigOf = sigOf;
   const chipStyle = (c) => 'color:' + c + ';background:' + c + '1A;border-color:' + c + '66';
-  T.chip = function (r) { const s = sigOf(r); if (!s) return ''; const d = SIG[s.k]; return '<span class="sigchip" style="' + chipStyle(d.bg) + '">' + d.icon + ' <em class="scl">' + d.label + '</em></span>'; };
+  T.chip = function (r) { const s = sigOf(r); if (!s) return ''; const d = SIG[s.k]; return '<span class="sigchip ico" title="' + d.label + '" aria-label="' + d.label + '" style="' + chipStyle(d.bg) + '">' + d.icon + ' <em class="scl">' + d.label + '</em></span>'; };
   T.banner = function (r) {
     const s = sigOf(r); if (!s) return '';
     const d = SIG[s.k];
