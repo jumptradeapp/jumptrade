@@ -92,22 +92,27 @@ async function screen(id, count = 100) {
   return (((d.finance || {}).result || [])[0] || {}).quotes || [];
 }
 // Full-market scan: every US stock ranked by % change (the predefined "day_gainers" list only covers $2B+ companies).
-async function scanAll(asc, field) {
+async function scanAll(asc, field, pages) {
   const body = { offset: 0, size: 250, sortField: field || 'percentchange', sortType: asc ? 'ASC' : 'DESC', quoteType: 'EQUITY', userId: '', userIdType: 'guid',
     query: { operator: 'AND', operands: [
       { operator: 'or', operands: [{ operator: 'EQ', operands: ['exchange', 'NMS'] }, { operator: 'EQ', operands: ['exchange', 'NYQ'] }, { operator: 'EQ', operands: ['exchange', 'ASE'] }, { operator: 'EQ', operands: ['exchange', 'NGM'] }, { operator: 'EQ', operands: ['exchange', 'NCM'] }, { operator: 'EQ', operands: ['exchange', 'PCX'] }, { operator: 'EQ', operands: ['exchange', 'BTS'] }] },
       { operator: 'gt', operands: ['intradayprice', 0.1] },
       { operator: 'gt', operands: ['dayvolume', 20000] }] } };
-  const s = await session();
-  const r = await fetch(Y2 + '/v1/finance/screener?formatted=false&lang=en-US&region=US' + (s.crumb ? '&crumb=' + encodeURIComponent(s.crumb) : ''), {
-    method: 'POST', headers: { 'user-agent': UA, 'content-type': 'application/json', accept: 'application/json', ...(s.cookie ? { cookie: s.cookie } : {}) }, body: JSON.stringify(body) });
-  if (!r.ok) throw Object.assign(new Error('screener ' + r.status), { status: r.status });
-  const d = await r.json();
-  return (((d.finance || {}).result || [])[0] || {}).quotes || [];
+  const s = await session(); const out = [], seen = new Set();
+  for (let pg = 0; pg < (pages || 1); pg++) { // page through the ranked list (250 per page), stop when a page comes back short
+    body.offset = pg * 250;
+    const r = await fetch(Y2 + '/v1/finance/screener?formatted=false&lang=en-US&region=US' + (s.crumb ? '&crumb=' + encodeURIComponent(s.crumb) : ''), {
+      method: 'POST', headers: { 'user-agent': UA, 'content-type': 'application/json', accept: 'application/json', ...(s.cookie ? { cookie: s.cookie } : {}) }, body: JSON.stringify(body) });
+    if (!r.ok) { if (pg === 0) throw Object.assign(new Error('screener ' + r.status), { status: r.status }); break; }
+    const d = await r.json(); const q = (((d.finance || {}).result || [])[0] || {}).quotes || [];
+    q.forEach((x) => { if (x && x.symbol && !seen.has(x.symbol)) { seen.add(x.symbol); out.push(x); } });
+    if (q.length < 250) break;
+  }
+  return out;
 }
 async function pool(asc) {
   // Full scan first; fall back to (and top up with) the predefined lists so the board never goes empty.
-  const lists = await Promise.all([scanAll(asc).catch(() => []), screen(asc ? SCREENS.lose : SCREENS.gain, 250).catch(() => []), asc ? [] : screen(SCREENS.small, 250).catch(() => []), asc ? [] : screen(SCREENS.aggressive, 250).catch(() => [])]);
+  const lists = await Promise.all([scanAll(asc, null, 3).catch(() => []), screen(asc ? SCREENS.lose : SCREENS.gain, 250).catch(() => []), asc ? [] : screen(SCREENS.small, 250).catch(() => []), asc ? [] : screen(SCREENS.aggressive, 250).catch(() => [])]);
   const seen = {}; const out = [];
   lists.flat().forEach((q) => { if (q && q.symbol && !seen[q.symbol]) { seen[q.symbol] = 1; out.push(q); } });
   return out;
@@ -531,6 +536,8 @@ function wbShape(tool, data, input) {
 // The session token lives in a Durable Object so it survives restarts (Webull may require approving it once in the app).
 async function vault(env) { if (!env.VAULT) return null; return env.VAULT.get(env.VAULT.idFromName('main')); }
 async function vget(env, k) { const v = await vault(env); if (!v) return null; const r = await v.fetch('https://v/get?k=' + k); return r.ok ? r.json() : null; }
+async function vlease(env, k, ms) { const v = await vault(env); if (!v) return { ok: true, id: 'none' }; const r = await v.fetch('https://v/lease?k=' + k + '&ms=' + (ms || 60000)); return r.ok ? r.json() : { ok: false }; }
+async function vrelease(env, k, id) { const v = await vault(env); if (v && id) await v.fetch('https://v/lease?k=' + k + '&release=1&id=' + id); }
 async function vput(env, k, val) { const v = await vault(env); if (!v) return; await v.fetch('https://v/put?k=' + k, { method: 'POST', body: JSON.stringify(val) }); }
 let WBCFG = null;
 async function wbToken(env, wb) {
@@ -558,6 +565,11 @@ export class Vault {
     const u = new URL(req.url); const k = u.searchParams.get('k');
     if (u.pathname === '/get') { const v = await this.state.storage.get(k); return v === undefined ? new Response('null', { status: 404 }) : new Response(JSON.stringify(v)); }
     if (u.pathname === '/put') { await this.state.storage.put(k, await req.json()); return new Response('ok'); }
+    if (u.pathname === '/lease') { // atomic lock: first caller wins until it expires or is released
+      const ms = Math.min(600000, +u.searchParams.get('ms') || 60000), now = Date.now(), cur = await this.state.storage.get('lease_' + k);
+      if (u.searchParams.get('release')) { if (cur && cur.id === u.searchParams.get('id')) await this.state.storage.delete('lease_' + k); return new Response('ok'); }
+      if (cur && cur.until > now) return new Response(JSON.stringify({ ok: false, until: cur.until }), { status: 409 });
+      const id = crypto.randomUUID(); await this.state.storage.put('lease_' + k, { id, until: now + ms }); return new Response(JSON.stringify({ ok: true, id })); }
     return new Response('bad', { status: 400 });
   }
 }
@@ -687,7 +699,12 @@ const shape = (v) => { if (!v) return '(none)'; const s = String(v); return s.le
 
 // ---------- Webull session upkeep (runs on a schedule; no public trigger) ----------
 async function wbUpkeep(env) {
-  const wb = new Webull(env); if (!env.VAULT) return { skipped: 'no vault' };
+  if (!env.VAULT) return { skipped: 'no vault' };
+  const L = await vlease(env, 'upkeep', 120000); if (!L.ok) return { skipped: 'another upkeep is running' };
+  try { return await wbUpkeepRun(env); } finally { await vrelease(env, 'upkeep', L.id).catch(() => {}); }
+}
+async function wbUpkeepRun(env) {
+  const wb = new Webull(env);
   await vput(env, 'cron', { t: Date.now(), ready: wb.ready });
   if (!wb.ready) return { skipped: 'no keys' };
   const tok = await vget(env, 'token'); const st = (await vget(env, 'tokstate')) || {};
@@ -897,7 +914,7 @@ export default {
       if (req.method === 'PUT' || req.method === 'POST') { const txt = await req.text(); if (txt.length > 40000) return json({ error: { code: 'too_big' } }, 413); let b; try { b = JSON.parse(txt); } catch (e) { return json({ error: { code: 'bad_request' } }, 400); }
         if (!b || typeof b.data !== 'object') return json({ error: { code: 'bad_request' } }, 400); const cur = await vget(env, k); if (cur && cur.t > (+b.t || 0)) return json(cur); await vput(env, k, { t: +b.t || Date.now(), data: b.data }); return json({ ok: true, t: +b.t }); }
     }
-    if (url.pathname.indexOf('/api/auth/') === 0 || url.pathname.indexOf('/api/admin/') === 0) { const r = await authRoutes(url, req, env, ctx, { vget, vput, json, subId, notifyOwner: (m) => notifyOwner(env, m) }); if (r) return r; }
+    if (url.pathname.indexOf('/api/auth/') === 0 || url.pathname.indexOf('/api/admin/') === 0) { const r = await authRoutes(url, req, env, ctx, { vget, vput, json, subId, notifyOwner: (m) => notifyOwner(env, m), lease: (k, ms) => vlease(env, k, ms), release: (k, id) => vrelease(env, k, id) }); if (r) return r; }
     if (url.pathname === '/api/feedback') { // beta feedback: testers POST, owner reads with the diagnostics key
       if (req.method === 'POST') { let b; try { b = JSON.parse((await req.text()).slice(0, 6000)); } catch (e) { return json({ error: { code: 'bad_request' } }, 400); }
         const text = String(b.text || '').trim().slice(0, 2000); if (text.length < 3) return json({ error: { code: 'empty' } }, 400);

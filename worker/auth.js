@@ -46,6 +46,8 @@ export async function authRoutes(url, req, env, ctx, H) {
       const u = { uid: rnd(9), name: name || 'Owner', owner: true, created: now, last: now, visits: 1, days: { [day(now)]: 1 }, sync: rnd(24), inv: 'Owner' };
       U[u.uid] = u; const tok = await newSession(U, u, ua); await vput(env, 'users', U); return json({ tok, user: pub(u) });
     }
+    const lk = await H.lease('inv_' + h.slice(0, 16), 15000); if (!lk.ok) return json({ error: 'slow' }, 429);
+    try {
     const I = (await vget(env, 'invites')) || {}; const id = h.slice(0, 16); const inv = I[id];
     if (!inv || inv.off) return json({ error: 'invalid' }, 403);
     if (inv.exp && now > inv.exp) return json({ error: 'expired' }, 403);
@@ -63,6 +65,7 @@ export async function authRoutes(url, req, env, ctx, H) {
     await logAct({ t: now, uid: u.uid, name: u.name, type: inv.dev ? 'device' : 'join', dev: dev(ua) });
     ctx.waitUntil(notifyOwner(inv.dev ? { title: u.name + ' added a device', body: 'Signed in on ' + dev(ua) + '.', url: '/#admin', tag: 'jt-admin' } : { title: 'New tester: ' + u.name, body: 'Just joined the jumptrade beta on ' + dev(ua) + (inv.label ? ' (invite: ' + inv.label + ')' : '') + '.', url: '/#admin', tag: 'jt-admin' }));
     return json({ tok, user: pub(u) });
+    } finally { await H.release('inv_' + h.slice(0, 16), lk.id).catch(() => {}); }
   }
 
   if (p === '/api/auth/me') {
