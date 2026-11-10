@@ -83,7 +83,7 @@
     const pad = (hi - lo) * 0.05 || 1; lo -= pad; hi += pad;
 
     const W = Math.max(320, Math.min(window.innerWidth, 900) - 24), H = Math.max(260, Math.round(window.innerHeight * (window.innerWidth > window.innerHeight ? 0.62 : 0.5)));
-    const R = 104, T = 10, B = 22, sx = (i) => 6 + i * (W - R - 12) / (bars.length - 1), sy = (v) => T + (hi - v) / (hi - lo) * (H - T - B);
+    const R = 118, T = 10, B = 22, sx = (i) => 6 + i * (W - R - 12) / (bars.length - 1), sy = (v) => T + (hi - v) / (hi - lo) * (H - T - B);
     F.geo = { W, sx, bars, cl, a50, a200, n: bars.length, daily };
     let s = '';
     for (let k = 0; k <= 4; k++) { const v = lo + (hi - lo) * k / 4, y = sy(v).toFixed(1); s += '<line x1="0" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '" stroke="' + C.grid + '"/><text x="' + (W - R + 6) + '" y="' + (+y + 3) + '" font-size="10" fill="#6B7686">' + f$(v) + '</text>'; }
@@ -96,10 +96,13 @@
     // level lines with tags on the right edge; tags nudged apart so they never overlap
     const tags = lines.map((x) => ({ x, y: sy(x.p) })).sort((a, b) => a.y - b.y);
     for (let k = 1; k < tags.length; k++) if (tags[k].y - tags[k - 1].y < 16) tags[k].y = tags[k - 1].y + 16;
+    const yMax = H - B - 8, yMin = T + 8; // keep every tag inside the chart: push the stack back up if it ran off the bottom
+    if (tags.length && tags[tags.length - 1].y > yMax) { tags[tags.length - 1].y = yMax; for (let k = tags.length - 2; k >= 0; k--) if (tags[k + 1].y - tags[k].y < 16) tags[k].y = tags[k + 1].y - 16; }
+    tags.forEach((o) => { o.y = Math.max(yMin, o.y); });
     tags.forEach((o) => { const y0 = sy(o.x.p).toFixed(1);
       s += '<line x1="0" x2="' + (W - R) + '" y1="' + y0 + '" y2="' + y0 + '" stroke="' + o.x.c + '" stroke-width="' + o.x.w + '" stroke-opacity="' + (o.x.faint ? .45 : .9) + '" stroke-dasharray="' + (o.x.faint ? '2 4' : '6 4') + '"/>' +
         '<rect x="' + (W - R + 2) + '" y="' + (o.y - 8).toFixed(1) + '" width="' + (R - 4) + '" height="16" rx="5" fill="' + o.x.c + '" fill-opacity="' + (o.x.faint ? .12 : .2) + '"/>' +
-        '<text x="' + (W - R + 7) + '" y="' + (o.y + 3.5).toFixed(1) + '" font-size="9.5" font-weight="600" fill="' + o.x.c + '">' + o.x.t.replace(/ \$.*/, '') + ' ' + f$(o.x.p) + '</text>'; });
+        '<text x="' + (W - R + 7) + '" y="' + (o.y + 3.5).toFixed(1) + '" font-size="9.5" font-weight="600" fill="' + o.x.c + '">' + o.x.t.replace(/ \$.*/, '').replace('Resistance', 'Resist.') + ' ' + f$(o.x.p) + '</text>'; });
     const lx = sx(cl.length - 1), ly = sy(last);
     s += '<circle cx="' + lx.toFixed(1) + '" cy="' + ly.toFixed(1) + '" r="3.5" fill="' + C.line + '"/>';
     const svg = '<svg class="fsSvg" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Setup chart"><defs><linearGradient id="fsg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + C.line + '" stop-opacity=".18"/><stop offset=".9" stop-color="' + C.line + '" stop-opacity="0"/></linearGradient></defs>' + s + '<line class="fsV" x1="0" x2="0" y1="' + T + '" y2="' + (H - B) + '" stroke="rgba(255,255,255,.35)" style="display:none"/></svg>';
@@ -123,7 +126,7 @@
   function hover(e) {
     const g = F.geo, d = el(), svg = d.querySelector('.fsSvg'); if (!g || !svg) return;
     const r = svg.getBoundingClientRect(), x = (e.clientX - r.left) * (g.W / r.width);
-    let i = Math.round((x - 6) / ((g.W - 104 - 12) / (g.n - 1))); if (i < 0 || i >= g.n) return;
+    let i = Math.round((x - 6) / ((g.W - 118 - 12) / (g.n - 1))); if (i < 0 || i >= g.n) return;
     const b = g.bars[i], v = d.querySelector('.fsV'), h = d.querySelector('.fsH'); const X = g.sx(i);
     v.setAttribute('x1', X); v.setAttribute('x2', X); v.style.display = '';
     const t = new Date(+b.time || b.time); const ds = isNaN(t) ? '' : g.daily ? t.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' });

@@ -8,11 +8,15 @@
   const D = document, TK = 'jt.tok';
   const get = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const set = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} };
-  const esc2 = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const esc2 = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const api = (path, body) => fetch(path, { method: body ? 'POST' : 'GET', headers: Object.assign({ 'content-type': 'application/json' }, get(TK) ? { authorization: 'Bearer ' + get(TK) } : {}), body: body ? JSON.stringify(body) : undefined }).then((r) => r.json().then((j) => (r.ok ? j : Promise.reject(j))));
   const MARK = () => (window.jmMark ? jmMark(64) : '');
   const A = { user: null, badge: { joins: 0, visits: 0, feedback: 0 }, ready: false };
   window.JT_AUTH = A;
+  const of = window.fetch; window.fetch = function (u, o) {
+    const href = String(u && u.url || u), isApi = /^\/api\/|jumptrade\.app\/api\//.test(href) && typeof u === 'string';
+    if (isApi && get(TK)) { o = Object.assign({}, o || {}); const hd = new Headers(o.headers || {}); if (!hd.has('authorization')) hd.set('authorization', 'Bearer ' + get(TK)); o.headers = hd; }
+    return of.call(this, u, o).then((r) => { if (r.status === 401 && /\/api\/(tool|ai|sync|push|feedback)/.test(href) && !D.getElementById('jtGate') && !inv) { set(TK, null); if (D.body) lockScreen(); } return r; }); };
   D.documentElement.classList.add('jt-auth-wait');
 
   // ---------- full-screen gate (lock screen or invite screen) ----------
@@ -59,7 +63,7 @@
   }
 
   // ---------- boot ----------
-  const inv = /^#invite=([A-Za-z0-9]{12,60})$/.exec(window.JT_HASH0 || location.hash);
+  const inv = /^#invite=([A-Za-z0-9]{8,60})$/.exec(window.JT_HASH0 || location.hash);
   function done() { A.ready = true; D.documentElement.classList.remove('jt-auth-wait'); }
   if (inv) {
     // a device that is already signed in to the same person can still open a device link; a new code always wins
@@ -121,13 +125,13 @@
     const tabs = [['activity', 'Activity', cnt.activity || ''], ['testers', 'Testers', cnt.testers || ''], ['feedback', 'Feedback', newFb || cnt.feedback || ''], ['invites', 'Invites', '']];
     let body = '';
     if (!d) body = AD.err ? '<div class="empty"><b>Couldn’t load</b><span>Check your connection.</span></div>' : '<div class="skel" style="height:60vh"></div>';
-    else if (AD.tab === 'activity') body = d.act.length ? '<div class="adList">' + d.act.map((a) => '<div class="adRow' + (isNew(a.t) ? ' nw' : '') + '"><i class="adI ' + a.type + '"></i><span><b>' + esc2(a.name) + '</b> ' + (a.type === 'join' ? 'joined the beta' : a.type === 'device' ? 'added a device' : 'opened the app') + (a.dev ? ' · ' + esc2(a.dev) : '') + '</span><small>' + ago(a.t) + '</small></div>').join('') + '</div>' : '<div class="empty"><b>No activity yet</b><span>Send an invite from the Invites tab.</span></div>';
+    else if (AD.tab === 'activity') body = d.act.length ? '<div class="adList">' + d.act.map((a) => '<div class="adRow' + (isNew(a.t) ? ' nw' : '') + '"><i class="adI ' + (/^(join|device|visit)$/.test(a.type) ? a.type : '') + '"></i><span><b>' + esc2(a.name) + '</b> ' + (a.type === 'join' ? 'joined the beta' : a.type === 'device' ? 'added a device' : 'opened the app') + (a.dev ? ' · ' + esc2(a.dev) : '') + '</span><small>' + ago(a.t) + '</small></div>').join('') + '</div>' : '<div class="empty"><b>No activity yet</b><span>Send an invite from the Invites tab.</span></div>';
     else if (AD.tab === 'testers') { const U = d.users.filter((u) => !u.owner);
       body = U.length ? '<div class="adList">' + U.map((u) => '<div class="adU' + (u.off ? ' off' : '') + '"><div class="adUt"><b>' + esc2(u.name) + '</b><small>' + (u.off ? 'Access off' : 'Last seen ' + ago(u.last)) + '</small></div>' +
         '<div class="adStats"><div><b>' + u.visits + '</b><span>visits</span></div><div><b>' + u.week + '</b><span>this week</span></div><div><b>' + u.activeDays + '</b><span>days used</span></div></div>' +
         '<div class="adUm">Joined ' + when(u.created) + (u.devs.length ? ' · ' + esc2(u.devs.join(', ')) : '') + (u.inv ? ' · invite “' + esc2(u.inv) + '”' : '') + '</div>' +
         '<button class="adBtn ghost" data-adu="' + u.uid + '" data-off="' + (u.off ? 0 : 1) + '">' + (u.off ? 'Turn access back on' : 'Turn off access') + '</button></div>').join('') + '</div>' : '<div class="empty"><b>No testers yet</b><span>Create an invite and send it to someone.</span></div>'; }
-    else if (AD.tab === 'feedback') body = d.feedback.length ? '<div class="adList">' + d.feedback.map((f) => '<div class="adF' + (isNew(f.t) ? ' nw' : '') + '"><div class="adFm"><b class="k ' + f.kind + '">' + (f.kind === 'bug' ? 'Bug' : f.kind === 'idea' ? 'Idea' : f.kind === 'ux' ? 'Feel & navigation' : esc2(f.kind)) + '</b>' + (f.name ? ' · ' + esc2(f.name) : '') + (f.page ? ' · on ' + esc2(f.page) : '') + '<small>' + when(f.t) + '</small></div><p>' + esc2(f.text) + '</p></div>').join('') + '</div>' : '<div class="empty"><b>No feedback yet</b><span>Testers send it from the menu: Settings → Send feedback.</span></div>';
+    else if (AD.tab === 'feedback') body = d.feedback.length ? '<div class="adList">' + d.feedback.map((f) => '<div class="adF' + (isNew(f.t) ? ' nw' : '') + '"><div class="adFm"><b class="k ' + (/^(bug|idea|ux)$/.test(f.kind) ? f.kind : 'other') + '">' + (f.kind === 'bug' ? 'Bug' : f.kind === 'idea' ? 'Idea' : f.kind === 'ux' ? 'Feel & navigation' : 'Other') + '</b>' + (f.name ? ' · ' + esc2(f.name) : '') + (f.page ? ' · on ' + esc2(f.page) : '') + '<small>' + when(f.t) + '</small></div><p>' + esc2(f.text) + '</p></div>').join('') + '</div>' : '<div class="empty"><b>No feedback yet</b><span>Testers send it from the menu: Settings → Send feedback.</span></div>';
     else body = '<div class="adNew"><input id="adLabel" type="text" maxlength="40" placeholder="Who is it for? (e.g. Sam)"><button class="adBtn" data-adinv>Create invite link</button><div id="adOut"></div></div>' +
       (d.invites.length ? '<div class="adList">' + d.invites.map((i) => '<div class="adRow"><i class="adI ' + (i.used ? 'join' : i.off ? 'off' : 'wait') + '"></i><span><b>' + esc2(i.label || 'Invite') + '</b> ' + (i.used ? 'joined ' + ago(i.used) : i.off ? 'cancelled' : 'not used yet') + '</span>' + (!i.used && !i.off ? '<button class="adX" data-adioff="' + i.id + '">Cancel</button>' : '<small>' + when(i.created) + '</small>') + '</div>').join('') + '</div>' : '') +
       '<div class="adSet"><div class="adSetR"><span><b>Lock the site</b><small>' + (d.locked ? 'On: only people with an invite can use jumptrade.' : 'Off: anyone with the address can use it.') + '</small></span><button class="adTog' + (d.locked ? ' on' : '') + '" data-adlock aria-label="Lock"></button></div>' +

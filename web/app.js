@@ -49,7 +49,7 @@ const etClock = () => new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_
 const px = (p) => p == null || isNaN(p) ? '—' : (p < 1 ? p.toFixed(4) : p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 const money = (v) => !v ? '—' : v >= 1e12 ? '$' + (v / 1e12).toFixed(2) + 'T' : v >= 1e9 ? '$' + (v / 1e9).toFixed(1) + 'B' : v >= 1e6 ? '$' + (v / 1e6).toFixed(0) + 'M' : '$' + Math.round(v / 1e3) + 'K';
 const big = (v) => !v ? '—' : v >= 1e9 ? (v / 1e9).toFixed(1) + 'B' : v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(0) + 'K' : String(Math.round(v));
-const pctS = (p) => (p >= 0 ? '+' : '') + p.toFixed(p >= 100 || p <= -100 ? 0 : 1) + '%';
+const pctS = (p) => (p == null || !isFinite(p) ? '—' : (p >= 0 ? '+' : '') + (+p).toFixed(p >= 100 || p <= -100 ? 0 : 1) + '%');
 const chgS = (c, p, price) => (c >= 0 ? '+$' : '−$') + (price < 1 ? Math.abs(c).toFixed(4) : Math.abs(c).toFixed(2)) + ' ' + pctS(p);
 const ago = (t) => { const s = Math.max(0, Math.round((Date.now() - t) / 1000)); return s < 5 ? 'just now' : s < 60 ? s + 's ago' : s < 3600 ? Math.floor(s / 60) + 'm ago' : s < 86400 ? Math.floor(s / 3600) + 'h ago' : Math.floor(s / 86400) + 'd ago'; };
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -173,12 +173,13 @@ const ERRCOPY = {
 };
 
 /* ---------- data loading ---------- */
+const nN = (v) => (v == null || v === '' || !isFinite(+v) ? null : +v); // missing stays missing (shown as —), not 0
 function normRank(arr) {
-  return (arr || []).map((x) => ({ sym: x.symbol, name: x.name, price: +x.price, chg: +x.change, pct: +x.change_ratio * 100, mcap: +x.market_value || 0, vol: +x.volume || 0, o: +x.open, h: +x.high, l: +x.low, pc: +x.pre_close || (+x.price - +x.change), to: +x.turnover_rate || 0 }))
+  return (arr || []).map((x) => ({ sym: x.symbol, name: x.name, price: +x.price, chg: nN(x.change), pct: nN(x.change_ratio) == null ? null : +x.change_ratio * 100, mcap: +x.market_value || 0, vol: +x.volume || 0, o: +x.open, h: +x.high, l: +x.low, pc: +x.pre_close || (+x.price - +x.change), to: +x.turnover_rate || 0 }))
     .filter((r) => r.sym && !(r.sym.length === 5 && /[WUR]$/.test(r.sym)) && !/\.(WS|U|R)$/.test(r.sym));
 }
 function snapRow(x, sess) {
-  let price = +x.price, chg = +x.change, pct = +x.change_ratio * 100;
+  let price = +x.price, chg = nN(x.change), pct = nN(x.change_ratio) == null ? null : +x.change_ratio * 100;
   if ((sess === 'pre' || sess === 'after') && x.extend_hour_last_price) { price = +x.extend_hour_last_price; chg = +x.extend_hour_change; pct = +x.extend_hour_change_ratio * 100; }
   if (sess === 'overnight' && x.ovn_price) { price = +x.ovn_price; chg = +x.ovn_change; pct = +x.ovn_change_ratio * 100; }
   const ext = (sess === 'pre' || sess === 'after') && x.extend_hour_last_price;

@@ -28,8 +28,7 @@
       s[i].parentNode.insertBefore(b, s[i]);
     }
   }
-  var OPTS = [['dark', 'Dark', 'Obsidian + electric blue', '#0A0A0A'],
-              ['light', 'Light', 'Alabaster + electric blue', '#ECEBE8']];
+  var OPTS = [['dark', 'Dark', 'Obsidian + electric blue', '#0A0A0A']];
   var wrap = D.createElement('div'); wrap.id = 'thm'; wrap.setAttribute('role', 'dialog'); wrap.setAttribute('aria-label', 'Appearance');
   function paint() {
     var p = window.JT_PREF || 'dark';

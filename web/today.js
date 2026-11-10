@@ -288,7 +288,7 @@
     setHTML($('flowSeg'), intelSeg('flow')); loadFlow(); $('flFresh').textContent = S.stamp['fl:feed'] ? 'Updated ' + ago(S.stamp['fl:feed']) : '';
     $('flowF').innerHTML = [['all', 'All'], ['buy', 'Big buys'], ['sell', 'Big sells'], ['mine', 'My lists']].map((x) => '<button class="chip' + (T.flowF === x[0] ? ' on' : '') + '" data-flowf="' + x[0] + '">' + x[1] + '</button>').join('');
     const box = $('flowList'); if (!live()) { setHTML(box, '<div class="empty"><b>Coming soon to the web version</b></div>'); return; }
-    if (!T.flow) { setHTML(box, '<div class="empty"><b>Loading block trades…</b></div>'); return; }
+    if (!T.flow) { setHTML(box, '<div class="empty"><b>Loading buying and selling pressure…</b></div>'); return; }
     const mine = S.allWl || {}; const f = T.flow.filter((x) => T.flowF === 'all' || (T.flowF === 'buy' && x.alert_type === 'MAJOR_BUY') || (T.flowF === 'sell' && x.alert_type === 'MAJOR_SELL') || (T.flowF === 'mine' && mine[x.symbol]));
     setHTML(box, '<div class="glass"><div class="cap">WHAT THIS IS</div><div class="small" style="color:#C9D2E0">Sudden bursts of buying or selling: a single minute trading 8× or more a stock’s normal volume, worth $2M+. A burst while the price rises is a <b style="color:#5EE0A0">major buy</b>; while it falls, a <b style="color:#FF8A8A">major sell</b>. These often mean an institution is moving size.</div></div>' +
       (f.length ? '<div class="tvwrap">' + f.map((x) => { const q = T.wlQ[x.symbol]; const buy = x.alert_type === 'MAJOR_BUY'; const c = buy ? '#5EE0A0' : x.alert_type === 'MAJOR_SELL' ? '#FF8A8A' : '#C9D2E0'; const val = q && q.price ? +x.volume * q.price : null;

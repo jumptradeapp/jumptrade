@@ -34,7 +34,7 @@
     const n = ENR.whyItem(sym);
     return '<div class="glass sec why2" style="--c:' + c + '">' + secCap('WHY IT’S MOVING', c) +
       (n ? '<a class="whyh" href="' + esc(n.url) + '" target="_blank" rel="noopener"><b>' + esc(n.title) + '</b><span>' + esc(n.source || '') + ' · ' + ago(Date.parse(n.publish_time)) + ' ›</span></a>'
-         : '<p class="desc dim">No fresh headline in the last 3 days. The move is likely technical: momentum, volume or sector flow.</p>') + '</div>';
+         : '<p class="desc dim">No matching headline in the last 3 days.</p>') + '</div>';
   };
 
   // ---------- money flow ----------
@@ -59,7 +59,7 @@
       h += '<div class="cap" style="margin-top:12px">BIG ORDERS · LAST ' + rows.length + ' DAYS</div><div class="f5">' + rows.map((r, i) => { const v = vals[i];
         return '<div><i style="height:' + Math.max(3, Math.abs(v) / m * 34).toFixed(0) + 'px;background:' + (v >= 0 ? C.up : C.dn) + '"></i><span>' + r.date.slice(4, 6) + '/' + r.date.slice(6, 8) + '</span></div>'; }).join('') + '</div>';
     }
-    return h + '<p class="foot" style="text-align:left">Dollar value of buy minus sell orders, grouped by order size. Big orders usually mean institutions.</p></div>';
+    return h + '<p class="foot" style="text-align:left">Dollar value of buy minus sell orders, grouped by order size. Estimated from trade sizes, not confirmed buyers.</p></div>';
   };
 
   // ---------- earnings ----------

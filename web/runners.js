@@ -85,7 +85,7 @@
         (buy
           ? '<span class="pbDo go"><b>' + (r.kind === 'breakout' ? 'Buy if it goes above ' + $$(r.entry) : 'Buy around ' + $$(r.entry)) + '</b></span>' +
             '<span class="pbPlan"><span><i style="color:' + P.dn + '">Get out at ' + $$(r.stop) + '</i> if it drops. You lose ' + $$(r.risk) + ' a share.</span><span><i style="color:' + P.up + '">Take profit at ' + $$(r.target) + '.</i> You make ' + $$(r.risk * 2) + ' a share.</span></span>' +
-            '<small class="pbWhy"><b>Why: ' + r.signals + ' signs agree</b> · ' + plainWhy(r) + '</small>'
+            '<small class="pbWhy"><b>Why:</b> ' + plainWhy(r) + '</small>'
           : '<span class="pbDo wait"><b>Wait. Not a buy yet.</b></span>' +
             '<small class="pbWhy">Only ' + r.signals + ' of the 3 signs needed: ' + plainWhy(r) + '. It becomes a buy if a third sign shows up' + (r.entry ? ' and it trades above ' + $$(r.entry) : '') + '.</small>') +
         '</button>'; };
@@ -93,6 +93,6 @@
       : !rows.length && !watch.length ? '<p class="desc dim">No clear setups right now. Nothing has 3+ signals lined up. That’s a fine answer: sitting out is a position.</p>'
       : rows.map(one).join('') + (watch.length ? '<div class="pbSub">Keep an eye on these</div>' + watch.map(one).join('') : '');
     const stale = B.from ? '<p class="pbFrom">From the last session (' + new Date(B.from).toLocaleDateString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) + '). New picks when the market wakes up.</p>' : '';
-    return card(B.from ? 'YOUR NEXT MOVE' : 'YOUR MOVE TODAY', '#5EE0A0', stale + body + (B.loadRec(), B.recLine()) + '<p class="pbNote">Ideas, not advice. A stock becomes a buy only when 3 separate signs line up: an early-run score, heavy volume, fresh news, big buyers, analyst upgrades or trader buzz.' + (B.at && !B.from ? ' Updated ' + ago(B.at) + '.' : '') + '</p>', '<button class="hmr" data-tab="runners">Radar ›</button>');
+    return card(B.from ? 'YOUR NEXT MOVE' : 'YOUR MOVE TODAY', '#5EE0A0', stale + body + (B.loadRec(), B.recLine()) + '<p class="pbNote">Ideas, not advice. A stock becomes a buy only when different kinds of evidence line up: the Jump radar (momentum, volume, news), buying pressure, analyst upgrades and trader buzz each count once.' + (B.at && !B.from ? ' Updated ' + ago(B.at) + '.' : '') + '</p>', '<button class="hmr" data-tab="runners">Radar ›</button>');
   };
 })();

@@ -11,8 +11,22 @@ const day = (t) => new Date(t - 5 * 3600e3).toISOString().slice(0, 10); // ET-is
 const dev = (ua) => { ua = String(ua || ''); return /iPad/.test(ua) ? 'iPad' : /iPhone/.test(ua) ? 'iPhone' : /Android/.test(ua) ? 'Android' : /Macintosh/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : 'Browser'; };
 const VISIT_GAP = 30 * 60e3; // a new "session" after 30 minutes away
 
+const SESS_MS = 90 * 864e5;
+function tokOf(req) {
+  const m = /^Bearer\s+([A-Za-z0-9]{20,80})$/.exec(req.headers.get('authorization') || ''); if (m) return m[1];
+  const c = /(?:^|;\s*)jt_s=([A-Za-z0-9]{20,80})/.exec(req.headers.get('cookie') || ''); return c ? c[1] : null;
+}
+export async function sessionFrom(req, env, vget) {
+  const tok = tokOf(req); if (!tok) return null; const th = (await sha(tok)).slice(0, 32);
+  const s = await vget(env, 'sess_' + th); if (!s || !s.uid || Date.now() - (s.t || 0) > SESS_MS) return null;
+  const U = (await vget(env, 'users')) || {}; const u = U[s.uid]; if (!u || u.off) return null; return { u, U, tokHash: th, tok };
+}
+export const cookieFor = (tok) => 'jt_s=' + tok + '; Path=/; Max-Age=' + Math.round(SESS_MS / 1000) + '; HttpOnly; Secure; SameSite=Lax';
+export const KINDS = ['bug', 'idea', 'ux', 'other'];
+
 export async function authRoutes(url, req, env, ctx, H) {
-  const { vget, vput, json, notifyOwner } = H;
+  const { vget, vput, notifyOwner } = H;
+  const json = (o, s, extra) => H.json(o, s || 200, Object.assign({ 'cache-control': 'no-store' }, o && o.tok ? { 'set-cookie': cookieFor(o.tok) } : {}, extra || {}));
   const p = url.pathname;
   if (p.indexOf('/api/auth/') !== 0 && p.indexOf('/api/admin/') !== 0) return null;
   const body = async () => { try { return JSON.parse((await req.text()).slice(0, 8000)); } catch (e) { return {}; } };
@@ -20,11 +34,7 @@ export async function authRoutes(url, req, env, ctx, H) {
   const users = async () => (await vget(env, 'users')) || {};
   const logAct = async (a) => { const L = (await vget(env, 'act')) || []; L.unshift(a); await vput(env, 'act', L.slice(0, 400)); };
   const pub = (u) => ({ uid: u.uid, name: u.name, owner: !!u.owner, sync: u.sync });
-  async function who() {
-    const m = /^Bearer\s+([A-Za-z0-9]{20,80})$/.exec(req.headers.get('authorization') || ''); if (!m) return null;
-    const s = await vget(env, 'sess_' + (await sha(m[1])).slice(0, 32)); if (!s) return null;
-    const U = await users(); const u = U[s.uid]; if (!u || u.off) return null; return { u, U, tokHash: (await sha(m[1])).slice(0, 32) };
-  }
+  const who = () => sessionFrom(req, env, vget);
   async function newSession(U, u, ua) {
     const tok = rnd(30); await vput(env, 'sess_' + (await sha(tok)).slice(0, 32), { uid: u.uid, t: Date.now() });
     const d = dev(ua); u.devs = u.devs || []; if (u.devs.indexOf(d) < 0) u.devs.push(d);
@@ -42,6 +52,8 @@ export async function authRoutes(url, req, env, ctx, H) {
     const ua = req.headers.get('user-agent') || ''; const U = await users(); const now = Date.now();
     const h = await sha(code);
     if (h === OWNER_HASH) { // owner bootstrap: works once
+      const lo = await H.lease('owner_boot', 15000); if (!lo.ok) return json({ error: 'slow' }, 429);
+      const U = (await users());
       if (Object.values(U).some((u) => u.owner)) return json({ error: 'used' }, 403);
       const u = { uid: rnd(9), name: name || 'Owner', owner: true, created: now, last: now, visits: 1, days: { [day(now)]: 1 }, sync: rnd(24), inv: 'Owner' };
       U[u.uid] = u; const tok = await newSession(U, u, ua); await vput(env, 'users', U); return json({ tok, user: pub(u) });
@@ -74,7 +86,7 @@ export async function authRoutes(url, req, env, ctx, H) {
     if (now - (u.last || 0) > VISIT_GAP) { u.visits = (u.visits || 0) + 1; const d = day(now); u.days = u.days || {}; u.days[d] = (u.days[d] || 0) + 1; const ks = Object.keys(u.days).sort(); while (ks.length > 90) delete u.days[ks.shift()]; if (!u.owner) ctx.waitUntil(logAct({ t: now, uid: u.uid, name: u.name, type: 'visit', dev: dev(req.headers.get('user-agent')) })); }
     u.last = now; const d0 = dev(req.headers.get('user-agent')); u.devs = u.devs || []; if (u.devs.indexOf(d0) < 0) u.devs.push(d0);
     await vput(env, 'users', U);
-    return json({ user: pub(u), locked: !!g.locked });
+    return json({ user: pub(u), locked: !!g.locked }, 200, w.tok && !/jt_s=/.test(req.headers.get('cookie') || '') ? { 'set-cookie': cookieFor(w.tok) } : {});
   }
 
   if (p === '/api/auth/devlink' && req.method === 'POST') {
@@ -85,7 +97,7 @@ export async function authRoutes(url, req, env, ctx, H) {
     I[(await sha(code)).slice(0, 16)] = { label: w.u.name + ' · new device', created: now, dev: w.u.uid, exp: now + 2 * 864e5 }; await vput(env, 'invites', I);
     return json({ code: code.slice(0, 4) + '-' + code.slice(4), link: 'https://jumptrade.app/#invite=' + code });
   }
-  if (p === '/api/auth/logout' && req.method === 'POST') { const w = await who(); if (w) await vput(env, 'sess_' + w.tokHash, null); return json({ ok: true }); }
+  if (p === '/api/auth/logout' && req.method === 'POST') { const w = await who(); if (w) await vput(env, 'sess_' + w.tokHash, null); return json({ ok: true }, 200, { 'set-cookie': 'jt_s=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax' }); }
 
   // ----- owner only -----
   const w = await who(); if (!w || !w.u.owner) return json({ error: 'auth' }, 401);

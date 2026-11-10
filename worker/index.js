@@ -5,7 +5,7 @@
 
 import { Webull } from './webull.js';
 import { makeVapid, sendPush } from './push.js';
-import { authRoutes } from './auth.js';
+import { authRoutes, sessionFrom, KINDS } from './auth.js';
 
 const Y1 = 'https://query1.finance.yahoo.com';
 const Y2 = 'https://query2.finance.yahoo.com';
@@ -375,9 +375,8 @@ T.get_playbook = async () => {
   const wk = new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10);
   const S = {}; const add = (s, k, txt, w) => { if (!/^[A-Z]{1,5}$/.test(s || '')) return; const o = S[s] || (S[s] = { sig: {}, why: [] }); if (o.sig[k]) return; o.sig[k] = w; o.why.push(txt); };
   (run.from ? [] : run.data || []).forEach((r) => {
-    if (r.score >= 60) add(r.symbol, 'mom', 'Jump radar score ' + r.score, 1.2);
-    if (r.rvol >= 2) add(r.symbol, 'vol', 'Volume ' + (r.rvol >= 10 ? Math.round(r.rvol) : r.rvol) + '× normal', 1);
-    if (r.news) add(r.symbol, 'news', 'Fresh news: ' + r.news.title.slice(0, 80), 1.1);
+    // the radar score already includes volume and news, so together they count as ONE sign; the extra lines only explain it
+    if (r.score >= 60 || r.rvol >= 2) { add(r.symbol, 'radar', 'Jump radar score ' + r.score, 1.3); const o = S[r.symbol]; if (o) { if (r.rvol >= 2) o.why.push('Volume ' + (r.rvol >= 10 ? Math.round(r.rvol) : r.rvol) + '× normal'); if (r.news) o.why.push('Fresh news: ' + r.news.title.slice(0, 80)); } }
   });
   const fb = {}; (Array.isArray(flow) ? flow : []).forEach((x) => { const o = fb[x.symbol] || (fb[x.symbol] = { b: 0, s: 0, amt: 0 }); if (x.alert_type === 'MAJOR_BUY') { o.b++; o.amt += x.amount || 0; } else o.s++; });
   Object.keys(fb).forEach((s) => { const o = fb[s]; if (o.b > o.s) add(s, 'money', 'Big buying: $' + (o.amt / 1e6).toFixed(1) + 'M in bursts today', 1.1); });
@@ -574,6 +573,7 @@ export class Vault {
   }
 }
 
+const shape = (k) => { k = String(k || ''); return k.length + ' chars' + (/-/.test(k) ? ', has dashes' : ''); };
 async function wbRoutes(url, env) {
   const wb = new Webull(env);
   if (url.pathname.indexOf('/api/wb/') === 0) { // owner-only diagnostics: locked behind a key whose hash is all that lives in code
@@ -632,7 +632,7 @@ async function wbRoutes(url, env) {
 }
 
 async function runTool(tool, input, ctx, env, fresh) {
-  const fn = T[tool] || (WBMAP[tool] ? async () => [] : null); if (!fn) return json({ error: { code: 'tool_error', message: 'Unknown tool ' + tool } }, 404);
+  const fn = T[tool] || (WBMAP[tool] ? async () => { throw Object.assign(new Error('This data isn’t available right now'), { status: 503 }); } : null); // say 'unavailable', never a fake empty result if (!fn) return json({ error: { code: 'tool_error', message: 'Unknown tool ' + tool } }, 404);
   const key = new Request('https://cache.jumptrade/' + tool + '?' + encodeURIComponent(JSON.stringify(input || {})));
   const cache = caches.default;
   const hit = fresh ? null : await cache.match(key); if (hit) return hit;
@@ -907,6 +907,11 @@ export default {
     CUR_ENV = env;
     if (Date.now() - UPK > 600000) { UPK = Date.now(); ctx.waitUntil(wbUpkeep(env).catch(() => {})); }
     if (req.method === 'OPTIONS') return new Response(null, { headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'POST, GET' } });
+    // Private beta: while the site is locked, every data endpoint needs a signed-in account (cookie or bearer token).
+    if (url.pathname.startsWith('/api/') && !/^\/api\/(auth\/|admin\/|health$|logo\/|alertstate$|wb\/)/.test(url.pathname) && !(url.pathname === '/api/feedback' && req.method === 'GET')) {
+      const g = (await vget(env, 'gate')) || { locked: true };
+      if (g.locked && !(await sessionFrom(req, env, vget))) return json({ error: { code: 'signin_required', message: 'jumptrade is invite-only. Sign in to continue.' } }, 401, { 'cache-control': 'no-store' });
+    }
     if (url.pathname === '/api/sync') { // device sync: a long random code is the only key; whoever has the link shares one saved copy
       const c = url.searchParams.get('c') || ''; if (!/^[A-Za-z0-9]{24,64}$/.test(c)) return json({ error: { code: 'bad_request' } }, 400);
       const k = 'sy_' + Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(c)))).slice(0, 16).map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -920,11 +925,11 @@ export default {
         const text = String(b.text || '').trim().slice(0, 2000); if (text.length < 3) return json({ error: { code: 'empty' } }, 400);
         const ip = req.headers.get('cf-connecting-ip') || '?', day = new Date().toISOString().slice(0, 10), rk = 'fbr_' + day + '_' + ip.replace(/[^0-9a-f.:]/gi, '');
         const n = +((await vget(env, rk)) || 0); if (n >= 20) return json({ error: { code: 'limit' } }, 429); await vput(env, rk, n + 1);
-        const L = (await vget(env, 'fb')) || []; L.unshift({ t: Date.now(), kind: String(b.kind || 'other').slice(0, 20), name: String(b.name || '').slice(0, 40), page: String(b.page || '').slice(0, 40), ua: String(req.headers.get('user-agent') || '').slice(0, 160), text }); await vput(env, 'fb', L.slice(0, 500)); ctx.waitUntil(notifyOwner(env, { title: 'New feedback' + (L[0].name ? ' from ' + L[0].name : '') + ' · ' + (L[0].kind === 'bug' ? 'Bug' : L[0].kind === 'idea' ? 'Idea' : 'Feel & navigation'), body: text.slice(0, 140), url: '/#admin', tag: 'jt-admin' })); return json({ ok: true }); }
+        const L = (await vget(env, 'fb')) || []; L.unshift({ t: Date.now(), kind: KINDS.indexOf(String(b.kind)) >= 0 ? String(b.kind) : 'other', name: String(b.name || '').slice(0, 40), page: String(b.page || '').slice(0, 40), ua: String(req.headers.get('user-agent') || '').slice(0, 160), text }); await vput(env, 'fb', L.slice(0, 500)); ctx.waitUntil(notifyOwner(env, { title: 'New feedback' + (L[0].name ? ' from ' + L[0].name : '') + ' · ' + (L[0].kind === 'bug' ? 'Bug' : L[0].kind === 'idea' ? 'Idea' : 'Feel & navigation'), body: text.slice(0, 140), url: '/#admin', tag: 'jt-admin' })); return json({ ok: true }); }
       const k = url.searchParams.get('k') || ''; const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(k)); const hx = [...new Uint8Array(d)].map((x) => x.toString(16).padStart(2, '0')).join('');
       if (hx !== 'ca6353c852d6726d83a72504e80cf4860e5ac4c8d585b9d9cdb5465a9fec4439') return new Response('Not found', { status: 404 });
-      const L = (await vget(env, 'fb')) || []; const E = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-      return new Response('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>jumptrade feedback</title><body style="font:15px -apple-system,system-ui;background:#0A0E15;color:#ECEBE8;margin:0;padding:16px"><h2 style="margin:0 0 12px">Beta feedback · ' + L.length + '</h2>' + L.map((x) => '<div style="padding:12px 14px;margin-bottom:10px;border-radius:12px;background:#141C2B"><div style="font-size:12px;color:#9AA6B6;margin-bottom:6px"><b style="color:' + (x.kind === 'bug' ? '#FF8A8A' : x.kind === 'idea' ? '#5EE0A0' : '#9CC0FF') + '">' + E(x.kind.toUpperCase()) + '</b> · ' + new Date(x.t).toLocaleString('en-US', { timeZone: 'America/New_York' }) + (x.name ? ' · ' + E(x.name) : '') + (x.page ? ' · on ' + E(x.page) : '') + '</div><div style="white-space:pre-wrap;line-height:1.45">' + E(x.text) + '</div></div>').join('') + '</body>', { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } }); }
+      const L = (await vget(env, 'fb')) || []; const E = (x) => String(x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      return new Response('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>jumptrade feedback</title><body style="font:15px -apple-system,system-ui;background:#0A0E15;color:#ECEBE8;margin:0;padding:16px"><h2 style="margin:0 0 12px">Beta feedback · ' + L.length + '</h2>' + L.map((x) => '<div style="padding:12px 14px;margin-bottom:10px;border-radius:12px;background:#141C2B"><div style="font-size:12px;color:#9AA6B6;margin-bottom:6px"><b style="color:' + (x.kind === 'bug' ? '#FF8A8A' : x.kind === 'idea' ? '#5EE0A0' : '#9CC0FF') + '">' + E(String(x.kind).toUpperCase()) + '</b> · ' + new Date(x.t).toLocaleString('en-US', { timeZone: 'America/New_York' }) + (x.name ? ' · ' + E(x.name) : '') + (x.page ? ' · on ' + E(x.page) : '') + '</div><div style="white-space:pre-wrap;line-height:1.45">' + E(x.text) + '</div></div>').join('') + '</body>', { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } }); }
     if (url.pathname.indexOf('/api/ai') === 0) { const r = await aiRoutes(url, req, env); if (r) return r; }
     if (url.pathname.indexOf('/api/push/') === 0) { const r = await pushRoutes(url, req, env, ctx); if (r) return r; }
     if (url.pathname === '/api/alertstate') { const a = (await vget(env, 'alertrun')) || {}; const s = (await vget(env, 'subs')) || {}; const pr = (await vget(env, 'prerun')) || {}; return json({ last: a.t ? new Date(a.t).toISOString() : null, sent: a.sent, error: a.error, closed: a.closed, subs: Object.keys(s).length, precompute: { t: pr.t ? new Date(pr.t).toISOString() : null, r: pr.r } }); }
@@ -942,10 +947,10 @@ export default {
       }
       const miss = new Response('', { status: 404, headers: { 'cache-control': 'public, max-age=86400' } }); ctx.waitUntil(caches.default.put(ck, miss.clone())); return miss;
     }
-    if (url.pathname === '/api/tool' && req.method === 'GET') { let inp = {}; try { inp = JSON.parse(url.searchParams.get('input') || '{}'); } catch (e) {} return runTool(url.searchParams.get('tool'), inp, ctx, env); }
+    if (url.pathname === '/api/tool' && req.method === 'GET') { const raw = url.searchParams.get('input') || '{}'; if (raw.length > 2000) return json({ error: { code: 'too_big' } }, 413); let inp = {}; try { inp = JSON.parse(raw); } catch (e) {} return runTool(url.searchParams.get('tool'), inp, ctx, env); }
     if (url.pathname === '/api/scan') { try { const f = await scanAll(false); return json({ ok: true, count: f.length, top: f.slice(0, 8).map((q) => q.symbol + ' ' + (q.regularMarketChangePercent || 0).toFixed(1) + '%') }); } catch (e) { return json({ ok: false, error: String(e.message || e) }); } }
     if (url.pathname === '/api/session') { const s2 = await session(true); return json({ cookie: !!s2.cookie, crumb: !!s2.crumb }); }
-    if (url.pathname === '/api/tool' && req.method === 'POST') { const b = await req.json().catch(() => ({})); return runTool(b.tool, b.input, ctx, env); }
+    if (url.pathname === '/api/tool' && req.method === 'POST') { if (+(req.headers.get('content-length') || 0) > 4000) return json({ error: { code: 'too_big' } }, 413); const b = await req.json().catch(() => ({})); return runTool(b.tool, b.input, ctx, env); }
     if (url.pathname.startsWith('/api/')) return json({ error: { code: 'bad_request', message: 'Unknown endpoint' } }, 404);
     return env.ASSETS.fetch(req);
   },

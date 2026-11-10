@@ -64,7 +64,9 @@
   const weigh = (names) => {
     const rows = names.map((n) => { const x = B.q[n[0]]; const sc = score(x); return { s: n[0], role: n[1], why: n[2], x: x, sc: sc, w: (BASE[n[1]] || 1) * sc.m }; }).filter((r) => !(r.x && r.x.missing));
     let tot = rows.reduce((a, r) => a + r.w, 0) || 1; rows.forEach((r) => r.w /= tot);
-    for (let k = 0; k < 4; k++) { let ex = 0, free = 0; rows.forEach((r) => { if (r.w > 0.18) { ex += r.w - 0.18; r.w = 0.18; } else free += r.w; }); if (ex < 1e-4) break; rows.forEach((r) => { if (r.w < 0.18) r.w += ex * r.w / free; }); }
+    const cap = Math.max(0.18, 1 / (rows.length || 1)); // with fewer than 6 names the cap rises so the money is always fully invested
+    for (let k = 0; k < 8; k++) { let ex = 0, free = 0; rows.forEach((r) => { if (r.w > cap) { ex += r.w - cap; r.w = cap; } else free += r.w; }); if (ex < 1e-4 || !free) break; rows.forEach((r) => { if (r.w < cap) r.w += ex * r.w / free; }); }
+    const sum = rows.reduce((a, r) => a + r.w, 0) || 1; rows.forEach((r) => { r.w /= sum; });
     return rows.sort((a, b) => b.w - a.w);
   };
 
