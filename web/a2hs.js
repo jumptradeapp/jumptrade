@@ -30,5 +30,7 @@
     D.body.appendChild(w); requestAnimationFrame(() => w.classList.add('on'));
   }
   window.A2HS = { open: () => open(true), close };
-  if (!standalone && !snoozed()) setTimeout(() => { if (!D.getElementById('intro') && !D.body.classList.contains('sheet-open')) open(false); }, 6000);
+  // wait until the splash, the welcome cards and any open sheet are out of the way
+  const ready = () => { let seen = '1'; try { seen = localStorage.getItem('jt.intro'); } catch (e) {} return seen && !D.getElementById('intro') && (function () { const sp = D.getElementById('splash'); return !sp || sp.style.display === 'none'; })() && !D.body.classList.contains('sheet-open') && !D.getElementById('fbS'); };
+  if (!standalone && !snoozed()) { let tries = 0; const tick = () => { if (ready()) setTimeout(() => { if (ready()) open(false); }, 2500); else if (++tries < 150) setTimeout(tick, 2000); }; setTimeout(tick, 4000); }
 })();

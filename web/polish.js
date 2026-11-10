@@ -30,13 +30,14 @@
     ['Know before you jump.', 'Every stock page explains the move: the chart with VWAP, its history after big jumps, money flow, analysts and earnings.', 'K'],
     ['Plan the trade.', 'Setups ranks the best entries with stops, targets and real win rates. Size it, log it, and the journal grades you.', 'P'],
   ];
+  if (window.JT_WEB) CARDS.unshift(['You’ve been selected.', 'You’re one of a small group beta testing jumptrade before launch. We’d appreciate your feedback on bugs, ideas that would help you, and the overall experience and navigation. Send it anytime from the menu: Settings → Send feedback.', 'B']);
   const ICON = { M: '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>',
     K: '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
     P: '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="5"/></svg>' };
   const w = D.createElement('div'); w.id = 'intro'; let k = 0;
   function paint() {
     const c = CARDS[k];
-    w.innerHTML = '<div class="inbx"><button class="inX" data-in="skip" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' + (k === 0 ? '<div class="inlogo">' + (window.jmMark ? jmMark(76) : '') + '</div>' : '<div class="inico">' + ICON[c[2]] + '</div>') +
+    w.innerHTML = '<div class="inbx"><button class="inX" data-in="skip" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' + (c[2] === 'B' ? '<div class="inbeta">BETA TESTER</div>' : '') + (k === 0 ? '<div class="inlogo">' + (window.jmMark ? jmMark(76) : '') + '</div>' : '<div class="inico">' + ICON[c[2]] + '</div>') +
       '<h2>' + c[0].replace(/\.$/, '<em>.</em>') + '</h2><p>' + c[1] + '</p>' +
       '<div class="indots">' + CARDS.map((_, i) => '<i class="' + (i === k ? 'on' : '') + '"></i>').join('') + '</div>' +
       '<button class="inbtn" data-in="next">' + (k < CARDS.length - 1 ? 'Next' : 'Get started') + '</button>' + '<div class="inrow">' + (k < CARDS.length - 1 ? '<button class="inskip" data-in="skip">Skip</button>' : '') + '<button class="inskip innever" data-in="never">Don’t show this again</button></div><div class="beta"><b>BETA TESTING · NOT FOR PUBLIC USE</b><span>Do not share with unauthorized users.</span></div></div>';
