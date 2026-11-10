@@ -128,7 +128,7 @@
   // Home widget
   B.widget = function (card) {
     B.load();
-    const body = '<p class="desc dim" style="margin:0 0 10px">Type a theme and get a ready portfolio with weights and buy levels, or pick a simple ETF mix.</p>' +
+    const body = '<button class="bldFake" data-tab="build"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Type a theme, get a portfolio</button>' +
       '<div class="bldSug hmSug">' + ['AI photonics', 'Nuclear', 'Space', 'S&P + momentum'].map((s) => '<button data-bldq="' + esc(s) + '">' + esc(s) + '</button>').join('') + '</div>';
     return card('BUILD A PORTFOLIO', '#A08CFF', body, '<button class="hmr" data-tab="build">Open ›</button>');
   };

@@ -50,7 +50,7 @@
       const t = (lab, v, col) => '<div><small>' + lab + '</small><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b></div>';
       W[cur] = (W[cur] || '') + '<button class="glass sec hm hmreg" data-plan="1" style="--c:' + hv[1] + ';border-color:' + hv[1] + '44"><div class="hmcap">' + secCap('MARKET REGIME', hv[1]) + '<span class="hmr">Plan ›</span></div>' +
         '<div class="hmrg"><b style="color:' + hv[1] + '">' + hv[0] + '</b><span>' + esc(hv[2]) + '</span></div><div class="hmst">' +
-        (spy && spy.pct != null ? t('S&amp;P', pctS(spy.pct), spy.pct >= 0 ? P.up : P.dn) : '') + t('VS 200D', (Hh.d200 >= 0 ? '+' : '') + Hh.d200.toFixed(1) + '%') + t('BREADTH', Hh.br != null ? Math.round(Hh.br * 100) + '%' : '—') + t('FEAR/GREED', Hh.fg != null ? Hh.fg : '—', Hh.fg != null && Hh.fg < 30 ? P.dn : Hh.fg > 70 ? P.up : null) + '</div></button>';
+        (spy && spy.pct != null ? t('S&amp;P', pctS(spy.pct), spy.pct >= 0 ? P.up : P.dn) : '') + t('TREND', (Hh.d200 >= 0 ? '+' : '') + Hh.d200.toFixed(1) + '%') + (Hh.br != null ? t('BREADTH', Math.round(Hh.br * 100) + '%') : '') + (Hh.fg != null ? t('MOOD', Hh.fg, Hh.fg < 30 ? P.dn : Hh.fg > 70 ? P.up : null) : '') + '</div></button>';
     } else W[cur] = (W[cur] || '') + card('MARKET REGIME', P.mute, '<div class="skel"></div><div class="skel" style="width:60%"></div>');
     // 2. top news
     cur = 'news';
@@ -115,7 +115,7 @@
 
   // ---------- widgets: config, extra widgets, customize sheet ----------
   const DEF = ['regime', 'news', 'play', 'runners', 'build', 'changed', 'pos', 'setups', 'week', 'record', 'idx', 'gainers', 'uvol', 'uopt', 'dips', 'value', 'watch', 'sectors', 'flow', 'congress', 'earn', 'upg'];
-  const OFF = { idx: 1, gainers: 1, uvol: 1, uopt: 1, dips: 1, value: 1, watch: 1, sectors: 1, flow: 1, congress: 1, earn: 1, upg: 1 };
+  const OFF = { setups: 1, idx: 1, gainers: 1, uvol: 1, uopt: 1, dips: 1, value: 1, watch: 1, sectors: 1, flow: 1, congress: 1, earn: 1, upg: 1 };
   const NAMES = { regime: ['Market regime', 'Risk-on or off, and how big to size'], runners: ['Potential runners', 'Stocks showing early signs of a run'], build: ['Build a portfolio', 'Type a theme, get a portfolio'], play: ['Your move today', 'Best setups where 3+ signals agree, with levels'], news: ['Top news', 'The three latest headlines'], changed: ['What changed', 'Big moves, ratings and Congress trades on your stocks'], pos: ['Your positions', 'Holdings that need a look'], setups: ['Top setups', 'Best 3 trades with entry and stop'], week: ['This week', 'Big releases and earnings by day'], record: ['Signal track record', 'How the signals have done'],
     idx: ['Indexes', 'S&P 500, Nasdaq 100, Russell 2000'], gainers: ['Top gainers', 'The 4 biggest movers right now'], uvol: ['Unusual volume', 'Trading far above normal volume'], uopt: ['Unusual options', 'The biggest options bets'], dips: ['Dips', 'Dip buys that are triggering'], value: ['Undervalued', 'Cheapest for their growth'], watch: ['Watchlist', 'Your names, live'], sectors: ['Sector heat', 'All sectors ranked today'], flow: ['Big money', 'Latest major block trades'], congress: ['Congress', 'Latest trades by members'], earn: ['Earnings for you', 'Your names reporting this week'], upg: ['Upgrades', 'Latest analyst upgrades and downgrades'] };
   H.cfg = function () {
@@ -123,7 +123,7 @@
     if (!c || !Array.isArray(c.order)) c = { order: DEF.slice(), hide: Object.assign({}, OFF) };
     if (!c.pm2) { c.pm2 = 1; const pi = c.order.indexOf('play'); if (pi >= 0) c.order.splice(pi, 1); }
     DEF.forEach((id) => { if (c.order.indexOf(id) < 0) { if (id === 'play') { const ni = c.order.indexOf('news'); c.order.splice(ni >= 0 ? ni + 1 : Math.min(2, c.order.length), 0, id); } else if (id === 'build') { const ri = c.order.indexOf('runners'); c.order.splice(ri >= 0 ? ri + 1 : c.order.length, 0, id); } else if (id === 'runners') { const ni = c.order.indexOf('news'); c.order.splice(ni >= 0 ? ni + 1 : Math.min(1, c.order.length), 0, id); } else c.order.push(id); if (OFF[id]) c.hide[id] = 1; } });
-    c.order = c.order.filter((id) => DEF.indexOf(id) >= 0); if (c.pm2 === 1) { c.pm2 = 2; saveCfg(c); } return c;
+    c.order = c.order.filter((id) => DEF.indexOf(id) >= 0); if (!c.pm3) { c.pm3 = 1; c.hide = c.hide || {}; c.hide.setups = 1; c.pm2 = 1; } if (c.pm2 === 1) { c.pm2 = 2; saveCfg(c); } return c;
   };
   function saveCfg(c) { if (typeof lsSet === 'function') lsSet('jt.home2', c); else try { localStorage.setItem('jt.home2', JSON.stringify(c)); } catch (e) {} }
   const row = (sym, sub, rt, rtCol, rsub) => '<button class="hmrow" data-open="' + esc(sym) + '">' + logoHTML(sym, 30) + '<span class="rn"><b>' + esc(sym) + '</b><small>' + sub + '</small></span><span class="rp"><b' + (rtCol ? ' style="color:' + rtCol + '"' : '') + '>' + rt + '</b>' + (rsub ? '<small>' + rsub + '</small>' : '') + '</span></button>';

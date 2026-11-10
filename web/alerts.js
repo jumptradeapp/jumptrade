@@ -1,7 +1,7 @@
 /* jumptrade. alerts: push notification setup, what to get, how often, and price alerts per stock */
 (function () {
   const KEY = 'jt.alerts';
-  const DEF = { news: true, newsMarket: true, runners: true, runnerMin: 80, move: true, movePct: 5, flow: true, ratings: true, earnings: true, open: false, close: false, quiet: true, cap: 12, prices: [] };
+  const DEF = { news: true, newsMarket: true, runners: true, runnerMin: 80, move: true, movePct: 5, flow: true, ratings: true, earnings: true, open: false, close: true, quiet: true, cap: 12, prices: [] };
   const load = () => { try { return Object.assign({}, DEF, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { return Object.assign({}, DEF); } };
   const save = (p) => { try { localStorage.setItem(KEY, JSON.stringify(p)); } catch (e) {} };
   let P = load();
@@ -49,7 +49,7 @@
     ['ratings', 'Analyst target changes', 'On your stocks, checked 8 AM and 7 PM'],
     ['earnings', 'Earnings reminders', 'The night before and the morning of'],
     ['open', 'Opening brief', '9:25 AM: today’s top runners'],
-    ['close', 'Closing recap', '4:05 PM: how your watchlist did'],
+    ['close', 'Closing recap', '4:15 PM: the S&P, your best and worst, top runner'],
     ['quiet', 'Quiet hours', 'Nothing 9 PM–7 AM, except your price alerts'],
   ];
   const chips = (k, vals, fmt) => '<div class="alChips">' + vals.map((v) => '<button class="chip' + (P[k] === v ? ' on' : '') + '" data-alset="' + k + '" data-v="' + v + '">' + fmt(v) + '</button>').join('') + '</div>';
