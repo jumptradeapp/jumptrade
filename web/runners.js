@@ -9,6 +9,7 @@
   setInterval(() => { if (S.tab === 'home' || S.tab === 'runners') R.load(); }, 15000);
   const scCol = (s) => s >= 70 ? '#5EE0A0' : s >= 50 ? '#F2C27A' : '#9DB8FF';
   const pct = (v) => (v >= 0 ? '+' : '') + (v * 100).toFixed(v >= 0.995 || v <= -0.995 ? 0 : 1) + '%';
+  const mv = window.JT_MV = (price, ratio) => { if (!(price > 0) || ratio == null || ratio <= -1) return pct(ratio || 0); const c = price - price / (1 + ratio), a = Math.abs(c); return (c >= 0 ? '+' : '−') + '$' + (a < 0.1 ? a.toFixed(3) : a.toFixed(2)) + ' (' + pct(ratio) + ')'; };
   const plain = (r, n) => {
     const w = (r.why || []).filter((x) => !/^[+−-]\d/.test(x) && !/cap$/.test(x));
     const nws = w.find((x) => x.indexOf('news:') === 0);
@@ -23,7 +24,7 @@
     const rows = (R.rows || []).slice(0, 8);
     const body = !R.rows ? '<div class="skel"></div><div class="skel" style="width:70%"></div><div class="skel" style="width:85%"></div>'
       : !rows.length ? '<p class="desc dim">No stocks are showing early runner signs right now.</p>'
-      : rows.map((r) => '<button class="hmrow rnrow" data-open="' + esc(r.symbol) + '">' + logoHTML(r.symbol, 30) + '<span class="rn"><b>' + esc(r.symbol) + (r.news ? ' <i class="rnnews">NEWS</i>' : '') + '</b><small>' + why(r) + '</small></span><span class="rp"><b style="color:' + (r.change_ratio >= 0 ? P.up : P.dn) + '">' + pct(r.change_ratio) + '</b><small><i class="rnsc" style="--c:' + scCol(r.score) + '">' + r.score + '</i></small></span></button>').join('');
+      : rows.map((r) => '<button class="hmrow rnrow" data-open="' + esc(r.symbol) + '">' + logoHTML(r.symbol, 30) + '<span class="rn"><b>' + esc(r.symbol) + (r.news ? ' <i class="rnnews">NEWS</i>' : '') + '</b><small>' + why(r) + '</small></span><span class="rp"><b style="color:' + (r.change_ratio >= 0 ? P.up : P.dn) + '">' + mv(r.price, r.change_ratio) + '</b><small><i class="rnsc" style="--c:' + scCol(r.score) + '">' + r.score + '</i></small></span></button>').join('');
     return card('POTENTIAL RUNNERS', '#5EE0A0', (R.from && rows.length ? '<p class="pbFrom">From the last session. Live scoring restarts at 4 AM ET.</p>' : '') + body, '<button class="hmr" data-tab="runners">All ›</button>');
   };
   R.render = function () {
@@ -38,7 +39,7 @@
     setHTML(box, head + '<div class="glass sec rnlist">' + rows.map((r) => '<button class="rnfull rn2" data-open="' + esc(r.symbol) + '"><i class="rnsc big" style="--c:' + scCol(r.score) + '">' + r.score + '</i>' + logoHTML(r.symbol, 36) +
       '<span class="rnb"><span class="rnt"><b>' + esc(r.symbol) + '</b><small>$' + (r.price < 1 ? r.price.toFixed(3) : r.price.toFixed(2)) + '</small></span>' +
       '<span class="rnw">' + plain(r, 2) + '</span></span>' +
-      '<span class="rnr"><b style="color:' + (r.change_ratio >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + pct(r.change_ratio) + '</b></span></button>').join('') + '</div>');
+      '<span class="rnr"><b style="color:' + (r.change_ratio >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + mv(r.price, r.change_ratio) + '</b></span></button>').join('') + '</div>');
   };
 })();
 
@@ -80,7 +81,7 @@
     const rows = (B.rows || []).filter((r) => r.signals >= 3).slice(0, 4);
     const watch = (B.rows || []).filter((r) => r.signals < 3).slice(0, Math.max(0, 3 - rows.length));
     const one = (r) => '<button class="pbRow" data-open="' + esc(r.symbol) + '">' + logoHTML(r.symbol, 36) +
-      '<span class="pbMain"><span class="pbTop"><b>' + esc(r.symbol) + '</b><i class="pbV ' + (r.signals >= 3 ? 'go' : 'watch') + '">' + esc(r.signals >= 3 ? (r.kind === 'breakout' ? 'BUY ABOVE ' + $$(r.entry) : 'BUY NEAR ' + $$(r.entry)) : 'WATCH') + '</i><span class="pbChg" style="color:' + ((r.change_ratio || 0) >= 0 ? P.up : P.dn) + '">' + ((r.change_ratio || 0) >= 0 ? '+' : '') + ((r.change_ratio || 0) * 100).toFixed(1) + '%</span></span>' +
+      '<span class="pbMain"><span class="pbTop"><b>' + esc(r.symbol) + '</b><i class="pbV ' + (r.signals >= 3 ? 'go' : 'watch') + '">' + esc(r.signals >= 3 ? (r.kind === 'breakout' ? 'BUY ABOVE ' + $$(r.entry) : 'BUY NEAR ' + $$(r.entry)) : 'WATCH') + '</i><span class="pbChg" style="color:' + ((r.change_ratio || 0) >= 0 ? P.up : P.dn) + '">' + ((r.change_ratio || 0) >= 0 ? '+' : '') + ((r.change_ratio || 0) * 100).toFixed(1) + '%' + (r.price > 0 && r.change_ratio != null ? '<small>' + JT_MV(r.price, r.change_ratio).split(' (')[0] + '</small>' : '') + '</span></span>' +
       '<span class="pbLv"><span>Stop <b>' + $$(r.stop) + '</b></span><span>Target <b>' + $$(r.target) + '</b></span><span class="dim">Risk ' + $$(r.risk) + ' → make ' + $$(r.risk * 2) + '</span></span>' +
       '<small class="pbWhy">' + '<b>' + r.signals + ' signals agree</b> · ' + esc(r.why.slice(0, 3).map((w) => w.replace(/^Fresh news: /, '📰 ')).join(' · ')) + '</small></span></button>';
     const body = !B.rows ? '<div class="skel"></div><div class="skel" style="width:75%"></div>'
