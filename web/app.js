@@ -282,7 +282,7 @@ function renderMovers() {
       const chip = window.TODAY ? TODAY.chip(r) : '';
       el.innerHTML = '<span class="th">' + logoHTML(r.sym, 34) + '<span class="tn"><b>' + esc(r.sym) + '</b>' + '<small>' + esc(cleanName(symName(r.sym) || r.name || '')) + '</small>' + '</span></span>' +
         '<span class="tb"><span class="tp" style="' + (flash ? 'background:' + flash : '') + '">$' + px(r.price) + '</span>' +
-        '<span class="tc" style="color:' + col + '">' + arrow + chgS(r.chg, r.pct, r.price) + '</span></span>' + sparkSVG(r.sym, 100, 30, col) + ((chip || (window.ENR && ENR.rvTag(r.sym, r.vol))) ? '<span class="tsig">' + chip + (window.ENR ? ENR.rvTag(r.sym, r.vol) : '') + '</span>' : '') + (hasWhy ? '<span class="nwb tnw" title="News today" aria-label="News today">★</span>' : '');
+        '<span class="tc" style="color:' + col + '">' + arrow + chgS(r.chg, r.pct, r.price) + '</span></span>' + sparkSVG(r.sym, 100, 30, col) + (chip ? '<span class="tsig">' + chip + '</span>' : '') + (hasWhy ? '<span class="nwb tnw" title="News today" aria-label="News today">★</span>' : '');
     } else {
       el.className = 'card row' + (i === 0 ? ' rfirst' : '') + (i === rows.length - 1 ? ' rlast' : '') + (el.classList.contains('fadein') ? ' fadein' : ''); el.style.width = W + 'px'; el.style.height = rowH + 'px'; el.style.left = '0px'; el.style.top = i * rowH + 'px';
       el.innerHTML = logoHTML(r.sym, 34) + '<span class="rn"><b>' + esc(r.sym) + ' ' + (window.TODAY ? TODAY.chip(r) : '') + '</b><small>' + esc(cleanName(symName(r.sym) || r.name || '')) + '</small></span>' +
