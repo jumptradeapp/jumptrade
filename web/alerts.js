@@ -72,7 +72,8 @@
       (on ? '<button class="alBtn ghost wide" data-al="test">Send a test alert</button>' : '');
   }
   function open() {
-    if (el) return; const he = document.getElementById('hmEdit'); if (he) he.classList.remove('on'); // one sheet at a time el = document.createElement('div'); el.id = 'alMenu';
+    if (el) return; const he = document.getElementById('hmEdit'); if (he) he.classList.remove('on'); // one sheet at a time
+    el = document.createElement('div'); el.id = 'alMenu';
     el.innerHTML = '<div class="pmSheet" role="dialog" aria-label="Alerts"><div class="pmHead"><b>Alerts</b><button class="popX pmX" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div><div class="alBody"></div></div>';
     el.addEventListener('click', async (e) => {
       e.stopPropagation();
