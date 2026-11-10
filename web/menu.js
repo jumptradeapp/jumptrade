@@ -1,7 +1,7 @@
 /* jumptrade. page menu: a button in every top bar that opens a sheet listing every page */
 (function () {
   const G = [
-    ['Home', [['home', 'Today', 'Your day at a glance'], ['watch', 'Watchlist', 'Your stocks']]],
+    ['Home', [['home', 'Today', 'Your day at a glance'], ['watch', 'Watchlist', 'Your stocks'], ['@alerts', 'Alerts', 'What to get notified about']]],
     ['Discover', [['movers', 'Top gainers', 'Live movers'], ['runners', 'Jump radar', 'Early signs of a run'], ['setups', 'Setups', 'Best entries now'], ['insiders', 'Smart money', 'Executives buying'], ['options', 'Unusual options', 'Big bets'], ['buzz', 'Market pulse', 'Most talked about']]],
     ['Markets', [['sectors', 'Sectors', 'Where money is rotating'], ['news', 'News', 'Live headlines'], ['catalysts', 'Calendar', 'Earnings & events'], ['ipos', 'IPOs', 'New listings'], ['flow', 'Money flow', 'Big buyers & sellers'], ['congress', 'Congress', 'Lawmakers’ trades']]],
     ['Ideas', [['dips', 'Dips', 'Pullbacks to buy'], ['leaders', 'Leaders', 'Strongest stocks'], ['value', 'Value engine', 'Undervalued names'], ['compare', 'Compare', 'Side by side']]],
@@ -23,7 +23,7 @@
     if (el) return; el = document.createElement('div'); el.id = 'pgMenu';
     el.innerHTML = '<div class="pmSheet" role="dialog" aria-label="All pages"><div class="pmHead"><b>All pages</b><button class="popX pmX" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
       G.map((g) => '<div class="pmCap">' + g[0] + '</div><div class="pmGrid">' + g[1].map((p) => '<button class="pmItem' + (S.tab === p[0] ? ' on' : '') + '" data-pm="' + p[0] + '"><b>' + p[1] + '</b><small>' + p[2] + '</small></button>').join('') + '</div>').join('') + '</div>';
-    el.addEventListener('click', (e) => { e.stopPropagation(); const it = e.target.closest('[data-pm]'); if (it) { const t = it.dataset.pm; close(); setTimeout(() => goTab(t), 0); return; } if (e.target.closest('.pmX') || !e.target.closest('.pmSheet')) close(); });
+    el.addEventListener('click', (e) => { e.stopPropagation(); const it = e.target.closest('[data-pm]'); if (it) { const t = it.dataset.pm; close(); setTimeout(() => (t === '@alerts' ? window.ALERTS && ALERTS.open() : goTab(t)), 0); return; } if (e.target.closest('.pmX') || !e.target.closest('.pmSheet')) close(); });
     document.body.appendChild(el); requestAnimationFrame(() => el.classList.add('in'));
   }
   function close() { if (!el) return; const e = el; el = null; e.classList.remove('in'); setTimeout(() => e.remove(), 220); }
