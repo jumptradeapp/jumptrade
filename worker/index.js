@@ -253,7 +253,7 @@ T.get_fund_rating = async () => [];
 ['get_watchlists', 'get_watchlist_instruments', 'get_account_list', 'get_account_positions', 'get_account_balance'].forEach((k) => { T[k] = async () => []; });
 // Not available from this provider yet: answer empty, the app hides those sections.
 ['get_stock_capital_flow', 'get_stock_unusual_activities', 'get_insider_transactions', 'get_income_statement',
-  'get_market_sentiment', 'get_macroeconomic_calendar', 'get_community_hot_stocks', 'get_financial_indicators'].forEach((k) => { T[k] = async () => []; });
+  'get_market_sentiment', 'get_macroeconomic_calendar', 'get_financial_indicators'].forEach((k) => { T[k] = async () => []; });
 
 
 
@@ -309,6 +309,20 @@ T.get_runners = async (i) => {
   top.forEach((r) => { r.score = Math.max(0, Math.min(100, r.score)); });
   top.sort((a, b) => b.score - a.score);
   return { session: pre ? 'pre' : post ? 'after' : 'day', updated: new Date().toISOString(), data: top };
+};
+
+// ---------- buzz: most-talked-about stocks right now (StockTwits trending + Yahoo trending + Reddit-heavy names) ----------
+T.get_community_hot_stocks = async () => {
+  const lists = await Promise.all([
+    fetch('https://api.stocktwits.com/api/2/trending/symbols.json', { headers: { 'user-agent': NUA }, cf: { cacheTtl: 120 } }).then((r) => r.ok ? r.json() : {}).then((j) => (j.symbols || []).map((s) => s.symbol)).catch(() => []),
+    yget('/v1/finance/trending/US?count=30', { base: Y1 }).then((d) => ((((d.finance || {}).result || [])[0] || {}).quotes || []).map((q) => q.symbol)).catch(() => []),
+    fetch('https://apewisdom.io/api/v1.0/filter/all-stocks/page/1', { headers: { 'user-agent': NUA }, cf: { cacheTtl: 300 } }).then((r) => r.ok ? r.json() : {}).then((j) => (j.results || []).slice(0, 30).map((x) => x.ticker)).catch(() => []),
+  ]);
+  const score = {};
+  lists.forEach((l) => l.forEach((s, k) => { s = String(s || '').toUpperCase(); if (!/^[A-Z]{1,5}$/.test(s)) return; score[s] = (score[s] || 0) + (30 - Math.min(29, k)); }));
+  const syms = Object.keys(score).sort((a, b) => score[b] - score[a]).slice(0, 50);
+  const q = await quotes(syms).catch(() => []); const ok = {}; q.forEach((x) => { if (x.quoteType === 'EQUITY' || !x.quoteType) ok[x.symbol] = 1; });
+  return syms.filter((s) => ok[s]).map((s, k) => ({ symbol: s, rank: k + 1, category: 'US_STOCK', heat: score[s] }));
 };
 // ---------- sectors: industry groups built from ETFs + their leading stocks ----------
 const GROUPS = [
@@ -372,7 +386,7 @@ T.get_market_sectors_detail = async (i) => {
   return { data: rows };
 };
 // How long each answer may be reused (seconds). Prices: short. Fundamentals: long.
-const TTL = { get_runners: 60, get_sparks: 60, get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 60, search_news: 45,
+const TTL = { get_community_hot_stocks: 180, get_runners: 60, get_sparks: 60, get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 60, search_news: 45,
   get_company_profile: 86400, get_analyst_target_price: 21600, get_analyst_rating: 21600, get_stock_forecast_eps: 21600, get_stock_earnings_calendar: 21600,
   get_fund_brief: 86400, get_fund_holdings: 86400, get_fund_performance: 86400 };
 
