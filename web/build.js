@@ -11,7 +11,7 @@
     fetch('themes.json').then((r) => r.json()).then((d) => { B.data = d; B.loading = 0; render(); }).catch(() => { B.loading = 0; });
   };
   const quotes = (list) => {
-    const need = list.filter((s) => (!B.q[s] || Date.now() - (B.q[s]._t || 0) > 60000) && !B.busy[s]); // refresh prices older than a minute if (!need.length || typeof mcp === 'undefined' || !mcp) return;
+    const need = list.filter((s) => (!B.q[s] || Date.now() - (B.q[s]._t || 0) > 60000) && !B.busy[s]); /* refresh prices older than a minute */ if (!need.length || typeof mcp === 'undefined' || !mcp) return;
     need.forEach((s) => B.busy[s] = 1);
     mcp.callTool(SERVER, 'get_stock_snapshot', { symbols: need.join(','), category: 'US_STOCK' }).then((res) => {
       const p = payloadOf(res); (Array.isArray(p) ? p : []).forEach((x) => { if (x && x.symbol) { x._t = Date.now(); B.q[x.symbol] = x; } });

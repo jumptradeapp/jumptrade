@@ -78,7 +78,7 @@
     const past = (e || []).filter((x) => hasV(x.eps_actual) && hasV(x.eps_est)).sort((a, b) => (a.expected_publish_date > b.expected_publish_date ? -1 : 1));
     if (past.length) {
       h += '<div class="cap" style="margin-top:12px">RECENT REPORTS</div><div class="ebeats">' + past.map((x) => {
-        const s = +x.eps_est ? (+x.eps_actual - +x.eps_est) / Math.abs(+x.eps_est) * 100 : null; // no % surprise when the estimate was $0 const beat = +x.eps_actual >= +x.eps_est;
+        const s = +x.eps_est ? (+x.eps_actual - +x.eps_est) / Math.abs(+x.eps_est) * 100 : null; /* no % surprise when the estimate was $0 */ const beat = +x.eps_actual >= +x.eps_est;
         const rs = x.rev_actual && x.rev_est ? (+x.rev_actual / +x.rev_est - 1) * 100 : null;
         return '<div style="--c:' + (beat ? C.up : C.dn) + '"><span>Q' + x.fiscal_period + ' FY' + String(x.fiscal_year).slice(2) + '</span><b>' + (beat ? 'BEAT' : 'MISS') + '</b><em>EPS $' + (+x.eps_actual).toFixed(2) + ' vs $' + (+x.eps_est).toFixed(2) + (s != null ? ' (' + (s >= 0 ? '+' : '') + s.toFixed(0) + '%)' : '') + '</em>' + (rs != null ? '<em>Revenue ' + (rs >= 0 ? '+' : '') + rs.toFixed(1) + '% vs est.</em>' : '') + '</div>';
       }).join('') + '</div>';
