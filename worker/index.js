@@ -617,8 +617,10 @@ async function wbUpkeep(env) {
   const tok = await vget(env, 'token'); const st = (await vget(env, 'tokstate')) || {};
   const now = Date.now();
   if (tok && tok.token) {
-    const r = await wb.raw('POST', '/auth/tokens/check', {}, null, tok.token);
+    let r = await wb.raw('POST', '/auth/tokens/check', {}, { token: tok.token });
+    if (r.status !== 200) { const r2 = await wb.raw('POST', '/auth/tokens/check', {}, null, tok.token); if (r2.status === 200) r = r2; }
     const status = (r.data && r.data.status) || (r.status === 200 ? tok.status : 'CHECK_' + r.status);
+    await vput(env, 'tokcheck', { http: r.status, body: typeof r.data === 'string' ? r.data.slice(0, 200) : r.data, t: Date.now() });
     await vput(env, 'token', { ...tok, status, expires: (r.data && r.data.expires) || tok.expires });
     await vput(env, 'tokstate', { ...st, status, checked: now, http: r.status });
     if (r.status === 200 && status !== 'INVALID' && status !== 'EXPIRED') return { status };
@@ -637,7 +639,7 @@ export default {
     if (Date.now() - UPK > 600000) { UPK = Date.now(); ctx.waitUntil(wbUpkeep(env).catch(() => {})); }
     if (req.method === 'OPTIONS') return new Response(null, { headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'POST, GET' } });
     if (url.pathname === '/api/newsdiag') { const out = await Promise.all(FEEDS.map(async (f) => { const t0 = Date.now(); try { const r = await fetch(f[1], { headers: { 'user-agent': NUA, accept: 'application/rss+xml, text/xml' } }); const x = await r.text(); const a = await rss(f[1], f[0]); return f[0] + ': http ' + r.status + ', ' + x.length + ' bytes, ' + a.length + ' items, newest ' + (a[0] ? a.map((n) => n.publish_time).sort().pop() : '-') + ', ' + (Date.now() - t0) + 'ms'; } catch (e) { return f[0] + ': error ' + e.message; } })); return new Response('build news2\n' + out.join('\n'), { headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } }); }
-    if (url.pathname === '/api/wbstate') { const s = (await vget(env, 'tokstate')) || {}; const cr = (await vget(env, 'cron')) || {}; return json({ upkeep: cr.t ? new Date(cr.t).toISOString() : null, keys: cr.ready == null ? null : cr.ready, status: s.status || 'none', http: s.http || null, code: s.code || null, created: s.created ? new Date(s.created).toISOString() : null, checked: s.checked ? new Date(s.checked).toISOString() : null }); }
+    if (url.pathname === '/api/wbstate') { const s = (await vget(env, 'tokstate')) || {}; const cr = (await vget(env, 'cron')) || {}; const ck = (await vget(env, 'tokcheck')) || {}; const tk = (await vget(env, 'token')) || {}; return json({ token_status: tk.status || null, check_http: ck.http || null, check_msg: ck.body && (ck.body.msg || ck.body.message || ck.body.error_code || ck.body.status) || null, upkeep: cr.t ? new Date(cr.t).toISOString() : null, keys: cr.ready == null ? null : cr.ready, status: s.status || 'none', http: s.http || null, code: s.code || null, created: s.created ? new Date(s.created).toISOString() : null, checked: s.checked ? new Date(s.checked).toISOString() : null }); }
     if (url.pathname.startsWith('/api/wb/')) { const r = await wbRoutes(url, env); if (r) return r; }
     if (url.pathname === '/api/selftest') return json(await selftest());
     if (url.pathname === '/api/health') return json({ ok: true, provider: 'yahoo', time: new Date().toISOString() });
