@@ -51,5 +51,8 @@ export async function sendPush(sub, data, vapid, subject = 'mailto:hello@jumptra
   const body = await encrypt(sub, JSON.stringify(data));
   const r = await fetch(sub.endpoint, { method: 'POST', body, signal: AbortSignal.timeout(8000), headers: {
     Authorization: await vapidHeader(sub.endpoint, vapid, subject), 'Content-Encoding': 'aes128gcm', 'Content-Type': 'application/octet-stream', TTL: String(ttl), Urgency: 'high' } });
+  if (r.status >= 300) { let t = ''; try { t = (await r.text()).slice(0, 200); } catch (e) {} PUSHLAST.reason = t; } else PUSHLAST.reason = '';
+  PUSHLAST.status = r.status; PUSHLAST.t = Date.now(); PUSHLAST.host = (sub.endpoint.split('/')[2] || '');
   return r.status;
 }
+export const PUSHLAST = { status: 0, reason: '', t: 0, host: '' };

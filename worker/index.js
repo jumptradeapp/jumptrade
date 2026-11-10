@@ -4,7 +4,7 @@
    answer at the edge so many users share one upstream request. */
 
 import { Webull } from './webull.js';
-import { makeVapid, sendPush } from './push.js';
+import { makeVapid, sendPush, PUSHLAST } from './push.js';
 import { authRoutes, sessionFrom, KINDS } from './auth.js';
 // Every outside request gets a deadline so one slow source can't hang a whole response.
 const fetch = (u, o = {}) => globalThis.fetch(u, o.signal ? o : { ...o, signal: AbortSignal.timeout(o.timeoutMs || (/api\.anthropic\.com/.test(String(u)) ? 25000 : 8000)) });
@@ -767,7 +767,8 @@ async function pushRoutes(url, req, env, ctx) {
   if (url.pathname === '/api/push/test' && req.method === 'POST') {
     const b = await req.json().catch(() => ({})); const id = await subId(b.endpoint || ''); const all = (await vget(env, 'subs')) || {}; const s = all[id]; if (!s) return json({ error: 'not subscribed' }, 404);
     const st = await sendPush(s.sub, { title: 'jumptrade. alerts are on', body: 'You’ll hear from us when something worth knowing happens.', url: '/#home', tag: 'test' }, await vapidKeys(env));
-    return json({ ok: st < 300, status: st });
+    await vput(env, 'pushlast', Object.assign({ via: 'test' }, PUSHLAST)).catch(() => {});
+    return json({ ok: st < 300, status: st, reason: PUSHLAST.reason });
   }
   return null;
 }
@@ -916,7 +917,7 @@ async function runAlerts(env, ctx) {
     for (const m of out) {
       if (quiet && !/^px-/.test(m.tag)) continue; // price alerts always come through
       if ((st.n || 0) >= (P.cap || 12)) break;
-      const code = await sendPush(s.sub, withSubject(m), vapid).catch(() => 0);
+      const code = await sendPush(s.sub, withSubject(m), vapid).catch((e) => { PUSHLAST.status = 0; PUSHLAST.reason = String(e && e.message || e).slice(0, 200); return 0; }); ctx.waitUntil(vput(env, 'pushlast', Object.assign({ via: 'alert' }, PUSHLAST)).catch(() => {}));
       if (code === 404 || code === 410) { dead.push(id); break; }
       if (code && code < 300) { st.n = (st.n || 0) + 1; sent++; }
     }
@@ -967,7 +968,7 @@ export default {
       return new Response('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>jumptrade feedback</title><body style="font:15px -apple-system,system-ui;background:#0A0E15;color:#ECEBE8;margin:0;padding:16px"><h2 style="margin:0 0 12px">Beta feedback · ' + L.length + '</h2>' + L.map((x) => '<div style="padding:12px 14px;margin-bottom:10px;border-radius:12px;background:#141C2B"><div style="font-size:12px;color:#9AA6B6;margin-bottom:6px"><b style="color:' + (x.kind === 'bug' ? '#FF8A8A' : x.kind === 'idea' ? '#5EE0A0' : '#9CC0FF') + '">' + E(String(x.kind).toUpperCase()) + '</b> · ' + new Date(x.t).toLocaleString('en-US', { timeZone: 'America/New_York' }) + (x.name ? ' · ' + E(x.name) : '') + (x.page ? ' · on ' + E(x.page) : '') + '</div><div style="white-space:pre-wrap;line-height:1.45">' + E(x.text) + '</div></div>').join('') + '</body>', { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } }); }
     if (url.pathname.indexOf('/api/ai') === 0) { const r = await aiRoutes(url, req, env); if (r) return r; }
     if (url.pathname.indexOf('/api/push/') === 0) { const r = await pushRoutes(url, req, env, ctx); if (r) return r; }
-    if (url.pathname === '/api/alertstate') { const a = (await vget(env, 'alertrun')) || {}; const s = (await vget(env, 'subs')) || {}; const pr = (await vget(env, 'prerun')) || {}; const cb = (await vget(env, 'cronbeat')) || {}; return json({ cron: cb.t ? new Date(cb.t).toISOString() : null, cronBuild: cb.build, now: new Date().toISOString(), last: a.t ? new Date(a.t).toISOString() : null, sent: a.sent, error: a.error, closed: a.closed, subs: Object.keys(s).length, precompute: { t: pr.t ? new Date(pr.t).toISOString() : null, r: pr.r } }); }
+    if (url.pathname === '/api/alertstate') { const a = (await vget(env, 'alertrun')) || {}; const s = (await vget(env, 'subs')) || {}; const pr = (await vget(env, 'prerun')) || {}; const cb = (await vget(env, 'cronbeat')) || {}; const pl = (await vget(env, 'pushlast')) || {}; return json({ push: pl.t ? { at: new Date(pl.t).toISOString(), status: pl.status, reason: pl.reason, via: pl.via, host: pl.host } : null, cron: cb.t ? new Date(cb.t).toISOString() : null, cronBuild: cb.build, now: new Date().toISOString(), last: a.t ? new Date(a.t).toISOString() : null, sent: a.sent, error: a.error, closed: a.closed, subs: Object.keys(s).length, precompute: { t: pr.t ? new Date(pr.t).toISOString() : null, r: pr.r } }); }
     if (url.pathname === '/api/newsdiag') { const out = await Promise.all(FEEDS.map(async (f) => { const t0 = Date.now(); try { const r = await fetch(f[1], { headers: { 'user-agent': NUA, accept: 'application/rss+xml, text/xml' } }); const x = await r.text(); const a = await rss(f[1], f[0]); return f[0] + ': http ' + r.status + ', ' + x.length + ' bytes, ' + a.length + ' items, newest ' + (a[0] ? a.map((n) => n.publish_time).sort().pop() : '-') + ', ' + (Date.now() - t0) + 'ms'; } catch (e) { return f[0] + ': error ' + e.message; } })); return new Response('build news2\n' + out.join('\n'), { headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } }); }
     if (url.pathname === '/api/wbstate') { const s = (await vget(env, 'tokstate')) || {}; const cr = (await vget(env, 'cron')) || {}; const ck = (await vget(env, 'tokcheck')) || {}; const tk = (await vget(env, 'token')) || {}; return json({ token_status: tk.status || null, check_http: ck.http || null, check_msg: ck.body && (ck.body.msg || ck.body.message || ck.body.error_code || ck.body.status) || null, upkeep: cr.t ? new Date(cr.t).toISOString() : null, keys: cr.ready == null ? null : cr.ready, status: s.status || 'none', http: s.http || null, code: s.code || null, created: s.created ? new Date(s.created).toISOString() : null, checked: s.checked ? new Date(s.checked).toISOString() : null }); }
     if (url.pathname.startsWith('/api/wb/')) { const r = await wbRoutes(url, env); if (r) return r; }

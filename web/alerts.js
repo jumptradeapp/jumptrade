@@ -86,7 +86,8 @@
       else if (t.dataset.alrm != null) { P.prices.splice(+t.dataset.alrm, 1); save(P); syncSoon(); paint(); }
       else if (t.dataset.al === 'on') { msg = ''; enable(); }
       else if (t.dataset.al === 'off') disable();
-      else if (t.dataset.al === 'test') { const s = await currentSub(); if (s) fetch('/api/push/test', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ endpoint: s.endpoint }) }); msg = 'Test sent.'; paint(); }
+      else if (t.dataset.al === 'test') { const s = await currentSub(); if (!s) { msg = 'This device isn’t signed up for alerts yet. Tap Turn on first.'; paint(); return; } msg = 'Sending…'; paint();
+        try { const r = await fetch('/api/push/test', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ endpoint: s.endpoint }) }); const j = await r.json().catch(() => ({})); msg = j.ok ? 'Test sent. It should arrive within a few seconds.' : j.error === 'not subscribed' ? 'The server doesn’t have this device. Turn alerts off and on again.' : 'Apple didn’t accept it (' + (j.status || r.status) + (j.reason ? ': ' + String(j.reason).slice(0, 80) : '') + ').'; } catch (e) { msg = 'Couldn’t reach the server.'; } paint(); }
     });
     document.body.appendChild(el); requestAnimationFrame(() => el.classList.add('in')); paint();
   }
