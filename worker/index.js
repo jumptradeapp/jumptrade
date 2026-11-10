@@ -5,6 +5,7 @@
 
 import { Webull } from './webull.js';
 import { makeVapid, sendPush } from './push.js';
+import { authRoutes } from './auth.js';
 
 const Y1 = 'https://query1.finance.yahoo.com';
 const Y2 = 'https://query2.finance.yahoo.com';
@@ -708,6 +709,8 @@ const PDEF = { news: true, newsMarket: true, runners: true, runnerMin: 80, move:
 async function vapidKeys(env) { let v = await vget(env, 'vapid'); if (!v) { v = await makeVapid(); await vput(env, 'vapid', v); } return v; }
 const subId = async (ep) => { const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ep)); return [...new Uint8Array(d)].slice(0, 12).map((b) => b.toString(16).padStart(2, '0')).join(''); };
 function etNow() { const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', weekday: 'short', hourCycle: 'h23' }).formatToParts(new Date()); const g = (t) => (p.find((x) => x.type === t) || {}).value; return { day: g('year') + '-' + g('month') + '-' + g('day'), hm: +g('hour') * 60 + +g('minute'), wd: g('weekday') }; }
+// push to the owner's devices (new tester, feedback)
+async function notifyOwner(env, msg) { try { const ids = (await vget(env, 'ownerSubs')) || []; if (!ids.length) return; const all = (await vget(env, 'subs')) || {}; const v = await vapidKeys(env); await Promise.all(ids.map((id) => all[id] ? sendPush(all[id].sub, msg, v).catch(() => 0) : 0)); } catch (e) {} }
 async function pushRoutes(url, req, env, ctx) {
   if (url.pathname === '/api/push/key') { const v = await vapidKeys(env); return json({ key: v.pub }); }
   if (url.pathname === '/api/push/sub' && req.method === 'POST') {
@@ -886,12 +889,13 @@ export default {
       if (req.method === 'PUT' || req.method === 'POST') { const txt = await req.text(); if (txt.length > 40000) return json({ error: { code: 'too_big' } }, 413); let b; try { b = JSON.parse(txt); } catch (e) { return json({ error: { code: 'bad_request' } }, 400); }
         if (!b || typeof b.data !== 'object') return json({ error: { code: 'bad_request' } }, 400); const cur = await vget(env, k); if (cur && cur.t > (+b.t || 0)) return json(cur); await vput(env, k, { t: +b.t || Date.now(), data: b.data }); return json({ ok: true, t: +b.t }); }
     }
+    if (url.pathname.indexOf('/api/auth/') === 0 || url.pathname.indexOf('/api/admin/') === 0) { const r = await authRoutes(url, req, env, ctx, { vget, vput, json, subId, notifyOwner: (m) => notifyOwner(env, m) }); if (r) return r; }
     if (url.pathname === '/api/feedback') { // beta feedback: testers POST, owner reads with the diagnostics key
       if (req.method === 'POST') { let b; try { b = JSON.parse((await req.text()).slice(0, 6000)); } catch (e) { return json({ error: { code: 'bad_request' } }, 400); }
         const text = String(b.text || '').trim().slice(0, 2000); if (text.length < 3) return json({ error: { code: 'empty' } }, 400);
         const ip = req.headers.get('cf-connecting-ip') || '?', day = new Date().toISOString().slice(0, 10), rk = 'fbr_' + day + '_' + ip.replace(/[^0-9a-f.:]/gi, '');
         const n = +((await vget(env, rk)) || 0); if (n >= 20) return json({ error: { code: 'limit' } }, 429); await vput(env, rk, n + 1);
-        const L = (await vget(env, 'fb')) || []; L.unshift({ t: Date.now(), kind: String(b.kind || 'other').slice(0, 20), name: String(b.name || '').slice(0, 40), page: String(b.page || '').slice(0, 40), ua: String(req.headers.get('user-agent') || '').slice(0, 160), text }); await vput(env, 'fb', L.slice(0, 500)); return json({ ok: true }); }
+        const L = (await vget(env, 'fb')) || []; L.unshift({ t: Date.now(), kind: String(b.kind || 'other').slice(0, 20), name: String(b.name || '').slice(0, 40), page: String(b.page || '').slice(0, 40), ua: String(req.headers.get('user-agent') || '').slice(0, 160), text }); await vput(env, 'fb', L.slice(0, 500)); ctx.waitUntil(notifyOwner(env, { title: 'New feedback' + (L[0].name ? ' from ' + L[0].name : '') + ' · ' + (L[0].kind === 'bug' ? 'Bug' : L[0].kind === 'idea' ? 'Idea' : 'Feel & navigation'), body: text.slice(0, 140), url: '/#admin', tag: 'jt-admin' })); return json({ ok: true }); }
       const k = url.searchParams.get('k') || ''; const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(k)); const hx = [...new Uint8Array(d)].map((x) => x.toString(16).padStart(2, '0')).join('');
       if (hx !== 'ca6353c852d6726d83a72504e80cf4860e5ac4c8d585b9d9cdb5465a9fec4439') return new Response('Not found', { status: 404 });
       const L = (await vget(env, 'fb')) || []; const E = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
