@@ -106,7 +106,7 @@ function watch(key, tool, input, onData, every) {
   const sig = JSON.stringify([tool, input]);
   if (watches[key]) { if (watches[key].sig === sig) return; watches[key].off(); }
   const iv = Math.max(30000, every || 30000); let dead = false, busy = false;
-  const low = /^(dp|va|s|dl|tp|wl):/.test(key);
+  const low = /^(dp|va|s|dl|tp):/.test(key);
   const run = () => {
     if (dead || busy) return; busy = true;
     RQ.add(low, () => mcp.callTool(SERVER, tool, input, { cache: { staleTime: Math.max(0, iv - 5000), gcTime: 600000 } }).then((res) => {
@@ -819,12 +819,22 @@ function loadWatch() {
   watch('wl:lists', 'get_watchlists', {}, (p) => { S.wlists = (Array.isArray(p) ? p : []).filter((w) => !HIDE_WL.test(w.name)); if (S.pick || S.detail) { S.wlMemTried = 1; memLoad(); } if (S.tab === 'portfolios' && !S.models) loadModels(); if (S.tab === 'value') loadAllWatchSyms(); if (!S.wl && S.wlists.length) { let pref = null; try { pref = localStorage.getItem('jt.wl'); } catch (e) {} const w = S.wlists.find((x) => x.watchlist_id === pref) || S.wlists.find((x) => x.name === 'CORE 25') || S.wlists.find((x) => x.name === 'My Positions') || S.wlists[0]; S.wl = w.watchlist_id; loadWatchItems(); } }, 600000);
   if (S.wl) loadWatchItems();
 }
+function wlQuotes(syms) { // one live quote watch for the open list; rebuilt whenever the list changes
+  unwatch('wl:q'); if (!syms || !syms.length) { S.wlQ = {}; return; }
+  watch('wl:q', 'get_stock_snapshot', { symbols: syms.slice(0, 100).join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: true }, (q) => {
+    const sess = view(); const nq = S.wlQ || {};
+    (Array.isArray(q) ? q : []).forEach((x) => {
+      // a quote that lacks this session's price would show the regular-day % instead: don't let it replace a good one (that was the flash of wrong %)
+      const ok = !((sess === 'overnight' && !x.ovn_price) || ((sess === 'pre' || sess === 'after') && !x.extend_hour_last_price));
+      const old = nq[x.symbol]; if (old && old._s === sess && !ok) return;
+      const n = snapRow(x, sess); n._s = ok ? sess : 'regular'; nq[x.symbol] = n; });
+    S.wlQ = nq; });
+}
 function loadWatchItems() {
-  unwatch('wl:i'); unwatch('wl:q');
+  unwatch('wl:i');
   watch('wl:items', 'get_watchlist_instruments', { watchlist_id: S.wl }, (p) => {
     const syms = ((p && p.instruments) || []).map((x) => x.symbol).filter((s) => /^[A-Z.]{1,6}$/.test(s)); S.wlSyms = syms; S.wlNames = {}; ((p && p.instruments) || []).forEach((x) => { S.wlNames[x.symbol] = x.name; });
-    if (syms.length) watch('wl:q', 'get_stock_snapshot', { symbols: syms.slice(0, 100).join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: true }, (q) => { S.wlQ = {}; (Array.isArray(q) ? q : []).forEach((x) => { S.wlQ[x.symbol] = snapRow(x, view()); }); });
-    else S.wlQ = {};
+    const keep = {}; syms.forEach((k) => { if (S.wlQ && S.wlQ[k]) keep[k] = S.wlQ[k]; }); S.wlQ = keep; wlQuotes(syms);
   }, 300000);
 }
 function renderWatch() {
@@ -834,7 +844,7 @@ function renderWatch() {
   $('wSort').innerHTML = [['move', 'Biggest move'], ['up', 'Gainers'], ['down', 'Losers'], ['az', 'A–Z']].map((x) => '<button class="seg' + (S.wSort === x[0] ? ' on' : '') + '" data-wsort="' + x[0] + '">' + x[1] + '</button>').join('');
   const box = $('wlList');
   if (!S.wlists) { box.innerHTML = '<div class="empty"><b>' + (S.err ? 'Can’t load live data' : mcp ? 'Loading your watchlists…' : 'Can’t reach live data') + '</b><span>' + esc(S.err ? (ERRCOPY[S.err] || '') : 'Your watchlists, live.') + '</span></div>'; return; }
-  const syms = S.wlSyms || []; if (!syms.length) { box.innerHTML = S.wlSyms ? '<div class="empty wlStart"><b>Start your watchlist</b><span>Tap stocks to follow. You’ll get their moves, news and alerts. This list lives only on your phone.</span><div class="wlPick">' + ['NVDA', 'TSLA', 'AAPL', 'AMD', 'PLTR', 'MSFT', 'AMZN', 'META', 'GOOGL', 'SOFI', 'HOOD', 'COIN'].map((s) => '<button data-wladd="' + s + '">' + logoHTML(s, 22) + s + '</button>').join('') + '</div><small>Or search any stock and tap ☆ Watchlist.</small></div>' : '<div class="empty"><b>Loading…</b></div>'; return; }
+  const syms = S.wlSyms || []; if (!syms.length) { box.innerHTML = S.wlSyms ? '<div class="empty wlStart"><b>Start your watchlist</b><span>Tap stocks to follow. You’ll get their moves, news and alerts. This list lives only on your phone.</span><div class="wlPick">' + ['NVDA', 'TSLA', 'AAPL', 'AMD', 'PLTR', 'MSFT', 'AMZN', 'META', 'GOOGL', 'SOFI', 'HOOD', 'COIN'].map((s) => '<button data-wlq="' + s + '">' + logoHTML(s, 22) + s + '</button>').join('') + '</div><small>Or search any stock and tap ☆ Watchlist.</small></div>' : '<div class="empty"><b>Loading…</b></div>'; return; }
   const rows = syms.map((s) => Object.assign({ sym: s }, (S.wlQ && S.wlQ[s]) || {}));
   const so = S.wSort; rows.sort((a, b) => so === 'az' ? a.sym.localeCompare(b.sym) : so === 'up' ? (b.pct || -1e9) - (a.pct || -1e9) : so === 'down' ? (a.pct || 1e9) - (b.pct || 1e9) : Math.abs(b.pct || 0) - Math.abs(a.pct || 0));
   const up = rows.filter((r) => r.pct > 0).length, dn = rows.filter((r) => r.pct < 0).length;
@@ -843,7 +853,7 @@ function renderWatch() {
   if (!shown.length) { box.innerHTML = '<div class="empty"><b>' + (so === 'up' ? 'Nothing up yet' : 'Nothing down today') + '</b><span>' + (so === 'up' ? 'None of your stocks are green right now.' : 'None of your stocks are red right now.') + '</span></div>'; return; }
   box.innerHTML = shown.map((r) => { const a = S.dips[r.sym]; const col = (r.pct || 0) >= 0 ? '#15965A' : '#D63B3B';
     return '<button class="wrow" data-open="' + esc(r.sym) + '" data-name="' + esc((S.wlNames || {})[r.sym] || '') + '">' + logoHTML(r.sym, 34) + '<span class="rn"><b>' + esc(r.sym) + ' ' + (window.TODAY && r.price ? TODAY.chip(r) : '') + (window.ENR ? (ENR.need(r.sym), ENR.badge(r.sym)) : '') + '</b><small>' + esc(cleanName(symName(r.sym) || (S.wlNames || {})[r.sym] || '')) + (r.mcap ? ' · ' + money(r.mcap) : '') + '</small></span>' +
-      (S.wlEdit ? '<span class="xdel' + (S.wlRm === r.sym ? ' arm' : '') + '" style="position:static" role="button" aria-label="Remove ' + esc(r.sym) + '" data-wlrm="' + esc(r.sym) + '">' + (S.wlRm === r.sym ? '…' : 'Remove') + '</span>' : '<span class="rp">' + (r.price ? '<b>$' + px(r.price) + '</b><small style="color:' + col + '">' + chgS(r.chg, r.pct, r.price) + '</small>' : '<b class="dim">—</b>') + '</span>') + '</button>'; }).join('');
+      (S.wlEdit ? '<span class="xdel' + (S.wlRm === r.sym ? ' arm' : '') + '" style="position:static" role="button" aria-label="Remove ' + esc(r.sym) + '" data-wlrm="' + esc(r.sym) + '">' + (S.wlRm === r.sym ? '…' : 'Remove') + '</span>' : '<span class="rp">' + (r.price ? '<b>$' + px(r.price) + '</b><small style="color:' + col + '">' + chgS(r.chg, r.pct, r.price) + '</small>' : '<b class="dim">—</b>') + '</span>') + '</button>'; }).join('') + (window.JT_WEB && so !== 'up' && so !== 'down' && syms.length < 6 && !S.wlEdit ? '<div class="wlMore"><small>Add more</small><div class="wlPick">' + ['NVDA', 'TSLA', 'AAPL', 'AMD', 'PLTR', 'MSFT', 'AMZN', 'META', 'GOOGL', 'SOFI', 'HOOD', 'COIN'].filter((x) => syms.indexOf(x) < 0).slice(0, 8).map((x) => '<button data-wlq="' + x + '">' + logoHTML(x, 22) + x + '</button>').join('') + '</div></div>' : '');
 }
 
 /* ---------- portfolios: your models + your own portfolios + copy funds + 13D/G ---------- */
@@ -1125,8 +1135,10 @@ async function wlWrite(id, sym, add) {
   const r = await mcp.callTool(SERVER, add ? 'add_watchlist_instruments' : 'remove_watchlist_instruments', { watchlist_id: id, symbols: [sym], category: 'US_STOCK' });
   const p = payloadOf(r); if ((r && r.isError) || (p && (p.error || p.success === false))) throw new Error('rejected');
   const m = S.wlMem[id]; if (m) { if (add) m.syms.add(sym); else m.syms.delete(sym); }
+  S.allWl = S.allWl || {}; if (add) S.allWl[sym] = 1; else delete S.allWl[sym];
   if (S.wl === id && S.wlSyms) {
     S.wlSyms = add ? (S.wlSyms.indexOf(sym) < 0 ? S.wlSyms.concat([sym]) : S.wlSyms) : S.wlSyms.filter((s) => s !== sym);
+    if (!add && S.wlQ) delete S.wlQ[sym]; wlQuotes(S.wlSyms);
     if (add) mcp.callTool(SERVER, 'get_stock_snapshot', { symbols: sym, category: 'US_STOCK', extend_hour_required: true, overnight_required: true }).then(payloadOf).then((q) => { S.wlQ = S.wlQ || {}; (Array.isArray(q) ? q : []).forEach((x) => { S.wlQ[x.symbol] = snapRow(x, view()); }); render(); }).catch(() => {});
   }
   const md = (S.models || []).find((x) => x.watchlist_id === id); if (md && md.syms) { md.syms = add ? (md.syms.indexOf(sym) < 0 ? md.syms.concat([sym]) : md.syms) : md.syms.filter((s) => s !== sym); priceModels(); }
@@ -1569,8 +1581,6 @@ document.addEventListener('DOMContentLoaded', () => {
   render();
 })();
 
-document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-wladd]'); if (!b || !mcp) return; e.preventDefault(); b.disabled = true; b.classList.add('on');
-  mcp.callTool(SERVER, 'add_watchlist_instruments', { watchlist_id: (S.wlists && S.wlists[0] && S.wlists[0].watchlist_id) || 'mine', symbols: [b.dataset.wladd], category: 'US_STOCK' }).then(() => { setTimeout(() => { if (typeof loadWatch === 'function') loadWatch(); if (window.HOME && HOME.load) HOME.load(); render(); }, 400); }).catch(() => { b.disabled = false; }); });
 
 /* share a stock: native share sheet on phones, copy-link elsewhere */
 document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-share]'); if (!b) return; e.preventDefault(); e.stopPropagation();
@@ -1582,3 +1592,14 @@ document.addEventListener('click', (e) => { const b = e.target.closest && e.targ
   if (navigator.share) navigator.share({ title: sym + ' on jumptrade.', text: text, url: url }).catch(() => {});
   else if (navigator.clipboard) navigator.clipboard.writeText(text + ' ' + url).then(() => done('Copied'), () => done('Couldn’t copy'));
 });
+
+/* tap-to-follow chips (Start your watchlist) */
+document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-wlq]'); if (!b || !mcp || b.disabled) return; e.preventDefault(); e.stopPropagation();
+  const sym = b.dataset.wlq; b.disabled = true; b.classList.add('on');
+  const id = S.wl || (S.wlists && S.wlists[0] && S.wlists[0].watchlist_id) || 'mine';
+  wlWrite(id, sym, true).then(() => {
+    if (!S.wlists) loadWatch(); else if (!S.wlSyms) { if (!S.wl) S.wl = id; loadWatchItems(); }
+    mcp.callTool(SERVER, 'get_stock_snapshot', { symbols: sym, category: 'US_STOCK', extend_hour_required: true, overnight_required: false }).then(payloadOf).then((q) => { (Array.isArray(q) ? q : []).forEach((x) => { if (window.TODAY && TODAY.wlQ) TODAY.wlQ[x.symbol] = snapRow(x, view()); }); render(); }).catch(() => {});
+    render();
+  }).catch(() => { b.disabled = false; b.classList.remove('on'); });
+}, true);
