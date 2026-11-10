@@ -9,7 +9,15 @@
   setInterval(() => { if (S.tab === 'home' || S.tab === 'runners') R.load(); }, 15000);
   const scCol = (s) => s >= 70 ? '#5EE0A0' : s >= 50 ? '#F2C27A' : '#9DB8FF';
   const pct = (v) => (v >= 0 ? '+' : '') + (v * 100).toFixed(v >= 0.995 || v <= -0.995 ? 0 : 1) + '%';
-  const why = (r) => esc((r.why || []).filter((w) => w.indexOf('news:') !== 0).slice(0, 2).join(' · ') || 'building momentum');
+  const plain = (r, n) => {
+    const w = (r.why || []).filter((x) => !/^[+−-]\d/.test(x) && !/cap$/.test(x));
+    const nws = w.find((x) => x.indexOf('news:') === 0);
+    const out = [];
+    if (nws) out.push('📰 ' + nws.slice(5).trim().replace(/^./, (c) => c.toUpperCase()));
+    w.filter((x) => x !== nws).forEach((x) => { const m = x.match(/^volume ([\d.]+)× normal/); out.push(m ? m[1] + '× normal volume' : x.replace(/^./, (c) => c.toUpperCase())); });
+    return esc(out.slice(0, n || 2).join(' · ') || 'Building momentum');
+  };
+  const why = (r) => plain(r, 2);
   R.widget = function (card, P) {
     R.load();
     const rows = (R.rows || []).slice(0, 8);
@@ -24,13 +32,13 @@
     if ($('rnFresh')) $('rnFresh').textContent = R.at ? 'Scored ' + ago(R.at) : '';
     const box = $('runList'); if (!box) return;
     const rows = R.rows || [];
-    const head = '<p class="desc dim rnintro">Stocks showing the early signs of a run: volume waking up, a fresh catalyst, a small float, and price pressing its highs. The score is 0–100 and updates every minute. It ranks candidates; it can’t promise a run.</p>';
+    const head = '<p class="desc dim rnintro">Early signs of a run, scored 0–100 every minute. Higher means more signs lining up. Tap any name for the full call.</p>';
     if (!R.rows) { setHTML(box, head + '<div class="glass sec"><div class="skel"></div><div class="skel" style="width:70%"></div><div class="skel" style="width:85%"></div></div>'); return; }
     if (!rows.length) { setHTML(box, head + '<div class="empty"><b>Nothing yet</b><span>No stocks are showing early runner signs right now. Check back soon.</span></div>'); return; }
-    setHTML(box, head + '<div class="glass sec rnlist">' + rows.map((r, k) => '<button class="rnfull" data-open="' + esc(r.symbol) + '"><span class="rnk">' + (k + 1) + '</span>' + logoHTML(r.symbol, 36) +
-      '<span class="rnb"><span class="rnt"><b>' + esc(r.symbol) + '</b><small>' + esc((r.name || '').slice(0, 28)) + '</small></span>' +
-      '<span class="rnw">' + esc((r.why || []).slice(0, 4).join(' · ')) + '</span></span>' +
-      '<span class="rnr"><i class="rnsc big" style="--c:' + scCol(r.score) + '">' + r.score + '</i><b style="color:' + (r.change_ratio >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + pct(r.change_ratio) + '</b><small>$' + (r.price < 1 ? r.price.toFixed(3) : r.price.toFixed(2)) + ' · ' + (r.rvol >= 10 ? Math.round(r.rvol) : r.rvol) + '× vol</small></span></button>').join('') + '</div>');
+    setHTML(box, head + '<div class="glass sec rnlist">' + rows.map((r) => '<button class="rnfull rn2" data-open="' + esc(r.symbol) + '"><i class="rnsc big" style="--c:' + scCol(r.score) + '">' + r.score + '</i>' + logoHTML(r.symbol, 36) +
+      '<span class="rnb"><span class="rnt"><b>' + esc(r.symbol) + '</b><small>$' + (r.price < 1 ? r.price.toFixed(3) : r.price.toFixed(2)) + '</small></span>' +
+      '<span class="rnw">' + plain(r, 2) + '</span></span>' +
+      '<span class="rnr"><b style="color:' + (r.change_ratio >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + pct(r.change_ratio) + '</b></span></button>').join('') + '</div>');
   };
 })();
 

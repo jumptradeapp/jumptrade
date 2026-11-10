@@ -63,6 +63,7 @@ function snapOf(q) {
     market_value: num(q.marketCap), out_standing_shares: num(q.sharesOutstanding),
     pe_ratio: num(q.trailingPE), eps_ttm: num(q.epsTrailingTwelveMonths), pb_ratio: num(q.priceToBook),
     avg_volume: num(q.averageDailyVolume3Month), quote_type: q.quoteType,
+    ma50: num(q.fiftyDayAverage), ma200: num(q.twoHundredDayAverage), chg52: q.fiftyTwoWeekChangePercent != null ? num(q.fiftyTwoWeekChangePercent) / 100 : null, ytd: q.ytdReturn != null ? num(q.ytdReturn) / 100 : null,
     extend_hour_last_price: ext ? num(ext.p) : null, extend_hour_change: ext ? num(ext.c) : null,
     extend_hour_change_ratio: ext && ext.r != null ? ext.r / 100 : null,
     turnover_rate: q.sharesOutstanding ? (q.regularMarketVolume || 0) / q.sharesOutstanding : null,

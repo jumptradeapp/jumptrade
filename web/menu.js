@@ -5,7 +5,7 @@
     ['Discover', [['movers', 'Top gainers', 'Live movers'], ['runners', 'Jump radar', 'Early signs of a run'], ['setups', 'Setups', 'Best entries now'], ['insiders', 'Smart money', 'Executives buying'], ['options', 'Unusual options', 'Big bets'], ['buzz', 'Market pulse', 'Most talked about']]],
     ['Markets', [['sectors', 'Sectors', 'Where money is rotating'], ['news', 'News', 'Live headlines'], ['catalysts', 'Calendar', 'Earnings & events'], ['ipos', 'IPOs', 'New listings'], ['flow', 'Money flow', 'Big buyers & sellers'], ['congress', 'Congress', 'Lawmakers’ trades']]],
     ['Ideas', [['dips', 'Dips', 'Pullbacks to buy'], ['leaders', 'Leaders', 'Strongest stocks'], ['value', 'Value engine', 'Undervalued names'], ['compare', 'Compare', 'Side by side']]],
-    ['Portfolios', [['portfolios', 'Model portfolios', 'Strategies to follow'], ['record', 'Signal lab', 'How signals performed']]],
+    ['Portfolios', [['build', 'Build a portfolio', 'Type a theme or pick an ETF mix'], ['portfolios', 'Model portfolios', 'Strategies to follow'], ['record', 'Signal lab', 'How signals performed']]],
     ['Research', [['research', 'Research', 'Deep dives'], ['ratings', 'Analyst ratings', 'Upgrades & targets'], ['shorts', 'Short interest', 'Most shorted']]],
   ];
   const IC = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>';
