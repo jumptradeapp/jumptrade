@@ -6,6 +6,8 @@
 import { Webull } from './webull.js';
 import { makeVapid, sendPush } from './push.js';
 import { authRoutes, sessionFrom, KINDS } from './auth.js';
+// Every outside request gets a deadline so one slow source can't hang a whole response.
+const fetch = (u, o = {}) => globalThis.fetch(u, o.signal ? o : { ...o, signal: AbortSignal.timeout(o.timeoutMs || (/api\.anthropic\.com/.test(String(u)) ? 25000 : 8000)) });
 
 const Y1 = 'https://query1.finance.yahoo.com';
 const Y2 = 'https://query2.finance.yahoo.com';
@@ -15,7 +17,7 @@ const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/6
 const num = (v) => (v == null || v === '' || isNaN(+v) ? null : +v);
 const raw = (v) => (v && typeof v === 'object' && 'raw' in v ? v.raw : v);
 const iso = (sec) => new Date(sec * 1000).toISOString();
-const json = (obj, status = 200, extra = {}) => new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*', ...extra } });
+const json = (obj, status = 200, extra = {}) => new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json', 'x-content-type-options': 'nosniff', ...extra } });
 const chunk = (arr, n) => { const out = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
 const syms = (s) => (Array.isArray(s) ? s : String(s || '').split(',')).map((x) => String(x).trim().toUpperCase()).filter(Boolean);
 
@@ -146,7 +148,9 @@ async function barsOne(sym, i) {
   const r = ((d.chart || {}).result || [])[0]; if (!r) return { symbol: sym, result: [] };
   const q = ((r.indicators || {}).quote || [])[0] || {}; const ts = r.timestamp || [];
   const out = [];
-  for (let k = 0; k < ts.length; k++) { if (q.close[k] == null) continue; out.push({ time: iso(ts[k]), open: q.open[k], high: q.high[k], low: q.low[k], close: q.close[k], volume: q.volume[k] || 0 }); }
+  const intra = /^M/.test(i.timespan || ''); const etF = intra ? new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: 'numeric', hour12: false }) : null;
+  const sessOf = (t) => { const p = {}; etF.formatToParts(new Date(t * 1000)).forEach((x) => { p[x.type] = x.value; }); const m = (+p.hour % 24) * 60 + +p.minute; return m < 570 ? 'PRE' : m < 960 ? 'RTH' : 'ATH'; };
+  for (let k = 0; k < ts.length; k++) { if (q.close[k] == null) continue; const bar = { time: iso(ts[k]), open: q.open[k], high: q.high[k], low: q.low[k], close: q.close[k], volume: q.volume[k] || 0 }; if (intra) bar.trading_session = sessOf(ts[k]); out.push(bar); }
   return { symbol: sym, result: out.reverse().slice(0, n) }; // newest first, like the app expects
 }
 T.get_stock_bars = async (i) => ({ result: await Promise.all(syms(i.symbols).slice(0, 20).map((s) => barsOne(s, i).catch(() => ({ symbol: s, result: [] })))) });
@@ -565,6 +569,11 @@ export class Vault {
     const u = new URL(req.url); const k = u.searchParams.get('k');
     if (u.pathname === '/get') { const v = await this.state.storage.get(k); return v === undefined ? new Response('null', { status: 404 }) : new Response(JSON.stringify(v)); }
     if (u.pathname === '/put') { await this.state.storage.put(k, await req.json()); return new Response('ok'); }
+    if (u.pathname === '/sweep') { // delete counters older than 2 days and sign-ins older than 90 days (or logged out)
+      const cut = new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10); let n = 0;
+      for (const pre of ['rdm_', 'fbr_', 'ai_']) { const m = await this.state.storage.list({ prefix: pre }); for (const k of m.keys()) { const d = (k.match(/\d{4}-\d{2}-\d{2}/) || [])[0]; if (d && d < cut) { await this.state.storage.delete(k); n++; } } }
+      const ss = await this.state.storage.list({ prefix: 'sess_' }); for (const [k, v] of ss) { if (!v || !v.t || Date.now() - v.t > 90 * 864e5) { await this.state.storage.delete(k); n++; } }
+      return new Response(JSON.stringify({ deleted: n })); }
     if (u.pathname === '/lease') { // atomic lock: first caller wins until it expires or is released
       const ms = Math.min(600000, +u.searchParams.get('ms') || 60000), now = Date.now(), cur = await this.state.storage.get('lease_' + k);
       if (u.searchParams.get('release')) { if (cur && cur.id === u.searchParams.get('id')) await this.state.storage.delete('lease_' + k); return new Response('ok'); }
@@ -901,12 +910,12 @@ async function runAlerts(env, ctx) {
 
 let UPK = 0;
 export default {
-  async scheduled(ev, env, ctx) { CUR_ENV = env; const m = new Date().getUTCMinutes(); { const n = etNow(); const live = !/Sat|Sun/.test(n.wd) && n.hm >= 230 && n.hm < 1210; if (live || m % 10 === 0) ctx.waitUntil(precompute(env, ctx).then((r) => vput(env, 'prerun', { t: Date.now(), r })).catch(() => {})); } if (m % 10 === 0) ctx.waitUntil(wbUpkeep(env).catch(() => {})); ctx.waitUntil(runAlerts(env, ctx).then((r) => vput(env, 'alertrun', Object.assign({ t: Date.now() }, r))).catch((e) => vput(env, 'alertrun', { t: Date.now(), error: String(e && e.message || e) }))); },
+  async scheduled(ev, env, ctx) { CUR_ENV = env; const m = new Date().getUTCMinutes(); { const n = etNow(); const live = !/Sat|Sun/.test(n.wd) && n.hm >= 230 && n.hm < 1210; if (live || m % 10 === 0) ctx.waitUntil(precompute(env, ctx).then((r) => vput(env, 'prerun', { t: Date.now(), r })).catch(() => {})); } if (m % 10 === 0) ctx.waitUntil(wbUpkeep(env).catch(() => {})); { const n2 = etNow(); if (n2.hm === 247) ctx.waitUntil(vault(env).then((v) => v && v.fetch('https://v/sweep')).catch(() => {})); } ctx.waitUntil(runAlerts(env, ctx).then((r) => vput(env, 'alertrun', Object.assign({ t: Date.now() }, r))).catch((e) => vput(env, 'alertrun', { t: Date.now(), error: String(e && e.message || e) }))); },
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     CUR_ENV = env;
     if (Date.now() - UPK > 600000) { UPK = Date.now(); ctx.waitUntil(wbUpkeep(env).catch(() => {})); }
-    if (req.method === 'OPTIONS') return new Response(null, { headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'POST, GET' } });
+    if (req.method === 'OPTIONS') return new Response(null, { status: 204 }); // the app only calls its own server (same origin), so no cross-site access is granted
     // Private beta: while the site is locked, every data endpoint needs a signed-in account (cookie or bearer token).
     if (url.pathname.startsWith('/api/') && !/^\/api\/(auth\/|admin\/|health$|logo\/|alertstate$|wbstate$|wb\/)/.test(url.pathname) && !(url.pathname === '/api/feedback' && req.method === 'GET')) {
       // remembered per server for a minute so the 1-second price polling doesn't add storage lookups to every request

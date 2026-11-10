@@ -129,7 +129,7 @@
   C.render = function () {
     const P = dPal();
     setHTML($('cmpSeg'), intelSeg('compare'));
-    const top = '<div class="cmpin"><input id="cmpA" class="cin" value="' + esc(C.a) + '" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" style="border-color:' + CA + '88"><button class="cmpsw" data-cmpswap="1" aria-label="Swap">⇄</button><input id="cmpB" class="cin" value="' + esc(C.b) + '" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" style="border-color:' + CB + '88"><button class="cta cmpgo" data-cmpgo="1">Compare</button></div>' +
+    const top = '<div class="cmpL"><span style="color:' + CA + '">First stock</span><span style="color:' + CB + '">Second stock</span></div><div class="cmpin"><input id="cmpA" class="cin" value="' + esc(C.a) + '" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" style="border-color:' + CA + '88"><button class="cmpsw" data-cmpswap="1" aria-label="Swap">⇄</button><input id="cmpB" class="cin" value="' + esc(C.b) + '" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" style="border-color:' + CB + '88"><button class="cta cmpgo" data-cmpgo="1">Compare</button></div>' +
       '<div class="chips cmpq">' + PAIRS.map((p) => '<button class="chip' + (p[0] === C.a && p[1] === C.b ? ' on' : '') + '" data-cmpp="' + p.join(',') + '">' + p[0] + ' vs ' + p[1] + '</button>').join('') + '</div>';
     const box = $('cmpList');
     if (document.activeElement && (document.activeElement.id === 'cmpA' || document.activeElement.id === 'cmpB')) return;

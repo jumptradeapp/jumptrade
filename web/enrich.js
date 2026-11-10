@@ -68,18 +68,19 @@
     if ((!e || !e.length) && (!inc || !inc.length)) return (e && inc) ? '' : '';
     let h = '<div class="glass sec" style="--c:' + C.am + '">' + secCap('EARNINGS', C.am);
     const t = today();
-    const next = (e || []).filter((x) => !x.eps_actual && x.expected_publish_date && x.expected_publish_date >= t).sort((a, b) => (a.expected_publish_date > b.expected_publish_date ? 1 : -1))[0];
+    const hasV = (v) => v != null && v !== '' && isFinite(+v); // $0.00 is a real number, not 'missing'
+    const next = (e || []).filter((x) => !hasV(x.eps_actual) && x.expected_publish_date && x.expected_publish_date >= t).sort((a, b) => (a.expected_publish_date > b.expected_publish_date ? 1 : -1))[0];
     if (next) {
       const n = days(t, next.expected_publish_date);
       h += '<div class="enext"><div><span>NEXT REPORT</span><b>' + new Date(next.expected_publish_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '</b><em style="color:' + (n <= 7 ? C.am : C.mute) + '">' + (n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : 'in ' + n + ' days') + '</em></div>' +
-        '<div><span>EPS ESTIMATE</span><b>' + (next.eps_est ? '$' + (+next.eps_est).toFixed(2) : '—') + '</b></div><div><span>REVENUE EST.</span><b>' + (next.rev_est ? usd(+next.rev_est) : '—') + '</b></div></div>';
+        '<div><span>EPS ESTIMATE</span><b>' + (hasV(next.eps_est) ? '$' + (+next.eps_est).toFixed(2) : '—') + '</b></div><div><span>REVENUE EST.</span><b>' + (hasV(next.rev_est) ? usd(+next.rev_est) : '—') + '</b></div></div>';
     }
-    const past = (e || []).filter((x) => x.eps_actual && x.eps_est).sort((a, b) => (a.expected_publish_date > b.expected_publish_date ? -1 : 1));
+    const past = (e || []).filter((x) => hasV(x.eps_actual) && hasV(x.eps_est)).sort((a, b) => (a.expected_publish_date > b.expected_publish_date ? -1 : 1));
     if (past.length) {
       h += '<div class="cap" style="margin-top:12px">RECENT REPORTS</div><div class="ebeats">' + past.map((x) => {
-        const s = (+x.eps_actual - +x.eps_est) / Math.abs(+x.eps_est) * 100; const beat = +x.eps_actual >= +x.eps_est;
+        const s = +x.eps_est ? (+x.eps_actual - +x.eps_est) / Math.abs(+x.eps_est) * 100 : null; // no % surprise when the estimate was $0 const beat = +x.eps_actual >= +x.eps_est;
         const rs = x.rev_actual && x.rev_est ? (+x.rev_actual / +x.rev_est - 1) * 100 : null;
-        return '<div style="--c:' + (beat ? C.up : C.dn) + '"><span>Q' + x.fiscal_period + ' FY' + String(x.fiscal_year).slice(2) + '</span><b>' + (beat ? 'BEAT' : 'MISS') + '</b><em>EPS $' + (+x.eps_actual).toFixed(2) + ' vs $' + (+x.eps_est).toFixed(2) + ' (' + (s >= 0 ? '+' : '') + s.toFixed(0) + '%)</em>' + (rs != null ? '<em>Revenue ' + (rs >= 0 ? '+' : '') + rs.toFixed(1) + '% vs est.</em>' : '') + '</div>';
+        return '<div style="--c:' + (beat ? C.up : C.dn) + '"><span>Q' + x.fiscal_period + ' FY' + String(x.fiscal_year).slice(2) + '</span><b>' + (beat ? 'BEAT' : 'MISS') + '</b><em>EPS $' + (+x.eps_actual).toFixed(2) + ' vs $' + (+x.eps_est).toFixed(2) + (s != null ? ' (' + (s >= 0 ? '+' : '') + s.toFixed(0) + '%)' : '') + '</em>' + (rs != null ? '<em>Revenue ' + (rs >= 0 ? '+' : '') + rs.toFixed(1) + '% vs est.</em>' : '') + '</div>';
       }).join('') + '</div>';
     }
     if (inc && inc.length > 1) {
@@ -128,7 +129,7 @@
       const s = EQ.shift(); eBusy++;
       mcp.callTool(SERVER, 'get_stock_earnings_calendar', { symbol: s, category: 'US_STOCK' }, { cache: { staleTime: 43200000, gcTime: 86400000 } }).then((res) => {
         const a = arr(payloadOf(res)); const t = today();
-        const nx = a.filter((x) => !x.eps_actual && x.expected_publish_date >= t).sort((x, y) => (x.expected_publish_date > y.expected_publish_date ? 1 : -1))[0];
+        const nx = a.filter((x) => !(x.eps_actual != null && x.eps_actual !== '' && isFinite(+x.eps_actual)) && x.expected_publish_date >= t).sort((x, y) => (x.expected_publish_date > y.expected_publish_date ? 1 : -1))[0];
         ENR.eCache[s] = { d: nx ? nx.expected_publish_date : null, t: Date.now() };
         try { localStorage.setItem('jt.earn', JSON.stringify(ENR.eCache)); } catch (e) {}
         render();

@@ -254,7 +254,7 @@ function renderMovers() {
     (S.manual ? '<button class="chip ghost" data-sess="auto">Auto</button>' : '');
   setHTML($('caps'), CAPS.map((c) => '<button role="tab" aria-selected="' + (c[0] === S.cap) + '" class="seg' + (c[0] === S.cap ? ' on' : '') + '" data-cap="' + c[0] + '">' + c[1] + '</button>').join(''));
   const rows = rankedRows(); rowsCache = rows;
-  $('note').textContent = S.held ? '❚❚ ORDER PAUSED WHILE YOU SCROLL' : (rows.length + ' MOVERS · ' + (v === 'overnight' ? 'TODAY’S MOVERS IN 24H TRADING' : vs.name.toUpperCase()));
+  $('note').textContent = S.held ? '❚❚ ORDER PAUSED WHILE YOU SCROLL' : (rows.length + ' MOVERS · ' + (v === 'overnight' ? 'TODAY’S MOVERS IN 24H TRADING' : vs.name.toUpperCase() + ((v === 'pre' || v === 'after') ? ' · FROM TOP GAINERS + LARGE CAPS' : '')));
   $('layTiles').classList.toggle('on', S.layout === 'tiles'); $('layList').classList.toggle('on', S.layout === 'list');
   const box = $('grid');
   if (window.TODAY && $('mvTop')) $('mvTop').innerHTML = TODAY.healthBar();
@@ -450,8 +450,8 @@ function renderDetail() {
     { const st = S.stamp && (S.stamp['d:snap'] || S.stamp['d:snap:' + sym]); const age = st ? Date.now() - st : null; const tm = new Date(st || Date.now()).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', timeZone: 'America/New_York' });
       h += '<div class="dQt">' + (SESS[S.auto] ? SESS[S.auto].label : 'Market closed') + ' · vs yesterday’s close · ' + (st ? tm + ' ET' : 'loading…') + (age > 90000 ? ' <b style="color:#F2C27A">· delayed</b>' : '') + '</div>'; }
   }
-  if (window.ENR) h += ENR.stats(sym, main);
   if (window.VERD) h += VERD.card(sym, main);
+  if (window.ENR) h += ENR.stats(sym, main);
   h += '<div class="chart2">' + '<button class="fsBtn" data-fsopen><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Setup</button>' + chartSVG(d.bars, sn ? +sn.pre_close : null, window.ENR && S.chartTf !== 'D' ? ENR.levels(sym) : null) + '<div class="cfoot"><div class="tfs2">' + ['1m', '5m', 'D'].map((t) => '<button class="' + (t === S.chartTf ? 'on' : '') + '" data-tf="' + t + '">' + (t === 'D' ? '1D' : t) + '</button>').join('') + '</div>' +
     '<div class="legend2">' + (S.chartTf !== 'D' ? '<span><i style="background:#C3A8FF;height:2px"></i>VWAP</span><span><b class="npin">N</b>News</span>' : '') + '<span><i style="background:#F2C27A"></i>Pre</span><span><i style="background:#8CB8E0"></i>After</span></div></div></div></div>';
   if (window.ENR) h += ENR.why(sym);
@@ -479,13 +479,13 @@ function renderDetail() {
   if ((t && t.high) || (ra && +ra.number)) {
     const cur = main ? main.price : 0; const n = ra ? +ra.number : 0;
     const parts = ra ? [['Strong buy', +ra.strong_buy, '#3FD68F'], ['Buy', +ra.buy, '#8CE3B5'], ['Hold', +ra.hold, '#F2C27A'], ['Sell', +(ra.under_perform || 0) + +(ra.sell || 0), '#FF6B6B']] : [];
-    h += '<div class="glass sec" style="--c:' + P.up + '">' + secCap('ANALYSTS' + (n ? ' · ' + n : ''), P.up) + (n ? anGauge(ra, P) +
+    h += '<div class="glass sec" style="--c:' + P.up + '">' + secCap('ANALYST OPINION' + (n ? ' · ' + n + ' analysts' : ''), P.up) + (n ? anGauge(ra, P) +
       '<div class="ratleg">' + parts.filter((p) => p[1]).map((p) => '<span><i style="background:' + p[2] + '"></i>' + p[0] + ' ' + p[1] + '</span>').join('') + '</div>' : '') +
       (t && t.high ? '<div class="cap" style="margin-top:14px">PRICE TARGETS</div>' + tgtBar(t, cur, P) +
         '<div class="tg tgc"><div style="--c:' + P.dn + '"><span>Low</span><b>$' + px(+t.low) + '</b>' + (cur ? '<em>' + dS(+t.low - cur, null, cur) + ' ' + pctS((+t.low / cur - 1) * 100) + '</em>' : '') + '</div>' +
         '<div style="--c:' + P.acc + '"><span>Average</span><b>$' + px(+t.mean) + '</b>' + (cur ? '<em>' + dS(+t.mean - cur, null, cur) + ' ' + pctS((+t.mean / cur - 1) * 100) + '</em>' : '') + '</div>' +
         '<div style="--c:' + P.up + '"><span>High</span><b>$' + px(+t.high) + '</b>' + (cur ? '<em>' + dS(+t.high - cur, null, cur) + ' ' + pctS((+t.high / cur - 1) * 100) + '</em>' : '') + '</div></div>' : '') + '</div>';
-  } else if (d.tgt !== undefined || d.rat !== undefined) h += '<div class="glass sec" style="--c:' + P.up + '">' + secCap('ANALYSTS', P.up) + '<p class="desc dim">No analyst coverage. Common for microcaps: there’s no Street target to measure against.</p></div>';
+  } else if (d.tgt !== undefined || d.rat !== undefined) h += '<div class="glass sec" style="--c:' + P.up + '">' + secCap('ANALYST OPINION', P.up) + '<p class="desc dim">No analyst coverage. Common for microcaps: there’s no Street target to measure against.</p></div>';
   if (window.ENR) h += ENR.earn(sym);
   h += valCard(sym);
   if (window.ENR) h += ENR.ins(sym);

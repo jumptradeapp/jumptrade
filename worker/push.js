@@ -49,7 +49,7 @@ export async function encrypt(sub, payload) {
 // Send one notification. Returns the push service's HTTP status (201 ok; 404/410 = subscription gone).
 export async function sendPush(sub, data, vapid, subject = 'mailto:hello@jumptrade.app', ttl = 3600) {
   const body = await encrypt(sub, JSON.stringify(data));
-  const r = await fetch(sub.endpoint, { method: 'POST', body, headers: {
+  const r = await fetch(sub.endpoint, { method: 'POST', body, signal: AbortSignal.timeout(8000), headers: {
     Authorization: await vapidHeader(sub.endpoint, vapid, subject), 'Content-Encoding': 'aes128gcm', 'Content-Type': 'application/octet-stream', TTL: String(ttl), Urgency: 'high' } });
   return r.status;
 }

@@ -61,7 +61,7 @@ export class Webull {
     if (bodyStr != null) headers['content-type'] = 'application/json';
     if (token) headers['x-access-token'] = token;
     const qs = Object.keys(q).length ? '?' + Object.keys(q).map((k) => encodeURIComponent(k) + '=' + encodeURIComponent(q[k])).join('&') : '';
-    const r = await fetch('https://' + this.host + path + qs, { method, headers, body: bodyStr == null ? undefined : bodyStr });
+    const r = await fetch('https://' + this.host + path + qs, { method, headers, body: bodyStr == null ? undefined : bodyStr, signal: AbortSignal.timeout(8000) });
     const text = await r.text(); let data = null; try { data = JSON.parse(text); } catch (e) { data = text; }
     return { status: r.status, data };
   }

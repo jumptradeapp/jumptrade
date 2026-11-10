@@ -64,8 +64,8 @@
   /* ========== 2. MARKET HEALTH ========== */
   function loadHealth() {
     if (!live()) return;
-    if (!T.sent && !T.sentLoading) { T.sentLoading = 1; ctool('get_market_sentiment', {}, 1).then((p) => { T.sent = p; render(); }).catch(() => {}); }
-    if (!T.spyB && !T.spyLoading) { T.spyLoading = 1; ctool('get_stock_bars', { symbols: ['SPY'], category: 'US_STOCK', timespan: 'D', count: 220 }, 6).then((p) => { const r = ((p && p.result) || [])[0]; T.spyB = r ? parseBars(r.result) : []; render(); }).catch(() => {}); }
+    if (!T.sent && !T.sentLoading) { T.sentLoading = 1; ctool('get_market_sentiment', {}, 1).then((p) => { T.sent = p; render(); }).catch(() => {}).finally(() => { setTimeout(() => { T.sentLoading = 0; }, 60000); }); }
+    if (!T.spyB && !T.spyLoading) { T.spyLoading = 1; ctool('get_stock_bars', { symbols: ['SPY'], category: 'US_STOCK', timespan: 'D', count: 220 }, 6).then((p) => { const r = ((p && p.result) || [])[0]; T.spyB = r ? parseBars(r.result) : []; render(); }).catch(() => {}).finally(() => { setTimeout(() => { T.spyLoading = 0; }, 60000); }); }
     watch('h:idx', 'get_stock_snapshot', { symbols: 'SPY,QQQ,IWM', category: 'US_STOCK', extend_hour_required: true, overnight_required: false }, (p) => { arr(p).forEach((x) => { T.idx[x.symbol] = snapRow(x, view()); }); }, 60000);
     if (!S.sectors || !S.sectors.D1) loadSectors();
   }
@@ -270,7 +270,7 @@
   function reaction(sym, date) { const b = T.earnBars[sym]; if (!b || !b.length || !date) return null; const i = b.findIndex((x) => x.d >= date); if (i < 1) return null; const m0 = b[i].c / b[i - 1].c - 1, m1 = i + 1 < b.length ? b[i + 1].c / b[i].c - 1 : 0; return (Math.abs(m1) > Math.abs(m0) ? m1 : m0) * 100; }
   T.renderCalendarTop = function () {
     loadMacro(); loadEarn(); const t = todayISO(); const wl = (S.wlists || []).find((w) => w.watchlist_id === S.wl);
-    const up = []; Object.keys(T.earn).forEach((s) => { const e = T.earn[s]; if (!e || e.loading || (S.wlSyms || []).indexOf(s) < 0) return; const nx = (e.cal || []).find((x) => !x.eps_actual && x.expected_publish_date >= t); const past = (e.cal || []).filter((x) => x.eps_actual);
+    const up = []; Object.keys(T.earn).forEach((s) => { const e = T.earn[s]; if (!e || e.loading || (S.wlSyms || []).indexOf(s) < 0) return; const nx = (e.cal || []).find((x) => (x.eps_actual == null || x.eps_actual === '') && x.expected_publish_date >= t); const past = (e.cal || []).filter((x) => x.eps_actual);
       const rep = (e.fc || []).filter((x) => x.reported || (x.actual != null && x.actual !== '')).slice(-4); const beats = rep.filter((x) => +x.actual > +x.est).length;
       up.push({ sym: s, next: nx, beats: beats, nrep: rep.length, last: past.length ? past[past.length - 1] : null, react: past.length ? reaction(s, past[past.length - 1].expected_publish_date) : null }); });
     up.sort((a, b) => ((a.next && a.next.expected_publish_date) || '9999') < ((b.next && b.next.expected_publish_date) || '9999') ? -1 : 1);
