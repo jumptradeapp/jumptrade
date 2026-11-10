@@ -24,13 +24,16 @@
   }
 
   function rOptions(D, f) {
-    let L = D.rows.slice();
+    // hide contracts that already expired; flag when the latest report is old
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    let L = D.rows.filter((r) => !r.exp || r.exp >= today);
+    const age = D.updated ? Math.round((Date.parse(today) - Date.parse(D.updated)) / 864e5) : 0;
     if (f === 'call' || f === 'put') L = L.filter((r) => r.type === f);
     else if (f === 'bullish' || f === 'bearish') L = L.filter((r) => r.sentiment === f);
     else if (f === 'unusual') L = L.filter((r) => r.vol > r.oi);
     L.sort((a, b) => b.date.localeCompare(a.date) || b.premium - a.premium);
     const tot = L.reduce((a, r) => a + r.premium, 0), bull = L.filter((r) => r.sentiment === 'bullish').reduce((a, r) => a + r.premium, 0), bear = L.filter((r) => r.sentiment === 'bearish').reduce((a, r) => a + r.premium, 0);
-    let h = '<div class="xsum"><div><small>Premium</small><b>' + k$(tot) + '</b></div><div><small>Bullish</small><b class="xg">' + k$(bull) + '</b></div><div><small>Bearish</small><b class="xr">' + k$(bear) + '</b></div></div>';
+    let h = (age >= 4 ? '<p class="desc" style="color:#F2C27A;margin:0 2px 8px">Latest report is from ' + md(D.updated) + '. Expired contracts are hidden.</p>' : '') + '<div class="xsum"><div><small>Premium</small><b>' + k$(tot) + '</b></div><div><small>Bullish</small><b class="xg">' + k$(bull) + '</b></div><div><small>Bearish</small><b class="xr">' + k$(bear) + '</b></div></div>';
     let last = '';
     L.forEach((r) => {
       if (r.date !== last) { last = r.date; h += '<div class="dipH"><b class="xh">' + md(r.date) + '</b></div>'; }
