@@ -743,7 +743,14 @@ async function vapidKeys(env) { let v = await vget(env, 'vapid'); if (!v) { v = 
 const subId = async (ep) => { const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ep)); return [...new Uint8Array(d)].slice(0, 12).map((b) => b.toString(16).padStart(2, '0')).join(''); };
 function etNow() { const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', weekday: 'short', hourCycle: 'h23' }).formatToParts(new Date()); const g = (t) => (p.find((x) => x.type === t) || {}).value; return { day: g('year') + '-' + g('month') + '-' + g('day'), hm: +g('hour') * 60 + +g('minute'), wd: g('weekday') }; }
 // push to the owner's devices (new tester, feedback)
-async function notifyOwner(env, msg) { try { const ids = (await vget(env, 'ownerSubs')) || []; if (!ids.length) return; const all = (await vget(env, 'subs')) || {}; const v = await vapidKeys(env); await Promise.all(ids.map((id) => all[id] ? sendPush(all[id].sub, msg, v).catch(() => 0) : 0)); } catch (e) {} }
+// Every notification leads with a short subject line; the specific headline moves to the first line of the body.
+const SUBJ = { run: 'Runner alert', mv: 'Big move', px: 'Price alert', nw: 'Stock news', nm: 'Market news', fl: 'Big money', rt: 'Analyst call', er: 'Earnings', open: 'Market open', close: 'Closing recap', 'jt-admin': 'Beta admin', test: 'Alerts on' };
+function withSubject(m) {
+  const k = String(m.tag || '').replace(/-.*$/, ''); const subj = SUBJ[k] || SUBJ[m.tag]; if (!subj) return m;
+  const head = String(m.title || '').replace(new RegExp('^' + subj.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*[·:]\\s*', 'i'), '');
+  return { ...m, title: subj, body: head ? head + (m.body ? '\n' + m.body : '') : m.body };
+}
+async function notifyOwner(env, msg) { try { const ids = (await vget(env, 'ownerSubs')) || []; if (!ids.length) return; const all = (await vget(env, 'subs')) || {}; const v = await vapidKeys(env); await Promise.all(ids.map((id) => all[id] ? sendPush(all[id].sub, withSubject(msg), v).catch(() => 0) : 0)); } catch (e) {} }
 async function pushRoutes(url, req, env, ctx) {
   if (url.pathname === '/api/push/key') { const v = await vapidKeys(env); return json({ key: v.pub }); }
   if (url.pathname === '/api/push/sub' && req.method === 'POST') {
@@ -898,7 +905,7 @@ async function runAlerts(env, ctx) {
     for (const m of out) {
       if (quiet && !/^px-/.test(m.tag)) continue; // price alerts always come through
       if ((st.n || 0) >= (P.cap || 12)) break;
-      const code = await sendPush(s.sub, m, vapid).catch(() => 0);
+      const code = await sendPush(s.sub, withSubject(m), vapid).catch(() => 0);
       if (code === 404 || code === 410) { dead.push(id); break; }
       if (code && code < 300) { st.n = (st.n || 0) + 1; sent++; }
     }
