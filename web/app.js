@@ -1269,11 +1269,11 @@ function goTab(t) {
   setTimeout(() => document.querySelectorAll('.view .intelseg .seg.on').forEach((el) => { const p = el.parentNode; p.scrollLeft = el.offsetLeft - p.clientWidth / 2 + el.offsetWidth / 2; }), 80);
   S.tab = t; if (isIntel(t)) S.lastIntel = t; if (isIdeas(t)) S.lastIdeas = t; try { history.replaceState(null, '', '#' + t); } catch (e) {}
   ({ home: () => window.HOME && HOME.load(), research: () => window.RES && RES.load(), sectors: loadSectors, setups: () => { loadSyms(); loadDips(); }, dips: () => { loadSyms(); loadDips(); }, value: () => { loadSyms(); loadValue(); }, buzz: () => { loadSyms(); loadBuzz(); }, ipos: loadIpos, news: loadNews, ratings: () => file('ratings.json'), record: () => window.REC && REC.run(), compare: () => {}, options: () => EXT.load('options'), congress: () => EXT.load('congress'), shorts: () => EXT.load('shorts'), watch: loadWatch, catalysts: () => file('catalysts.json'), portfolios: () => { loadModels(); file('funds.json'); } }[t] || (() => {}))();
-  const sc = document.querySelector('#v' + ({ home: 'Home', movers: 'Movers', dips: 'Dips', value: 'Value', buzz: 'Buzz', watch: 'Watch', news: 'News', ratings: 'Ratings', catalysts: 'Catalysts', ipos: 'Ipos', sectors: 'Sectors', portfolios: 'Port', leaders: 'Leaders', setups: 'Setups', insiders: 'Insiders', flow: 'Flow', research: 'Research', record: 'Record', compare: 'Compare', options: 'Extra', congress: 'Extra', shorts: 'Extra' }[t]) + ' .scroller'); if (sc) sc.scrollTop = 0;
+  const sc = document.querySelector('#v' + ({ home: 'Home', movers: 'Movers', dips: 'Dips', value: 'Value', buzz: 'Buzz', watch: 'Watch', news: 'News', ratings: 'Ratings', catalysts: 'Catalysts', ipos: 'Ipos', sectors: 'Sectors', portfolios: 'Port', leaders: 'Leaders', runners: 'Runners', setups: 'Setups', insiders: 'Insiders', flow: 'Flow', research: 'Research', record: 'Record', compare: 'Compare', options: 'Extra', congress: 'Extra', shorts: 'Extra' }[t]) + ' .scroller'); if (sc) sc.scrollTop = 0;
 }
 
 /* ---------- ideas: value + buzz ---------- */
-const IDEAS = [['setups', 'Setups'], ['dips', 'Dips'], ['leaders', 'Leaders'], ['value', 'Value'], ['buzz', 'Buzz'], ['insiders', 'Insiders'], ['record', 'Record']];
+const IDEAS = [['setups', 'Setups'], ['runners', 'Runners'], ['dips', 'Dips'], ['leaders', 'Leaders'], ['value', 'Value'], ['buzz', 'Buzz'], ['insiders', 'Insiders'], ['record', 'Record']];
 const isIdeas = (t) => IDEAS.some((x) => x[0] === t);
 function ideasSeg(active) { return IDEAS.map((x) => '<button class="seg' + (x[0] === active ? ' on' : '') + '" data-tab="' + x[0] + '">' + x[1] + '</button>').join(''); }
 const VQ = []; let vBusy = 0; const VMAX = 4;
@@ -1426,7 +1426,7 @@ function doRender() {
   document.body.dataset.tab = S.tab;
   const navOf = isIntel(S.tab) ? 'intel' : isIdeas(S.tab) ? 'dips' : S.tab; [['navHome', 'home'], ['navMovers', 'movers'], ['navDips', 'dips'], ['navWatch', 'watch'], ['navIntel', 'intel'], ['navPort', 'portfolios']].forEach((x) => { $(x[0]).classList.toggle('on', navOf === x[1]); $(x[0]).setAttribute('aria-current', navOf === x[1] ? 'page' : 'false'); });
   document.body.classList.toggle('collapsed', S.collapsed);
-  ({ home: () => window.HOME && HOME.render(), research: () => window.RES && RES.render(), setups: () => window.ENR && ENR.renderSetups(), leaders: () => TODAY.renderLeaders(), insiders: () => TODAY.renderInsiders(), flow: () => TODAY.renderFlow(), movers: renderMovers, dips: renderDips, value: renderValue, buzz: renderBuzz, watch: renderWatch, news: renderNews, ratings: renderRatings, record: () => window.REC && REC.render(), compare: () => window.CMP && CMP.render(), options: () => EXT.render('options'), congress: () => EXT.render('congress'), shorts: () => EXT.render('shorts'), catalysts: renderCatalysts, ipos: renderIpos, sectors: renderSectors, portfolios: renderPortfolios }[S.tab] || renderMovers)();
+  ({ home: () => window.HOME && HOME.render(), research: () => window.RES && RES.render(), setups: () => window.ENR && ENR.renderSetups(), leaders: () => TODAY.renderLeaders(), runners: () => window.RUN && RUN.render(), insiders: () => TODAY.renderInsiders(), flow: () => TODAY.renderFlow(), movers: renderMovers, dips: renderDips, value: renderValue, buzz: renderBuzz, watch: renderWatch, news: renderNews, ratings: renderRatings, record: () => window.REC && REC.render(), compare: () => window.CMP && CMP.render(), options: () => EXT.render('options'), congress: () => EXT.render('congress'), shorts: () => EXT.render('shorts'), catalysts: renderCatalysts, ipos: renderIpos, sectors: renderSectors, portfolios: renderPortfolios }[S.tab] || renderMovers)();
   if ($('dipSeg')) setHTML($('dipSeg'), ideasSeg('dips')); if ($('ipoSeg')) setHTML($('ipoSeg'), intelSeg('ipos')); if ($('secSeg')) setHTML($('secSeg'), intelSeg('sectors'));
   delayedOverlay();
   if (S.fund && !S.fund.creator) renderFund();
@@ -1560,7 +1560,7 @@ document.addEventListener('click', async (e) => {
 document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('#retryData')) { try { location.reload(); } catch (x) {} } });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { if (S.searchOpen) closeSearch(); else if (S.detail) closeDetail(); else if (S.fund) { S.fund = null; document.body.classList.remove('fund-open'); render(); } else if (S.sector) { S.sector = null; document.body.classList.remove('sector-open'); render(); } } });
 window.addEventListener('resize', render);
-window.addEventListener('hashchange', () => { const t = location.hash.slice(1); if (['home','movers','research','setups','dips','leaders','value','buzz','insiders','watch','news','flow','record','compare','options','congress','shorts','ratings','catalysts','ipos','sectors','portfolios'].indexOf(t) >= 0 && t !== S.tab) { goTab(t); render(); } });
+window.addEventListener('hashchange', () => { const t = location.hash.slice(1); if (['home','movers','research','setups','runners','dips','leaders','value','buzz','insiders','watch','news','flow','record','compare','options','congress','shorts','ratings','catalysts','ipos','sectors','portfolios'].indexOf(t) >= 0 && t !== S.tab) { goTab(t); render(); } });
 
 /* ---------- boot ---------- */
 try { const l = localStorage.getItem('jt.layout'); if (l === 'list' || l === 'tiles') S.layout = l; } catch (e) {}

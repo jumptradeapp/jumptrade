@@ -114,14 +114,14 @@
   };
 
   // ---------- widgets: config, extra widgets, customize sheet ----------
-  const DEF = ['regime', 'news', 'changed', 'pos', 'setups', 'week', 'record', 'idx', 'gainers', 'uvol', 'uopt', 'dips', 'value', 'watch', 'sectors', 'flow', 'congress', 'earn', 'upg'];
+  const DEF = ['regime', 'runners', 'news', 'changed', 'pos', 'setups', 'week', 'record', 'idx', 'gainers', 'uvol', 'uopt', 'dips', 'value', 'watch', 'sectors', 'flow', 'congress', 'earn', 'upg'];
   const OFF = { idx: 1, gainers: 1, uvol: 1, uopt: 1, dips: 1, value: 1, watch: 1, sectors: 1, flow: 1, congress: 1, earn: 1, upg: 1 };
-  const NAMES = { regime: ['Market regime', 'Risk-on or off, and how big to size'], news: ['Top news', 'The three latest headlines'], changed: ['What changed', 'Big moves, ratings and Congress trades on your stocks'], pos: ['Your positions', 'Holdings that need a look'], setups: ['Top setups', 'Best 3 trades with entry and stop'], week: ['This week', 'Big releases and earnings by day'], record: ['Signal track record', 'How the signals have done'],
+  const NAMES = { regime: ['Market regime', 'Risk-on or off, and how big to size'], runners: ['Potential runners', 'Stocks showing early signs of a run'], news: ['Top news', 'The three latest headlines'], changed: ['What changed', 'Big moves, ratings and Congress trades on your stocks'], pos: ['Your positions', 'Holdings that need a look'], setups: ['Top setups', 'Best 3 trades with entry and stop'], week: ['This week', 'Big releases and earnings by day'], record: ['Signal track record', 'How the signals have done'],
     idx: ['Indexes', 'S&P 500, Nasdaq 100, Russell 2000'], gainers: ['Top gainers', 'The 4 biggest movers right now'], uvol: ['Unusual volume', 'Trading far above normal volume'], uopt: ['Unusual options', 'The biggest options bets'], dips: ['Dips', 'Dip buys that are triggering'], value: ['Undervalued', 'Cheapest for their growth'], watch: ['Watchlist', 'Your names, live'], sectors: ['Sector heat', 'All sectors ranked today'], flow: ['Big money', 'Latest major block trades'], congress: ['Congress', 'Latest trades by members'], earn: ['Earnings for you', 'Your names reporting this week'], upg: ['Upgrades', 'Latest analyst upgrades and downgrades'] };
   H.cfg = function () {
     let c = null; try { c = JSON.parse(localStorage.getItem('jt.home2') || 'null'); } catch (e) {} if (!c && S['_jt.home2']) c = JSON.parse(JSON.stringify(S['_jt.home2']));
     if (!c || !Array.isArray(c.order)) c = { order: DEF.slice(), hide: Object.assign({}, OFF) };
-    DEF.forEach((id) => { if (c.order.indexOf(id) < 0) { c.order.push(id); if (OFF[id]) c.hide[id] = 1; } });
+    DEF.forEach((id) => { if (c.order.indexOf(id) < 0) { if (id === 'runners') c.order.splice(Math.min(1, c.order.length), 0, id); else c.order.push(id); if (OFF[id]) c.hide[id] = 1; } });
     c.order = c.order.filter((id) => DEF.indexOf(id) >= 0); return c;
   };
   function saveCfg(c) { if (typeof lsSet === 'function') lsSet('jt.home2', c); else try { localStorage.setItem('jt.home2', JSON.stringify(c)); } catch (e) {} }
@@ -132,6 +132,7 @@
     const c = H.cfg(), on = (id) => !c.hide[id], W = {}, col = (v) => v >= 0 ? P.up : P.dn;
     if (on('idx')) { const I = (TODAY && TODAY.idx) || {}; const nm = { SPY: 'S&P 500', QQQ: 'Nasdaq 100', IWM: 'Russell 2000' };
       W.idx = card('INDEXES', '#8CB8E0', '<div class="hmst hmidx">' + ['SPY', 'QQQ', 'IWM'].map((s) => { const r = I[s]; return '<div data-open="' + s + '"><small>' + nm[s] + '</small><b style="color:' + (r && r.pct != null ? col(r.pct) : P.txt) + '">' + (r && r.pct != null ? pctS(r.pct) : '—') + '</b><em>' + (r && r.price ? '$' + px(r.price) : s) + '</em></div>'; }).join('') + '</div>'); }
+    if (on('runners') && window.RUN) W.runners = RUN.widget(card, P);
     const mv = typeof moverRows === 'function' ? moverRows() : [];
     if (on('gainers')) W.gainers = card('TOP GAINERS', P.up, mv.length ? mv.slice(0, 4).map((r) => row(r.sym, esc(cleanName(r.name || symName(r.sym) || '')).slice(0, 26) || '&nbsp;', pctS(r.pct), col(r.pct), '$' + px(r.price))).join('') : skel, '<button class="hmr" data-tab="movers">All ›</button>');
     if (on('uvol')) { const U = mv.map((r) => ({ r: r, x: window.ENR ? ENR.rvol(r.sym, r.vol) : null })).filter((o) => o.x && o.x >= 2).sort((a, b) => b.x - a.x).slice(0, 5);

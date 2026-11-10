@@ -268,6 +268,48 @@ T.get_sparks = async (i) => {
   }));
   return out;
 };
+
+// ---------- potential runners: scores the whole active market for early signs of a run ----------
+function etMinutes() { const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }).formatToParts(new Date()); const g = (t) => +p.find((x) => x.type === t).value; return g('hour') * 60 + g('minute'); }
+T.get_runners = async (i) => {
+  const lim = Math.min(50, +i.limit || 30);
+  const pools = await Promise.all([pool(false), screen(SCREENS.active, 250).catch(() => []), screen(SCREENS.small, 100).catch(() => []), screen(SCREENS.aggressive, 100).catch(() => [])]);
+  const seen = {}; const raw = [];
+  pools.flat().forEach((q) => { if (q && q.symbol && !seen[q.symbol]) { seen[q.symbol] = 1; raw.push(q); } });
+  const m = etMinutes(); const pre = m < 570, post = m >= 960;
+  const frac = pre ? 0.06 : post ? 1 : Math.min(1, Math.max(0.08, (m - 570) / 390)); // share of a normal day's volume expected by now
+  const rows = [];
+  for (const q of raw) {
+    const s = q.symbol || ''; if (/[.\-]/.test(s) || (s.length === 5 && /[WRU]$/.test(s))) continue;
+    const price = num(pre && q.preMarketPrice ? q.preMarketPrice : q.regularMarketPrice); if (!price || price < 0.5 || price > 60) continue;
+    const pct = (pre && q.preMarketChangePercent != null ? q.preMarketChangePercent : q.regularMarketChangePercent) || 0;
+    const vol = (q.regularMarketVolume || 0) + (pre ? (q.preMarketVolume || 0) : 0);
+    const avg = q.averageDailyVolume10Day || q.averageDailyVolume3Month || 0; if (!avg || vol < 100000) continue;
+    const rvol = vol / (avg * frac);
+    const cap = q.marketCap || 0, hi = q.regularMarketDayHigh || price, hi52 = q.fiftyTwoWeekHigh || 0;
+    const nearHi = hi ? price / hi : 0;
+    let sc = 0; const why = [];
+    const rv = Math.min(35, Math.log2(Math.max(1, rvol)) * 11); sc += rv; if (rvol >= 2) why.push('volume ' + (rvol >= 10 ? Math.round(rvol) : rvol.toFixed(1)) + '× normal');
+    const pm = pct <= 0 ? 0 : Math.min(20, pct * 0.9); sc += pm; if (pct >= 5) why.push((pre ? 'pre-market ' : '') + '+' + pct.toFixed(0) + '%');
+    if (cap && cap < 3e8) { sc += 12; why.push('micro cap'); } else if (cap && cap < 2e9) { sc += 7; why.push('small cap'); }
+    if (price < 20) sc += 6;
+    if (nearHi >= 0.97 && pct > 2) { sc += 12; why.push('at the high of day'); } else if (nearHi >= 0.92 && pct > 2) sc += 6;
+    if (hi52 && price >= hi52 * 0.98) { sc += 8; why.push('52-week high'); }
+    if (pct > 60) sc -= 10; // already extended: less room, more fade risk
+    rows.push({ symbol: s, name: q.shortName || q.longName || s, price, change_ratio: pct / 100, volume: vol, rvol: +rvol.toFixed(1), market_value: cap, score: Math.round(sc), why });
+  }
+  rows.sort((a, b) => b.score - a.score);
+  const top = rows.slice(0, lim);
+  // fresh catalyst check for the leaders (headline in the last 24h)
+  await Promise.all(top.slice(0, 14).map(async (r) => {
+    const n = await ySearchNews(r.symbol, r.symbol).catch(() => []);
+    const fresh = n.filter((x) => Date.now() - Date.parse(x.publish_time) < 24 * 3600000 && (x.related_symbols || []).indexOf(r.symbol) >= 0);
+    if (fresh.length) { r.score += 10; r.why.unshift('news: ' + fresh[0].title.slice(0, 70)); r.news = { title: fresh[0].title, url: fresh[0].url, t: fresh[0].publish_time }; }
+  }));
+  top.forEach((r) => { r.score = Math.max(0, Math.min(100, r.score)); });
+  top.sort((a, b) => b.score - a.score);
+  return { session: pre ? 'pre' : post ? 'after' : 'day', updated: new Date().toISOString(), data: top };
+};
 // ---------- sectors: industry groups built from ETFs + their leading stocks ----------
 const GROUPS = [
   [1, 'Semiconductors', 'SMH', 'NVDA,AVGO,AMD,TSM,QCOM,MU,INTC,TXN,ADI,LRCX,AMAT,KLAC,MRVL,ARM'],
@@ -330,7 +372,7 @@ T.get_market_sectors_detail = async (i) => {
   return { data: rows };
 };
 // How long each answer may be reused (seconds). Prices: short. Fundamentals: long.
-const TTL = { get_sparks: 60, get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 60, search_news: 45,
+const TTL = { get_runners: 60, get_sparks: 60, get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 60, search_news: 45,
   get_company_profile: 86400, get_analyst_target_price: 21600, get_analyst_rating: 21600, get_stock_forecast_eps: 21600, get_stock_earnings_calendar: 21600,
   get_fund_brief: 86400, get_fund_holdings: 86400, get_fund_performance: 86400 };
 
