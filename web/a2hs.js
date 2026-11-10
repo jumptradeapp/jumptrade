@@ -19,9 +19,9 @@
   function open(force) {
     if (standalone) { if (force) alert('jumptrade is already on your Home Screen.'); return; }
     if (D.getElementById('a2hs')) return;
-    const w = D.createElement('div'); w.id = 'a2hs'; w.className = ipad ? 'top' : ios26 ? 'r' : '';
+    const w = D.createElement('div'); w.id = 'a2hs'; w.className = ipad ? 'top' : '';
     let body;
-    if (ios && safari) body = '<ol><li><span class="n">1</span>' + (ios26 && !ipad ? 'Tap <b>•••</b> at the bottom right, then <b>Share</b> ' + SHARE : 'Tap <b>Share</b> ' + SHARE + (ipad ? ' at the top right' : ' at the bottom of Safari')) + '</li><li><span class="n">2</span>Scroll down and tap <b>Add to Home Screen</b> ' + PLUS + '</li><li><span class="n">3</span>Tap <b>Add</b>. jumptrade opens full screen like an app.</li></ol>';
+    if (ios && safari) body = '<ol><li><span class="n">1</span>Tap <b>Share</b> ' + SHARE + (ipad ? ' at the top right' : ' in Safari’s toolbar') + '. Don’t see it? Tap <b>•••</b> first.</li><li><span class="n">2</span>Scroll down and tap <b>Add to Home Screen</b> ' + PLUS + '</li><li><span class="n">3</span>Tap <b>Add</b>. jumptrade opens full screen like an app.</li></ol>';
     else if (ios) body = '<p>Open <b>jumptrade.app</b> in <b>Safari</b>, then tap Share ' + SHARE + ' and <b>Add to Home Screen</b>.</p>';
     else if (deferred) body = '<p>Install jumptrade so it opens full screen like an app.</p><button class="a2go" data-a2="install">Install</button>';
     else body = '<p>In your browser menu, tap <b>Install app</b> or <b>Add to Home Screen</b>.</p>';
