@@ -902,7 +902,7 @@ function renderWatch() {
   const rows = syms.map((s) => Object.assign({ sym: s }, (S.wlQ && S.wlQ[s]) || {}));
   const so = S.wSort; rows.sort((a, b) => so === 'az' ? a.sym.localeCompare(b.sym) : so === 'up' ? (b.pct || -1e9) - (a.pct || -1e9) : so === 'down' ? (a.pct || 1e9) - (b.pct || 1e9) : Math.abs(b.pct || 0) - Math.abs(a.pct || 0));
   const up = rows.filter((r) => r.pct > 0).length, dn = rows.filter((r) => r.pct < 0).length;
-  $('wSum').textContent = syms.length + ' stocks · ' + up + ' up · ' + dn + ' down';
+  $('wSum').innerHTML = syms.length + ' stocks<br>' + up + ' up · ' + dn + ' down';
   const shown = so === 'up' ? rows.filter((r) => r.pct > 0) : so === 'down' ? rows.filter((r) => r.pct < 0) : rows;
   if (!shown.length) { box.innerHTML = '<div class="empty"><b>' + (so === 'up' ? 'Nothing up yet' : 'Nothing down today') + '</b><span>' + (so === 'up' ? 'None of your stocks are green right now.' : 'None of your stocks are red right now.') + '</span></div>'; return; }
   box.innerHTML = '<div class="wlFlat">' + shown.map((r) => { const a = S.dips[r.sym]; const col = (r.pct || 0) >= 0 ? '#5EE0A0' : '#FF8A8A';

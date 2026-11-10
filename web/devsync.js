@@ -2,7 +2,7 @@
    phone or iPad. No account: a private link carries a long random code, and whoever opens it shares one saved copy. */
 (function () {
   if (!window.JT_WEB) return;
-  const KEYS = ['jt.webwl', 'jt.wlown', 'jt.home2', 'jt.alerts', 'jt.hidden', 'jt.ports', 'jt.journal'];
+  const KEYS = ['jt.webwl', 'jt.wlown', 'jt.home2', 'jt.alerts', 'jt.hidden', 'jt.ports', 'jt.journal', 'jt.name'];
   const CK = 'jt.dsync', TK = 'jt.dsyncT';
   const get = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const rawSet = Storage.prototype.setItem;
