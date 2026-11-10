@@ -786,10 +786,10 @@ function renderRatings() {
   box.innerHTML = list.slice(0, lim).map((r) => {
     const a = AC[r.action] || ['Note', '#4B5563']; const p = (S.ipoQ && S.ipoQ[r.ticker] && S.ipoQ[r.ticker].price) || R.prices[r.ticker];
     const to = p && r.new_target ? (r.new_target / p - 1) * 100 : null; const tchg = r.old_target && r.new_target ? (r.new_target / r.old_target - 1) * 100 : null;
-    return '<button class="rat" data-open="' + esc(r.ticker) + '" data-name="' + esc(r.company || '') + '">' + logoHTML(r.ticker, 32) + '<span class="rn"><span class="pt"><b>' + esc(r.ticker) + '</b><span class="badge" style="color:' + a[1] + ';border-color:' + a[1] + '66;background:' + a[1] + '14">' + a[0] + '</span><small class="dim">' + esc((r.date || '').slice(5)) + '</small></span>' +
-      '<small>' + esc(r.firm || '') + (r.from_rating || r.to_rating ? ' · ' + esc((r.from_rating ? r.from_rating + ' → ' : '') + (r.to_rating || '')) : '') + '</small>' +
-      '<small>' + (r.new_target ? 'Target ' + (r.old_target ? '$' + px(r.old_target) + ' → ' : '') + '$' + px(r.new_target) + (tchg != null ? ' <i style="color:' + (tchg >= 0 ? '#15965A' : '#D63B3B') + '">(' + pctS(tchg) + ')</i>' : '') : 'No target given') + '</small></span>' +
-      '<span class="rp">' + (to != null ? '<b style="color:' + (to >= 0 ? '#15965A' : '#D63B3B') + '">' + pctS(to) + '</b><small class="dim">to target</small>' : '<b class="dim">—</b>') + '</span></button>';
+    const UP = '#15965A', DN = '#D63B3B'; const t$ = (v) => '$' + (v % 1 ? v.toFixed(2) : v.toFixed(0)); const d = r.old_target && r.new_target ? r.new_target - r.old_target : null;
+    const gap = p && r.new_target ? r.new_target - p : null;
+    return '<button class="rat rat4" data-open="' + esc(r.ticker) + '" data-name="' + esc(r.company || '') + '">' + logoHTML(r.ticker, 34) + '<span class="rn"><b>' + esc(r.ticker) + ' <span class="badge" style="color:' + a[1] + ';border-color:' + a[1] + '66;background:' + a[1] + '14">' + a[0] + '</span></b><small>' + esc(r.firm || '') + ' · ' + esc((r.date || '').slice(5)) + '</small></span>' +
+      '<span class="rp tvp">' + (r.new_target ? '<b>' + (p ? '$' + px(p) + ' → ' : 'Target ') + t$(r.new_target) + '</b>' + (gap != null ? '<small style="color:' + (gap >= 0 ? UP : DN) + '">' + (gap >= 0 ? '+$' : '−$') + Math.abs(gap).toFixed(2) + ' <i>' + (gap >= 0 ? '+' : '−') + Math.abs(to).toFixed(1) + '%</i></small>' : '') : '<b class="dim">No target</b>') + '</span></button>';
   }).join('') + (list.length > lim ? '<button class="cta ghostcta" data-ratmore="1">Show more · ' + (list.length - lim) + ' left</button>' : '');
 }
 
