@@ -315,6 +315,8 @@ T.get_runners = async (i) => {
   }));
   top.forEach((r) => { r.score = Math.max(0, Math.min(100, r.score)); });
   top.sort((a, b) => b.score - a.score);
+  if (top.length >= 5) { if (CUR_ENV) await vput(CUR_ENV, 'run_last', { t: Date.now(), session: pre ? 'pre' : post ? 'after' : 'day', data: top }).catch(() => {}); }
+  else if (CUR_ENV) { const last = await vget(CUR_ENV, 'run_last').catch(() => null); if (last && last.data && Date.now() - last.t < 4 * 864e5) return { session: last.session, from: last.t, updated: new Date(last.t).toISOString(), data: last.data }; }
   return { session: pre ? 'pre' : post ? 'after' : 'day', updated: new Date().toISOString(), data: top };
 };
 
@@ -366,7 +368,7 @@ T.get_playbook = async () => {
   try { const r = CUR_ENV && CUR_ENV.ASSETS ? await (await CUR_ENV.ASSETS.fetch('https://a/ratings.json')).json() : null; ratings = (r && r.ratings) || []; } catch (e) {}
   const wk = new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10);
   const S = {}; const add = (s, k, txt, w) => { if (!/^[A-Z]{1,5}$/.test(s || '')) return; const o = S[s] || (S[s] = { sig: {}, why: [] }); if (o.sig[k]) return; o.sig[k] = w; o.why.push(txt); };
-  (run.data || []).forEach((r) => {
+  (run.from ? [] : run.data || []).forEach((r) => {
     if (r.score >= 60) add(r.symbol, 'mom', 'Jump radar score ' + r.score, 1.2);
     if (r.rvol >= 2) add(r.symbol, 'vol', 'Volume ' + (r.rvol >= 10 ? Math.round(r.rvol) : r.rvol) + '× normal', 1);
     if (r.news) add(r.symbol, 'news', 'Fresh news: ' + r.news.title.slice(0, 80), 1.1);
@@ -378,7 +380,7 @@ T.get_playbook = async () => {
     const d = r.old_target && r.new_target ? r.new_target - r.old_target : null;
     add(r.ticker, 'analyst', (r.firm || 'Analyst') + (r.action === 'upgrade' ? ' upgraded it' : d != null ? ' raised target +$' + d.toFixed(2) : ' started at ' + r.to_rating), 1); });
   const cands = Object.keys(S).filter((s) => Object.keys(S[s].sig).length >= 2);
-  if (!cands.length) return { updated: new Date().toISOString(), data: [] };
+  if (!cands.length) { const last = CUR_ENV ? await vget(CUR_ENV, 'play_last').catch(() => null) : null; if (last && last.data && Date.now() - last.t < 4 * 864e5) return { updated: new Date(last.t).toISOString(), from: last.t, data: last.data }; return { updated: new Date().toISOString(), data: [] }; }
   const q = await quotes(cands).catch(() => []); const Q = {}; q.forEach((x) => { Q[x.symbol] = x; });
   const out = [];
   for (const s of cands) {
@@ -396,7 +398,12 @@ T.get_playbook = async () => {
       verdict, why: o.why.slice(0, 4), line: n + ' signals agree: ' + o.why.slice(0, 2).map((w) => w.replace(/^Fresh news: .*/, 'fresh news').toLowerCase()).join(', ') });
   }
   out.sort((a, b) => b.signals - a.signals || b.score - a.score);
-  return { updated: new Date().toISOString(), data: out.slice(0, 12) };
+  const fresh = out.slice(0, 12);
+  // Keep the last session's picks so evenings and weekends aren't empty.
+  if (fresh.some((r) => r.signals >= 3)) { if (CUR_ENV) await vput(CUR_ENV, 'play_last', { t: Date.now(), data: fresh }).catch(() => {}); return { updated: new Date().toISOString(), data: fresh }; }
+  const last = CUR_ENV ? await vget(CUR_ENV, 'play_last').catch(() => null) : null;
+  if (last && last.data && Date.now() - last.t < 4 * 864e5) return { updated: new Date(last.t).toISOString(), from: last.t, data: last.data };
+  return { updated: new Date().toISOString(), data: fresh };
 };
 // ---------- sectors: industry groups built from ETFs + their leading stocks ----------
 const GROUPS = [
@@ -770,7 +777,7 @@ async function runAlerts(env, ctx) {
     const out = []; const mine = new Set(s.syms || []);
     const once = (k) => { if (st.seen[k]) return false; st.seen[k] = 1; return true; };
     const f$ = (v) => '$' + (v >= 100 ? v.toFixed(2) : v >= 1 ? v.toFixed(2) : v.toFixed(4));
-    if (P.runners && run && run.data) run.data.filter((r) => r.score >= (P.runnerMin || 80)).slice(0, 3).forEach((r) => { if (once('run:' + r.symbol)) out.push({ title: r.symbol + ' ' + (r.change_ratio >= 0 ? '+' : '') + (r.change_ratio * 100).toFixed(1) + '% · runner score ' + r.score, body: (r.why || []).slice(0, 2).join(' · ') + ' · ' + f$(r.price), url: '/#runners', tag: 'run-' + r.symbol }); });
+    if (P.runners && run && run.data && !run.from) run.data.filter((r) => r.score >= (P.runnerMin || 80)).slice(0, 3).forEach((r) => { if (once('run:' + r.symbol)) out.push({ title: r.symbol + ' ' + (r.change_ratio >= 0 ? '+' : '') + (r.change_ratio * 100).toFixed(1) + '% · runner score ' + r.score, body: (r.why || []).slice(0, 2).join(' · ') + ' · ' + f$(r.price), url: '/#runners', tag: 'run-' + r.symbol }); });
     if (P.move) mine.forEach((sym) => { const x = Q[sym]; if (!x || x.change_ratio == null) return; const pct = x.change_ratio * 100; const lv = Math.abs(pct) >= (P.movePct || 5) * 2 ? 2 : Math.abs(pct) >= (P.movePct || 5) ? 1 : 0; if (!lv) return;
       if (once('mv:' + sym + ':' + lv + ':' + (pct > 0 ? 'u' : 'd'))) out.push({ title: sym + ' ' + (pct > 0 ? 'up ' : 'down ') + Math.abs(pct).toFixed(1) + '% today', body: 'Now ' + f$(x.price) + ' (' + (x.change >= 0 ? '+' : '−') + f$(Math.abs(x.change || 0)).slice(1) + ') · on your watchlist', url: '/#s=' + sym, tag: 'mv-' + sym }); });
     (P.prices || []).forEach((p) => { const x = Q[p.sym]; if (!x || !x.price || !p.price) return; const hit = p.dir === 'below' ? x.price <= p.price : x.price >= p.price;
@@ -786,7 +793,7 @@ async function runAlerts(env, ctx) {
       if (once('rt:' + r.ticker + ':' + r.date + ':' + r.firm)) out.push({ title: r.ticker + ' · ' + (r.firm || 'Analyst') + (d != null ? ' target ' + (d >= 0 ? '+$' : '−$') + Math.abs(d).toFixed(2) : ' ' + (r.action || 'note')), body: (r.old_target ? '$' + r.old_target + ' → ' : '') + (r.new_target ? '$' + r.new_target : '') + (r.to_rating ? ' · ' + r.to_rating : ''), url: '/#ratings', tag: 'rt-' + r.ticker }); });
     if (P.earnings && cats && cats.earnings && needDaily) { const tgt = now.hm >= 1140 ? (() => { const d = new Date(now.day + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); })() : now.day;
       const e = ((cats.earnings || {}).upcoming || []).filter((x) => mine.has(x.ticker) && x.date === tgt); if (e.length && once('er:' + tgt)) out.push({ title: (now.hm >= 1140 ? 'Earnings tomorrow: ' : 'Earnings today: ') + e.map((x) => x.ticker).join(', '), body: 'Expect bigger moves in these.', url: '/#catalysts', tag: 'er' }); }
-    if (P.open && now.hm >= 565 && now.hm < 567 && once('open') && run && run.data) out.push({ title: 'Market opens in 5 min', body: 'Top runners: ' + run.data.slice(0, 4).map((r) => r.symbol + ' ' + (r.change_ratio >= 0 ? '+' : '') + (r.change_ratio * 100).toFixed(0) + '%').join(', '), url: '/#runners', tag: 'open' });
+    if (P.open && now.hm >= 565 && now.hm < 567 && once('open') && run && run.data && !run.from) out.push({ title: 'Market opens in 5 min', body: 'Top runners: ' + run.data.slice(0, 4).map((r) => r.symbol + ' ' + (r.change_ratio >= 0 ? '+' : '') + (r.change_ratio * 100).toFixed(0) + '%').join(', '), url: '/#runners', tag: 'open' });
     if (P.close && now.hm >= 975 && now.hm < 977 && once('close')) { const mv = [...mine].map((s2) => Q[s2]).filter((x) => x && x.change_ratio != null).sort((a, b) => b.change_ratio - a.change_ratio);
       const sp = Q.SPY; const pf = (x) => x.symbol + ' ' + (x.change_ratio >= 0 ? '+' : '') + (x.change_ratio * 100).toFixed(1) + '%';
       const parts = []; if (mv.length) parts.push('Best: ' + pf(mv[0])); if (mv.length > 1) parts.push('Worst: ' + pf(mv[mv.length - 1])); if (run && run.data && run.data[0]) parts.push('Top runner: ' + run.data[0].symbol + ' +' + (run.data[0].change_ratio * 100).toFixed(0) + '%');

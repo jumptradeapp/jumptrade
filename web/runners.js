@@ -4,7 +4,7 @@
   R.load = function (force) {
     if (R.busy || (!force && Date.now() - R.at < 55000) || typeof mcp === 'undefined' || !mcp) return;
     R.busy = true;
-    mcp.callTool(SERVER, 'get_runners', { limit: 40 }).then((res) => { const p = payloadOf(res) || {}; R.rows = p.data || []; R.session = p.session || ''; R.at = Date.now(); R.busy = false; render(); }).catch(() => { R.busy = false; if (!R.rows) R.rows = []; render(); });
+    mcp.callTool(SERVER, 'get_runners', { limit: 40 }).then((res) => { const p = payloadOf(res) || {}; R.rows = p.data || []; R.session = p.session || ''; R.from = p.from || 0; R.at = Date.now(); R.busy = false; render(); }).catch(() => { R.busy = false; if (!R.rows) R.rows = []; render(); });
   };
   setInterval(() => { if (S.tab === 'home' || S.tab === 'runners') R.load(); }, 15000);
   const scCol = (s) => s >= 70 ? '#5EE0A0' : s >= 50 ? '#F2C27A' : '#9DB8FF';
@@ -24,12 +24,12 @@
     const body = !R.rows ? '<div class="skel"></div><div class="skel" style="width:70%"></div><div class="skel" style="width:85%"></div>'
       : !rows.length ? '<p class="desc dim">No stocks are showing early runner signs right now.</p>'
       : rows.map((r) => '<button class="hmrow rnrow" data-open="' + esc(r.symbol) + '">' + logoHTML(r.symbol, 30) + '<span class="rn"><b>' + esc(r.symbol) + (r.news ? ' <i class="rnnews">NEWS</i>' : '') + '</b><small>' + why(r) + '</small></span><span class="rp"><b style="color:' + (r.change_ratio >= 0 ? P.up : P.dn) + '">' + pct(r.change_ratio) + '</b><small><i class="rnsc" style="--c:' + scCol(r.score) + '">' + r.score + '</i></small></span></button>').join('');
-    return card('POTENTIAL RUNNERS', '#5EE0A0', body, '<button class="hmr" data-tab="runners">All ›</button>');
+    return card('POTENTIAL RUNNERS', '#5EE0A0', (R.from && rows.length ? '<p class="pbFrom">From the last session. Live scoring restarts at 4 AM ET.</p>' : '') + body, '<button class="hmr" data-tab="runners">All ›</button>');
   };
   R.render = function () {
     R.load();
     if ($('runSeg')) setHTML($('runSeg'), ideasSeg('runners'));
-    if ($('rnFresh')) $('rnFresh').textContent = R.at ? 'Scored ' + ago(R.at) : '';
+    if ($('rnFresh')) $('rnFresh').textContent = R.from ? 'From last session' : R.at ? 'Scored ' + ago(R.at) : '';
     const box = $('runList'); if (!box) return;
     const rows = R.rows || [];
     const head = '<p class="desc dim rnintro">Early signs of a run, scored 0–100 every minute. Higher means more signs lining up. Tap any name for the full call.</p>';
@@ -47,7 +47,7 @@
   const B = window.PLAY = { rows: null, at: 0, busy: false };
   B.load = function (force) {
     if (B.busy || (!force && Date.now() - B.at < 55000) || typeof mcp === 'undefined' || !mcp) return; B.busy = true;
-    mcp.callTool(SERVER, 'get_playbook', {}).then((res) => { const p = payloadOf(res) || {}; B.rows = p.data || []; B.at = Date.now(); B.busy = false; render(); }).catch(() => { B.busy = false; if (!B.rows) B.rows = []; render(); });
+    mcp.callTool(SERVER, 'get_playbook', {}).then((res) => { const p = payloadOf(res) || {}; B.rows = p.data || []; B.from = p.from || 0; B.at = Date.now(); B.busy = false; render(); }).catch(() => { B.busy = false; if (!B.rows) B.rows = []; render(); });
   };
   setInterval(() => { if (S.tab === 'home') B.load(); }, 20000);
   const $$ = (v) => '$' + (v < 0.1 ? v.toFixed(3) : v.toFixed(2));
@@ -62,6 +62,7 @@
     const body = !B.rows ? '<div class="skel"></div><div class="skel" style="width:75%"></div>'
       : !rows.length && !watch.length ? '<p class="desc dim">No clear setups right now. Nothing has 3+ signals lined up. That’s a fine answer: sitting out is a position.</p>'
       : rows.map(one).join('') + (watch.length ? '<div class="pbSub">ON WATCH · 2 signals so far</div>' + watch.map(one).join('') : '');
-    return card('YOUR MOVE TODAY', '#5EE0A0', body + '<p class="pbNote">Ideas, not advice. Each pick needs 3+ independent signals: Jump radar, volume, news, big buying, analysts, trader buzz. Stop = where the idea is wrong.</p>', '<button class="hmr" data-tab="runners">Radar ›</button>');
+    const stale = B.from ? '<p class="pbFrom">From the last session (' + new Date(B.from).toLocaleDateString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) + '). New picks when the market wakes up.</p>' : '';
+    return card(B.from ? 'YOUR NEXT MOVE' : 'YOUR MOVE TODAY', '#5EE0A0', stale + body + '<p class="pbNote">Ideas, not advice. Each pick needs 3+ independent signals: Jump radar, volume, news, big buying, analysts, trader buzz. Stop = where the idea is wrong.</p>', '<button class="hmr" data-tab="runners">Radar ›</button>');
   };
 })();

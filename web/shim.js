@@ -5,12 +5,13 @@
   const SERVER_NAME = 'Webull';
   // Friends have no brokerage: watchlists live on their phone (same request/answer shapes the app already uses).
   const WL_KEY = 'jt.webwl';
-  const wlLoad = () => { try { const v = JSON.parse(localStorage.getItem(WL_KEY) || 'null'); if (v && v.mine) return v; } catch (e) {} return { mine: ['NVDA', 'TSLA', 'AAPL', 'AMD', 'PLTR', 'SOFI'] }; };
+  const SAMPLE = 'NVDA,TSLA,AAPL,AMD,PLTR,SOFI';
+  const wlLoad = () => { try { const v = JSON.parse(localStorage.getItem(WL_KEY) || 'null'); if (v && v.mine) { if (v.mine.join(',') === SAMPLE && !localStorage.getItem('jt.wlown')) { v.mine = []; localStorage.setItem(WL_KEY, JSON.stringify(v)); } return v; } } catch (e) {} return { mine: [] }; };
   const wlSave = (v) => { try { localStorage.setItem(WL_KEY, JSON.stringify(v)); } catch (e) {} };
   const LOCAL = {
-    get_watchlists: () => [{ watchlist_id: 'mine', name: 'My list' }],
+    get_watchlists: () => [{ watchlist_id: 'mine', name: 'My watchlist' }],
     get_watchlist_instruments: (i) => ({ instruments: (wlLoad()[i.watchlist_id] || []).map((s) => ({ symbol: s, name: '' })) }),
-    add_watchlist_instruments: (i) => { const v = wlLoad(); const l = v[i.watchlist_id] || (v[i.watchlist_id] = []); (i.symbols || []).forEach((s) => { if (l.indexOf(s) < 0) l.unshift(s); }); wlSave(v); return { success: true }; },
+    add_watchlist_instruments: (i) => { try { localStorage.setItem('jt.wlown', '1'); } catch (e) {} const v = wlLoad(); const l = v[i.watchlist_id] || (v[i.watchlist_id] = []); (i.symbols || []).forEach((s) => { if (l.indexOf(s) < 0) l.unshift(s); }); wlSave(v); return { success: true }; },
     remove_watchlist_instruments: (i) => { const v = wlLoad(); v[i.watchlist_id] = (v[i.watchlist_id] || []).filter((s) => (i.symbols || []).indexOf(s) < 0); wlSave(v); return { success: true }; },
   };
   async function callTool(server, tool, input) {

@@ -8,7 +8,7 @@
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const standalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
   const supported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
-  const syms = () => { try { const v = JSON.parse(localStorage.getItem('jt.webwl') || 'null'); if (v) return [...new Set(Object.values(v).flat())]; } catch (e) {} return ['NVDA', 'TSLA', 'AAPL', 'AMD', 'PLTR', 'SOFI']; };
+  const syms = () => { try { const v = JSON.parse(localStorage.getItem('jt.webwl') || 'null'); if (v) return [...new Set(Object.values(v).flat())]; } catch (e) {} return []; };
   const b2u = (s) => { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; const r = atob(s); return Uint8Array.from(r, (c) => c.charCodeAt(0)); };
   let reg = null;
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').then((r) => { reg = r; sync(); }).catch(() => {});

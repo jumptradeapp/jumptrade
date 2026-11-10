@@ -834,7 +834,7 @@ function renderWatch() {
   $('wSort').innerHTML = [['move', 'Biggest move'], ['up', 'Gainers'], ['down', 'Losers'], ['az', 'A–Z']].map((x) => '<button class="seg' + (S.wSort === x[0] ? ' on' : '') + '" data-wsort="' + x[0] + '">' + x[1] + '</button>').join('');
   const box = $('wlList');
   if (!S.wlists) { box.innerHTML = '<div class="empty"><b>' + (S.err ? 'Can’t load live data' : mcp ? 'Loading your watchlists…' : 'Can’t reach live data') + '</b><span>' + esc(S.err ? (ERRCOPY[S.err] || '') : 'Your watchlists, live.') + '</span></div>'; return; }
-  const syms = S.wlSyms || []; if (!syms.length) { box.innerHTML = '<div class="empty"><b>' + (S.wlSyms ? 'This list is empty' : 'Loading…') + '</b></div>'; return; }
+  const syms = S.wlSyms || []; if (!syms.length) { box.innerHTML = S.wlSyms ? '<div class="empty wlStart"><b>Start your watchlist</b><span>Tap stocks to follow. You’ll get their moves, news and alerts. This list lives only on your phone.</span><div class="wlPick">' + ['NVDA', 'TSLA', 'AAPL', 'AMD', 'PLTR', 'MSFT', 'AMZN', 'META', 'GOOGL', 'SOFI', 'HOOD', 'COIN'].map((s) => '<button data-wladd="' + s + '">' + logoHTML(s, 22) + s + '</button>').join('') + '</div><small>Or search any stock and tap ☆ Watchlist.</small></div>' : '<div class="empty"><b>Loading…</b></div>'; return; }
   const rows = syms.map((s) => Object.assign({ sym: s }, (S.wlQ && S.wlQ[s]) || {}));
   const so = S.wSort; rows.sort((a, b) => so === 'az' ? a.sym.localeCompare(b.sym) : so === 'up' ? (b.pct || -1e9) - (a.pct || -1e9) : so === 'down' ? (a.pct || 1e9) - (b.pct || 1e9) : Math.abs(b.pct || 0) - Math.abs(a.pct || 0));
   const up = rows.filter((r) => r.pct > 0).length, dn = rows.filter((r) => r.pct < 0).length;
@@ -1568,3 +1568,6 @@ document.addEventListener('DOMContentLoaded', () => {
   if (S.tab !== 'movers') goTab(S.tab);
   render();
 })();
+
+document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-wladd]'); if (!b || !mcp) return; e.preventDefault(); b.disabled = true; b.classList.add('on');
+  mcp.callTool(SERVER, 'add_watchlist_instruments', { watchlist_id: (S.wlists && S.wlists[0] && S.wlists[0].watchlist_id) || 'mine', symbols: [b.dataset.wladd], category: 'US_STOCK' }).then(() => { setTimeout(() => { if (typeof loadWatch === 'function') loadWatch(); }, 600); }).catch(() => { b.disabled = false; }); });
