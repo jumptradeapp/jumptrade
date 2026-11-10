@@ -627,7 +627,9 @@ async function runTool(tool, input, ctx, env) {
     if (SLOW) await cache.put(skey, json({ payload }, 200, { 'cache-control': 'public, max-age=86400' }));
     return res;
   };
-  if (SLOW) { const old = await cache.match(skey); if (old) { ctx.waitUntil(produce().catch(() => {})); return old; } }
+  if (SLOW) { const old = await cache.match(skey); if (old) { ctx.waitUntil(produce().catch(() => {})); return old; }
+    if (env && PRE.some((x) => x[0] === tool && JSON.stringify(x[1]) === JSON.stringify(input || {}))) { const v = await vget(env, preKey(tool, input)).catch(() => null);
+      if (v && v.p && Date.now() - v.t < 3600000) { ctx.waitUntil(produce().catch(() => {})); return json({ payload: v.p }, 200, { 'cache-control': 'public, max-age=20' }); } } }
   try {
     return await produce();
   } catch (e) {
@@ -719,6 +721,14 @@ async function pushRoutes(url, req, env, ctx) {
   }
   return null;
 }
+// Precomputed every minute by the cron and kept in the Vault, so the first visitor anywhere gets an instant answer.
+const PRE = [['get_runners', { limit: 40 }], ['get_playbook', {}], ['get_community_hot_stocks', {}], ['search_news', { keyword: 'stock market' }], ['get_stock_unusual_activities', { count: 30, extended_hours_required: true }]];
+const preKey = (t, i) => encodeURIComponent('pre_' + t + JSON.stringify(i || {}));
+async function precompute(env, ctx) {
+  const out = {};
+  await Promise.all(PRE.map(async (x) => { try { const p = await cachedTool(x[0], x[1], ctx, env); const n = Array.isArray(p) ? p.length : p && Array.isArray(p.data) ? p.data.length : 0; if (n) { await vput(env, preKey(x[0], x[1]), { t: Date.now(), p: p }); out[x[0]] = n; } } catch (e) { out[x[0]] = 'err'; } }));
+  return out;
+}
 async function cachedTool(tool, input, ctx, env) { const r = await runTool(tool, input, ctx, env); const j = await r.json().catch(() => ({})); return j.payload; }
 async function runAlerts(env, ctx) {
   const all = (await vget(env, 'subs')) || {}; const ids = Object.keys(all); if (!ids.length) return { subs: 0 };
@@ -794,7 +804,7 @@ async function runAlerts(env, ctx) {
 
 let UPK = 0;
 export default {
-  async scheduled(ev, env, ctx) { CUR_ENV = env; const m = new Date().getUTCMinutes(); if (m % 10 === 0) ctx.waitUntil(wbUpkeep(env).catch(() => {})); ctx.waitUntil(runAlerts(env, ctx).then((r) => vput(env, 'alertrun', Object.assign({ t: Date.now() }, r))).catch((e) => vput(env, 'alertrun', { t: Date.now(), error: String(e && e.message || e) }))); },
+  async scheduled(ev, env, ctx) { CUR_ENV = env; const m = new Date().getUTCMinutes(); { const n = etNow(); const live = !/Sat|Sun/.test(n.wd) && n.hm >= 230 && n.hm < 1210; if (live || m % 10 === 0) ctx.waitUntil(precompute(env, ctx).then((r) => vput(env, 'prerun', { t: Date.now(), r })).catch(() => {})); } if (m % 10 === 0) ctx.waitUntil(wbUpkeep(env).catch(() => {})); ctx.waitUntil(runAlerts(env, ctx).then((r) => vput(env, 'alertrun', Object.assign({ t: Date.now() }, r))).catch((e) => vput(env, 'alertrun', { t: Date.now(), error: String(e && e.message || e) }))); },
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     CUR_ENV = env;
