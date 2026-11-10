@@ -437,6 +437,7 @@ function renderDetail() {
     if (ext && ext.price) h += '<div class="dExt"><i style="background:' + SESS[v].color + '"></i>' + SESS[v].label + ' <b>$' + px(ext.price) + '</b> <span style="color:' + (ext.pct >= 0 ? P.up : P.dn) + '">' + pctS(ext.pct) + '</span></div>';
   }
   if (window.ENR) h += ENR.stats(sym, main);
+  if (window.VERD) h += VERD.card(sym, main);
   h += '<div class="chart2">' + chartSVG(d.bars, sn ? +sn.pre_close : null, window.ENR && S.chartTf !== 'D' ? ENR.levels(sym) : null) + '<div class="cfoot"><div class="tfs2">' + ['1m', '5m', 'D'].map((t) => '<button class="' + (t === S.chartTf ? 'on' : '') + '" data-tf="' + t + '">' + (t === 'D' ? '1D' : t) + '</button>').join('') + '</div>' +
     '<div class="legend2">' + (S.chartTf !== 'D' ? '<span><i style="background:#C3A8FF;height:2px"></i>VWAP</span><span><b class="npin">N</b>News</span>' : '') + '<span><i style="background:#F2C27A"></i>Pre</span><span><i style="background:#8CB8E0"></i>After</span></div></div></div></div>';
   if (window.ENR) h += ENR.why(sym);
