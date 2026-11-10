@@ -159,8 +159,8 @@
   }
   ENR.rvol = function (sym, vol) { const c = ENR.avgv[sym]; return c && c[0] > 0 && vol > 0 ? vol / c[0] : null; };
   ENR.rvTag = function (sym, vol) {
-    const r = ENR.rvol(sym, vol); if (r == null) return '';
-    return '<span class="rv' + (r >= 5 ? ' hot' : r >= 2 ? ' warm' : '') + '">' + (r >= 10 ? Math.round(r) : r.toFixed(1)) + '× vol</span>';
+    const r = ENR.rvol(sym, vol); if (r == null || r < 1.5) return ''; // only worth a tag when volume is clearly above normal
+    return '<span class="rv' + (r >= 5 ? ' hot' : r >= 2 ? ' warm' : '') + '">' + (r >= 10 ? Math.round(r) : r.toFixed(1)) + '× volume</span>';
   };
 
   // intraday levels: VWAP, pre-market high/low, open, yesterday high/low

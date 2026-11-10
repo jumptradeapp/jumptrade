@@ -237,6 +237,7 @@ function rankedRows() {
   S.held = false; S.order = ids; return rows;
 }
 function renderMovers() {
+  loadSyms(); // names for tiles and rows
   if (window.TODAY) TODAY.loadMoverSig(moverRows());
   const v = view(), s = SESS[S.auto], vs = SESS[v];
   const nc = nextChange();
@@ -259,7 +260,7 @@ function renderMovers() {
   const W = box.clientWidth || 358, gap = 12, colW = (W - gap) / 2;
   const scEl = $('scroller'), szKey = W + 'x' + (window.innerHeight > window.innerWidth ? 'p' : 'l'); // width/orientation only: header height changes every second made tiles jump between sizes
   if (S.tileKey !== szKey && !touching && !document.getElementById('vMovers').classList.contains('tcol') && $('ptr1').offsetHeight === 0 && scEl.clientHeight > 0) { S.tileKey = szKey; S.fitDone = 0; S.fitN = 0; const nv = document.querySelector('nav.main, .nav, nav'); const bt = box.getBoundingClientRect().top + scEl.scrollTop - scEl.getBoundingClientRect().top; const vb = nv && nv.getBoundingClientRect().height ? Math.min(scEl.clientHeight, nv.getBoundingClientRect().top - scEl.getBoundingClientRect().top) : scEl.clientHeight; const avail = vb - bt - 10; S.tileH = Math.max(118, Math.min(146, Math.floor((avail - 2 * 12) / 3))); }
-  const tileH = S.tileH || 140;
+  const tileH = 142; // clean tile: logo, ticker, company, price, move
   const rowH = 60;
   const existing = {}; Array.from(box.children).forEach((el) => { if (el.dataset.sym) existing[el.dataset.sym] = el; else el.remove(); });
   needSparks(rows.slice(0, 40));
@@ -274,10 +275,10 @@ function renderMovers() {
     const hasWhy = !!(S.news[r.sym] && S.news[r.sym].why); const why = hasWhy ? S.news[r.sym].why : ('Vol ' + big(r.vol) + ' · ' + money(r.mcap) + ' cap');
     const arrow = '<svg width="16" height="11" viewBox="0 0 17 11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + (up ? 'M1.5 9.5l4.5-4.5 3 3 6-6M11 2h4.5v4.5' : 'M1.5 1.5l4.5 4.5 3-3 6 6M11 9h4.5V4.5') + '"></path></svg>';
     if (S.layout === 'tiles') {
-      el.className = 'card tile' + (tileH < 126 ? ' compact' : '') + (el.classList.contains('fadein') ? ' fadein' : ''); el.style.width = colW + 'px'; el.style.height = tileH + 'px';
+      el.className = 'card tile' + '' + (el.classList.contains('fadein') ? ' fadein' : ''); el.style.width = colW + 'px'; el.style.height = tileH + 'px';
       el.style.left = (i % 2) * (colW + gap) + 'px'; el.style.top = Math.floor(i / 2) * (tileH + gap) + 'px';
       const chip = window.TODAY ? TODAY.chip(r) : '';
-      el.innerHTML = '<span class="th">' + logoHTML(r.sym, 34) + '<span class="tn"><b>' + esc(r.sym) + '</b>' + '<small>' + esc(cleanName(r.name)) + '</small>' + '</span></span>' +
+      el.innerHTML = '<span class="th">' + logoHTML(r.sym, 34) + '<span class="tn"><b>' + esc(r.sym) + '</b>' + '<small>' + esc(cleanName(symName(r.sym) || r.name || '')) + '</small>' + '</span></span>' +
         '<span class="tb"><span class="tp" style="' + (flash ? 'background:' + flash : '') + '">$' + px(r.price) + '</span>' +
         '<span class="tc" style="color:' + col + '">' + arrow + chgS(r.chg, r.pct, r.price) + '</span></span>' + sparkSVG(r.sym, 100, 30, col) + ((chip || (window.ENR && ENR.rvTag(r.sym, r.vol))) ? '<span class="tsig">' + chip + (window.ENR ? ENR.rvTag(r.sym, r.vol) : '') + '</span>' : '') + (hasWhy ? '<span class="nwb tnw" title="News today" aria-label="News today">★</span>' : '');
     } else {
