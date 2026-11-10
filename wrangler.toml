@@ -3,12 +3,6 @@ main = "worker/index.js"
 compatibility_date = "2026-11-01"
 # Keep variables/secrets added in the Cloudflare dashboard when deploying from GitHub.
 keep_vars = true
-# Custom domain (zone lives on this Cloudflare account). workers.dev stays on too.
-workers_dev = true
-routes = [
-  { pattern = "jumptrade.app", custom_domain = true },
-  { pattern = "www.jumptrade.app", custom_domain = true }
-]
 
 # The app itself (static files) is served from ./web; everything under /api/* goes to the worker.
 [assets]
