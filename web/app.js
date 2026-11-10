@@ -864,7 +864,9 @@ function renderWatch() {
   const so = S.wSort; rows.sort((a, b) => so === 'az' ? a.sym.localeCompare(b.sym) : so === 'up' ? (b.pct || -1e9) - (a.pct || -1e9) : so === 'down' ? (a.pct || 1e9) - (b.pct || 1e9) : Math.abs(b.pct || 0) - Math.abs(a.pct || 0));
   const up = rows.filter((r) => r.pct > 0).length, dn = rows.filter((r) => r.pct < 0).length;
   $('wSum').textContent = syms.length + ' stocks · ' + up + ' up · ' + dn + ' down';
-  box.innerHTML = rows.map((r) => { const a = S.dips[r.sym]; const col = (r.pct || 0) >= 0 ? '#5EE0A0' : '#FF8A8A';
+  const shown = so === 'up' ? rows.filter((r) => r.pct > 0) : so === 'down' ? rows.filter((r) => r.pct < 0) : rows;
+  if (!shown.length) { box.innerHTML = '<div class="empty"><b>' + (so === 'up' ? 'Nothing up yet' : 'Nothing down today') + '</b><span>' + (so === 'up' ? 'None of your stocks are green right now.' : 'None of your stocks are red right now.') + '</span></div>'; return; }
+  box.innerHTML = shown.map((r) => { const a = S.dips[r.sym]; const col = (r.pct || 0) >= 0 ? '#5EE0A0' : '#FF8A8A';
     return '<button class="wrow" data-open="' + esc(r.sym) + '" data-name="' + esc((S.wlNames || {})[r.sym] || '') + '">' + logoHTML(r.sym, 34) + '<span class="rn"><b>' + esc(r.sym) + ' ' + (window.TODAY && r.price ? TODAY.chip(r) : '') + (window.ENR ? (ENR.need(r.sym), ENR.badge(r.sym)) : '') + '</b><small>' + esc(cleanName(symName(r.sym) || (S.wlNames || {})[r.sym] || '')) + (r.mcap ? ' · ' + money(r.mcap) : '') + '</small></span>' +
       (S.wlEdit ? '<span class="xdel' + (S.wlRm === r.sym ? ' arm' : '') + '" style="position:static" role="button" aria-label="Remove ' + esc(r.sym) + '" data-wlrm="' + esc(r.sym) + '">' + (S.wlRm === r.sym ? '…' : 'Remove') + '</span>' : '<span class="rp">' + (r.price ? '<b>$' + px(r.price) + '</b><small style="color:' + col + '">' + chgS(r.chg, r.pct, r.price) + '</small>' : '<b class="dim">—</b>') + '</span>') + '</button>'; }).join('');
 }
