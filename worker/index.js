@@ -631,8 +631,7 @@ async function runTool(tool, input, ctx, env, fresh) {
     const w = env && !/news/.test(tool) ? await wbCall(env, tool, input || {}).catch((e) => { WBLAST = { tool, error: String(e.message || e), t: Date.now() }; return null; }) : null;
     const payload = w ? w.payload : await fn(input || {});
     const res = json({ payload }, 200, { 'cache-control': 'public, max-age=' + (TTL[tool] || 30) });
-    await cache.put(key, res.clone());
-    if (SLOW) await cache.put(skey, json({ payload }, 200, { 'cache-control': 'public, max-age=86400', 'x-jt-t': String(Date.now()) }));
+    try { await cache.put(key, res.clone()); if (SLOW) await cache.put(skey, json({ payload }, 200, { 'cache-control': 'public, max-age=86400', 'x-jt-t': String(Date.now()) })); } catch (e) {} // the cron has no cache; the Vault copy covers it
     return res;
   };
   if (fresh) return produce();
@@ -744,7 +743,7 @@ const PRE = [['get_runners', { limit: 40 }], ['get_playbook', {}], ['get_communi
 const preKey = (t, i) => encodeURIComponent('pre_' + t + JSON.stringify(i || {}));
 async function precompute(env, ctx) {
   const out = {};
-  await Promise.all(PRE.map(async (x) => { try { const p = await freshTool(x[0], x[1], ctx, env); const n = Array.isArray(p) ? p.length : p && Array.isArray(p.data) ? p.data.length : 0; if (n) { await vput(env, preKey(x[0], x[1]), { t: Date.now(), p: p }); out[x[0]] = n; } if (x[0] === 'get_playbook' && p && !p.from) out.logged = await logPicks(env, p.data).catch(() => 0); } catch (e) { out[x[0]] = 'err'; } }));
+  await Promise.all(PRE.map(async (x) => { try { const p = await freshTool(x[0], x[1], ctx, env); const n = Array.isArray(p) ? p.length : p && Array.isArray(p.data) ? p.data.length : 0; if (n) { await vput(env, preKey(x[0], x[1]), { t: Date.now(), p: p }); out[x[0]] = n; } if (x[0] === 'get_playbook' && p && !p.from) out.logged = await logPicks(env, p.data).catch(() => 0); } catch (e) { out[x[0] + '_e'] = String(e && e.message || e).slice(0, 120); out[x[0]] = 'err'; } }));
   return out;
 }
 // ---------- pick log: every "Your move today" pick is recorded, then scored against what the stock did next ----------
