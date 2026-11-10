@@ -344,7 +344,7 @@
       const picks = (r && r.picks || []).filter((p) => p && p.s).slice(0, 8);
       const find = (s) => (typeof rowsCache !== 'undefined' ? rowsCache : []).find((x) => x.sym === s);
       let h = '<div class="askc"><div class="cap ci" style="--c:#3B7BFF">ASK JUMPTRADE</div><div class="askt">' + esc((r && r.title) || q) + '</div><p class="small" style="margin:2px 0 8px">' + esc((r && r.summary) || '') + '</p>';
-      h += picks.length ? picks.map((p) => { const m = find(p.s); return '<button class="srow" data-search="' + esc(p.s) + '">' + logoHTML(p.s, 32) + '<span class="rn"><b>' + esc(p.s) + '</b><small>' + esc(p.why || '') + '</small></span><span class="rp">' + (m ? '<b>$' + px(m.price) + '</b><small style="color:' + (m.pct >= 0 ? dPal().up : dPal().dn) + '">' + pctS(m.pct) + '</small>' : '') + '</span></button>'; }).join('') : '<p class="small dim">No stocks in today’s data match that.</p>';
+      h += picks.length ? picks.map((p) => { const m = find(p.s); return '<button class="srow" data-search="' + esc(p.s) + '">' + logoHTML(p.s, 32) + '<span class="rn"><b>' + esc(p.s) + '</b><small>' + esc(p.why || '') + '</small></span><span class="rp">' + (m ? '<b>$' + px(m.price) + '</b><small style="color:' + (m.pct >= 0 ? dPal().up : dPal().dn) + '">' + mvS(m.pct, m.price, m.chg) + '</small>' : '') + '</span></button>'; }).join('') : '<p class="small dim">No stocks in today’s data match that.</p>';
       h += '<p class="foot" style="text-align:left">Answers use only the app’s live data: movers, Dip Radar and your watchlists. Not advice.</p></div>';
       ENR.askRes.html = h;
     } catch (e) {

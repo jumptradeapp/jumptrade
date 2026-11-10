@@ -61,6 +61,9 @@ LOGOS = {}; const LGS = {}; let lgT = 0;
 const LGBAD = window.LGBAD = {};
 function lgNeed(sym) { const b = sym.charAt(1); const c = (/^[A-Z]/.test(sym) ? sym[0] : '_') + (!b || b < 'H' ? '1' : b < 'P' ? '2' : '3'); if (LGS[c]) return; LGS[c] = 1; fetch('lg2/' + c + '.json').then((r) => r.json()).then((j) => { Object.assign(LOGOS, j); LGS[c] = 2; clearTimeout(lgT); lgT = setTimeout(render, 60); }).catch(() => {}); }
 const HUES = [[139, 108, 255], [255, 140, 70], [32, 201, 151], [59, 160, 219], [240, 101, 149], [92, 124, 250], [255, 196, 60], [81, 207, 102], [21, 170, 191], [255, 110, 90]];
+/* every stock move shows dollars AND percent: "+$7.67 +65.72%" (dollar move is derived from price and % when a feed omits it) */
+function dS(chg, pct, price) { const c = chg != null && isFinite(chg) && chg !== '' ? +chg : (price > 0 && pct != null && isFinite(pct) && pct > -100 ? price - price / (1 + pct / 100) : null); return c == null ? '' : (c >= 0 ? '+$' : '−$') + px(Math.abs(c)); }
+function mvS(pct, price, chg) { const d = dS(chg, pct, price); return (d ? d + ' ' : '') + pctS(pct); }
 function logoHTML(sym, size) {
   const r = Math.round(size / 2); // circles everywhere
   let b64 = LOGOS && LOGOS[sym]; if (!b64 && sym) lgNeed(sym);
@@ -276,7 +279,7 @@ function renderMovers() {
       const chip = window.TODAY ? TODAY.chip(r) : '';
       el.innerHTML = '<span class="th">' + logoHTML(r.sym, 34) + '<span class="tn"><b>' + esc(r.sym) + '</b>' + '<small>' + esc(cleanName(r.name)) + '</small>' + '</span></span>' +
         '<span class="tb"><span class="tp" style="' + (flash ? 'background:' + flash : '') + '">$' + px(r.price) + '</span>' +
-        '<span class="tc" style="color:' + col + '">' + arrow + (colW < 172 ? pctS(r.pct) : chgS(r.chg, r.pct, r.price)) + '</span></span>' + sparkSVG(r.sym, 100, 30, col) + ((chip || (window.ENR && ENR.rvTag(r.sym, r.vol))) ? '<span class="tsig">' + chip + (window.ENR ? ENR.rvTag(r.sym, r.vol) : '') + '</span>' : '') + (hasWhy ? '<span class="nwb tnw" title="News today" aria-label="News today">★</span>' : '');
+        '<span class="tc" style="color:' + col + '">' + arrow + chgS(r.chg, r.pct, r.price) + '</span></span>' + sparkSVG(r.sym, 100, 30, col) + ((chip || (window.ENR && ENR.rvTag(r.sym, r.vol))) ? '<span class="tsig">' + chip + (window.ENR ? ENR.rvTag(r.sym, r.vol) : '') + '</span>' : '') + (hasWhy ? '<span class="nwb tnw" title="News today" aria-label="News today">★</span>' : '');
     } else {
       el.className = 'card row' + (i === 0 ? ' rfirst' : '') + (i === rows.length - 1 ? ' rlast' : '') + (el.classList.contains('fadein') ? ' fadein' : ''); el.style.width = W + 'px'; el.style.height = rowH + 'px'; el.style.left = '0px'; el.style.top = i * rowH + 'px';
       el.innerHTML = '<span class="rk">' + (i + 1) + '</span>' + logoHTML(r.sym, 34) + '<span class="rn"><b>' + esc(r.sym) + ' ' + (window.TODAY ? TODAY.chip(r) : '') + ' <em>' + capOf(r.mcap) + '</em></b><small' + (hasWhy ? ' class="hl"' : '') + '>' + (window.ENR ? ENR.rvTag(r.sym, r.vol) : '') + esc(why) + '</small></span>' +
@@ -434,7 +437,7 @@ function renderDetail() {
   h += '<div class="dTop">';
   if (main) {
     h += '<div class="dPrice">$' + px(main.price) + '</div><div class="dChg" style="color:' + (up ? P.up : P.dn) + '">' + chgS(main.chg, main.pct, main.price) + ' <span>' + (v === 'regular' && S.auto === 'regular' ? 'today' : 'at the close') + '</span></div>';
-    if (ext && ext.price) h += '<div class="dExt">' + sessIcon(v, 15) + SESS[v].label + ' <b>$' + px(ext.price) + '</b> <span style="color:' + (ext.pct >= 0 ? P.up : P.dn) + '">' + pctS(ext.pct) + '</span></div>';
+    if (ext && ext.price) h += '<div class="dExt">' + sessIcon(v, 15) + SESS[v].label + ' <b>$' + px(ext.price) + '</b> <span style="color:' + (ext.pct >= 0 ? P.up : P.dn) + '">' + mvS(ext.pct, ext.price, ext.chg) + '</span></div>';
   }
   if (window.ENR) h += ENR.stats(sym, main);
   if (window.VERD) h += VERD.card(sym, main);
@@ -548,7 +551,7 @@ function renderSector() {
   const adv = +s.advanced, dec = +s.declined, fl = +s.flat; const tot = adv + dec + fl || 1;
   h += '<div class="glass"><div class="cap">BREADTH</div><div class="ratbar"><i style="flex:' + adv + ';background:#3FD68F"></i><i style="flex:' + fl + ';background:#4A5363"></i><i style="flex:' + dec + ';background:#FF7A7A"></i></div><div class="ratleg"><span><i style="background:#3FD68F"></i>' + adv + ' up</span><span><i style="background:#4A5363"></i>' + fl + ' flat</span><span><i style="background:#FF7A7A"></i>' + dec + ' down</span><span>' + Math.round(adv / tot * 100) + '% advancing</span></div></div>';
   h += '<div class="glass"><div class="cap" style="display:flex;justify-content:space-between;align-items:center">STOCKS<span class="mini">' + [['CHANGE_RATIO', 'Top movers'], ['MARKET_VALUE', 'Biggest']].map((x) => '<button class="seg' + (S.sectorSort === x[0] ? ' on' : '') + '" data-ssort="' + x[0] + '">' + x[1] + '</button>').join('') + '</span></div>';
-  h += S.sectorRows == null ? '<p class="desc dim">Loading…</p>' : S.sectorRows.length ? S.sectorRows.map((x) => { const q = +x.change_ratio * 100; return '<button class="srow" data-open="' + esc(x.symbol) + '" data-name="' + esc(x.name) + '">' + logoHTML(x.symbol, 32) + '<span class="rn"><b>' + esc(x.symbol) + '</b><small>' + esc(cleanName(x.name)) + ' · ' + money(+x.market_value) + '</small></span><span class="rp"><b>$' + px(+x.price) + '</b><small style="color:' + (q >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + pctS(q) + '</small></span></button>'; }).join('') : '<p class="desc dim">Couldn’t load this sector’s stocks.</p>';
+  h += S.sectorRows == null ? '<p class="desc dim">Loading…</p>' : S.sectorRows.length ? S.sectorRows.map((x) => { const q = +x.change_ratio * 100; return '<button class="srow" data-open="' + esc(x.symbol) + '" data-name="' + esc(x.name) + '">' + logoHTML(x.symbol, 32) + '<span class="rn"><b>' + esc(x.symbol) + '</b><small>' + esc(cleanName(x.name)) + ' · ' + money(+x.market_value) + '</small></span><span class="rp"><b>$' + px(+x.price) + '</b><small style="color:' + (q >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + mvS(q, +x.price, x.change != null ? +x.change : null) + '</small></span></button>'; }).join('') : '<p class="desc dim">Couldn’t load this sector’s stocks.</p>';
   h += '</div>';
   $('secBody').innerHTML = h;
 }
@@ -721,7 +724,7 @@ function renderIpos() {
       return '<button class="play" data-open="' + esc(p.ticker) + '" data-name="' + esc(p.company) + '">' + logoHTML(p.ticker, 34) +
         '<span class="pm"><span class="pt"><b>' + esc(p.ticker) + '</b><span class="badge" style="color:' + rel[1] + ';border-color:' + rel[1] + '66;background:' + rel[1] + '14">' + rel[0] + '</span>' + (a ? dipBadge(a.state) : '') + '</span>' +
         '<small>' + esc(p.detail) + (p.stake_or_size ? ' · ' + esc(p.stake_or_size) : '') + '</small></span>' +
-        '<span class="rp">' + (q ? '<b>$' + px(q.price) + '</b><small style="color:' + (q.pct >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + pctS(q.pct) + '</small>' : '<b class="dim">—</b>') + (a ? '<small class="dim">' + Math.round(a.off * 100) + '% off high</small>' : '') + '</span></button>';
+        '<span class="rp">' + (q ? '<b>$' + px(q.price) + '</b><small style="color:' + (q.pct >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + mvS(q.pct, q.price, q.chg) + '</small>' : '<b class="dim">—</b>') + (a ? '<small class="dim">' + Math.round(a.off * 100) + '% off high</small>' : '') + '</span></button>';
     }).join('');
     const src = (ipo.sources || []).slice(0, 4).map((s) => '<a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.title || s.url) + (s.date ? ' · ' + esc(s.date) : '') + '</a>').join('');
     return '<div class="glass ipo"><div class="ih"><div><h3>' + esc(ipo.name.replace(/,? PBC$/, '')) + (ipo.ticker ? ' <em>' + esc(ipo.ticker) + '</em>' : '') + '</h3><span class="small dim">' + esc(ipo.sector || '') + '</span></div><span class="badge" style="color:' + col + ';border-color:' + col + '66;background:' + col + '14">' + ['Filed', 'Filed (private)', 'Delayed', 'Preparing', 'Later'][r] + '</span></div>' +
@@ -1054,7 +1057,7 @@ function renderFund() {
       '<span class="rn"><b>' + esc(x[0]) + (c ? ' <span class="badge" style="color:' + c[1] + ';border-color:' + c[1] + '66">' + c[0] + '</span>' : '') + '</b><small>' + esc(det) + '</small>' +
       (sinceH != null || contrib != null ? '<small class="dim">' + (contrib != null ? (contrib >= 0 ? '+' : '') + contrib.toFixed(2) + ' pts to today' : '') + (sinceH != null ? (contrib != null ? ' · ' : '') + pctS(sinceH) + ' since start' : '') + '</small>' : '') +
       '<span class="wbar"><i style="width:' + Math.max(3, x[2] / maxW * 100).toFixed(1) + '%;background:' + col + '"></i></span></span>' +
-      '<span class="rp"><b>' + x[2].toFixed(1) + '%</b>' + (r && isFinite(r.pct) ? '<small style="color:' + gc(r.pct) + '">' + pctS(r.pct) + '</small>' : '') + '</span></button>'; }).join('') + '</div>';
+      '<span class="rp"><b>' + x[2].toFixed(1) + '%</b>' + (r && isFinite(r.pct) ? '<small style="color:' + gc(r.pct) + '">' + mvS(r.pct, r.price, r.chg) + '</small>' : '') + '</span></button>'; }).join('') + '</div>';
   if (f.x && f.x.length) h += '<div class="glass"><div class="cap">SOLD OUT</div>' + f.x.map((x) => '<div class="srow" style="cursor:default">' + (x[0] ? logoHTML(x[0], 32) : '') + '<span class="badge" style="color:#FF8A8A;border-color:#FF8A8A66">EXITED</span><span class="rn"><b>' + esc(x[0] || '—') + '</b><small>' + esc(x[1] || '') + (x[2] ? ' · was ' + (+x[2]).toFixed(1) + '%' : '') + '</small></span></div>').join('') + '</div>';
   if (f.notes) h += '<p class="foot" style="text-align:left">' + esc(f.notes) + '</p>';
   const arm = S.delArm === f.key;
@@ -1353,7 +1356,7 @@ function renderValue() {
   const box = $('valList');
   if (!all.length) { box.innerHTML = '<div class="empty"><b>' + (mcp ? 'Scoring ' + u.length + ' stocks…' : 'Can’t reach live data') + '</b><span>Forward P/E, growth, PEG and analyst targets for each name.</span></div>'; return; }
   box.innerHTML = list.map((v) => { const r = S.vRow[v.sym];
-    return '<button class="dip" data-open="' + esc(v.sym) + '">' + logoHTML(v.sym, 36) + '<span class="dipM"><span class="dipT"><b>' + esc(v.sym) + '</b><em>$' + px(v.price) + '</em>' + (r ? '<i style="color:' + (r.pct >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + pctS(r.pct) + '</i>' : '') + '</span>' +
+    return '<button class="dip" data-open="' + esc(v.sym) + '">' + logoHTML(v.sym, 36) + '<span class="dipM"><span class="dipT"><b>' + esc(v.sym) + '</b><em>$' + px(v.price) + '</em>' + (r ? '<i style="color:' + (r.pct >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + mvS(r.pct, r.price, r.chg) + '</i>' : '') + '</span>' +
       '<span class="pt">' + verdictBadge(v) + (v.hotRank ? '<span class="tag">#' + v.hotRank + ' most discussed</span>' : '') + '</span>' +
       '<span class="plan">' + esc(valMetrics(v)) + '</span><span class="why">' + esc(v.priced) + '</span></span></button>'; }).join('') + '<p class="foot">Forward P/E uses next quarter’s estimate × 4. PEG = forward P/E ÷ EPS growth. Undervalued means cheap for its growth, not a guaranteed winner. Not advice.</p>';
 }
@@ -1363,7 +1366,7 @@ function renderBuzz() {
   const box = $('buzzList'); const L = S.hotList;
   if (!L) { box.innerHTML = '<div class="empty"><b>' + (mcp ? 'Loading what people are talking about…' : 'Can’t reach live data') + '</b><span>The most-discussed stocks among traders.</span></div>'; return; }
   box.innerHTML = L.map((x) => { const r = S.vRow[x.symbol], v = S.val[x.symbol];
-    return '<button class="dip" data-open="' + esc(x.symbol) + '"><span class="rk2">#' + x.rank + '</span>' + logoHTML(x.symbol, 34) + '<span class="dipM"><span class="dipT"><b>' + esc(x.symbol) + '</b>' + (r ? '<em>$' + px(r.price) + '</em><i style="color:' + (r.pct >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + pctS(r.pct) + '</i>' : '') + '</span>' +
+    return '<button class="dip" data-open="' + esc(x.symbol) + '"><span class="rk2">#' + x.rank + '</span>' + logoHTML(x.symbol, 34) + '<span class="dipM"><span class="dipT"><b>' + esc(x.symbol) + '</b>' + (r ? '<em>$' + px(r.price) + '</em><i style="color:' + (r.pct >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + mvS(r.pct, r.price, r.chg) + '</i>' : '') + '</span>' +
       '<small>' + esc(cleanName(symName(x.symbol)) || '') + (r && r.mcap ? ' · ' + money(r.mcap) : '') + '</small>' + (v ? '<span class="pt">' + verdictBadge(v) + '</span><span class="plan">' + esc(valMetrics(v)) + '</span>' : '') + '</span></button>'; }).join('') +
     '<p class="foot">Ranked by trader community activity. Lots of chatter plus a rich valuation is flagged as hype risk.</p>';
 }

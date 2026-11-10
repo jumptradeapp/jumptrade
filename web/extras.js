@@ -69,7 +69,7 @@
       h += '<button class="rat" data-open="' + esc(r.ticker) + '" data-name="' + esc(r.name) + '">' + logoHTML(r.ticker, 32) + '<span class="rn"><span class="pt"><b>' + esc(r.ticker) + '</b>' + badge(r.si.toFixed(0) + '% short', 'xy') + '</span>' +
         '<small>' + esc(r.name.replace(/,? (Inc\.|Corp\.|Corporation|Ltd\.|Holdings|Group|Company|PBC|L\.P\.)\.?$/, '')) + ' · ' + cap(r.cap) + '</small>' +
         '<span class="xbar"><i style="width:' + Math.min(100, r.si) + '%"></i></span></span>' +
-        '<span class="rp"><b class="sqs ' + sc + '">' + r.sq + '</b><small class="' + (r.chg >= 0 ? 'xg' : 'xr') + '">' + pctS(r.chg) + '</small></span></button>';
+        '<span class="rp"><b class="sqs ' + sc + '">' + r.sq + '</b><small class="' + (r.chg >= 0 ? 'xg' : 'xr') + '">' + mvS(r.chg, r.price) + '</small></span></button>';
     });
     if (L.length > (S.xLim || 40)) h += '<button class="cta ghostcta" data-xmore="1">Show more · ' + (L.length - (S.xLim || 40)) + ' left</button>';
     return h + '<p class="foot">Squeeze score (0–99) blends short interest as % of float, company size and today’s move: a heavily shorted stock that starts rising forces short sellers to buy back. High scores are high risk both ways. Short interest is reported twice a month; data as of ' + esc(md(D.updated)) + '. Not advice.</p>';

@@ -124,7 +124,7 @@
     let h = top;
     const sa = A.snap, sb = B.snap; const etf = !!(A.fund && B.fund), mixed = !!A.fund !== !!B.fund;
     const head = (D, col) => { const s = D.snap; const pr = s ? num(s.close) || num(s.price) : null, ch = s ? num(s.change_ratio) * 100 : null; const nm = D.fund ? D.fund.name : (D.prof && D.prof.company_name) || symName(D.sym) || '';
-      return '<button class="cmphd" data-open="' + esc(D.sym) + '" style="--k:' + col + '">' + logoHTML(D.sym, 34) + '<span><b>' + esc(D.sym) + '</b><small>' + esc(cleanName(nm)) + '</small></span><span class="cmpp"><b>' + (pr != null ? '$' + px(pr) : '—') + '</b><small style="color:' + (ch >= 0 ? P.up : P.dn) + '">' + (ch != null ? pctS(ch) : '') + '</small></span></button>'; };
+      return '<button class="cmphd" data-open="' + esc(D.sym) + '" style="--k:' + col + '">' + logoHTML(D.sym, 34) + '<span><b>' + esc(D.sym) + '</b><small>' + esc(cleanName(nm)) + '</small></span><span class="cmpp"><b>' + (pr != null ? '$' + px(pr) : '—') + '</b><small style="color:' + (ch >= 0 ? P.up : P.dn) + '">' + (ch != null ? mvS(ch, pr) : '') + '</small></span></button>'; };
     h += '<div class="cmphds">' + head(A, CA) + head(B, CB) + '</div>';
     if (mixed) h += '<p class="desc dim" style="margin:0 2px 10px">' + esc((A.fund ? a : b) + ' is an ETF and ' + (A.fund ? b : a) + ' is a single stock, so this compares price behavior only.') + '</p>';
     const bars = C.bars && C.bars.k === a + '|' + b ? C.bars.b : null; const stA = bars ? stats(bars[a], bars.SPY) : null, stB = bars ? stats(bars[b], bars.SPY) : null; const cr = stA && stB ? corr(stA.r, stB.r) : null;
