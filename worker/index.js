@@ -760,6 +760,42 @@ T.get_pick_record = async () => {
   const st = (k) => { const v = rows.map((r) => r[k]).filter((v) => v != null); return { n: v.length, win: v.length ? v.filter((x) => x > 0).length / v.length : null, avg: v.length ? v.reduce((a, b) => a + b, 0) / v.length : null }; };
   return { updated: new Date().toISOString(), total: log.length, since: log.length ? log[0].d : null, d1: st('r1'), d5: st('r5'), targets: rows.filter((r) => r.outcome === 'target').length, stops: rows.filter((r) => r.outcome === 'stop').length, rows: rows.slice(0, 60) };
 };
+// ---------- optional AI (free-typed themes + Ask). Off until an ANTHROPIC_API_KEY secret is set in Cloudflare. ----------
+const AI_MODEL = 'claude-haiku-5-5';
+async function aiCall(env, system, user, maxTokens) {
+  const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: env.AI_MODEL || AI_MODEL, max_tokens: maxTokens || 900, system, messages: [{ role: 'user', content: user }] }) });
+  if (!r.ok) throw Object.assign(new Error('ai ' + r.status), { status: r.status });
+  const d = await r.json(); const t = ((d.content || []).find((c) => c.type === 'text') || {}).text || '';
+  const a = t.indexOf('{'), b = t.lastIndexOf('}'); if (a < 0 || b <= a) throw new Error('ai no json');
+  return JSON.parse(t.slice(a, b + 1));
+}
+async function aiRoutes(url, req, env) {
+  if (url.pathname === '/api/ai/status') return json({ on: !!env.ANTHROPIC_API_KEY });
+  if (url.pathname !== '/api/ai' || req.method !== 'POST') return null;
+  if (!env.ANTHROPIC_API_KEY) return json({ error: { code: 'not_granted', message: 'AI is not turned on.' } }, 503);
+  const body = await req.json().catch(() => ({}));
+  // limits: 25 questions a day per visitor, 1,500 a day for the whole site
+  const day = etNow().day; const ip = req.headers.get('cf-connecting-ip') || 'x'; const ipk = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ip + day)))).slice(0, 6).map((b) => b.toString(16).padStart(2, '0')).join('');
+  const use = (await vget(env, 'ai_' + day)) || { n: 0, ip: {} };
+  if (use.n >= 1500 || (use.ip[ipk] || 0) >= 25) return json({ error: { code: 'rate_limited', message: 'Daily limit reached. Try again tomorrow.' } }, 429);
+  use.n++; use.ip[ipk] = (use.ip[ipk] || 0) + 1; await vput(env, 'ai_' + day, use);
+  try {
+    if (body.kind === 'theme') {
+      const q = String(body.q || '').slice(0, 160); if (q.trim().length < 3) return json({ error: { code: 'bad_request' } }, 400);
+      const out = await aiCall(env, 'You build stock theme baskets for a retail trading app. Only handle investing themes; for anything else return {"names":[]}. Use only real, currently US-listed common stocks or ADRs with correct tickers. Never invent a ticker. Return JSON only.',
+        'Theme request: "' + q + '"\n\nReturn {"name": short theme title, "blurb": one plain sentence on what the theme is, "names": [[ticker, role, why]], "etf": [1-2 ETF tickers that track it, or []]}. 6 to 12 names. role is "core" (large, established leader), "pick" (growth name) or "spec" (small or speculative). why is under 12 plain words on what the company does for this theme.', 900);
+      const names = (Array.isArray(out.names) ? out.names : []).filter((n) => Array.isArray(n) && /^[A-Z.]{1,6}$/.test(String(n[0] || ''))).slice(0, 12).map((n) => [String(n[0]), /^(core|pick|spec)$/.test(n[1]) ? n[1] : 'pick', String(n[2] || '').slice(0, 90)]);
+      return json({ payload: { name: String(out.name || q).slice(0, 60), blurb: String(out.blurb || '').slice(0, 200), names, etf: (Array.isArray(out.etf) ? out.etf : []).filter((x) => /^[A-Z]{2,5}$/.test(String(x))).slice(0, 2) } });
+    }
+    if (body.kind === 'ask') {
+      const prompt = String(body.prompt || '').slice(0, 30000); if (prompt.length < 10) return json({ error: { code: 'bad_request' } }, 400);
+      const out = await aiCall(env, 'You are the stock scanner inside the jumptrade app. Only answer stock-market questions, using only the data in the message. Never give personal financial advice. Return JSON only.', prompt, 900);
+      return json({ payload: out });
+    }
+    return json({ error: { code: 'bad_request' } }, 400);
+  } catch (e) { return json({ error: { code: e.status === 429 ? 'rate_limited' : 'server_unavailable', message: String(e.message || e) } }, 502); }
+}
 async function cachedTool(tool, input, ctx, env) { const r = await runTool(tool, input, ctx, env); const j = await r.json().catch(() => ({})); return j.payload; }
 async function runAlerts(env, ctx) {
   const all = (await vget(env, 'subs')) || {}; const ids = Object.keys(all); if (!ids.length) return { subs: 0 };
@@ -843,6 +879,14 @@ export default {
     CUR_ENV = env;
     if (Date.now() - UPK > 600000) { UPK = Date.now(); ctx.waitUntil(wbUpkeep(env).catch(() => {})); }
     if (req.method === 'OPTIONS') return new Response(null, { headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'POST, GET' } });
+    if (url.pathname === '/api/sync') { // device sync: a long random code is the only key; whoever has the link shares one saved copy
+      const c = url.searchParams.get('c') || ''; if (!/^[A-Za-z0-9]{24,64}$/.test(c)) return json({ error: { code: 'bad_request' } }, 400);
+      const k = 'sy_' + Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(c)))).slice(0, 16).map((b) => b.toString(16).padStart(2, '0')).join('');
+      if (req.method === 'GET') return json((await vget(env, k)) || { t: 0, data: null });
+      if (req.method === 'PUT' || req.method === 'POST') { const txt = await req.text(); if (txt.length > 40000) return json({ error: { code: 'too_big' } }, 413); let b; try { b = JSON.parse(txt); } catch (e) { return json({ error: { code: 'bad_request' } }, 400); }
+        if (!b || typeof b.data !== 'object') return json({ error: { code: 'bad_request' } }, 400); const cur = await vget(env, k); if (cur && cur.t > (+b.t || 0)) return json(cur); await vput(env, k, { t: +b.t || Date.now(), data: b.data }); return json({ ok: true, t: +b.t }); }
+    }
+    if (url.pathname.indexOf('/api/ai') === 0) { const r = await aiRoutes(url, req, env); if (r) return r; }
     if (url.pathname.indexOf('/api/push/') === 0) { const r = await pushRoutes(url, req, env, ctx); if (r) return r; }
     if (url.pathname === '/api/alertstate') { const a = (await vget(env, 'alertrun')) || {}; const s = (await vget(env, 'subs')) || {}; return json({ last: a.t ? new Date(a.t).toISOString() : null, sent: a.sent, error: a.error, closed: a.closed, subs: Object.keys(s).length }); }
     if (url.pathname === '/api/newsdiag') { const out = await Promise.all(FEEDS.map(async (f) => { const t0 = Date.now(); try { const r = await fetch(f[1], { headers: { 'user-agent': NUA, accept: 'application/rss+xml, text/xml' } }); const x = await r.text(); const a = await rss(f[1], f[0]); return f[0] + ': http ' + r.status + ', ' + x.length + ' bytes, ' + a.length + ' items, newest ' + (a[0] ? a.map((n) => n.publish_time).sort().pop() : '-') + ', ' + (Date.now() - t0) + 'ms'; } catch (e) { return f[0] + ': error ' + e.message; } })); return new Response('build news2\n' + out.join('\n'), { headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } }); }

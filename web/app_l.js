@@ -403,7 +403,7 @@ function renderDetail() {
   let main = sn ? snapRow(sn, 'regular') : row; const ext = sn ? (v === 'overnight' ? snapRow(sn, 'overnight') : (v === 'pre' || v === 'after') ? snapRow(sn, v) : null) : null;
   const name = d.name || (row && row.name) || '';
   if (S.wlists && !S.wlMemTried) { S.wlMemTried = 1; memLoad(); } const wln = wlCount(sym);
-  let h = '<div class="dHead">' + logoHTML(sym, 46) + '<div style="min-width:0"><h2>' + esc(sym) + '</h2><span>' + esc(name) + '</span></div><button class="wlBtn' + (wln ? ' on' : '') + '" data-pick="' + esc(sym) + '">' + (wln ? '★ On ' + wln + ' list' + (wln > 1 ? 's' : '') : '☆ Watchlist') + '</button><button class="wlBtn cmpBtn" data-cmpwith="' + esc(sym) + '" aria-label="Compare">⇄</button></div>';
+  let h = '<div class="dHead">' + logoHTML(sym, 46) + '<div style="min-width:0"><h2>' + esc(sym) + '</h2><span>' + esc(name) + '</span></div><button class="wlBtn' + (wln ? ' on' : '') + '" data-pick="' + esc(sym) + '">' + (wln ? '★ On ' + wln + ' list' + (wln > 1 ? 's' : '') : '☆ Watchlist') + '</button><button class="wlBtn shBtn" data-share="' + esc(sym) + '">Share</button><button class="wlBtn cmpBtn" data-cmpwith="' + esc(sym) + '" aria-label="Compare">⇄</button></div>';
   const up = main ? main.pct >= 0 : true;
   // hero: price + chart together
   h += '<div class="dTop">';
@@ -1571,3 +1571,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
 document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-wladd]'); if (!b || !mcp) return; e.preventDefault(); b.disabled = true; b.classList.add('on');
   mcp.callTool(SERVER, 'add_watchlist_instruments', { watchlist_id: (S.wlists && S.wlists[0] && S.wlists[0].watchlist_id) || 'mine', symbols: [b.dataset.wladd], category: 'US_STOCK' }).then(() => { setTimeout(() => { if (typeof loadWatch === 'function') loadWatch(); if (window.HOME && HOME.load) HOME.load(); render(); }, 400); }).catch(() => { b.disabled = false; }); });
+
+/* share a stock: native share sheet on phones, copy-link elsewhere */
+document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-share]'); if (!b) return; e.preventDefault(); e.stopPropagation();
+  const sym = b.dataset.share; const row = (typeof rowsCache !== 'undefined' ? rowsCache : []).find((r) => r.sym === sym); const d = (S.d[sym] || {}); const sn = d.snap;
+  const main = sn ? snapRow(sn, 'regular') : row; const v = window.VERD && main ? VERD.calc(sym, main) : null; const f = (x) => '$' + (x < 1 ? x.toFixed(3) : x.toFixed(2));
+  const text = sym + (main && main.price ? ' ' + f(main.price) + ' (' + (main.pct >= 0 ? '+' : '') + main.pct.toFixed(1) + '%)' : '') + (v ? ' · ' + (v.kind === 'avoid' ? 'Avoid for now' : v.line + ', stop ' + f(v.stop) + ', target ' + f(v.target)) : '') + ' · via jumptrade.';
+  const url = 'https://jumptrade.app/#s=' + encodeURIComponent(sym);
+  const done = (t) => { const o = b.textContent; b.textContent = t; setTimeout(() => { b.textContent = o; }, 1600); };
+  if (navigator.share) navigator.share({ title: sym + ' on jumptrade.', text: text, url: url }).catch(() => {});
+  else if (navigator.clipboard) navigator.clipboard.writeText(text + ' ' + url).then(() => done('Copied'), () => done('Couldn’t copy'));
+});

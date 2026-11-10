@@ -1,6 +1,7 @@
 /* jumptrade web — makes the app run outside Claude.
    The app was written against Claude's page runtime (window.claude.use('mcp'), 'db', 'user', 'sample').
    Here those calls go to this site's own server (/api/tool), so the same app code runs unchanged. */
+window.JT_HASH0 = location.hash; // the link the app was opened with, before the app rewrites it
 (function () {
   const SERVER_NAME = 'Webull';
   // Friends have no brokerage: watchlists live on their phone (same request/answer shapes the app already uses).
@@ -35,6 +36,11 @@
     describeTool: async function () { throw { code: 'bad_request', message: 'n/a' }; },
   });
   // db / user / sample (accounts, cloud save, Ask) arrive in a later stage; until then the app keeps data on the phone.
-  window.claude = Object.freeze({ use: async function (name) { return name === 'mcp' ? mcp : null; } });
+  // Ask + free-typed themes use the site's own AI endpoint when the owner has switched it on.
+  let aiOn = false; const aiReady = fetch('/api/ai/status').then((r) => r.json()).then((d) => { aiOn = !!(d && d.on); }).catch(() => {});
+  const ai = async (body) => { const r = await fetch('/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); const d = await r.json().catch(() => ({})); if (!r.ok || d.error) throw { code: (d.error && d.error.code) || 'server_unavailable' }; return d.payload; };
+  window.JT_AI = { ready: aiReady, on: () => aiOn, theme: (q) => ai({ kind: 'theme', q: q }) };
+  const sample = { json: (prompt) => ai({ kind: 'ask', prompt: prompt }) };
+  window.claude = Object.freeze({ use: async function (name) { if (name === 'mcp') return mcp; if (name === 'sample') { await aiReady; return aiOn ? sample : null; } return null; } });
   window.JT_WEB = true;
 })();

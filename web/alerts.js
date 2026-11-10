@@ -15,7 +15,7 @@
   // open stocks / pages when a notification is tapped
   const route = (u) => { const h = String(u || '').split('#')[1] || ''; if (!h) return; if (h.indexOf('s=') === 0) { const s = decodeURIComponent(h.slice(2)); if (typeof openDetail === 'function') openDetail(s); } else if (typeof goTab === 'function') goTab(h); };
   if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.jtOpen) route(e.data.jtOpen); });
-  if (/^#s=/.test(location.hash)) setTimeout(() => route(location.hash), 1500);
+  { const h0 = window.JT_HASH0 || location.hash; if (/^#s=/.test(h0)) setTimeout(() => route(h0), 1500); }
 
   async function currentSub() { if (!reg) reg = await navigator.serviceWorker.ready; return reg.pushManager.getSubscription(); }
   async function sync() { try { if (!reg || Notification.permission !== 'granted') return; const sub = await currentSub(); if (!sub) return;

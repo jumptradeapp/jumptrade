@@ -44,6 +44,8 @@
     q = (q || '').trim(); B.query = q; if (!q) return;
     const th = B.match(q);
     if (th) { B.sel = { type: 'theme', id: th.id }; B.custom = null; B.mode = 'stocks'; }
+    else if (window.JT_AI && JT_AI.on()) { B.sel = { type: 'custom' }; B.custom = { q: q, names: [], busy: 1 };
+      JT_AI.theme(q).then((t) => { if (B.query !== q) return; if (t && t.names && t.names.length) B.custom = { q: q, names: t.names, etf: t.etf && t.etf.length ? t.etf : null, name: t.name, blurb: t.blurb, ai: 1 }; else return customSearch(q); render(); }).catch(() => customSearch(q)); }
     else customSearch(q);
     S.tab !== 'build' ? (goTab('build'), render()) : render();
     const sc = document.querySelector('#vBuild .scroller'); if (sc) sc.scrollTop = 0;
@@ -93,7 +95,9 @@
   const result = () => {
     let name, blurb, names, etf = null, isTheme = false;
     if (B.sel.type === 'theme') { const t = B.data.themes.find((x) => x.id === B.sel.id); name = t.name; blurb = t.blurb; names = t.names; etf = t.etf; isTheme = true; }
-    else if (B.sel.type === 'custom') { const c = B.custom || { names: [] }; name = '“' + c.q + '”'; blurb = c.names.length ? 'No ready-made theme for that yet, so here are companies whose names match. Check each one before buying.' : ''; names = c.names; }
+    else if (B.sel.type === 'custom') { const c = B.custom || { names: [] };
+      if (c.busy) return '<div class="glass sec bldRes"><button class="bldBack" data-bldback="1">‹ All themes</button><div class="bldH">“' + esc(c.q) + '”</div><p class="bldB">Building your portfolio…</p><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>';
+      name = c.ai ? c.name : '“' + c.q + '”'; blurb = c.ai ? (c.blurb || '') + ' Built by AI from your prompt: check each name before buying.' : c.names.length ? 'No ready-made theme for that yet, so here are companies whose names match. Check each one before buying.' : ''; names = c.names; if (c.ai && c.etf) { etf = c.etf; isTheme = true; } }
     else { const st = B.data.simple.find((x) => x.id === B.sel.id); quotes(simpleSyms()); const w = simpleW(st); const r = simpleRet(st);
       const rows = (w || []).filter((x) => x[1] > 0).map((x) => ({ s: x[0], w: x[1] / 100, why: x[2], x: B.q[x[0]], sc: { st: 'etf' }, role: 'core' }));
       return '<div class="glass sec bldRes"><button class="bldBack" data-bldback="1">‹ All mixes</button><div class="bldH">' + esc(st.name) + '</div><p class="bldB">' + esc(st.blurb) + '</p>' +
