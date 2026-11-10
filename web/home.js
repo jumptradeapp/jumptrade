@@ -50,7 +50,7 @@
       const t = (lab, v, col) => '<div><small>' + lab + '</small><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b></div>';
       W[cur] = (W[cur] || '') + '<button class="glass sec hm hmreg" data-plan="1" style="--c:' + hv[1] + ';border-color:' + hv[1] + '44"><div class="hmcap">' + secCap('MARKET REGIME', hv[1]) + '<span class="hmr">Plan ›</span></div>' +
         '<div class="hmrg"><b style="color:' + hv[1] + '">' + hv[0] + '</b><span>' + esc(hv[2]) + '</span></div><div class="hmst">' +
-        (spy && spy.pct != null ? t('S&amp;P', pctS(spy.pct), spy.pct >= 0 ? P.up : P.dn) : '') + t('TREND', (Hh.d200 >= 0 ? '+' : '') + Hh.d200.toFixed(1) + '%') + (Hh.br != null ? t('BREADTH', Math.round(Hh.br * 100) + '%') : '') + (Hh.fg != null ? t('MOOD', Hh.fg, Hh.fg < 30 ? P.dn : Hh.fg > 70 ? P.up : null) : '') + '</div></button>';
+        (spy && spy.pct != null ? t('S&amp;P', pctS(spy.pct), spy.pct >= 0 ? P.up : P.dn) : '') + t('VS 200-DAY', (Hh.d200 >= 0 ? '+' : '') + Hh.d200.toFixed(1) + '%') + (Hh.br != null ? t('BREADTH', Math.round(Hh.br * 100) + '%') : '') + (Hh.fg != null ? t('MOOD', Hh.fg, Hh.fg < 30 ? P.dn : Hh.fg > 70 ? P.up : null) : '') + '</div></button>';
     } else W[cur] = (W[cur] || '') + card('MARKET REGIME', P.mute, '<div class="skel"></div><div class="skel" style="width:60%"></div>');
     // 2. top news
     cur = 'news';
