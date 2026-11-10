@@ -75,3 +75,16 @@
   const mv = () => { const t = document.querySelector('#vHome .title'); const tools = document.querySelector('#vHome .hmTools'); if (t && tools && tools.parentNode !== t) t.appendChild(tools); };
   mv(); setInterval(mv, 1500);
 })();
+
+/* Top gainers: never show a cut-off pill. Any pill that doesn't fully fit inside its tile is hidden. */
+(function () {
+  let q = 0;
+  const fit = () => { q = 0; document.querySelectorAll('#vMovers .tile').forEach((t) => {
+    const s = t.querySelector('.tsig'); if (!s) return; const kids = [...s.children]; kids.forEach((k) => { k.style.display = ''; });
+    const tb = t.getBoundingClientRect(); const sb = s.getBoundingClientRect(); const lim = Math.min(tb.bottom - 5, sb.bottom + 0.5), rl = Math.min(tb.right - 6, sb.right + 0.5);
+    for (let i = kids.length - 1; i >= 0; i--) { const r = kids[i].getBoundingClientRect(); if (r.bottom > lim || r.right > rl || r.top < sb.top - 0.5) kids[i].style.display = 'none'; }
+  }); };
+  const sched = () => { if (!q) q = requestAnimationFrame(fit); };
+  const box = document.getElementById('vMovers'); if (box) new MutationObserver(sched).observe(box, { childList: true, subtree: true });
+  addEventListener('resize', sched); setInterval(sched, 2000);
+})();
