@@ -237,7 +237,7 @@ function renderMovers() {
   const scEl = $('scroller'), szKey = W + 'x' + (window.innerHeight > window.innerWidth ? 'p' : 'l'); // width/orientation only: header height changes every second made tiles jump between sizes
   if (S.tileKey !== szKey && !touching && !document.getElementById('vMovers').classList.contains('tcol') && $('ptr1').offsetHeight === 0 && scEl.clientHeight > 0) { S.tileKey = szKey; const nv = document.querySelector('nav.main, .nav, nav'); const bt = box.getBoundingClientRect().top + scEl.scrollTop - scEl.getBoundingClientRect().top; const vb = nv && nv.getBoundingClientRect().height ? Math.min(scEl.clientHeight, nv.getBoundingClientRect().top - scEl.getBoundingClientRect().top) : scEl.clientHeight; const avail = vb - bt - 10; S.tileH = Math.max(118, Math.min(146, Math.floor((avail - 2 * 12) / 3))); }
   const tileH = S.tileH || 140;
-  const rowH = 66;
+  const rowH = 60;
   const existing = {}; Array.from(box.children).forEach((el) => { if (el.dataset.sym) existing[el.dataset.sym] = el; else el.remove(); });
   const seen = {};
   rows.forEach((r, i) => {
@@ -258,8 +258,8 @@ function renderMovers() {
         '<span class="tc" style="color:' + col + '">' + arrow + chgS(r.chg, r.pct, r.price) + '</span></span>' + ((chip || (window.ENR && ENR.rvTag(r.sym, r.vol))) ? '<span class="tsig">' + chip + (window.ENR ? ENR.rvTag(r.sym, r.vol) : '') + '</span>' : '') + (hasWhy ? '<span class="nwb tnw" title="News today" aria-label="News today">★</span>' : '');
     } else {
       el.className = 'card row' + (i === 0 ? ' rfirst' : '') + (i === rows.length - 1 ? ' rlast' : '') + (el.classList.contains('fadein') ? ' fadein' : ''); el.style.width = W + 'px'; el.style.height = rowH + 'px'; el.style.left = '0px'; el.style.top = i * rowH + 'px';
-      el.innerHTML = '<span class="rk">' + (i + 1) + '</span>' + logoHTML(r.sym, 34) + '<span class="rn"><b>' + esc(r.sym) + ' ' + (window.TODAY ? TODAY.chip(r) : '') + ' <em>' + capOf(r.mcap) + '</em></b><small' + (hasWhy ? ' class="hl"' : '') + '>' + (window.ENR ? ENR.rvTag(r.sym, r.vol) : '') + esc(why) + '</small></span>' +
-        '<span class="rp"><b style="' + (flash ? 'background:' + flash : '') + '">$' + px(r.price) + '</b><small style="color:' + col + '">' + (isFinite(r.chg) ? (r.chg >= 0 ? '+$' : '−$') + px(Math.abs(r.chg)) + ' ' : '') + '<i>' + pctS(r.pct) + '</i></small></span>';
+      el.innerHTML = logoHTML(r.sym, 34) + '<span class="rn"><b>' + esc(r.sym) + ' ' + (window.TODAY ? TODAY.chip(r) : '') + '</b><small>' + esc(cleanName(symName(r.sym) || r.name || '')) + '</small></span>' +
+        '<span class="rp tvp"><b style="' + (flash ? 'background:' + flash : '') + '">$' + px(r.price) + '</b><small style="color:' + col + '">' + (dS(r.chg, r.pct, r.price) || '') + ' <i>' + pctS(r.pct) + '</i></small></span>';
     }
     el.setAttribute('aria-label', r.sym + ' ' + px(r.price) + ' ' + pctS(r.pct));
     if (flash) setTimeout(() => { const t = el.querySelector('.tp,.rp b'); if (t) t.style.background = ''; }, 700);
