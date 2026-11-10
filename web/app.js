@@ -183,7 +183,7 @@ function snapRow(x, sess) {
   if ((sess === 'pre' || sess === 'after') && x.extend_hour_last_price) { price = +x.extend_hour_last_price; chg = +x.extend_hour_change; pct = +x.extend_hour_change_ratio * 100; }
   if (sess === 'overnight' && x.ovn_price) { price = +x.ovn_price; chg = +x.ovn_change; pct = +x.ovn_change_ratio * 100; }
   const ext = (sess === 'pre' || sess === 'after') && x.extend_hour_last_price;
-  return { o: ext ? +x.close : +x.open, h: ext ? +x.extend_hour_high || price : +x.high, l: ext ? +x.extend_hour_low || price : +x.low, pc: price - chg, to: +x.out_standing_shares ? (+(ext ? x.extend_hour_volume : x.volume) || 0) / +x.out_standing_shares : (+x.turnover || 0), hi52: +x.fifty_two_wk_high || 0, lo52: +x.fifty_two_wk_low || 0, sym: x.symbol, name: x.name || '', price: price, chg: chg, pct: pct, mcap: +x.market_value || 0, vol: +(sess === 'overnight' ? x.ovn_volume : (sess === 'pre' || sess === 'after') ? x.extend_hour_volume : x.volume) || 0, ovnT: +x.ovn_last_trade_time || 0 };
+  return { o: ext ? +x.close : +x.open, h: ext ? +x.extend_hour_high || price : +x.high, l: ext ? +x.extend_hour_low || price : +x.low, pc: price - chg, to: +x.out_standing_shares ? (+(ext ? x.extend_hour_volume : x.volume) || 0) / +x.out_standing_shares : (+x.turnover || 0), hi52: +x.fifty_two_wk_high || 0, lo52: +x.fifty_two_wk_low || 0, sym: x.symbol, name: x.name || '', price: price, chg: chg, pct: pct, mcap: +x.market_value || 0, vol: +(sess === 'overnight' ? x.ovn_volume : (sess === 'pre' || sess === 'after') ? x.extend_hour_volume : x.volume) || 0, ovnT: +x.ovn_last_trade_time || 0, halt: x.trade_status === 'HLT' };
 }
 function loadMovers() {
   const v = view();
@@ -196,6 +196,19 @@ function loadMovers() {
     [1, 2].forEach((pg) => watch('m:p' + pg, 'get_gainers_losers', { category: 'US_STOCK', rank_type: rt, sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '100', page_index: String(pg) }, (p) => { S.lists['p' + pg] = normRank(p && p.data); }));
   }
   watch('m:large', 'get_stock_snapshot', { symbols: LARGE, category: 'US_STOCK', extend_hour_required: true, overnight_required: true }, (p) => { S.large = (Array.isArray(p) ? p : []).map((x) => snapRow(x, view())); });
+}
+const HALT_CHIP = '<span class="sigchip haltchip">❚❚ HALTED</span>';
+const isHalted = (sym) => !!(S.halt && S.halt[sym]);
+let haltAt = 0;
+function haltCheck(rows) { // trading halts: the movers lists don't say, so re-check the top names' trade status every 30s
+  if (Date.now() - haltAt < 4000) return; haltAt = Date.now(); // render runs every second; don't re-key the watcher each time
+  const syms = Array.from(new Set((rows || []).slice(0, 60).map((r) => r.sym).filter((s) => /^[A-Z.]{1,6}$/.test(s)))).sort();
+  if (!syms.length) return;
+  watch('hl:q', 'get_stock_snapshot', { symbols: syms.join(','), category: 'US_STOCK', extend_hour_required: false, overnight_required: false }, (p) => {
+    const h = {}; (Array.isArray(p) ? p : []).forEach((x) => { if (x && x.trade_status === 'HLT') h[x.symbol] = 1; });
+    (S.large || []).forEach((r) => { if (r.halt) h[r.sym] = 1; });
+    const was = JSON.stringify(S.halt || {}); S.halt = h; if (JSON.stringify(h) !== was) render();
+  }, 30000);
 }
 let ovnTimer = null;
 function ovnSnap() { // overnight: re-price today's movers with their 24-hour quotes
@@ -253,7 +266,7 @@ function renderMovers() {
   $('sessChips').innerHTML = ['pre', 'regular', 'after', 'overnight'].map((k) => '<button class="chip' + (k === v ? ' on' : '') + '" data-sess="' + k + '">' + (k === S.auto ? '<i style="background:' + SESS[k].color + '"></i>' : '') + SESS[k].short + '</button>').join('') +
     (S.manual ? '<button class="chip ghost" data-sess="auto">Auto</button>' : '');
   setHTML($('caps'), CAPS.map((c) => '<button role="tab" aria-selected="' + (c[0] === S.cap) + '" class="seg' + (c[0] === S.cap ? ' on' : '') + '" data-cap="' + c[0] + '">' + c[1] + '</button>').join(''));
-  const rows = rankedRows(); rowsCache = rows;
+  const rows = rankedRows(); rowsCache = rows; haltCheck(rows);
   $('note').textContent = S.held ? '❚❚ ORDER PAUSED WHILE YOU SCROLL' : (rows.length + ' MOVERS · ' + (v === 'overnight' ? 'TODAY’S MOVERS IN 24H TRADING' : vs.name.toUpperCase() + ((v === 'pre' || v === 'after') ? ' · FROM TOP GAINERS + LARGE CAPS' : '')));
   $('layTiles').classList.toggle('on', S.layout === 'tiles'); $('layList').classList.toggle('on', S.layout === 'list');
   const box = $('grid');
@@ -266,7 +279,7 @@ function renderMovers() {
   if (S.tileKey !== szKey && !touching && !document.getElementById('vMovers').classList.contains('tcol') && $('ptr1').offsetHeight === 0 && scEl.clientHeight > 0) { S.tileKey = szKey; S.fitDone = 0; S.fitN = 0; const nv = document.querySelector('nav.main, .nav, nav'); const bt = box.getBoundingClientRect().top + scEl.scrollTop - scEl.getBoundingClientRect().top; const vb = nv && nv.getBoundingClientRect().height ? Math.min(scEl.clientHeight, nv.getBoundingClientRect().top - scEl.getBoundingClientRect().top) : scEl.clientHeight; const avail = vb - bt - 8; S.tileH = Math.max(108, Math.min(150, Math.floor((avail - 2 * 10) / 3))); S.fitDone = 1; }
   const tileH = S.tileH || 124; // sized so exactly 3 rows (6 tiles) fit between the header and the nav
   // each row of two tiles is only as tall as its content: rows without a signal pill are shorter, so no empty space at the bottom
-  const chips = S.layout === 'tiles' ? rows.map((r) => (window.TODAY ? TODAY.chip(r) : '')) : [];
+  const chips = S.layout === 'tiles' ? rows.map((r) => isHalted(r.sym) ? HALT_CHIP : (window.TODAY ? TODAY.chip(r) : '')) : [];
   const rowHs = [], rowTop = [0]; for (let k = 0; k < rows.length; k += 2) { const hh = tileH; rowHs.push(hh); rowTop.push(rowTop[rowTop.length - 1] + hh + gap); }
   const rowH = 58;
   const existing = {}; Array.from(box.children).forEach((el) => { if (el.dataset.sym) existing[el.dataset.sym] = el; else el.remove(); });
@@ -290,7 +303,7 @@ function renderMovers() {
         '<span class="tc" style="color:' + col + '">' + arrow + chgS(r.chg, r.pct, r.price) + '</span></span>' + sparkSVG(r.sym, 100, 30, col) + (chip ? '<span class="tsig">' + chip + '</span>' : '') + (hasWhy ? '<span class="nwb tnw" title="News today" aria-label="News today">★</span>' : '');
     } else {
       el.className = 'card row' + (i === 0 ? ' rfirst' : '') + (i === rows.length - 1 ? ' rlast' : '') + (el.classList.contains('fadein') ? ' fadein' : ''); el.style.width = W + 'px'; el.style.height = rowH + 'px'; el.style.left = '0px'; el.style.top = i * rowH + 'px';
-      el.innerHTML = logoHTML(r.sym, 34) + '<span class="rn"><b>' + esc(r.sym) + ' ' + (window.TODAY ? TODAY.chip(r) : '') + '</b><small>' + esc(cleanName(symName(r.sym) || r.name || '')) + '</small></span>' +
+      el.innerHTML = logoHTML(r.sym, 34) + '<span class="rn"><b>' + esc(r.sym) + ' ' + (isHalted(r.sym) ? HALT_CHIP : (window.TODAY ? TODAY.chip(r) : '')) + '</b><small>' + esc(cleanName(symName(r.sym) || r.name || '')) + '</small></span>' +
         '<span class="rp tvp"><b style="' + (flash ? 'background:' + flash : '') + '">$' + px(r.price) + '</b><small style="color:' + col + '">' + (dS(r.chg, r.pct, r.price) || '') + ' <i>' + pctS(r.pct) + '</i></small></span>';
     }
     el.setAttribute('aria-label', r.sym + ' ' + px(r.price) + ' ' + pctS(r.pct));
@@ -446,6 +459,7 @@ function renderDetail() {
   if (main) {
     h += '<div class="dPrice">$' + px(main.price) + '</div><div class="dChg" style="color:' + (up ? P.up : P.dn) + '">' + chgS(main.chg, main.pct, main.price) + ' <span>' + (v === 'regular' && S.auto === 'regular' ? 'today' : 'at the close') + '</span></div>';
     if (ext && ext.price) h += '<div class="dExt">' + sessIcon(v, 15) + SESS[v].label + ' <b>$' + px(ext.price) + '</b> <span style="color:' + (ext.pct >= 0 ? P.up : P.dn) + '">' + mvS(ext.pct, ext.price, ext.chg) + '</span></div>';
+    if ((sn && sn.trade_status === 'HLT') || isHalted(sym)) h += '<div class="dHalt">❚❚ TRADING HALTED</div>';
     // quote time strip: which session, what the change is measured against, and when the quote was taken
     { const st = S.stamp && (S.stamp['d:snap'] || S.stamp['d:snap:' + sym]); const age = st ? Date.now() - st : null; const tm = new Date(st || Date.now()).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', timeZone: 'America/New_York' });
       h += '<div class="dQt">' + (SESS[S.auto] ? SESS[S.auto].label : 'Market closed') + ' · vs yesterday’s close · ' + (st ? tm + ' ET' : 'loading…') + (age > 90000 ? ' <b style="color:#F2C27A">· delayed</b>' : '') + '</div>'; }
