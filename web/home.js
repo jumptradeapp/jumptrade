@@ -11,7 +11,7 @@
     const ses = typeof sessionAt === 'function' ? SL[sessionAt()] || 'MARKET CLOSED' : (wd === 0 || wd === 6) ? 'MARKET CLOSED' : mins < 240 ? 'OVERNIGHT' : mins < 570 ? 'PRE-MARKET' : mins < 960 ? 'MARKET OPEN' : mins < 1200 ? 'AFTER HOURS' : 'OVERNIGHT';
     const date = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase().replace(',', ' ·');
     const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    return { g: g, sub: date + '<br>' + ses + ' · ' + time };
+    void date; return { g: g, sub: ses + '<br>' + time + ' ET' }; // same two-line status as the other pages' titles
   }
   function loadPositions() {
     const X = TODAY.home; if (H.pos || H.posLoading || !X.live()) return; H.posLoading = 1;
@@ -37,10 +37,10 @@
   const ago2 = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 60 ? m + 'm' : m < 1440 ? Math.round(m / 60) + 'h' : Math.round(m / 1440) + 'd'; };
 
   H.render = function () {
-    const gr = greet(); if ($('hmTitle')) { const nm = (function () { try { return (localStorage.getItem('jt.name') || '').trim().split(/\s+/)[0].slice(0, 12); } catch (e) { return ''; } })(); $('hmTitle').classList.toggle('named', !!nm); $('hmTitle').innerHTML = nm ? '<span>GOOD ' + gr.g + ',</span><br><b>' + esc(nm.toUpperCase()) + '<em class="dot">.</em></b>' : '<span>GOOD</span><br><b>' + gr.g + '<em class="dot">.</em></b>'; $('hmSub').innerHTML = gr.sub; }
+    const gr = greet(); if ($('hmTitle')) { const nm = (function () { try { return (localStorage.getItem('jt.name') || '').trim().split(/\s+/)[0].slice(0, 12); } catch (e) { return ''; } })(); $('hmTitle').classList.toggle('named', !!nm); $('hmTitle').innerHTML = nm ? '<span>' + gr.g + ',</span><br><b>' + esc(nm.toUpperCase()) + '<em class="dot">.</em></b>' : '<span>GOOD</span><br><b>' + gr.g + '<em class="dot">.</em></b>'; $('hmSub').innerHTML = gr.sub; }
     if (!window.TODAY || !TODAY.home) { setHTML($('hmList'), '<div class="glass sec hm"><div class="skel"></div><div class="skel" style="width:70%"></div></div><div class="glass sec hm"><div class="skel"></div><div class="skel" style="width:55%"></div></div>'); setTimeout(render, 300); return; }
     H.load(); const X = TODAY.home, P = dPal();
-    const nm = (function () { try { return (localStorage.getItem('jt.name') || '').trim().split(/\s+/)[0].slice(0, 12); } catch (e) { return ''; } })(); $('hmTitle').classList.toggle('named', !!nm); $('hmTitle').innerHTML = nm ? '<span>GOOD ' + gr.g + ',</span><br><b>' + esc(nm.toUpperCase()) + '<em class="dot">.</em></b>' : '<span>GOOD</span><br><b>' + gr.g + '<em class="dot">.</em></b>'; $('hmSub').innerHTML = gr.sub;
+    const nm = (function () { try { return (localStorage.getItem('jt.name') || '').trim().split(/\s+/)[0].slice(0, 12); } catch (e) { return ''; } })(); $('hmTitle').classList.toggle('named', !!nm); $('hmTitle').innerHTML = nm ? '<span>' + gr.g + ',</span><br><b>' + esc(nm.toUpperCase()) + '<em class="dot">.</em></b>' : '<span>GOOD</span><br><b>' + gr.g + '<em class="dot">.</em></b>'; $('hmSub').innerHTML = gr.sub;
     const mine = {}; (H.pos || []).forEach((p) => { mine[p.sym] = p; });
     const watched = Object.assign({}, S.allWl || {}); (H.pos || []).forEach((p) => { watched[p.sym] = 1; });
     let h = ''; const W = {}; let cur = 'regime';
