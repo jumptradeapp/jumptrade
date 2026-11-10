@@ -31,6 +31,6 @@
   }
   window.A2HS = { open: () => open(true), close };
   // wait until the splash, the welcome cards and any open sheet are out of the way
-  const ready = () => { let seen = '1'; try { seen = localStorage.getItem('jt.intro'); } catch (e) {} return seen && (!window.S || S.tab === 'home') && !D.getElementById('intro') && (function () { const sp = D.getElementById('splash'); return !sp || sp.style.display === 'none'; })() && !D.body.classList.contains('sheet-open') && !D.getElementById('fbS'); };
+  const ready = () => { let seen = '1'; try { seen = localStorage.getItem('jt.intro'); } catch (e) {} return seen && (typeof S === 'undefined' || S.tab === 'home') && !D.getElementById('intro') && (function () { const sp = D.getElementById('splash'); return !sp || sp.style.display === 'none'; })() && !D.body.classList.contains('sheet-open') && !D.getElementById('fbS'); };
   if (!standalone && !snoozed()) { let tries = 0; const tick = () => { if (ready()) setTimeout(() => { if (ready()) open(false); }, 2500); else if (++tries < 150) setTimeout(tick, 2000); }; setTimeout(tick, 4000); }
 })();

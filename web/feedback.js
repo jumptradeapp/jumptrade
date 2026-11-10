@@ -26,7 +26,7 @@
     const ta = w.querySelector('textarea'), msg = w.querySelector('.fbMsg'), go = w.querySelector('.fbGo'), text = ta.value.trim();
     if (text.length < 3) { msg.textContent = 'Write a few words first.'; return; }
     go.disabled = true; go.textContent = 'Sending…';
-    fetch('/api/feedback', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind, text, name: w.querySelector('.fbN').value.trim(), page: (window.S && S.tab) || '' }) })
+    fetch('/api/feedback', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind, text, name: w.querySelector('.fbN').value.trim(), page: (typeof S !== 'undefined' && S.tab) || '' }) })
       .then((r) => r.json()).then((j) => { if (!j.ok) throw new Error(j.error && j.error.code); w.querySelector('.fbSheet').innerHTML = '<div class="fbDone"><b>Got it. Thank you!</b><span>Your feedback helps shape what gets built next.</span><button class="fbGo" data-fbx>Done</button></div>'; })
       .catch((e) => { go.disabled = false; go.textContent = 'Send'; msg.textContent = String(e.message) === 'limit' ? 'That’s a lot of feedback for one day. Try again tomorrow.' : 'Couldn’t send. Check your connection and try again.'; });
   }

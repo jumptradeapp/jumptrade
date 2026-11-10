@@ -138,6 +138,6 @@
   F.close = function () { F.sym = null; document.body.classList.remove('fs-open'); el().classList.remove('on'); };
   window.addEventListener('resize', () => { if (F.sym) draw(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && F.sym) F.close(); });
-  document.addEventListener('click', (e) => { const b = e.target.closest('[data-fsopen]'); if (b && window.S && S.detail) { e.stopPropagation(); F.open(S.detail); } }, true);
+  document.addEventListener('click', (e) => { const b = e.target.closest('[data-fsopen]'); if (b && typeof S !== 'undefined' && S.detail) { e.stopPropagation(); F.open(S.detail); } }, true);
   window.FSC = F;
 })();

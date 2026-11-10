@@ -197,7 +197,7 @@ function loadMovers() {
   }
   watch('m:large', 'get_stock_snapshot', { symbols: LARGE, category: 'US_STOCK', extend_hour_required: true, overnight_required: true }, (p) => { S.large = (Array.isArray(p) ? p : []).map((x) => snapRow(x, view())); });
 }
-const HALT_CHIP = '<span class="sigchip haltchip">❚❚ HALTED</span>';
+const HALT_CHIP = '<span class="sigchip haltchip">HALTED</span>';
 const isHalted = (sym) => !!(S.halt && S.halt[sym]);
 let haltAt = 0;
 function haltCheck(rows) { // trading halts: the movers lists don't say, so re-check the top names' trade status every 30s
@@ -277,7 +277,8 @@ function renderMovers() {
   const W = box.clientWidth || 358, gap = S.layout === 'tiles' ? 10 : 12, colW = (W - gap) / 2;
   const scEl = $('scroller'), szKey = W + 'x' + (window.innerHeight > window.innerWidth ? 'p' : 'l'); // width/orientation only: header height changes every second made tiles jump between sizes
   if (S.tileKey !== szKey && !touching && !document.getElementById('vMovers').classList.contains('tcol') && $('ptr1').offsetHeight === 0 && scEl.clientHeight > 0) { S.tileKey = szKey; S.fitDone = 0; S.fitN = 0; const nv = document.querySelector('nav.main, .nav, nav'); const bt = box.getBoundingClientRect().top + scEl.scrollTop - scEl.getBoundingClientRect().top; const vb = nv && nv.getBoundingClientRect().height ? Math.min(scEl.clientHeight, nv.getBoundingClientRect().top - scEl.getBoundingClientRect().top) : scEl.clientHeight; const avail = vb - bt - 8; S.tileH = Math.max(108, Math.min(150, Math.floor((avail - 2 * 10) / 3))); S.fitDone = 1; }
-  const tileH = S.tileH || 124; // sized so exactly 3 rows (6 tiles) fit between the header and the nav
+  const tileH = S.tileH || 124;
+  const roomy = tileH >= 120; // tall enough (home-screen app): signal pill gets its own row under the change; Safari's shorter screen: pill sits beside the price so 6 tiles still fit // sized so exactly 3 rows (6 tiles) fit between the header and the nav
   // each row of two tiles is only as tall as its content: rows without a signal pill are shorter, so no empty space at the bottom
   const chips = S.layout === 'tiles' ? rows.map((r) => isHalted(r.sym) ? HALT_CHIP : (window.TODAY ? TODAY.chip(r) : '')) : [];
   const rowHs = [], rowTop = [0]; for (let k = 0; k < rows.length; k += 2) { const hh = tileH; rowHs.push(hh); rowTop.push(rowTop[rowTop.length - 1] + hh + gap); }
@@ -299,8 +300,8 @@ function renderMovers() {
       el.style.left = (i % 2) * (colW + gap) + 'px'; el.style.top = rowTop[Math.floor(i / 2)] + 'px';
       const chip = chips[i];
       el.innerHTML = '<span class="th">' + logoHTML(r.sym, 32) + '<span class="tn"><b>' + esc(r.sym) + '</b>' + '<small>' + esc(cleanName(symName(r.sym) || r.name || '')) + '</small>' + '</span></span>' +
-        '<span class="tb"><span class="tp" style="' + (flash ? 'background:' + flash : '') + '">$' + px(r.price) + '</span>' +
-        '<span class="tc" style="color:' + col + '">' + arrow + chgS(r.chg, r.pct, r.price) + '</span></span>' + sparkSVG(r.sym, 100, 30, col) + (chip ? '<span class="tsig">' + chip + '</span>' : '') + (hasWhy ? '<span class="nwb tnw" title="News today" aria-label="News today">★</span>' : '');
+        '<span class="tb"><span class="tpr"><span class="tp" style="' + (flash ? 'background:' + flash : '') + '">$' + px(r.price) + '</span>' + (chip && !roomy ? '<span class="tsig2' + (px(r.price).length > 5 ? ' tight' : '') + '">' + chip + '</span>' : '') + '</span>' +
+        '<span class="tc" style="color:' + col + '">' + arrow + chgS(r.chg, r.pct, r.price) + '</span></span>' + (chip && roomy ? '<span class="tsig">' + chip + '</span>' : '') + sparkSVG(r.sym, 100, 30, col) + (hasWhy ? '<span class="nwb tnw" title="News today" aria-label="News today">★</span>' : '');
     } else {
       el.className = 'card row' + (i === 0 ? ' rfirst' : '') + (i === rows.length - 1 ? ' rlast' : '') + (el.classList.contains('fadein') ? ' fadein' : ''); el.style.width = W + 'px'; el.style.height = rowH + 'px'; el.style.left = '0px'; el.style.top = i * rowH + 'px';
       el.innerHTML = logoHTML(r.sym, 34) + '<span class="rn"><b>' + esc(r.sym) + ' ' + (isHalted(r.sym) ? HALT_CHIP : (window.TODAY ? TODAY.chip(r) : '')) + '</b><small>' + esc(cleanName(symName(r.sym) || r.name || '')) + '</small></span>' +
@@ -888,7 +889,7 @@ function wlRow(x, sess) { // one watchlist quote: regular session on the main li
   const n = snapRow(x, sess); n._s = ok ? sess : 'regular'; n._ok = ok;
   const g = snapRow(x, 'regular'); n.reg = { price: g.price, chg: g.chg, pct: g.pct };
   n.ext = ok && sess !== 'regular' && sess !== 'closed' && isFinite(n.price) && n.price ? { price: n.price, chg: n.chg, pct: n.pct, k: sess } : null;
-  if (!n.ext && x.extend_hour_last_price && +x.extend_hour_last_price !== g.price) { const e = snapRow(x, 'after'); n.ext = { price: e.price, chg: e.chg, pct: e.pct, k: x.market_state && /^PRE/.test(x.market_state) ? 'pre' : 'after' }; }
+  if (!n.ext && sess === 'closed' && x.extend_hour_last_price && +x.extend_hour_last_price !== g.price) { const e = snapRow(x, 'after'); n.ext = { price: e.price, chg: e.chg, pct: e.pct, k: x.market_state && /^PRE/.test(x.market_state) ? 'pre' : 'after' }; }
   return n; }
 /* right-hand column shared by the watchlist page and the Home watchlist widget: price, then $ move and %, then the pre/after-hours line */
 function wlRP(r) { if (!r || !r.price) return '<b class="dim">—</b>'; const P = dPal(); const m = r.reg && r.reg.price ? r.reg : r; const sg = (v) => dS(v, null, null) || '+$0.00';

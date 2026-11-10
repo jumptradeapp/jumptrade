@@ -48,7 +48,7 @@
   }
   T.sigOf = sigOf;
   const chipStyle = (c) => 'color:' + c + ';background:' + c + '1A;border-color:' + c + '66';
-  T.chip = function (r) { const s = sigOf(r); if (!s) return ''; const d = SIG[s.k]; return '<span class="sigchip" style="' + chipStyle(d.bg) + '">' + d.icon + ' ' + d.label + '</span>'; };
+  T.chip = function (r) { const s = sigOf(r); if (!s) return ''; const d = SIG[s.k]; return '<span class="sigchip" style="' + chipStyle(d.bg) + '">' + d.icon + ' <em class="scl">' + d.label + '</em></span>'; };
   T.banner = function (r) {
     const s = sigOf(r); if (!s) return '';
     const d = SIG[s.k];
