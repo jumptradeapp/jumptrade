@@ -62,21 +62,21 @@
     if ((broke || crossDn.indexOf('200-day') >= 0 || crossDn.indexOf('50-day') >= 0) && !aboveE10) {
       state = 'breaking'; why.push(broke ? 'Closed below its ' + fmtP(broke.p) + ' swing low' : 'Lost the ' + crossDn[crossDn.length - 1] + ' average');
     } else if (off <= -0.18 && (r >= 68 || chg5 >= 0.3)) {
-      state = 'extended'; why.push('Already bounced ' + Math.round(chg5 * 100) + '% in 5 days (RSI ' + r.toFixed(0) + ')');
+      state = 'extended'; why.push('Already bounced ' + Math.round(chg5 * 100) + '% in 5 days');
     } else if (off <= -0.18 && rMin10 <= 36 && r >= rMin10 + 7 && aboveE10 && (hiLow || px > prevHi)) {
-      state = 'turning'; why.push('RSI bounced from ' + rMin10.toFixed(0) + ' to ' + r.toFixed(0)); if (hiLow) why.push('higher low in place'); if (px > prevHi) why.push('closed above the prior day’s high');
+      state = 'turning'; why.push('Selling pressure eased'); if (hiLow) why.push('higher low in place'); if (px > prevHi) why.push('closed above the prior day’s high');
     } else if (crossUp.length) {
       state = 'reclaiming'; why.push('Reclaimed the ' + crossUp[crossUp.length - 1] + ' average');
     } else if (r <= 36 && nearSup) {
-      state = 'support'; why.push('Oversold (RSI ' + r.toFixed(0) + ') sitting on the ' + sup.k + ' at ' + fmtP(sup.p));
+      state = 'support'; why.push('Sold off hard, sitting on the ' + sup.k + ' at ' + fmtP(sup.p));
     } else if (r <= 36) {
-      state = 'oversold'; why.push('Oversold, RSI ' + r.toFixed(0) + ', no support line close by');
+      state = 'oversold'; why.push('Sold off hard, no floor close by');
     } else if (off <= -0.18 && !aboveE10) {
       state = 'falling'; why.push('Still trending down below its 10-day average');
     } else if (off <= -0.18) {
       state = 'basing'; why.push('Holding above its 10-day average, no trigger yet');
     } else state = 'near-high';
-    if (volX >= 1.6) why.push('volume ' + volX.toFixed(1) + '× normal');
+    if (volX >= 1.6) why.push(volX.toFixed(1) + '× normal volume');
     // plan
     const resAbove = (entry) => above.find((x) => x.p >= entry + Math.max(1.5 * atr, entry * 0.06)) || null;
     const capStop = (entry, raw) => Math.max(raw, entry - 2.5 * atr);
@@ -117,7 +117,7 @@
     // score: deep drawdown + oversold + quality of turn + reward/risk
     const stateW = { turning: 30, reclaiming: 24, support: 22, oversold: 14, basing: 8, extended: 0, falling: -10, breaking: -20, 'near-high': -40 }[state];
     const score = Math.round(stateW + Math.min(30, -off * 60) + Math.max(0, 40 - r) * 0.5 + (plan && plan.rr ? Math.min(12, plan.rr * 4) : 0) + (volX > 1.5 && (state === 'turning' || state === 'reclaiming') ? 6 : 0));
-    return { sym: sym, px: px, hi: hi, lo: lo, off: off, chg5: chg5, chg20: chg20, rsi: r, rMin10: rMin10, atr: atr, s20: s20, s50: s50, s200: s200, volX: volX,
+    return { sym: sym, px: px, pc: L > 1 ? c[L - 2] : null, hi: hi, lo: lo, off: off, chg5: chg5, chg20: chg20, rsi: r, rMin10: rMin10, atr: atr, s20: s20, s50: s50, s200: s200, volX: volX,
       sup: sup, sup2: sup2, res: res, state: state, why: why, plan: plan, score: score, spark: c.slice(-60) };
   }
   function dateAgo(d) { return d <= 1 ? '(yesterday)' : d < 7 ? '(' + d + 'd ago)' : d < 35 ? '(' + Math.round(d / 5) + 'w ago)' : '(' + Math.round(d / 21) + 'mo ago)'; }

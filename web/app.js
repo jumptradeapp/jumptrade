@@ -50,10 +50,10 @@ const px = (p) => p == null || isNaN(p) ? '—' : (p < 1 ? p.toFixed(4) : p.toLo
 const money = (v) => !v ? '—' : v >= 1e12 ? '$' + (v / 1e12).toFixed(2) + 'T' : v >= 1e9 ? '$' + (v / 1e9).toFixed(1) + 'B' : v >= 1e6 ? '$' + (v / 1e6).toFixed(0) + 'M' : '$' + Math.round(v / 1e3) + 'K';
 const big = (v) => !v ? '—' : v >= 1e9 ? (v / 1e9).toFixed(1) + 'B' : v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(0) + 'K' : String(Math.round(v));
 const pctS = (p) => (p >= 0 ? '+' : '') + p.toFixed(p >= 100 || p <= -100 ? 0 : 1) + '%';
-const chgS = (c, p, price) => (c >= 0 ? '+$' : '-$') + (price < 1 ? Math.abs(c).toFixed(4) : Math.abs(c).toFixed(2)) + ' (' + pctS(p) + ')';
+const chgS = (c, p, price) => (c >= 0 ? '+$' : '−$') + (price < 1 ? Math.abs(c).toFixed(4) : Math.abs(c).toFixed(2)) + ' ' + pctS(p);
 const ago = (t) => { const s = Math.max(0, Math.round((Date.now() - t) / 1000)); return s < 5 ? 'just now' : s < 60 ? s + 's ago' : s < 3600 ? Math.floor(s / 60) + 'm ago' : s < 86400 ? Math.floor(s / 3600) + 'h ago' : Math.floor(s / 86400) + 'd ago'; };
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const cleanName = (n) => String(n || '').replace(/\s+(Inc\.?|Corporation|Corp\.?|Ltd\.?|Limited|Holdings?|Group|plc|N\.?V\.?|S\.A\.|Co\.?)(,)?$/i, '').replace(/,\s*$/, '');
+const cleanName = (n) => { let s = String(n || '').replace(/\s+Class [A-Z]\b.*$/i, '').replace(/\s+NEW$/, '').trim(); for (let i = 0; i < 3; i++) s = s.replace(/[\s,]+(Inc\.?|Incorporated|Corporation|Corp\.?|Ltd\.?|Limited|Holdings?|Group|plc|N\.?V\.?|S\.A\.|Co\.?|Company|&|L\.?P\.?|PBC|COM)$/i, '').trim(); return s.replace(/[,&]\s*$/, '').trim(); };
 
 /* ---------- logos ---------- */
 let LOGOS = null;
@@ -62,7 +62,9 @@ const LGBAD = window.LGBAD = {};
 function lgNeed(sym) { const b = sym.charAt(1); const c = (/^[A-Z]/.test(sym) ? sym[0] : '_') + (!b || b < 'H' ? '1' : b < 'P' ? '2' : '3'); if (LGS[c]) return; LGS[c] = 1; fetch('lg2/' + c + '.json').then((r) => r.json()).then((j) => { Object.assign(LOGOS, j); LGS[c] = 2; clearTimeout(lgT); lgT = setTimeout(render, 60); }).catch(() => {}); }
 const HUES = [[139, 108, 255], [255, 140, 70], [32, 201, 151], [59, 160, 219], [240, 101, 149], [92, 124, 250], [255, 196, 60], [81, 207, 102], [21, 170, 191], [255, 110, 90]];
 /* every stock move shows dollars AND percent: "+$7.67 +65.72%" (dollar move is derived from price and % when a feed omits it) */
-function dS(chg, pct, price) { const c = chg != null && isFinite(chg) && chg !== '' ? +chg : (price > 0 && pct != null && isFinite(pct) && pct > -100 ? price - price / (1 + pct / 100) : null); if (c == null) return ''; const a = Math.abs(c); return (c >= 0 ? '+$' : '−$') + (a >= 0.1 ? a.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : a >= 0.01 ? a.toFixed(3) : a.toFixed(4)); }
+function dS(chg, pct, price) { const c = chg != null && isFinite(chg) && chg !== '' ? +chg : (price > 0 && pct != null && isFinite(pct) && pct > -100 ? price - price / (1 + pct / 100) : null); if (c == null) return ''; const a = Math.abs(c); return (c >= 0 ? '+$' : '−$') + (price > 0 && price < 1 && a < 0.1 ? a.toFixed(4) : a.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })); }
+// one plan format everywhere: Buy / Stop / Target
+function planStrip(lab, e, st, tg) { const P = dPal(), f = (x) => '$' + px(x); return '<span class="tsl"><i>' + lab + ' <b>' + (Array.isArray(e) ? f(e[0]) + '–' + f(e[1]) : f(e)) + '</b></i>' + (st ? '<i>Stop <b style="color:' + P.dn + '">' + f(st) + '</b></i>' : '') + (tg ? '<i>Target <b style="color:' + P.up + '">' + f(tg) + '</b></i>' : '') + '</span>'; }
 function mvS(pct, price, chg) { const d = dS(chg, pct, price); return (d ? d + ' ' : '') + pctS(pct); }
 function logoHTML(sym, size) {
   const r = Math.round(size / 2); // circles everywhere
@@ -552,7 +554,7 @@ function renderSector() {
   const adv = +s.advanced, dec = +s.declined, fl = +s.flat; const tot = adv + dec + fl || 1;
   h += '<div class="glass"><div class="cap">BREADTH</div><div class="ratbar"><i style="flex:' + adv + ';background:#3FD68F"></i><i style="flex:' + fl + ';background:#4A5363"></i><i style="flex:' + dec + ';background:#FF7A7A"></i></div><div class="ratleg"><span><i style="background:#3FD68F"></i>' + adv + ' up</span><span><i style="background:#4A5363"></i>' + fl + ' flat</span><span><i style="background:#FF7A7A"></i>' + dec + ' down</span><span>' + Math.round(adv / tot * 100) + '% advancing</span></div></div>';
   h += '<div class="glass"><div class="cap" style="display:flex;justify-content:space-between;align-items:center">STOCKS<span class="mini">' + [['CHANGE_RATIO', 'Top movers'], ['MARKET_VALUE', 'Biggest']].map((x) => '<button class="seg' + (S.sectorSort === x[0] ? ' on' : '') + '" data-ssort="' + x[0] + '">' + x[1] + '</button>').join('') + '</span></div>';
-  h += S.sectorRows == null ? '<p class="desc dim">Loading…</p>' : S.sectorRows.length ? S.sectorRows.map((x) => { const q = +x.change_ratio * 100; return '<button class="srow" data-open="' + esc(x.symbol) + '" data-name="' + esc(x.name) + '">' + logoHTML(x.symbol, 32) + '<span class="rn"><b>' + esc(x.symbol) + '</b><small>' + esc(cleanName(x.name)) + ' · ' + money(+x.market_value) + '</small></span><span class="rp"><b>$' + px(+x.price) + '</b><small style="color:' + (q >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + mvS(q, +x.price, x.change != null ? +x.change : null) + '</small></span></button>'; }).join('') : '<p class="desc dim">Couldn’t load this sector’s stocks.</p>';
+  h += S.sectorRows == null ? '<p class="desc dim">Loading…</p>' : S.sectorRows.length ? '<div class="tvwrap">' + S.sectorRows.map((x) => tvR(x.symbol, '', [{ t: esc(cleanName(x.name)) + ' · ' + money(+x.market_value) }], { price: +x.price, pct: +x.change_ratio * 100, chg: x.change != null ? +x.change : null })).join('') + '</div>' : '<p class="desc dim">Couldn’t load this sector’s stocks.</p>';
   h += '</div>';
   $('secBody').innerHTML = h;
 }
@@ -617,10 +619,15 @@ function loadDips() {
 }
 function planLine(a) {
   const p = a.plan, f = DIP.fmtP; if (!p) return '';
-  if (p.kind === 'Wait' && p.better) return 'Wait for a better entry: worth buying near ' + f(p.better) + ' (2× the risk to the ' + (p.tgtK || 'target') + ' at ' + f(p.tgt) + ', stop ' + f(p.stop) + ')';
-  if (p.kind === 'Wait') return p.pullback ? 'Wait for a pullback toward ' + f(p.pullback) : 'Wait. Next floor: ' + p.next.k + ' ' + f(p.next.p) + (p.reclaim ? ' · needs to reclaim ' + f(p.reclaim) : '');
+  if (p.kind === 'Wait' && p.better) return 'Wait. Worth buying near ' + f(p.better) + ' (stop ' + f(p.stop) + ', target ' + f(p.tgt) + ')';
+  if (p.kind === 'Wait') return p.pullback ? 'Wait. Buy on a pullback toward ' + f(p.pullback) : 'Wait. Next floor is ' + f(p.next.p) + ' (' + p.next.k + ')' + (p.reclaim ? '. Buy if it gets back above ' + f(p.reclaim) : '');
   const entry = p.zoneLo ? 'Buy zone ' + f(p.zoneLo) + '–' + f(p.zoneHi) : (p.kind === 'Triggered' ? 'Triggered at ' + f(p.trig) : 'Buy above ' + f(p.trig));
-  return entry + ' · stop ' + f(p.stop) + ' · target ' + f(p.tgt) + ' · R:R ' + p.rr.toFixed(1);
+  return entry + ' · stop ' + f(p.stop) + ' · target ' + f(p.tgt) + ' · makes ' + p.rr.toFixed(1) + '× what it risks';
+}
+function planHTML(a) {
+  const p = a.plan; if (!p) return '';
+  if (p.kind === 'Wait') return '<span class="tswait">' + esc(planLine(a)) + '</span>';
+  return planStrip(p.zoneLo ? 'Buy' : p.kind === 'Triggered' ? 'Bought at' : 'Buy above', p.zoneLo ? [p.zoneLo, p.zoneHi] : p.trig, p.stop, p.tgt);
 }
 function dipBadge(st) { const s = STATE[st] || ['—', '#A0A9B8']; return '<span class="badge" style="color:' + s[1] + ';border-color:' + s[1] + '66;background:' + s[1] + '14">' + s[0] + '</span>'; }
 function renderDips() {
@@ -636,14 +643,10 @@ function renderDips() {
   if (!all.length) { box.innerHTML = '<div class="empty"><b>' + (S.err ? 'Can’t load live data' : mcp ? 'Scanning ' + U.all.length + ' stocks…' : 'Can’t reach live data') + '</b><span>' + esc(S.err ? (ERRCOPY[S.err] || '') : 'Pulling a year of daily prices for each name.') + '</span></div>'; return; }
   let h = '', lastSt = null;
   list.forEach((a) => {
-    if (a.state !== lastSt) { lastSt = a.state; h += '<div class="dipH">' + dipBadge(a.state) + '<span>' + ({ turning: 'RSI bouncing off oversold with a higher low or a close above yesterday’s high', reclaiming: 'Just closed back above a key moving average', support: 'Oversold and sitting near a key line', oversold: 'Oversold, but no floor under it yet', basing: 'Holding up after a big drop, no trigger yet', extended: 'Already bounced hard. Wait for a pullback', falling: 'Still sliding below its 10-day average', breaking: 'Broke a support level in the last 3 days', 'near-high': 'Within 18% of its 52-week high' }[a.state] || '') + '</span></div>'; }
-    const nm = symName(a.sym);
-    h += '<button class="dip" data-open="' + esc(a.sym) + '" data-name="' + esc(nm) + '">' + logoHTML(a.sym, 36) +
-      '<span class="dipM"><span class="dipT"><b>' + esc(a.sym) + '</b><em>$' + px(a.px) + '</em><i style="color:' + (a.off < 0 ? '#FF8A8A' : '#5EE0A0') + '">' + Math.round(a.off * 100) + '% from high</i></span>' +
-      '<small>' + esc(cleanName(nm) || U.group[a.sym] || '') + ' · RSI ' + a.rsi.toFixed(0) + ' · 5d ' + pctS(a.chg5 * 100) + '</small>' +
-      '<span class="why">' + esc(a.why.join(' · ')) + '</span><span class="plan">' + esc(planLine(a)) + '</span></span></button>';
+    if (a.state !== lastSt) { lastSt = a.state; h += '<div class="dipH">' + dipBadge(a.state) + '<span>' + ({ turning: 'Selling has stopped and it’s turning back up', reclaiming: 'Just closed back above a key average price', support: 'Sold off hard and sitting on a floor', oversold: 'Sold off hard, no floor under it yet', basing: 'Holding up after a big drop, no trigger yet', extended: 'Already bounced hard. Wait for a pullback', falling: 'Still sliding. Don’t catch it yet', breaking: 'Broke a support level in the last 3 days', 'near-high': 'Within 18% of its 52-week high' }[a.state] || '') + '</span></div>'; }
+    h += tvR(a.sym, ' <span class="badge" style="color:#FF8A8A;border-color:#FF8A8A66">' + Math.round(a.off * 100) + '% off high</span>', [{ t: esc(cleanName(symName(a.sym)) || U.group[a.sym] || '') }, { t: planHTML(a), c: 'tvdo' }, { t: esc(a.why.join(' · ')), c: 'dim' }], qOf(a.sym, a.px, a.pc));
   });
-  box.innerHTML = h || '<div class="empty"><b>Nothing in this filter</b><span>Try another filter or group.</span></div>';
+  box.innerHTML = h ? h : '<div class="empty"><b>Nothing in this filter</b><span>Try another filter or group.</span></div>';
 }
 function dipCard(sym) {
   const d = S.d[sym] || {}; const a = d.dip; const mine = myDips().indexOf(sym) >= 0;
@@ -651,7 +654,7 @@ function dipCard(sym) {
   if (!a) return h + '<p class="desc dim">' + (d.dipLoading === false ? 'Not enough price history yet.' : 'Reading a year of daily prices…') + '</p></div>';
   const f = DIP.fmtP, p = a.plan;
   h += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' + dipBadge(a.state) + '<span class="small" style="color:#C9D2E0">' + esc(a.why.join(' · ')) + '</span></div>';
-  h += '<div class="tg4"><div><span>From high</span><b style="color:#FF8A8A">' + Math.round(a.off * 100) + '%</b></div><div><span>RSI</span><b>' + a.rsi.toFixed(0) + '</b></div><div><span>5 days</span><b>' + pctS(a.chg5 * 100) + '</b></div><div><span>20 days</span><b>' + pctS(a.chg20 * 100) + '</b></div></div>';
+  h += '<div class="tg4"><div><span>From high</span><b style="color:#FF8A8A">' + Math.round(a.off * 100) + '%</b></div><div><span>RSI</span><b>' + a.rsi.toFixed(0) + ' <small style="font-weight:500;color:#9AA6B6">' + (a.rsi < 30 ? 'oversold' : a.rsi > 70 ? 'stretched' : 'normal') + '</small></b></div><div><span>5 days</span><b>' + pctS(a.chg5 * 100) + '</b></div><div><span>20 days</span><b>' + pctS(a.chg20 * 100) + '</b></div></div>';
   const lines = [['Resistance', a.res], ['Support', a.sup], ['Next support', a.sup2]].filter((x) => x[1]).map((x) => '<div><span>' + x[0] + '</span><b>' + f(x[1].p) + '</b><em>' + esc(x[1].k) + '</em></div>');
   if (a.s50) lines.push('<div><span>50-day avg</span><b>' + f(a.s50) + '</b><em>' + (a.px > a.s50 ? 'above' : 'below') + '</em></div>');
   if (a.s200) lines.push('<div><span>200-day avg</span><b>' + f(a.s200) + '</b><em>' + (a.px > a.s200 ? 'above' : 'below') + '</em></div>');
@@ -1347,6 +1350,16 @@ function snapInto(key, syms) {
 function loadValue() { loadHot(); loadAllWatchSyms(); const u = valUniverse(); snapInto('vl:s', u); u.forEach(needFund); }
 function loadBuzzQuotes() { const syms = (S.hotList || []).map((x) => x.symbol).filter((s) => /^[A-Z.]{1,6}$/.test(s)).slice(0, 60); if (!syms.length) return; snapInto('bz:s', syms); syms.forEach(needFund); }
 function loadBuzz() { loadHot(); loadBuzzQuotes(); }
+// one flat row used by every stock list: logo · ticker + tags / name / plain line · price over $ move and %
+function rpHTML(q) { const P = dPal(); if (!q || !q.price) return '<span class="rp tvp"><b class="dim">—</b></span>'; return '<span class="rp tvp"><b>$' + px(q.price) + '</b>' + (q.pct != null ? '<small style="color:' + (q.pct >= 0 ? P.up : P.dn) + '">' + (dS(q.chg, q.pct, q.price) || '') + ' <i>' + pctS(q.pct) + '</i></small>' : '') + '</span>'; }
+function tvR(sym, tags, lines, q) {
+  const rp = rpHTML(q);
+  return '<button class="rat rat4 tvr" data-open="' + esc(sym) + '" data-name="' + esc(symName(sym) || '') + '">' + logoHTML(sym, 34) + '<span class="rn"><b>' + esc(sym) + (tags || '') + '</b>' + lines.filter(Boolean).map((l) => '<small' + (l.c ? ' class="' + l.c + '"' : '') + '>' + l.t + '</small>').join('') + '</span>' + rp + '</button>';
+}
+function qOf(sym, px0, pc0) { const r = S.vRow && S.vRow[sym]; if (r && r.price) return { price: r.price, pct: r.pct, chg: r.chg }; if (px0 && pc0) return { price: px0, pct: (px0 / pc0 - 1) * 100, chg: px0 - pc0 }; return px0 ? { price: px0 } : null; }
+const VALDO = { under: 'Cheap for its growth', reasonable: 'Fair price for its growth', full: 'Fully priced. Better on a dip', expensive: 'Pricey for its growth', perfection: 'Priced for perfection. One miss can hurt', unprofitable: 'Losing money. A bet on future growth' };
+function valPlain(v) { const a = []; const pe = v.fwdPE || v.peTTM; if (pe) a.push('P/E ' + pe.toFixed(0)); else if (v.ps) a.push(v.ps.toFixed(1) + '× sales'); if (v.growth != null) a.push('profits ' + (v.growth >= 0 ? 'up ' : 'down ') + Math.abs(Math.round(v.growth * 100)) + '%/yr'); return a.join(' · '); }
+function valTgt(v) { if (!v.tMean || !v.price) return ''; const d = v.tMean - v.price, P = dPal(); return 'Analyst target <b>$' + px(v.tMean) + '</b> <span style="color:' + (d >= 0 ? P.up : P.dn) + '">' + dS(d, null, v.price) + ' ' + pctS(d / v.price * 100) + '</span>'; }
 function verdictBadge(v) { const x = VAL.VERDICT[v.verdict] || ['—', '#A0A9B8']; return '<span class="badge" style="color:' + x[1] + ';border-color:' + x[1] + '66;background:' + x[1] + '14">' + x[0] + '</span>' + (v.hype ? '<span class="badge" style="color:#FF6B6B;border-color:#FF6B6B66">Hype risk</span>' : ''); }
 function valMetrics(v) { const a = []; if (v.fwdPE) a.push('Fwd P/E ' + v.fwdPE.toFixed(1)); else if (v.peTTM) a.push('P/E ' + v.peTTM.toFixed(0)); else if (v.ps) a.push('P/S ' + v.ps.toFixed(1)); if (v.growth != null) a.push('EPS ' + (v.growth >= 0 ? '+' : '') + Math.round(v.growth * 100) + '%'); if (v.peg != null) a.push('PEG ' + v.peg.toFixed(2)); if (v.upside != null) a.push('target ' + (v.upside >= 0 ? '+' : '') + Math.round(v.upside * 100) + '%'); return a.join(' · '); }
 const VF = [['all', 'All'], ['under', 'Undervalued'], ['reasonable', 'Reasonable'], ['full', 'Fully valued'], ['expensive', 'Expensive'], ['perfection', 'Priced for perfection'], ['unprofitable', 'Not profitable'], ['hype', 'Hype risk']];
@@ -1358,19 +1371,16 @@ function renderValue() {
   const list = all.filter((v) => S.valF === 'all' || (S.valF === 'hype' ? v.hype : v.verdict === S.valF)).sort((a, b) => b.score - a.score);
   const box = $('valList');
   if (!all.length) { box.innerHTML = '<div class="empty"><b>' + (mcp ? 'Scoring ' + u.length + ' stocks…' : 'Can’t reach live data') + '</b><span>Forward P/E, growth, PEG and analyst targets for each name.</span></div>'; return; }
-  box.innerHTML = list.map((v) => { const r = S.vRow[v.sym];
-    return '<button class="dip" data-open="' + esc(v.sym) + '">' + logoHTML(v.sym, 36) + '<span class="dipM"><span class="dipT"><b>' + esc(v.sym) + '</b><em>$' + px(v.price) + '</em>' + (r ? '<i style="color:' + (r.pct >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + mvS(r.pct, r.price, r.chg) + '</i>' : '') + '</span>' +
-      '<span class="pt">' + verdictBadge(v) + (v.hotRank ? '<span class="tag">#' + v.hotRank + ' most discussed</span>' : '') + '</span>' +
-      '<span class="plan">' + esc(valMetrics(v)) + '</span><span class="why">' + esc(v.priced) + '</span></span></button>'; }).join('') + '<p class="foot">Forward P/E uses next quarter’s estimate × 4. PEG = forward P/E ÷ EPS growth. Undervalued means cheap for its growth, not a guaranteed winner. Not advice.</p>';
+  box.innerHTML = list.map((v) => tvR(v.sym, ' ' + verdictBadge(v), [{ t: esc(cleanName(symName(v.sym)) || '') }, { t: esc(valPlain(v)) }, { t: valTgt(v), c: 'tvdo' }], qOf(v.sym, v.price))).join('') + '<p class="foot">P/E = price ÷ the next year of expected profit (next quarter’s estimate × 4). Profit = expected growth next quarter vs a year ago. Analyst target = average target vs today’s price. Cheap means cheap for its growth, not a sure winner. Not advice.</p>';
 }
 function renderBuzz() {
   setHTML($('buzzSeg'), ideasSeg('buzz'));
   $('bFresh').textContent = S.stamp['bz:hot'] ? 'Updated ' + ago(S.stamp['bz:hot']) : (mcp ? 'Loading…' : '');
   const box = $('buzzList'); const L = S.hotList;
   if (!L) { box.innerHTML = '<div class="empty"><b>' + (mcp ? 'Loading what people are talking about…' : 'Can’t reach live data') + '</b><span>The most-discussed stocks among traders.</span></div>'; return; }
-  box.innerHTML = L.map((x) => { const r = S.vRow[x.symbol], v = S.val[x.symbol];
-    return '<button class="dip" data-open="' + esc(x.symbol) + '"><span class="rk2">#' + x.rank + '</span>' + logoHTML(x.symbol, 34) + '<span class="dipM"><span class="dipT"><b>' + esc(x.symbol) + '</b>' + (r ? '<em>$' + px(r.price) + '</em><i style="color:' + (r.pct >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + mvS(r.pct, r.price, r.chg) + '</i>' : '') + '</span>' +
-      '<small>' + esc(cleanName(symName(x.symbol)) || '') + (r && r.mcap ? ' · ' + money(r.mcap) : '') + '</small>' + (v ? '<span class="pt">' + verdictBadge(v) + '</span><span class="plan">' + esc(valMetrics(v)) + '</span>' : '') + '</span></button>'; }).join('') +
+  if (!L.length) { box.innerHTML = '<div class="empty"><b>Nothing trending right now</b><span>Trader chatter is quiet. Check back during market hours.</span></div>'; return; }
+  box.innerHTML = L.map((x) => { const v = S.val[x.symbol];
+    return tvR(x.symbol, ' <span class="badge" style="color:#C9D2E0;border-color:#C9D2E066">#' + x.rank + '</span>' + (v ? ' ' + verdictBadge(v) : ''), [{ t: esc(cleanName(symName(x.symbol)) || '') }, v ? { t: esc(valPlain(v)), c: 'dim' } : null], qOf(x.symbol)); }).join('') +
     '<p class="foot">Ranked by trader community activity. Lots of chatter plus a rich valuation is flagged as hype risk.</p>';
 }
 function fvCalc(v, d) {

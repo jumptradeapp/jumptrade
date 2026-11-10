@@ -9,7 +9,7 @@
   setInterval(() => { if (S.tab === 'home' || S.tab === 'runners') R.load(); }, 15000);
   const scCol = (s) => s >= 70 ? '#5EE0A0' : s >= 50 ? '#F2C27A' : '#9DB8FF';
   const pct = (v) => (v >= 0 ? '+' : '') + (v * 100).toFixed(v >= 0.995 || v <= -0.995 ? 0 : 1) + '%';
-  const mv = window.JT_MV = (price, ratio) => { if (!(price > 0) || ratio == null || ratio <= -1) return pct(ratio || 0); const c = price - price / (1 + ratio), a = Math.abs(c); return (c >= 0 ? '+' : '−') + '$' + (a < 0.1 ? a.toFixed(3) : a.toFixed(2)) + ' (' + pct(ratio) + ')'; };
+  const mv = window.JT_MV = (price, ratio) => { if (!(price > 0) || ratio == null || ratio <= -1) return pct(ratio || 0); const c = price - price / (1 + ratio), a = Math.abs(c); return (c >= 0 ? '+' : '−') + '$' + (price < 1 && a < 0.1 ? a.toFixed(4) : a.toFixed(2)) + ' ' + pct(ratio); };
   const plain = (r, n) => {
     const w = (r.why || []).filter((x) => !/^[+−-]\d/.test(x) && !/cap$/.test(x));
     const nws = w.find((x) => x.indexOf('news:') === 0);
@@ -67,8 +67,8 @@
     if (!R.total) return h + '<p class="desc dim">Every “Your move today” pick is logged the moment it appears during market hours, with its price, stop and target. Then it’s scored on what the stock did next. Nothing logged yet.</p></div>';
     const cell = (lab, st) => '<div><span>' + lab + '</span><b style="color:' + (st.n ? (st.avg >= 0 ? '#5EE0A0' : '#FF8A8A') : '#ECEBE8') + '">' + (st.n ? pp(st.avg) : '—') + '</b><small>' + (st.n ? Math.round(st.win * 100) + '% up · ' + st.n + ' picks' : 'not yet') + '</small></div>';
     h += '<div class="recg">' + cell('Next day', R.d1) + cell('After 5 days', R.d5) + '<div><span>Hit target / stop</span><b>' + R.targets + ' / ' + R.stops + '</b><small>within 10 days</small></div></div>';
-    h += '<div class="pkList">' + R.rows.slice(0, 25).map((r) => '<button class="pkRow" data-open="' + esc(r.symbol) + '">' + logoHTML(r.symbol, 28) + '<span class="pkM"><b>' + esc(r.symbol) + (r.outcome ? ' <i class="' + (r.outcome === 'target' ? 'up' : 'dn') + '">' + (r.outcome === 'target' ? 'HIT TARGET' : 'STOPPED') + '</i>' : '') + '</b><small>' + r.date.slice(5).replace('-', '/') + ' · picked at ' + $$(r.price) + '</small></span>' +
-      '<span class="pkR"><b style="color:' + (r.r1 == null ? '#9AA2AB' : r.r1 >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + (r.r1 == null ? 'pending' : (r.r1 >= 0 ? '+$' : '−$') + Math.abs(r.r1 * r.price).toFixed(2) + ' ' + pp(r.r1)) + '</b><small>' + (r.r5 != null ? '5d ' + pp(r.r5) : r.r1 != null ? 'next day' : '') + '</small></span></button>').join('') + '</div>';
+    h += '<div class="pkList">' + R.rows.slice(0, 25).map((r) => '<button class="pkRow" data-open="' + esc(r.symbol) + '">' + logoHTML(r.symbol, 28) + '<span class="pkM"><b>' + esc(r.symbol) + (r.outcome ? ' <i class="' + (r.outcome === 'target' ? 'up' : 'dn') + '">' + (r.outcome === 'target' ? 'HIT TARGET' : 'STOPPED') + '</i>' : '') + '</b><small>Picked ' + new Date(r.date + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) + ' at ' + $$(r.price) + '</small></span>' +
+      '<span class="pkR"><b style="color:' + (r.r1 == null ? '#9AA2AB' : r.r1 >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + (r.r1 == null ? 'Waiting' : (r.r1 >= 0 ? '+$' : '−$') + Math.abs(r.r1 * r.price).toFixed(2) + ' ' + pp(r.r1)) + '</b><small>' + (r.r5 != null ? '5d ' + pp(r.r5) : r.r1 != null ? 'next day' : '') + '</small></span></button>').join('') + '</div>';
     return h + '<p class="foot" style="text-align:left">Measured from the price when the pick appeared to the closing price 1 and 5 trading days later. Since ' + (R.since || '').slice(5).replace('-', '/') + '. No picks are removed.</p></div>';
   };
   setInterval(() => { if (S.tab === 'home') B.load(); }, 20000);

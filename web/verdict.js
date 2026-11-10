@@ -93,7 +93,7 @@
       : v.kind === 'avoid' ? 'Back on the table above ' + d$(v.entry) : 'Turns into a buy above ' + d$(v.entry);
     let h = '<div class="vd" style="--c:' + col + '"><div class="vdTop"><div class="vdW">' + word + '</div><div class="vdS">' + esc(sub) + '</div></div>';
     if (v.kind !== 'avoid') {
-      h += '<div class="vdL"><div><span>' + (v.kind === 'buy' ? 'Entry' : 'Trigger') + '</span><b>' + d$(v.entry) + '</b></div><div><span>Stop</span><b style="color:' + C.dn + '">' + d$(v.stop) + '</b></div><div><span>Target</span><b style="color:' + C.up + '">' + d$(v.target) + '</b></div></div>' +
+      h += '<div class="vdL"><div><span>' + (v.kind === 'buy' ? 'Buy at' : 'Buy above') + '</span><b>' + d$(v.entry) + '</b></div><div><span>Stop</span><b style="color:' + C.dn + '">' + d$(v.stop) + '</b></div><div><span>Target</span><b style="color:' + C.up + '">' + d$(v.target) + '</b></div></div>' +
         '<div class="vdR">Risk ' + d$(v.risk) + ' a share to make ' + d$(v.risk * 2) + '</div>';
     }
     const li = v.pros.map((x) => '<li class="ok">' + esc(x) + '</li>').concat(v.cons.map((x) => '<li class="no">' + esc(x) + '</li>')).concat(v.notes.map((x) => '<li class="nt">' + esc(x) + '</li>'));

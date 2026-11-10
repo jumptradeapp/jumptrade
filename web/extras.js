@@ -10,7 +10,13 @@
   const cap = (n) => n >= 1e9 ? '$' + (n / 1e9).toFixed(n >= 1e10 ? 0 : 1) + 'B' : '$' + Math.round(n / 1e6) + 'M';
   const md = (d) => { const x = new Date(d + 'T12:00:00Z'); return x.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }); };
   const badge = (txt, cls) => '<span class="badge xb ' + cls + '">' + txt + '</span>';
-  const live = (t) => (S.ipoQ && S.ipoQ[t] && S.ipoQ[t].price) || null;
+  const live = (t) => (S.xQ && S.xQ[t] && S.xQ[t].p) || (S.ipoQ && S.ipoQ[t] && S.ipoQ[t].price) || null;
+  // live quotes for the rows on screen, so every row shows price, $ move and % like the watchlist
+  const lq = (syms) => { syms = syms.filter((x, i, A) => x && A.indexOf(x) === i).slice(0, 60); if (!syms.length) return;
+    watch('xq:' + S.tab, 'get_stock_snapshot', { symbols: syms.join(','), category: 'US_STOCK', extend_hour_required: false, overnight_required: false }, (q) => { S.xQ = S.xQ || {};
+      (Array.isArray(q) ? q : []).forEach((x) => { const p = +x.price || +x.close; if (p) S.xQ[x.symbol] = { p: p, c: x.change != null ? +x.change : null, r: x.change_ratio != null ? +x.change_ratio * 100 : null }; }); }, 60000); };
+  const rpq = (t, p0, r0) => { const q = S.xQ && S.xQ[t]; const p = q ? q.p : p0, r = q ? q.r : r0, c = q ? q.c : null; if (!p) return '<span class="rp tvp"><b class="dim">—</b></span>';
+    const P = dPal(); return '<span class="rp tvp"><b>$' + px(p) + '</b>' + (r != null ? '<small style="color:' + (r >= 0 ? P.up : P.dn) + '">' + (dS(c, r, p) || '') + ' <i>' + pctS(r) + '</i></small>' : '') + '</span>'; };
   function squeeze(r) {
     const c = Math.max(-10, Math.min(15, r.chg || 0));
     const s = Math.min(70, r.si * 0.85) + (r.cap < 5e7 ? -6 : r.cap < 3e8 ? 6 : r.cap < 2e9 ? 12 : r.cap < 1e10 ? 8 : 3) + c * 1.2 + (r.price < 1 ? -8 : 0);
@@ -50,11 +56,12 @@
       if (r.filed !== last) { last = r.filed; h += '<div class="dipH"><b class="xh">Disclosed ' + md(r.filed) + '</b></div>'; }
       const lag = Math.round((new Date(r.filed) - new Date(r.traded)) / 864e5);
       const p = live(r.ticker);
-      h += '<button class="rat" data-open="' + esc(r.ticker) + '">' + logoHTML(r.ticker, 32) + '<span class="rn"><span class="pt"><b>' + esc(r.ticker) + '</b>' + badge(r.action === 'buy' ? 'Buy' : 'Sell', r.action === 'buy' ? 'xg' : 'xr') + badge(r.party, r.party === 'D' ? 'xd' : 'xp') + '</span>' +
+      h += '<button class="rat rat4" data-open="' + esc(r.ticker) + '">' + logoHTML(r.ticker, 32) + '<span class="rn"><span class="pt"><b>' + esc(r.ticker) + '</b>' + badge(r.action === 'buy' ? 'Buy' : 'Sell', r.action === 'buy' ? 'xg' : 'xr') + badge(r.party, r.party === 'D' ? 'xd' : 'xp') + '</span>' +
         '<small>' + esc(r.name) + ' · ' + (r.chamber === 'Senate' ? 'Sen.' : 'Rep.') + (r.owner && r.owner !== 'Self' ? ' · ' + esc(r.owner) : '') + '</small>' +
-        '<small class="dim">Traded ' + md(r.traded) + ' · filed ' + lag + 'd later</small></span>' +
-        '<span class="rp"><b>' + esc(r.amount.replace(' - ', '–')) + '</b><small class="dim">' + (p ? '$' + px(p) : 'amount') + '</small></span></button>';
+        '<small class="dim">' + esc(r.amount.replace(' - ', '–')) + ' · traded ' + md(r.traded) + ', filed ' + lag + 'd later</small></span>' +
+        rpq(r.ticker, p, null) + '</button>';
     });
+    lq(L.slice(0, 60).map((r) => r.ticker));
     return h + '<p class="foot">From STOCK Act disclosures. Members have up to 45 days to report, so trades show up late. Amounts are reported as ranges. Updated ' + esc(md(D.updated)) + '. Not advice.</p>';
   }
 
@@ -66,13 +73,14 @@
     let h = '';
     L.slice(0, S.xLim || 40).forEach((r) => {
       const sc = r.sq >= 70 ? 'xr' : r.sq >= 50 ? 'xy' : 'xn';
-      h += '<button class="rat" data-open="' + esc(r.ticker) + '" data-name="' + esc(r.name) + '">' + logoHTML(r.ticker, 32) + '<span class="rn"><span class="pt"><b>' + esc(r.ticker) + '</b>' + badge(r.si.toFixed(0) + '% short', 'xy') + '</span>' +
+      h += '<button class="rat rat4" data-open="' + esc(r.ticker) + '" data-name="' + esc(r.name) + '">' + logoHTML(r.ticker, 32) + '<span class="rn"><span class="pt"><b>' + esc(r.ticker) + '</b>' + badge(r.si.toFixed(0) + '% short', 'xy') + badge('squeeze ' + r.sq, sc) + '</span>' +
         '<small>' + esc(r.name.replace(/,? (Inc\.|Corp\.|Corporation|Ltd\.|Holdings|Group|Company|PBC|L\.P\.)\.?$/, '')) + ' · ' + cap(r.cap) + '</small>' +
         '<span class="xbar"><i style="width:' + Math.min(100, r.si) + '%"></i></span></span>' +
-        '<span class="rp"><b class="sqs ' + sc + '">' + r.sq + '</b><small class="' + (r.chg >= 0 ? 'xg' : 'xr') + '">' + mvS(r.chg, r.price) + '</small></span></button>';
+        rpq(r.ticker, r.price, r.chg) + '</button>';
     });
+    lq(L.slice(0, S.xLim || 40).map((r) => r.ticker));
     if (L.length > (S.xLim || 40)) h += '<button class="cta ghostcta" data-xmore="1">Show more · ' + (L.length - (S.xLim || 40)) + ' left</button>';
-    return h + '<p class="foot">Squeeze score (0–99) blends short interest as % of float, company size and today’s move: a heavily shorted stock that starts rising forces short sellers to buy back. High scores are high risk both ways. Short interest is reported twice a month; data as of ' + esc(md(D.updated)) + '. Not advice.</p>';
+    return h + '<p class="foot">% short = share of tradable stock sold short. Squeeze score (0–99) blends short interest as % of float, company size and today’s move: a heavily shorted stock that starts rising forces short sellers to buy back. High scores are high risk both ways. Short interest is reported twice a month; data as of ' + esc(md(D.updated)) + '. Not advice.</p>';
   }
 
   function render(tab) {
