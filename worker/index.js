@@ -467,7 +467,7 @@ T.get_market_sectors_detail = async (i) => {
   return { data: rows };
 };
 // How long each answer may be reused (seconds). Prices: short. Fundamentals: long.
-const TTL = { get_playbook: 60, get_stock_unusual_activities: 60, get_community_hot_stocks: 180, get_runners: 60, get_sparks: 60, get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 60, search_news: 45,
+const TTL = { get_pick_record: 600, get_playbook: 60, get_stock_unusual_activities: 60, get_community_hot_stocks: 180, get_runners: 60, get_sparks: 60, get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 60, search_news: 45,
   get_company_profile: 86400, get_analyst_target_price: 21600, get_analyst_rating: 21600, get_stock_forecast_eps: 21600, get_stock_earnings_calendar: 21600,
   get_fund_brief: 86400, get_fund_holdings: 86400, get_fund_performance: 86400 };
 
@@ -624,7 +624,7 @@ async function runTool(tool, input, ctx, env) {
   const cache = caches.default;
   const hit = await cache.match(key); if (hit) return hit;
   // Slow, many-source tools: answer instantly from the last good copy and refresh it in the background.
-  const SLOW = /^(get_playbook|search_news|get_stock_news|get_runners|get_community_hot_stocks|get_stock_unusual_activities|get_market_sectors)$/.test(tool);
+  const SLOW = /^(get_pick_record|get_playbook|search_news|get_stock_news|get_runners|get_community_hot_stocks|get_stock_unusual_activities|get_market_sectors)$/.test(tool);
   const skey = new Request('https://cache.jumptrade/stale/' + tool + '?' + encodeURIComponent(JSON.stringify(input || {})));
   const produce = async () => {
     const w = env && !/news/.test(tool) ? await wbCall(env, tool, input || {}).catch((e) => { WBLAST = { tool, error: String(e.message || e), t: Date.now() }; return null; }) : null;
@@ -733,9 +733,33 @@ const PRE = [['get_runners', { limit: 40 }], ['get_playbook', {}], ['get_communi
 const preKey = (t, i) => encodeURIComponent('pre_' + t + JSON.stringify(i || {}));
 async function precompute(env, ctx) {
   const out = {};
-  await Promise.all(PRE.map(async (x) => { try { const p = await cachedTool(x[0], x[1], ctx, env); const n = Array.isArray(p) ? p.length : p && Array.isArray(p.data) ? p.data.length : 0; if (n) { await vput(env, preKey(x[0], x[1]), { t: Date.now(), p: p }); out[x[0]] = n; } } catch (e) { out[x[0]] = 'err'; } }));
+  await Promise.all(PRE.map(async (x) => { try { const p = await cachedTool(x[0], x[1], ctx, env); const n = Array.isArray(p) ? p.length : p && Array.isArray(p.data) ? p.data.length : 0; if (n) { await vput(env, preKey(x[0], x[1]), { t: Date.now(), p: p }); out[x[0]] = n; } if (x[0] === 'get_playbook' && p && !p.from) out.logged = await logPicks(env, p.data).catch(() => 0); } catch (e) { out[x[0]] = 'err'; } }));
   return out;
 }
+// ---------- pick log: every "Your move today" pick is recorded, then scored against what the stock did next ----------
+async function logPicks(env, rows) {
+  const now = etNow(); if (/Sat|Sun/.test(now.wd) || now.hm < 570 || now.hm >= 960) return 0; // regular hours only, so the logged price is a real traded price
+  const picks = (rows || []).filter((r) => r.signals >= 3 && r.price > 0); if (!picks.length) return 0;
+  const log = (await vget(env, 'picklog')) || [];
+  const have = new Set(log.filter((x) => x.d === now.day).map((x) => x.s)); let added = 0;
+  picks.forEach((r) => { if (have.has(r.symbol)) return; log.push({ s: r.symbol, d: now.day, t: Date.now(), p: r.price, e: r.entry, st: r.stop, tg: r.target, k: r.kind, n: r.signals, w: (r.why || []).slice(0, 2) }); added++; });
+  if (added) await vput(env, 'picklog', log.slice(-400));
+  return added;
+}
+T.get_pick_record = async () => {
+  const log = CUR_ENV ? ((await vget(CUR_ENV, 'picklog').catch(() => null)) || []) : [];
+  const recent = log.slice(-120); const symsU = [...new Set(recent.map((x) => x.s))].slice(-60);
+  const B = {}; await Promise.all(symsU.map(async (sym) => { try { B[sym] = (await barsOne(sym, { timespan: 'D', count: 40 })).result.slice().reverse(); } catch (e) { B[sym] = []; } }));
+  const rows = recent.map((x) => {
+    const after = (B[x.s] || []).filter((b) => (b.time || '').slice(0, 10) > x.d);
+    const r1 = after[0] ? after[0].close / x.p - 1 : null, r5 = after[4] ? after[4].close / x.p - 1 : null;
+    let out = null; for (const b of after.slice(0, 10)) { if (b.low <= x.st) { out = 'stop'; break; } if (b.high >= x.tg) { out = 'target'; break; } }
+    const last = (B[x.s] || []).slice(-1)[0];
+    return { symbol: x.s, date: x.d, price: x.p, entry: x.e, stop: x.st, target: x.tg, kind: x.k, signals: x.n, why: x.w || [], r1, r5, now: last && after.length ? last.close / x.p - 1 : null, outcome: out };
+  }).reverse();
+  const st = (k) => { const v = rows.map((r) => r[k]).filter((v) => v != null); return { n: v.length, win: v.length ? v.filter((x) => x > 0).length / v.length : null, avg: v.length ? v.reduce((a, b) => a + b, 0) / v.length : null }; };
+  return { updated: new Date().toISOString(), total: log.length, since: log.length ? log[0].d : null, d1: st('r1'), d5: st('r5'), targets: rows.filter((r) => r.outcome === 'target').length, stops: rows.filter((r) => r.outcome === 'stop').length, rows: rows.slice(0, 60) };
+};
 async function cachedTool(tool, input, ctx, env) { const r = await runTool(tool, input, ctx, env); const j = await r.json().catch(() => ({})); return j.payload; }
 async function runAlerts(env, ctx) {
   const all = (await vget(env, 'subs')) || {}; const ids = Object.keys(all); if (!ids.length) return { subs: 0 };

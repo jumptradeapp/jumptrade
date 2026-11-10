@@ -49,6 +49,30 @@
     if (B.busy || (!force && Date.now() - B.at < 55000) || typeof mcp === 'undefined' || !mcp) return; B.busy = true;
     mcp.callTool(SERVER, 'get_playbook', {}).then((res) => { const p = payloadOf(res) || {}; B.rows = p.data || []; B.from = p.from || 0; B.at = Date.now(); B.busy = false; render(); }).catch(() => { B.busy = false; if (!B.rows) B.rows = []; render(); });
   };
+  // live track record of these picks (scored by the server against what each stock did next)
+  B.rec = null; B.recAt = 0;
+  B.loadRec = function () {
+    if (Date.now() - B.recAt < 600000 || typeof mcp === 'undefined' || !mcp || !window.JT_WEB) return; B.recAt = Date.now();
+    mcp.callTool(SERVER, 'get_pick_record', {}).then((res) => { B.rec = payloadOf(res) || null; render(); }).catch(() => {});
+  };
+  const pp = (v) => (v >= 0 ? '+' : '−') + Math.abs(v * 100).toFixed(1) + '%';
+  B.recLine = function () {
+    const R = B.rec; if (!R) return '';
+    if (!R.total) return '<button class="pbRec" data-tab="record">Track record starts with the first pick during market hours. Results show the next trading day.</button>';
+    if (!R.d1.n) return '<button class="pbRec" data-tab="record"><b>' + R.total + ' pick' + (R.total > 1 ? 's' : '') + ' logged.</b> First results show after the next trading day ›</button>';
+    return '<button class="pbRec" data-tab="record"><b>Track record:</b> ' + R.d1.n + ' picks · <b style="color:' + (R.d1.win >= 0.5 ? '#5EE0A0' : '#FF8A8A') + '">' + Math.round(R.d1.win * 100) + '% up</b> the next day · avg <b style="color:' + (R.d1.avg >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + pp(R.d1.avg) + '</b> ›</button>';
+  };
+  B.recordCard = function () {
+    if (!window.JT_WEB) return ''; B.loadRec(); const R = B.rec; const C = '#4C8DFF';
+    let h = '<div class="glass sec rec" style="--c:' + C + '">' + secCap('YOUR MOVE PICKS · LIVE RECORD', C);
+    if (!R) return h + '<div class="skel"></div></div>';
+    if (!R.total) return h + '<p class="desc dim">Every “Your move today” pick is logged the moment it appears during market hours, with its price, stop and target. Then it’s scored on what the stock did next. Nothing logged yet.</p></div>';
+    const cell = (lab, st) => '<div><span>' + lab + '</span><b style="color:' + (st.n ? (st.avg >= 0 ? '#5EE0A0' : '#FF8A8A') : '#ECEBE8') + '">' + (st.n ? pp(st.avg) : '—') + '</b><small>' + (st.n ? Math.round(st.win * 100) + '% up · ' + st.n + ' picks' : 'not yet') + '</small></div>';
+    h += '<div class="recg">' + cell('Next day', R.d1) + cell('After 5 days', R.d5) + '<div><span>Hit target / stop</span><b>' + R.targets + ' / ' + R.stops + '</b><small>within 10 days</small></div></div>';
+    h += '<div class="pkList">' + R.rows.slice(0, 25).map((r) => '<button class="pkRow" data-open="' + esc(r.symbol) + '">' + logoHTML(r.symbol, 28) + '<span class="pkM"><b>' + esc(r.symbol) + (r.outcome ? ' <i class="' + (r.outcome === 'target' ? 'up' : 'dn') + '">' + (r.outcome === 'target' ? 'HIT TARGET' : 'STOPPED') + '</i>' : '') + '</b><small>' + r.date.slice(5).replace('-', '/') + ' · picked at ' + $$(r.price) + '</small></span>' +
+      '<span class="pkR"><b style="color:' + (r.r1 == null ? '#9AA2AB' : r.r1 >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + (r.r1 == null ? 'pending' : pp(r.r1)) + '</b><small>' + (r.r5 != null ? '5d ' + pp(r.r5) : r.r1 != null ? 'next day' : '') + '</small></span></button>').join('') + '</div>';
+    return h + '<p class="foot" style="text-align:left">Measured from the price when the pick appeared to the closing price 1 and 5 trading days later. Since ' + (R.since || '').slice(5).replace('-', '/') + '. No picks are removed.</p></div>';
+  };
   setInterval(() => { if (S.tab === 'home') B.load(); }, 20000);
   const $$ = (v) => '$' + (v < 0.1 ? v.toFixed(3) : v.toFixed(2));
   B.widget = function (card, P) {
@@ -63,6 +87,6 @@
       : !rows.length && !watch.length ? '<p class="desc dim">No clear setups right now. Nothing has 3+ signals lined up. That’s a fine answer: sitting out is a position.</p>'
       : rows.map(one).join('') + (watch.length ? '<div class="pbSub">ON WATCH · 2 signals so far</div>' + watch.map(one).join('') : '');
     const stale = B.from ? '<p class="pbFrom">From the last session (' + new Date(B.from).toLocaleDateString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) + '). New picks when the market wakes up.</p>' : '';
-    return card(B.from ? 'YOUR NEXT MOVE' : 'YOUR MOVE TODAY', '#5EE0A0', stale + body + '<p class="pbNote">Ideas, not advice. Each pick needs 3+ independent signals: Jump radar, volume, news, big buying, analysts, trader buzz. Stop = where the idea is wrong.</p>', '<button class="hmr" data-tab="runners">Radar ›</button>');
+    return card(B.from ? 'YOUR NEXT MOVE' : 'YOUR MOVE TODAY', '#5EE0A0', stale + body + (B.loadRec(), B.recLine()) + '<p class="pbNote">Ideas, not advice. Each pick needs 3+ independent signals: Jump radar, volume, news, big buying, analysts, trader buzz. Stop = where the idea is wrong.</p>', '<button class="hmr" data-tab="runners">Radar ›</button>');
   };
 })();
