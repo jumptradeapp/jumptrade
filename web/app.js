@@ -261,13 +261,13 @@ function renderMovers() {
   if (S.err) { box.innerHTML = '<div class="empty"><b>Can’t load live data</b><span>' + esc(ERRCOPY[S.err] || 'Something went wrong loading data. Pull to refresh.') + '</span>' + (S.err === 'approval_required' || S.err === 'consent_required' ? '<button class="cta" id="allow">Retry</button>' : '') + '</div>'; box.style.height = 'auto'; return; }
   if (!rows.length && S.transient && mcp && !Object.keys(S.stamp || {}).some((k) => k.indexOf('m:') === 0)) { box.innerHTML = '<div class="empty"><b>Market data isn’t coming through</b><span>jumptrade can’t reach the data server right now (' + esc(S.transient) + '). It keeps retrying on its own. If this lasts, try again in a few minutes.</span><button class="pbtn" id="retryData" style="margin-top:12px">Retry now</button></div>'; return; }
   if (!rows.length) { box.innerHTML = '<div class="empty"><b>' + (mcp ? (S.ready ? 'No movers in this filter yet' : 'Loading live movers…') : 'Can’t reach live data') + '</b><span>' + (mcp ? (S.ready ? (S.cap === 'mid' ? 'Only names in the top 200 movers plus the 100 largest stocks are scanned for mid caps.' : 'Try another cap size or session.') : 'Pulling today’s movers.') : 'Couldn’t reach the server. Pull down to retry.') + '</span></div>'; box.style.height = 'auto'; return; }
-  const W = box.clientWidth || 358, gap = 12, colW = (W - gap) / 2;
+  const W = box.clientWidth || 358, gap = S.layout === 'tiles' ? 10 : 12, colW = (W - gap) / 2;
   const scEl = $('scroller'), szKey = W + 'x' + (window.innerHeight > window.innerWidth ? 'p' : 'l'); // width/orientation only: header height changes every second made tiles jump between sizes
-  if (S.tileKey !== szKey && !touching && !document.getElementById('vMovers').classList.contains('tcol') && $('ptr1').offsetHeight === 0 && scEl.clientHeight > 0) { S.tileKey = szKey; S.fitDone = 0; S.fitN = 0; const nv = document.querySelector('nav.main, .nav, nav'); const bt = box.getBoundingClientRect().top + scEl.scrollTop - scEl.getBoundingClientRect().top; const vb = nv && nv.getBoundingClientRect().height ? Math.min(scEl.clientHeight, nv.getBoundingClientRect().top - scEl.getBoundingClientRect().top) : scEl.clientHeight; const avail = vb - bt - 10; S.tileH = Math.max(118, Math.min(146, Math.floor((avail - 2 * 12) / 3))); }
-  const tileH = 152; // tallest tile (with a signal pill)
+  if (S.tileKey !== szKey && !touching && !document.getElementById('vMovers').classList.contains('tcol') && $('ptr1').offsetHeight === 0 && scEl.clientHeight > 0) { S.tileKey = szKey; S.fitDone = 0; S.fitN = 0; const nv = document.querySelector('nav.main, .nav, nav'); const bt = box.getBoundingClientRect().top + scEl.scrollTop - scEl.getBoundingClientRect().top; const vb = nv && nv.getBoundingClientRect().height ? Math.min(scEl.clientHeight, nv.getBoundingClientRect().top - scEl.getBoundingClientRect().top) : scEl.clientHeight; const avail = vb - bt - 8; S.tileH = Math.max(108, Math.min(150, Math.floor((avail - 2 * 10) / 3))); S.fitDone = 1; }
+  const tileH = S.tileH || 124; // sized so exactly 3 rows (6 tiles) fit between the header and the nav
   // each row of two tiles is only as tall as its content: rows without a signal pill are shorter, so no empty space at the bottom
   const chips = S.layout === 'tiles' ? rows.map((r) => (window.TODAY ? TODAY.chip(r) : '')) : [];
-  const rowHs = [], rowTop = [0]; for (let k = 0; k < rows.length; k += 2) { const hh = chips[k] || chips[k + 1] ? tileH : 124; rowHs.push(hh); rowTop.push(rowTop[rowTop.length - 1] + hh + gap); }
+  const rowHs = [], rowTop = [0]; for (let k = 0; k < rows.length; k += 2) { const hh = tileH; rowHs.push(hh); rowTop.push(rowTop[rowTop.length - 1] + hh + gap); }
   const rowH = 58;
   const existing = {}; Array.from(box.children).forEach((el) => { if (el.dataset.sym) existing[el.dataset.sym] = el; else el.remove(); });
   needSparks(rows.slice(0, 40));
@@ -285,7 +285,7 @@ function renderMovers() {
       el.className = 'card tile' + '' + (el.classList.contains('fadein') ? ' fadein' : ''); el.style.width = colW + 'px'; el.style.height = rowHs[Math.floor(i / 2)] + 'px';
       el.style.left = (i % 2) * (colW + gap) + 'px'; el.style.top = rowTop[Math.floor(i / 2)] + 'px';
       const chip = chips[i];
-      el.innerHTML = '<span class="th">' + logoHTML(r.sym, 34) + '<span class="tn"><b>' + esc(r.sym) + '</b>' + '<small>' + esc(cleanName(symName(r.sym) || r.name || '')) + '</small>' + '</span></span>' +
+      el.innerHTML = '<span class="th">' + logoHTML(r.sym, 32) + '<span class="tn"><b>' + esc(r.sym) + '</b>' + '<small>' + esc(cleanName(symName(r.sym) || r.name || '')) + '</small>' + '</span></span>' +
         '<span class="tb"><span class="tp" style="' + (flash ? 'background:' + flash : '') + '">$' + px(r.price) + '</span>' +
         '<span class="tc" style="color:' + col + '">' + arrow + chgS(r.chg, r.pct, r.price) + '</span></span>' + sparkSVG(r.sym, 100, 30, col) + (chip ? '<span class="tsig">' + chip + '</span>' : '') + (hasWhy ? '<span class="nwb tnw" title="News today" aria-label="News today">★</span>' : '');
     } else {
@@ -298,7 +298,7 @@ function renderMovers() {
   });
   Object.keys(existing).forEach((k) => { if (!seen[k]) existing[k].remove(); });
   box.style.height = (S.layout === 'tiles' ? rowTop[rowTop.length - 1] : rows.length * rowH) + 'px';
-  if (S.layout === 'tiles' && !S.fitDone) { const tt = [...box.querySelectorAll('.tile')].slice(0, 8); let need = 0; for (const t of tt) { const tb = t.getBoundingClientRect().bottom - 6; for (const c of t.querySelectorAll('.tsig')) { const r = c.getBoundingClientRect(); if (r.height && c.offsetParent) need = Math.max(need, r.bottom - tb); } need = Math.max(need, t.scrollHeight - t.clientHeight); } if (tt.length) { S.fitDone = 1; if (need > 0) { S.tileH = Math.min(170, tileH + Math.ceil(need) + 2); S.fitDone = 0; S.fitN = (S.fitN || 0) + 1; if (S.fitN < 4) requestAnimationFrame(() => render()); } } }
+  if (false && S.layout === 'tiles' && !S.fitDone) { const tt = [...box.querySelectorAll('.tile')].slice(0, 8); let need = 0; for (const t of tt) { const tb = t.getBoundingClientRect().bottom - 6; for (const c of t.querySelectorAll('.tsig')) { const r = c.getBoundingClientRect(); if (r.height && c.offsetParent) need = Math.max(need, r.bottom - tb); } need = Math.max(need, t.scrollHeight - t.clientHeight); } if (tt.length) { S.fitDone = 1; if (need > 0) { S.tileH = Math.min(170, tileH + Math.ceil(need) + 2); S.fitDone = 0; S.fitN = (S.fitN || 0) + 1; if (S.fitN < 4) requestAnimationFrame(() => render()); } } }
   // headline news for the first six visible
   if (window.ENR) ENR.needAvg(rows.slice(0, 40).map((r) => r.sym));
   rows.slice(0, 24).forEach((r, i) => { if (!watches['n:' + r.sym] && !S.newsQ[r.sym]) { S.newsQ[r.sym] = 1; setTimeout(() => newsFor(r.sym, 600000), i * 350); } });
