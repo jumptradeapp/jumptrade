@@ -1450,7 +1450,7 @@ function valCard(sym) {
 /* ---------- main render ---------- */
 let rq = false;
 let pDown = 0, rPend = false;
-const DISC = 'jumptrade is for information and education only and is not investment, tax or legal advice. Nothing here is a recommendation to buy or sell any security. Data can be delayed, incomplete or wrong; backtests and scores do not guarantee future results. Trading involves risk, including loss of principal. Do your own research.';
+const DISC = 'For information only, not investment advice. Data can be delayed or wrong. Trading involves risk.';
 function ensureDisc() { document.querySelectorAll('.scroller').forEach((sc) => { const l = sc.lastElementChild; if (l && l.classList.contains('disc')) return; const d = document.createElement('p'); d.className = 'disc'; d.textContent = DISC; sc.appendChild(d); }); }
 function render() { if (pDown && Date.now() - pDown < 2500) { rPend = true; return; } if (rq) return; rq = true; setTimeout(() => { rq = false; try { doRender(); } catch (e) { console.error(e); } try { ensureDisc(); } catch (e) {} }, 0); }
 (() => { const up = () => { setTimeout(() => { pDown = 0; if (rPend) { rPend = false; render(); } }, 80); };
