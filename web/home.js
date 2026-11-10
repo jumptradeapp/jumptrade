@@ -149,7 +149,16 @@
     if (on('value')) { if (!H.vk && typeof loadValue === 'function') { H.vk = 1; setTimeout(loadValue, 500); }
       const V = Object.keys(S.val || {}).map((k) => [k, S.val[k]]).filter((x) => x[1] && x[1].peg && x[1].peg >= 0.2 && x[1].peg < 1.3 && x[1].fwdPE > 0).sort((a, b) => a[1].peg - b[1].peg).slice(0, 4);
       W.value = card('UNDERVALUED', '#5EE0A0', V.length ? V.map((x) => row(x[0], 'Fwd P/E ' + x[1].fwdPE.toFixed(1) + ' · growth ' + Math.round((x[1].growth || 0) * 100) + '%', 'PEG ' + x[1].peg.toFixed(2), P.up, x[1].upside != null ? (x[1].upside >= 0 ? '+' : '') + Math.round(x[1].upside * 100) + '% to target' : '')).join('') : skel, '<button class="hmr" data-tab="value">Value ›</button>'); }
-    if (on('watch')) { const Q = (TODAY && TODAY.wlQ) || {}; const L = Object.keys(S.allWl || {}).map((s) => Q[s]).filter((r) => r && r.pct != null).sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct)).slice(0, 5);
+    if (on('watch')) { const Q = (TODAY && TODAY.wlQ) || {};
+      // Show last time's five right away, and only re-rank once every list and its prices are in (no more shuffling while it loads). Re-rank at most once a minute.
+      const allS = Object.keys(S.allWl || {}); const have = allS.filter((k) => Q[k] && Q[k].pct != null);
+      const listsIn = !!S.wlists && S.wlists.filter((w) => !/^(All Stocks|Mutual Funds|ETFs & FUNDS)$/i.test(w.name)).every((w) => S.stamp['va:' + w.watchlist_id]);
+      const ready = listsIn && allS.length > 0 && have.length >= Math.min(allS.length, 100) * 0.9;
+      if (!H.wlTop) { try { H.wlTop = JSON.parse(localStorage.getItem('jt.hwl') || 'null'); } catch (e) {} }
+      if (ready && (!H.wlAt || Date.now() - H.wlAt > 60000 || !H.wlTop || H.wlTop.some((x) => !S.allWl[x.sym]))) {
+        H.wlTop = have.map((k) => Q[k]).sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct)).slice(0, 5).map((r) => Object.assign({}, r)); H.wlAt = Date.now();
+        try { localStorage.setItem('jt.hwl', JSON.stringify(H.wlTop)); } catch (e) {} }
+      const L = (H.wlTop || []).map((r) => (Q[r.sym] && Q[r.sym].pct != null ? Q[r.sym] : r));
       const wlE = window.JT_WEB && (() => { try { const v = JSON.parse(localStorage.getItem('jt.webwl') || 'null'); return !v || !Object.values(v).flat().length; } catch (e) { return false; } })();
       W.watch = card('WATCHLIST', P.acc, wlE ? '<p class="desc dim" style="margin:0 0 10px">Pick a few stocks to follow. Their moves, news and alerts show up here.</p><div class="wlPick hmPick">' + ['NVDA', 'TSLA', 'AAPL', 'AMD', 'PLTR', 'MSFT'].map((s) => '<button data-wlq="' + s + '">' + logoHTML(s, 20) + s + '</button>').join('') + '</div><button class="bldFake" data-tab="watch">☆ Start your watchlist</button>' : L.length ? L.map((r) => '<button class="hmrow tvrow" data-open="' + esc(r.sym) + '">' + logoHTML(r.sym, 34) + '<span class="rn"><b>' + esc(r.sym) + '</b><small>' + esc(cleanName(symName(r.sym) || r.name || '')) + (mine[r.sym] ? ' · you own it' : '') + '</small></span><span class="rp tvp">' + wlRP(r) + '</span></button>').join('') : skel, '<button class="hmr" data-tab="watch">All ›</button>'); }
     if (on('sectors')) { const Sx = ((S.sectors || {}).D1 || []).slice().sort((a, b) => (+b.change_ratio) - (+a.change_ratio));
