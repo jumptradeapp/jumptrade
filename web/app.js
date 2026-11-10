@@ -99,7 +99,7 @@ function sparkSVG(sym, w, h, col) {
 /* ---------- state ---------- */
 const S = {
   newsQ: {},
-  auto: sessionAt(), manual: null, cap: 'all', layout: 'tiles', tab: 'home',
+  auto: sessionAt(), manual: null, cap: 'all', layout: 'list', tab: 'home',
   lists: {}, large: null, ovnSnap: null, stamp: {}, err: null, ready: false,
   order: [], held: false, collapsed: false, news: {}, detail: null, d: {}, chartTf: '1m',
   sectorPeriod: 'D1', sectors: {}, sector: null, sectorRows: null, sectorSort: 'CHANGE_RATIO', dips: {}, dipF: 'all', dipG: null, searchOpen: false, newsK: 'Market', newsItems: null, ratF: 'all', ratLim: 30, catF: 'all', wl: null, wSort: 'move', pTab: 'strats', fCat: 'all', fund: null, lastIntel: 'research', lastIdeas: 'setups', vRaw: {}, vSnap: {}, vRow: {}, val: {}, hot: {}, hotList: null, valF: 'all'
@@ -224,7 +224,7 @@ function moverRows() {
   if (v === 'overnight') {
     const start = Date.now() - 9 * 3600000;
     rows = (S.ovnSnap || []).filter((r) => r.ovnT > start && r.pct > -100);
-  } else rows = [].concat(S.lists.p1 || [], S.lists.p2 || []);
+  } else { rows = [].concat(S.lists.p1 || [], S.lists.p2 || []); if (!rows.length) return []; } // no gainers list yet: show loading, never a stand-in list of big caps
   const seen = {}; const out = [];
   const big = v === 'overnight' ? (S.large || []).filter((r) => r.ovnT > Date.now() - 9 * 3600000) : (S.large || []); // overnight: only real 24-hour quotes, never regular-session prices
   rows.concat(big).forEach((r) => { if (!seen[r.sym] && r.pct != null && isFinite(r.pct)) { seen[r.sym] = 1; out.push(r); } });
@@ -276,7 +276,14 @@ function renderMovers() {
   if (!rows.length) { box.innerHTML = '<div class="empty"><b>' + (mcp ? (S.ready ? 'No movers in this filter yet' : 'Loading live movers…') : 'Can’t reach live data') + '</b><span>' + (mcp ? (S.ready ? (S.cap === 'mid' ? 'Only names in the top 200 movers plus the 100 largest stocks are scanned for mid caps.' : 'Try another cap size or session.') : 'Pulling today’s movers.') : 'Couldn’t reach the server. Pull down to retry.') + '</span></div>'; box.style.height = 'auto'; return; }
   const W = box.clientWidth || 358, gap = S.layout === 'tiles' ? 10 : 12, colW = (W - gap) / 2;
   const scEl = $('scroller'), szKey = W + 'x' + (window.innerHeight > window.innerWidth ? 'p' : 'l'); // width/orientation only: header height changes every second made tiles jump between sizes
-  if (S.tileKey !== szKey && !touching && !document.getElementById('vMovers').classList.contains('tcol') && $('ptr1').offsetHeight === 0 && scEl.clientHeight > 0) { S.tileKey = szKey; S.fitDone = 0; S.fitN = 0; const nv = document.querySelector('nav.main, .nav, nav'); const bt = box.getBoundingClientRect().top + scEl.scrollTop - scEl.getBoundingClientRect().top; const vb = nv && nv.getBoundingClientRect().height ? Math.min(scEl.clientHeight, nv.getBoundingClientRect().top - scEl.getBoundingClientRect().top) : scEl.clientHeight; const avail = vb - bt - 8; S.tileH = Math.max(108, Math.min(150, Math.floor((avail - 2 * 10) / 3))); S.fitDone = 1; }
+  // fit exactly 3 rows (6 tiles) between the top of the grid and the nav. Re-measured every render (the header grows when the market bar
+  // and session chips finish loading), but only applied when the answer really changes, so tiles never jitter.
+  if (!touching && !document.getElementById('vMovers').classList.contains('tcol') && $('ptr1').offsetHeight === 0 && scEl.clientHeight > 0 && box.offsetParent) {
+    const nv = document.querySelector('nav.main, .nav, nav'); const bt = box.getBoundingClientRect().top + scEl.scrollTop - scEl.getBoundingClientRect().top;
+    const vb = nv && nv.getBoundingClientRect().height ? Math.min(scEl.clientHeight, nv.getBoundingClientRect().top - scEl.getBoundingClientRect().top) : scEl.clientHeight;
+    const fit = Math.max(104, Math.min(150, Math.floor((vb - bt - 8 - 2 * 10) / 3)));
+    if (!S.tileH || Math.abs(fit - S.tileH) >= 3) { S.tileH = fit; S.tileKey = szKey; } S.fitDone = 1;
+  }
   const tileH = S.tileH || 124;
   const roomy = false; // tall enough (home-screen app): signal pill gets its own row under the change; Safari's shorter screen: pill sits beside the price so 6 tiles still fit // sized so exactly 3 rows (6 tiles) fit between the header and the nav
   // each row of two tiles is only as tall as its content: rows without a signal pill are shorter, so no empty space at the bottom
@@ -1611,7 +1618,7 @@ document.addEventListener('click', async (e) => {
   else if (t.dataset.ssort) { S.sectorSort = t.dataset.ssort; if (S.sector) openSector(S.sector.id); }
   else if (t.dataset.more) { const el = $('desc'); if (el) { el.classList.add('open'); t.remove(); } return; }
   else if (t.id === 'allow') { try { await call('get_gainers_losers', { category: 'US_STOCK', rank_type: 'DAY_1', sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '5', page_index: '1' }, true); S.err = null; loadMovers(); } catch (err) { handleErr(err); } }
-  else if (t.id === 'layTiles' || t.id === 'layList') { S.layout = t.id === 'layTiles' ? 'tiles' : 'list'; try { localStorage.setItem('jt.layout', S.layout); } catch (err) {} $('grid').innerHTML = ''; }
+  else if (t.id === 'layTiles' || t.id === 'layList') { S.layout = t.id === 'layTiles' ? 'tiles' : 'list'; try { localStorage.setItem('jt.layout2', S.layout); } catch (err) {} $('grid').innerHTML = ''; }
   else if (t.id && t.id.indexOf('nav') === 0) { goTab({ navHome: 'home', navMovers: 'movers', navDips: S.lastIdeas || 'setups', navWatch: 'watch', navIntel: S.lastIntel || 'research', navPort: 'portfolios' }[t.id]); }
   else if (t.dataset.tab) { goTab(t.dataset.tab); }
   else if (t.dataset.valf) { S.valF = t.dataset.valf; }
@@ -1636,7 +1643,7 @@ window.addEventListener('resize', render);
 window.addEventListener('hashchange', () => { const t = location.hash.slice(1); if (['home','movers','research','setups','runners','build','dips','leaders','value','buzz','insiders','watch','news','flow','record','compare','options','congress','shorts','ratings','catalysts','ipos','sectors','portfolios'].indexOf(t) >= 0 && t !== S.tab) { goTab(t); render(); } });
 
 /* ---------- boot ---------- */
-try { const l = localStorage.getItem('jt.layout'); if (l === 'list' || l === 'tiles') S.layout = l; } catch (e) {}
+try { const l = localStorage.getItem('jt.layout2'); if (l === 'list' || l === 'tiles') S.layout = l; } catch (e) {}
 loadSyms();
 document.addEventListener('DOMContentLoaded', () => {
   const sc = $('scroller');
