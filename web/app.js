@@ -467,6 +467,7 @@ function tgtBar(t, cur, P) {
 function renderDetail() {
   const sym = S.detail; if (!sym) return;
   if (document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('szin')) return;
+  if (document.activeElement && document.activeElement.closest && document.activeElement.closest('.jcAsk')) return; // don't wipe a Jump check question mid-typing
   const P = dPal();
   const d = S.d[sym] || {}; const sn = d.snap; const v = view();
   const row = rowsCache.find((r) => r.sym === sym);
@@ -485,6 +486,7 @@ function renderDetail() {
     { const st = S.stamp && (S.stamp['d:snap'] || S.stamp['d:snap:' + sym]); const age = st ? Date.now() - st : null; const tm = new Date(st || Date.now()).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', timeZone: 'America/New_York' });
       h += '<div class="dQt">' + (SESS[S.auto] ? SESS[S.auto].label : 'Market closed') + ' · vs yesterday’s close · ' + (st ? tm + ' ET' : 'loading…') + (age > 90000 ? ' <b style="color:#F2C27A">· delayed</b>' : '') + '</div>'; }
   }
+  if (window.JC && main) h += JC.button(sym) + JC.card(sym, main, ext && ext.price ? ext : null);
   if (window.VERD) h += VERD.card(sym, main);
   if (window.ENR) h += ENR.stats(sym, main);
   h += '<div class="chart2">' + '<button class="fsBtn" data-fsopen><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Setup</button>' + chartSVG(d.bars, sn ? +sn.pre_close : null, window.ENR && S.chartTf !== 'D' ? ENR.levels(sym) : null) + '<div class="cfoot"><div class="tfs2">' + ['1m', '5m', 'D'].map((t) => '<button class="' + (t === S.chartTf ? 'on' : '') + '" data-tf="' + t + '">' + (t === 'D' ? '1D' : t) + '</button>').join('') + '</div>' +
