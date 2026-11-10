@@ -1604,10 +1604,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const rows = [].concat(S.lists.p1 || [], S.lists.p2 || [], S.large || []); if (!rows.length) return;
     const ids = Array.from(new Set(moverRows().slice(0, 60).map((r) => r.sym))); if (!ids.length) return;
     busy = true;
-    mcp.callTool(SERVER, 'get_stock_snapshot', { symbols: ids.join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: false }).then((res) => {
+    mcp.callTool(SERVER, 'get_stock_snapshot', { symbols: ids.join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: view() === 'overnight' }).then((res) => {
       const p = payloadOf(res); const by = {}; (Array.isArray(p) ? p : []).forEach((x) => { by[x.symbol] = x; });
       const sess = view(); let changed = false;
-      rows.forEach((r) => { const x = by[r.sym]; if (!x) return; const n = snapRow(x, sess); if (isFinite(n.price) && n.price && n.price !== r.price) { r.price = n.price; r.chg = n.chg; r.pct = n.pct; changed = true; } if (+x.volume) r.vol = +x.volume; });
+      rows.forEach((r) => { const x = by[r.sym]; if (!x) return;
+        // Only tick with a quote from the same session the list shows; mixing the regular close with overnight prices made tiles flip back and forth.
+        if (sess === 'overnight' && !x.ovn_price) return; if ((sess === 'pre' || sess === 'after') && !x.extend_hour_last_price) return;
+        const n = snapRow(x, sess); if (isFinite(n.price) && n.price && n.price !== r.price) { r.price = n.price; r.chg = n.chg; r.pct = n.pct; changed = true; } if (+x.volume > (r.vol || 0)) r.vol = +x.volume; });
       S.stamp['m:tick'] = Date.now(); if (changed) render();
     }).catch(() => {}).finally(() => { busy = false; });
   }, 1000);
