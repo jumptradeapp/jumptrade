@@ -1,19 +1,20 @@
 /* jumptrade. service worker: push notifications + instant app open (app files cached, live data never cached) */
-const V = 'jt-shell-v2';
+const V = 'jt-shell-v3';
 const SHELL = ['/', '/index.html', '/app.js', '/home.js', '/today.js', '/enrich.js', '/polish.js', '/runners.js', '/menu.js', '/alerts.js', '/shim.js', '/mark.js', '/icon-192.png', '/apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(V).then((c) => c.addAll(SHELL).catch(() => {}))); self.skipWaiting(); });
 self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== V).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
 
-// App files: show the cached copy instantly, refresh it in the background (stale-while-revalidate).
-// Anything under /api/ always goes to the network so prices are never stale.
+// App files: always try the network first so a new release shows up right away; fall back to the
+// cached copy only when offline or the network is slow (>2.5s). /api/ is never touched here.
 self.addEventListener('fetch', (e) => {
   const u = new URL(e.request.url);
   if (e.request.method !== 'GET' || u.origin !== location.origin || u.pathname.startsWith('/api/')) return;
   e.respondWith(caches.open(V).then(async (c) => {
-    const hit = await c.match(e.request, { ignoreSearch: u.pathname === '/' || u.pathname === '/index.html' });
-    const net = fetch(e.request).then((r) => { if (r && r.ok) c.put(e.request, r.clone()); return r; }).catch(() => hit);
-    return hit || net;
+    const net = fetch(e.request, { cache: 'no-cache' }).then((r) => { if (r && r.ok) c.put(e.request, r.clone()); return r; });
+    const slow = new Promise((res) => setTimeout(res, 2500)).then(() => c.match(e.request, { ignoreSearch: u.pathname === '/' || u.pathname === '/index.html' }));
+    try { const r = await Promise.race([net, slow.then((h) => h || net)]); return r || await net; }
+    catch (x) { return (await c.match(e.request, { ignoreSearch: true })) || Response.error(); }
   }));
 });
 
