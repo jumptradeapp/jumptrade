@@ -352,6 +352,51 @@ T.get_stock_unusual_activities = async (i) => {
   out.sort((a, b) => Date.parse(b.time) - Date.parse(a.time));
   return out.slice(0, want);
 };
+
+// ---------- "Your move today": stocks where several independent signals agree, with plain levels ----------
+let CUR_ENV = null;
+T.get_playbook = async () => {
+  const [run, flow, buzz] = await Promise.all([
+    T.get_runners({ limit: 40 }).catch(() => ({ data: [] })),
+    T.get_stock_unusual_activities({ count: 60 }).catch(() => []),
+    T.get_community_hot_stocks().catch(() => []),
+  ]);
+  let ratings = [];
+  try { const r = CUR_ENV && CUR_ENV.ASSETS ? await (await CUR_ENV.ASSETS.fetch('https://a/ratings.json')).json() : null; ratings = (r && r.ratings) || []; } catch (e) {}
+  const wk = new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10);
+  const S = {}; const add = (s, k, txt, w) => { if (!/^[A-Z]{1,5}$/.test(s || '')) return; const o = S[s] || (S[s] = { sig: {}, why: [] }); if (o.sig[k]) return; o.sig[k] = w; o.why.push(txt); };
+  (run.data || []).forEach((r) => {
+    if (r.score >= 60) add(r.symbol, 'mom', 'Jump radar score ' + r.score, 1.2);
+    if (r.rvol >= 2) add(r.symbol, 'vol', 'Volume ' + (r.rvol >= 10 ? Math.round(r.rvol) : r.rvol) + '× normal', 1);
+    if (r.news) add(r.symbol, 'news', 'Fresh news: ' + r.news.title.slice(0, 80), 1.1);
+  });
+  const fb = {}; (Array.isArray(flow) ? flow : []).forEach((x) => { const o = fb[x.symbol] || (fb[x.symbol] = { b: 0, s: 0, amt: 0 }); if (x.alert_type === 'MAJOR_BUY') { o.b++; o.amt += x.amount || 0; } else o.s++; });
+  Object.keys(fb).forEach((s) => { const o = fb[s]; if (o.b > o.s) add(s, 'money', 'Big buying: $' + (o.amt / 1e6).toFixed(1) + 'M in bursts today', 1.1); });
+  (Array.isArray(buzz) ? buzz : []).slice(0, 25).forEach((b) => add(b.symbol, 'crowd', 'Trending with traders (#' + b.rank + ')', 0.6));
+  ratings.filter((r) => r.date >= wk && (r.action === 'upgrade' || r.action === 'target_raise' || r.action === 'initiate' && /buy|outperform|overweight/i.test(r.to_rating || ''))).forEach((r) => {
+    const d = r.old_target && r.new_target ? r.new_target - r.old_target : null;
+    add(r.ticker, 'analyst', (r.firm || 'Analyst') + (r.action === 'upgrade' ? ' upgraded it' : d != null ? ' raised target +$' + d.toFixed(2) : ' started at ' + r.to_rating), 1); });
+  const cands = Object.keys(S).filter((s) => Object.keys(S[s].sig).length >= 2);
+  if (!cands.length) return { updated: new Date().toISOString(), data: [] };
+  const q = await quotes(cands).catch(() => []); const Q = {}; q.forEach((x) => { Q[x.symbol] = x; });
+  const out = [];
+  for (const s of cands) {
+    const x = Q[s]; if (!x || !x.price || x.price < 1) continue;
+    const o = S[s]; const n = Object.keys(o.sig).length; const score = Object.values(o.sig).reduce((a, b) => a + b, 0);
+    if ((x.change_ratio || 0) > 0.6) continue; // already up 60%+: too late to plan an entry
+    const p = x.price, h = x.high || p, l = x.low || p * 0.95;
+    let kind, entry, stop;
+    if (p >= h * 0.97) { kind = 'breakout'; entry = +(h * 1.003).toFixed(p < 5 ? 3 : 2); stop = Math.max(l, entry * 0.92); }
+    else { kind = 'pullback'; entry = +p.toFixed(p < 5 ? 3 : 2); stop = Math.max(l * 0.995, entry * 0.92); }
+    stop = +stop.toFixed(p < 5 ? 3 : 2); const risk = entry - stop; if (risk <= 0) continue;
+    const target = +(entry + risk * 2).toFixed(p < 5 ? 3 : 2);
+    const verdict = n >= 3 ? (kind === 'breakout' ? 'Buy above $' + entry : 'Buy near $' + entry) : 'Watch';
+    out.push({ symbol: s, name: x.name, price: p, change: x.change, change_ratio: x.change_ratio, signals: n, score: +score.toFixed(2), kind, entry, stop, target, risk: +risk.toFixed(4),
+      verdict, why: o.why.slice(0, 4), line: n + ' signals agree: ' + o.why.slice(0, 2).map((w) => w.replace(/^Fresh news: .*/, 'fresh news').toLowerCase()).join(', ') });
+  }
+  out.sort((a, b) => b.signals - a.signals || b.score - a.score);
+  return { updated: new Date().toISOString(), data: out.slice(0, 12) };
+};
 // ---------- sectors: industry groups built from ETFs + their leading stocks ----------
 const GROUPS = [
   [1, 'Semiconductors', 'SMH', 'NVDA,AVGO,AMD,TSM,QCOM,MU,INTC,TXN,ADI,LRCX,AMAT,KLAC,MRVL,ARM'],
@@ -414,7 +459,7 @@ T.get_market_sectors_detail = async (i) => {
   return { data: rows };
 };
 // How long each answer may be reused (seconds). Prices: short. Fundamentals: long.
-const TTL = { get_stock_unusual_activities: 60, get_community_hot_stocks: 180, get_runners: 60, get_sparks: 60, get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 60, search_news: 45,
+const TTL = { get_playbook: 60, get_stock_unusual_activities: 60, get_community_hot_stocks: 180, get_runners: 60, get_sparks: 60, get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 60, search_news: 45,
   get_company_profile: 86400, get_analyst_target_price: 21600, get_analyst_rating: 21600, get_stock_forecast_eps: 21600, get_stock_earnings_calendar: 21600,
   get_fund_brief: 86400, get_fund_holdings: 86400, get_fund_performance: 86400 };
 
@@ -571,7 +616,7 @@ async function runTool(tool, input, ctx, env) {
   const cache = caches.default;
   const hit = await cache.match(key); if (hit) return hit;
   // Slow, many-source tools: answer instantly from the last good copy and refresh it in the background.
-  const SLOW = /^(search_news|get_stock_news|get_runners|get_community_hot_stocks|get_stock_unusual_activities|get_market_sectors)$/.test(tool);
+  const SLOW = /^(get_playbook|search_news|get_stock_news|get_runners|get_community_hot_stocks|get_stock_unusual_activities|get_market_sectors)$/.test(tool);
   const skey = new Request('https://cache.jumptrade/stale/' + tool + '?' + encodeURIComponent(JSON.stringify(input || {})));
   const produce = async () => {
     const w = env && !/news/.test(tool) ? await wbCall(env, tool, input || {}).catch((e) => { WBLAST = { tool, error: String(e.message || e), t: Date.now() }; return null; }) : null;
@@ -748,9 +793,10 @@ async function runAlerts(env, ctx) {
 
 let UPK = 0;
 export default {
-  async scheduled(ev, env, ctx) { const m = new Date().getUTCMinutes(); if (m % 10 === 0) ctx.waitUntil(wbUpkeep(env).catch(() => {})); ctx.waitUntil(runAlerts(env, ctx).then((r) => vput(env, 'alertrun', Object.assign({ t: Date.now() }, r))).catch((e) => vput(env, 'alertrun', { t: Date.now(), error: String(e && e.message || e) }))); },
+  async scheduled(ev, env, ctx) { CUR_ENV = env; const m = new Date().getUTCMinutes(); if (m % 10 === 0) ctx.waitUntil(wbUpkeep(env).catch(() => {})); ctx.waitUntil(runAlerts(env, ctx).then((r) => vput(env, 'alertrun', Object.assign({ t: Date.now() }, r))).catch((e) => vput(env, 'alertrun', { t: Date.now(), error: String(e && e.message || e) }))); },
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
+    CUR_ENV = env;
     if (Date.now() - UPK > 600000) { UPK = Date.now(); ctx.waitUntil(wbUpkeep(env).catch(() => {})); }
     if (req.method === 'OPTIONS') return new Response(null, { headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'POST, GET' } });
     if (url.pathname.indexOf('/api/push/') === 0) { const r = await pushRoutes(url, req, env, ctx); if (r) return r; }

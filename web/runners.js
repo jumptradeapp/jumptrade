@@ -33,3 +33,27 @@
       '<span class="rnr"><i class="rnsc big" style="--c:' + scCol(r.score) + '">' + r.score + '</i><b style="color:' + (r.change_ratio >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + pct(r.change_ratio) + '</b><small>$' + (r.price < 1 ? r.price.toFixed(3) : r.price.toFixed(2)) + ' · ' + (r.rvol >= 10 ? Math.round(r.rvol) : r.rvol) + '× vol</small></span></button>').join('') + '</div>');
   };
 })();
+
+/* "Your move today": the few stocks where several signals agree, with buy / stop / target in dollars */
+(function () {
+  const B = window.PLAY = { rows: null, at: 0, busy: false };
+  B.load = function (force) {
+    if (B.busy || (!force && Date.now() - B.at < 55000) || typeof mcp === 'undefined' || !mcp) return; B.busy = true;
+    mcp.callTool(SERVER, 'get_playbook', {}).then((res) => { const p = payloadOf(res) || {}; B.rows = p.data || []; B.at = Date.now(); B.busy = false; render(); }).catch(() => { B.busy = false; if (!B.rows) B.rows = []; render(); });
+  };
+  setInterval(() => { if (S.tab === 'home') B.load(); }, 20000);
+  const $$ = (v) => '$' + (v < 0.1 ? v.toFixed(3) : v.toFixed(2));
+  B.widget = function (card, P) {
+    B.load();
+    const rows = (B.rows || []).filter((r) => r.signals >= 3).slice(0, 4);
+    const watch = (B.rows || []).filter((r) => r.signals < 3).slice(0, Math.max(0, 3 - rows.length));
+    const one = (r) => '<button class="pbRow" data-open="' + esc(r.symbol) + '">' + logoHTML(r.symbol, 36) +
+      '<span class="pbMain"><span class="pbTop"><b>' + esc(r.symbol) + '</b><i class="pbV ' + (r.signals >= 3 ? 'go' : 'watch') + '">' + esc(r.signals >= 3 ? (r.kind === 'breakout' ? 'BUY ABOVE ' + $$(r.entry) : 'BUY NEAR ' + $$(r.entry)) : 'WATCH') + '</i><span class="pbChg" style="color:' + ((r.change_ratio || 0) >= 0 ? P.up : P.dn) + '">' + ((r.change_ratio || 0) >= 0 ? '+' : '') + ((r.change_ratio || 0) * 100).toFixed(1) + '%</span></span>' +
+      '<span class="pbLv"><span>Stop <b>' + $$(r.stop) + '</b></span><span>Target <b>' + $$(r.target) + '</b></span><span class="dim">Risk ' + $$(r.risk) + ' → make ' + $$(r.risk * 2) + '</span></span>' +
+      '<small class="pbWhy">' + esc(r.signals + ' signals agree · ' + r.why.slice(0, 3).map((w) => w.replace(/^Fresh news: (.{0,48}).*/, 'news: $1…')).join(' · ')) + '</small></span></button>';
+    const body = !B.rows ? '<div class="skel"></div><div class="skel" style="width:75%"></div>'
+      : !rows.length && !watch.length ? '<p class="desc dim">No clear setups right now. Nothing has 3+ signals lined up. That’s a fine answer: sitting out is a position.</p>'
+      : rows.map(one).join('') + (watch.length ? '<div class="pbSub">ON WATCH · 2 signals so far</div>' + watch.map(one).join('') : '');
+    return card('YOUR MOVE TODAY', '#5EE0A0', body + '<p class="pbNote">Ideas, not advice. Each pick needs 3+ independent signals: Jump radar, volume, news, big buying, analysts, trader buzz. Stop = where the idea is wrong.</p>', '<button class="hmr" data-tab="runners">Radar ›</button>');
+  };
+})();
