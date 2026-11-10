@@ -1,10 +1,12 @@
 /* jumptrade. page menu: a button in every top bar that opens a sheet listing every page */
 (function () {
   const G = [
-    ['Market', [['home', 'Home', 'Your day at a glance'], ['movers', 'Top gainers', 'Live movers'], ['news', 'News', 'Live headlines'], ['catalysts', 'Calendar', 'Earnings & events'], ['sectors', 'Sectors', 'Where money is rotating'], ['ipos', 'IPOs', 'New listings']]],
-    ['Ideas', [['setups', 'Setups', 'Best entries now'], ['runners', 'Runners', 'Early signs of a run'], ['dips', 'Dips', 'Pullbacks to buy'], ['leaders', 'Leaders', 'Strongest stocks'], ['value', 'Value', 'Undervalued names'], ['buzz', 'Buzz', 'Most talked about']]],
-    ['Money', [['flow', 'Money flow', 'Big buyers & sellers'], ['options', 'Options', 'Unusual bets'], ['congress', 'Congress', 'Lawmakers’ trades'], ['insiders', 'Insiders', 'Executives buying'], ['shorts', 'Shorts', 'Most shorted'], ['ratings', 'Ratings', 'Analyst calls']]],
-    ['Research & you', [['research', 'Research', 'Deep dives'], ['compare', 'Compare', 'Side by side'], ['portfolios', 'Strategies', 'Model portfolios'], ['watch', 'Watchlist', 'Your stocks'], ['record', 'Record', 'Your trade journal']]],
+    ['Home', [['home', 'Today', 'Your day at a glance'], ['watch', 'Watchlist', 'Your stocks']]],
+    ['Discover', [['movers', 'Top gainers', 'Live movers'], ['runners', 'Jump radar', 'Early signs of a run'], ['setups', 'Setups', 'Best entries now'], ['insiders', 'Smart money', 'Executives buying'], ['options', 'Unusual options', 'Big bets'], ['buzz', 'Market pulse', 'Most talked about']]],
+    ['Markets', [['sectors', 'Sectors', 'Where money is rotating'], ['news', 'News', 'Live headlines'], ['catalysts', 'Calendar', 'Earnings & events'], ['ipos', 'IPOs', 'New listings'], ['flow', 'Money flow', 'Big buyers & sellers'], ['congress', 'Congress', 'Lawmakers’ trades']]],
+    ['Ideas', [['dips', 'Dips', 'Pullbacks to buy'], ['leaders', 'Leaders', 'Strongest stocks'], ['value', 'Value engine', 'Undervalued names'], ['compare', 'Compare', 'Side by side']]],
+    ['Portfolios', [['portfolios', 'Model portfolios', 'Strategies to follow'], ['record', 'Signal lab', 'How signals performed']]],
+    ['Research', [['research', 'Research', 'Deep dives'], ['ratings', 'Analyst ratings', 'Upgrades & targets'], ['shorts', 'Short interest', 'Most shorted']]],
   ];
   const IC = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>';
   const add = () => document.querySelectorAll('.view > .top .bar').forEach((bar) => {

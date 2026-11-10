@@ -20,6 +20,6 @@ class_name = "Vault"
 tag = "v1"
 new_sqlite_classes = ["Vault"]
 
-# Keeps the Webull session alive (requests a login once an hour until approved, then checks it).
+# Every minute: push alerts. Every 10 minutes: keep the Webull session alive.
 [triggers]
-crons = ["*/10 * * * *"]
+crons = ["* * * * *"]
