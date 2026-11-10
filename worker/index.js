@@ -619,11 +619,11 @@ async function wbRoutes(url, env) {
   return null;
 }
 
-async function runTool(tool, input, ctx, env) {
+async function runTool(tool, input, ctx, env, fresh) {
   const fn = T[tool] || (WBMAP[tool] ? async () => [] : null); if (!fn) return json({ error: { code: 'tool_error', message: 'Unknown tool ' + tool } }, 404);
   const key = new Request('https://cache.jumptrade/' + tool + '?' + encodeURIComponent(JSON.stringify(input || {})));
   const cache = caches.default;
-  const hit = await cache.match(key); if (hit) return hit;
+  const hit = fresh ? null : await cache.match(key); if (hit) return hit;
   // Slow, many-source tools: answer instantly from the last good copy and refresh it in the background.
   const SLOW = /^(get_pick_record|get_playbook|search_news|get_stock_news|get_runners|get_community_hot_stocks|get_stock_unusual_activities|get_market_sectors)$/.test(tool);
   const skey = new Request('https://cache.jumptrade/stale/' + tool + '?' + encodeURIComponent(JSON.stringify(input || {})));
@@ -632,12 +632,20 @@ async function runTool(tool, input, ctx, env) {
     const payload = w ? w.payload : await fn(input || {});
     const res = json({ payload }, 200, { 'cache-control': 'public, max-age=' + (TTL[tool] || 30) });
     await cache.put(key, res.clone());
-    if (SLOW) await cache.put(skey, json({ payload }, 200, { 'cache-control': 'public, max-age=86400' }));
+    if (SLOW) await cache.put(skey, json({ payload }, 200, { 'cache-control': 'public, max-age=86400', 'x-jt-t': String(Date.now()) }));
     return res;
   };
-  if (SLOW) { const old = await cache.match(skey); if (old) { ctx.waitUntil(produce().catch(() => {})); return old; }
-    if (env && PRE.some((x) => x[0] === tool && JSON.stringify(x[1]) === JSON.stringify(input || {}))) { const v = await vget(env, preKey(tool, input)).catch(() => null);
-      if (v && v.p && Date.now() - v.t < 3600000) { ctx.waitUntil(produce().catch(() => {})); return json({ payload: v.p }, 200, { 'cache-control': 'public, max-age=20' }); } } }
+  if (fresh) return produce();
+  // Serve the newest of: this data center's last copy, or the copy the every-minute cron saved to the Vault (shared by all data centers).
+  if (SLOW) { const old = await cache.match(skey); const ot = old ? +(old.headers.get('x-jt-t') || 0) : 0;
+    const isPre = env && PRE.some((x) => x[0] === tool && JSON.stringify(x[1]) === JSON.stringify(input || {}));
+    const v = isPre ? await vget(env, preKey(tool, input)).catch(() => null) : null; const vt = v && v.p ? v.t : 0;
+    const newest = Math.max(ot, vt), age = Date.now() - newest;
+    if (newest && age < 6 * 3600000) {
+      if (age > (isPre ? 300 : (TTL[tool] || 60)) * 1000) ctx.waitUntil(produce().catch(() => {})); // the cron keeps PRE tools fresh; this is the fallback
+      if (vt >= ot) return json({ payload: v.p }, 200, { 'cache-control': 'public, max-age=20' });
+      return old;
+    } }
   try {
     return await produce();
   } catch (e) {
@@ -736,7 +744,7 @@ const PRE = [['get_runners', { limit: 40 }], ['get_playbook', {}], ['get_communi
 const preKey = (t, i) => encodeURIComponent('pre_' + t + JSON.stringify(i || {}));
 async function precompute(env, ctx) {
   const out = {};
-  await Promise.all(PRE.map(async (x) => { try { const p = await cachedTool(x[0], x[1], ctx, env); const n = Array.isArray(p) ? p.length : p && Array.isArray(p.data) ? p.data.length : 0; if (n) { await vput(env, preKey(x[0], x[1]), { t: Date.now(), p: p }); out[x[0]] = n; } if (x[0] === 'get_playbook' && p && !p.from) out.logged = await logPicks(env, p.data).catch(() => 0); } catch (e) { out[x[0]] = 'err'; } }));
+  await Promise.all(PRE.map(async (x) => { try { const p = await freshTool(x[0], x[1], ctx, env); const n = Array.isArray(p) ? p.length : p && Array.isArray(p.data) ? p.data.length : 0; if (n) { await vput(env, preKey(x[0], x[1]), { t: Date.now(), p: p }); out[x[0]] = n; } if (x[0] === 'get_playbook' && p && !p.from) out.logged = await logPicks(env, p.data).catch(() => 0); } catch (e) { out[x[0]] = 'err'; } }));
   return out;
 }
 // ---------- pick log: every "Your move today" pick is recorded, then scored against what the stock did next ----------
@@ -799,6 +807,7 @@ async function aiRoutes(url, req, env) {
     return json({ error: { code: 'bad_request' } }, 400);
   } catch (e) { return json({ error: { code: e.status === 429 ? 'rate_limited' : 'server_unavailable', message: String(e.message || e) } }, 502); }
 }
+async function freshTool(tool, input, ctx, env) { const r = await runTool(tool, input, ctx, env, true); const j = await r.json().catch(() => ({})); return j.payload; }
 async function cachedTool(tool, input, ctx, env) { const r = await runTool(tool, input, ctx, env); const j = await r.json().catch(() => ({})); return j.payload; }
 async function runAlerts(env, ctx) {
   const all = (await vget(env, 'subs')) || {}; const ids = Object.keys(all); if (!ids.length) return { subs: 0 };
