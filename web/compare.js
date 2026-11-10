@@ -129,9 +129,11 @@
   C.render = function () {
     const P = dPal();
     setHTML($('cmpSeg'), intelSeg('compare'));
-    const top = '<div class="cmpL"><span style="color:' + CA + '">First stock</span><span style="color:' + CB + '">Second stock</span></div><div class="cmpin"><input id="cmpA" class="cin" value="' + esc(C.a) + '" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" style="border-color:' + CA + '88"><button class="cmpsw" data-cmpswap="1" aria-label="Swap">⇄</button><input id="cmpB" class="cin" value="' + esc(C.b) + '" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" style="border-color:' + CB + '88"><button class="cta cmpgo" data-cmpgo="1">Compare</button></div>' +
+    const top = '<div class="seg2 cmpMode"><button class="on" data-cmpmode="pair">Head to head</button><button data-cmpmode="peers">Vs. peers</button></div>' + '<div class="cmpL"><span style="color:' + CA + '">First stock</span><span style="color:' + CB + '">Second stock</span></div><div class="cmpin"><input id="cmpA" class="cin" value="' + esc(C.a) + '" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" style="border-color:' + CA + '88"><button class="cmpsw" data-cmpswap="1" aria-label="Swap">⇄</button><input id="cmpB" class="cin" value="' + esc(C.b) + '" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" style="border-color:' + CB + '88"><button class="cta cmpgo" data-cmpgo="1">Compare</button></div>' +
       '<div class="chips cmpq">' + PAIRS.map((p) => '<button class="chip' + (p[0] === C.a && p[1] === C.b ? ' on' : '') + '" data-cmpp="' + p.join(',') + '">' + p[0] + ' vs ' + p[1] + '</button>').join('') + '</div>';
     const box = $('cmpList');
+    const modeSeg = '<div class="seg2 cmpMode"><button class="' + (C.mode === 'peers' ? '' : 'on') + '" data-cmpmode="pair">Head to head</button><button class="' + (C.mode === 'peers' ? 'on' : '') + '" data-cmpmode="peers">Vs. peers</button></div>';
+    if (C.mode === 'peers' && window.PEER) { if (document.activeElement && document.activeElement.closest && document.activeElement.closest('[data-pform]')) return; setHTML(box, modeSeg + PEER.page()); return; }
     if (document.activeElement && (document.activeElement.id === 'cmpA' || document.activeElement.id === 'cmpB')) return;
     if (typeof mcp === 'undefined' || !mcp) { setHTML(box, top + '<div class="empty"><b>Can’t reach live data</b></div>'); return; }
     const a = C.a, b = C.b; load(a); load(b); loadBars(a, b);
@@ -222,6 +224,7 @@
   };
   C.set = function (a, b) { C.a = String(a || '').toUpperCase().trim(); C.b = String(b || '').toUpperCase().trim(); save(); if (S.tab !== 'compare') goTab('compare'); render(); };
   document.addEventListener('click', (e) => {
+    const md = e.target.closest && e.target.closest('[data-cmpmode]'); if (md) { C.mode = md.dataset.cmpmode === 'peers' ? 'peers' : 'pair'; if (C.mode === 'peers' && window.PEER && !PEER.sym) PEER.sym = C.a || 'NVDA'; render(); return; }
     const t = e.target.closest && e.target.closest('[data-cmpswap],[data-cmpgo],[data-cmpp],[data-cmpwith]'); if (!t) return;
     if (t.dataset.cmpswap) C.set(($('cmpB').value || C.b), ($('cmpA').value || C.a));
     else if (t.dataset.cmpgo) { document.activeElement && document.activeElement.blur && document.activeElement.blur(); C.set($('cmpA').value, $('cmpB').value); }
