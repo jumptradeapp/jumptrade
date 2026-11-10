@@ -88,3 +88,18 @@
   const box = document.getElementById('vMovers'); if (box) new MutationObserver(sched).observe(box, { childList: true, subtree: true });
   addEventListener('resize', sched); setInterval(sched, 2000);
 })();
+
+/* Home: tapping a widget's header opens that widget's full page */
+(function () {
+  const MAP = { 'TOP NEWS': 'news', 'POTENTIAL RUNNERS': 'runners', 'WHAT CHANGED': 'watch', 'YOUR POSITIONS': 'portfolios', 'TOP SETUPS': 'setups', 'THIS WEEK': 'catalysts',
+    'SIGNAL TRACK RECORD': 'record', 'INDEXES': 'movers', 'TOP GAINERS': 'movers', 'UNUSUAL VOLUME': 'movers', 'UNUSUAL OPTIONS': 'options', 'DIPS': 'dips', 'UNDERVALUED': 'value',
+    'WATCHLIST': 'watch', 'SECTOR HEAT': 'sectors', 'BIG MONEY': 'flow', 'CONGRESS': 'congress', 'EARNINGS FOR YOU': 'catalysts', 'UPGRADES': 'ratings' };
+  document.addEventListener('click', (e) => {
+    const cap = e.target.closest('#vHome .hmcap'); if (!cap) return;
+    const btn = e.target.closest('button,[data-tab],[data-plan]'); if (btn && cap.contains(btn) && btn !== cap) return; // the header's own link (All ›, Plan ›) keeps working
+    const hm = cap.closest('.hm'); if (hm && hm.dataset.plan) return; // regime card opens the game plan
+    const t = (cap.textContent || '').toUpperCase(); const k = Object.keys(MAP).sort((a, b) => b.length - a.length).find((x) => t.indexOf(x) >= 0);
+    if (!k) return; e.preventDefault(); e.stopPropagation(); goTab(MAP[k]);
+  }, true);
+  const css = document.createElement('style'); css.textContent = '#vHome .hm:not(.hmreg) .hmcap{cursor:pointer}'; document.head.appendChild(css);
+})();
