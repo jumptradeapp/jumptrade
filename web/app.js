@@ -298,7 +298,7 @@ function renderMovers() {
     if (!el) { el = document.createElement('button'); el.dataset.sym = r.sym; box.appendChild(el); el.classList.add('fadein'); }
     seen[r.sym] = 1;
     const up = r.pct >= 0, col = up ? '#5EE0A0' : '#FF8A8A';
-    const prevP = el.dataset.p ? +el.dataset.p : r.price; const flash = r.price > prevP ? 'rgba(94,224,160,0.28)' : r.price < prevP ? 'rgba(255,138,138,0.28)' : '';
+    const prevP = el.dataset.p ? +el.dataset.p : r.price; const flash = ''; void prevP; // flashing is handled once, calmly, by flash.js
     el.dataset.p = r.price;
     const hasWhy = !!(S.news[r.sym] && S.news[r.sym].why); const why = hasWhy ? S.news[r.sym].why : ('Vol ' + big(r.vol) + ' · ' + money(r.mcap) + ' cap');
     const arrow = '<svg width="16" height="11" viewBox="0 0 17 11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + (up ? 'M1.5 9.5l4.5-4.5 3 3 6-6M11 2h4.5v4.5' : 'M1.5 1.5l4.5 4.5 3-3 6 6M11 9h4.5V4.5') + '"></path></svg>';
