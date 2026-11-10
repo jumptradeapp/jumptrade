@@ -127,13 +127,14 @@ const RQ = { n: 0, hi: [], lo: [], t0: Date.now(),
     }
     if (this.lo.length && Date.now() - this.t0 <= 1500 && !this.tm) this.tm = setTimeout(() => { this.tm = 0; this.pump(); }, 1600);
   } };
+window.__jtActive = Date.now(); ['pointerdown', 'keydown', 'scroll', 'touchstart'].forEach((ev) => addEventListener(ev, () => { window.__jtActive = Date.now(); }, { passive: true, capture: true })); document.addEventListener('visibilitychange', () => { if (!document.hidden) window.__jtActive = Date.now(); });
 function watch(key, tool, input, onData, every) {
   if (!mcp) return;
   const sig = JSON.stringify([tool, input]);
   if (watches[key]) { if (watches[key].sig === sig) return; watches[key].off(); }
   let iv = Math.max(30000, every || 30000); let dead = false, busy = false;
   // Web version: our own server can refresh prices every few seconds (Claude's runtime capped polling at ~30s).
-  if (window.JT_WEB) { if (/^(m:|d:snap|h:idx|wl:q|fl:q|pm:q|fd:q|jr:q|tp:wl|ip:snap)/.test(key)) iv = /^(d:snap|h:idx|wl:q)/.test(key) ? 1000 : 3000; else if (/^d:bars/.test(key)) iv = 15000; }
+  if (window.JT_WEB) { if (/^(m:|d:snap|h:idx|wl:q|fl:q|pm:q|fd:q|jr:q|tp:wl|ip:snap)/.test(key)) iv = /^(d:snap|wl:q)/.test(key) ? 2000 : /^h:idx/.test(key) ? 3000 : 4000; else if (/^d:bars/.test(key)) iv = 15000; }
   const low = /^(dp|s|dl):/.test(key); // watchlist data loads at full priority
   const run = () => {
     if (dead || busy) return; busy = true;
@@ -142,7 +143,19 @@ function watch(key, tool, input, onData, every) {
     }).catch((e) => { busy = false; if (!dead) handleErr(e, key); }));
   };
   run();
-  const t = setInterval(() => { if (!document.hidden) run(); }, iv);
+  // Request budget: full speed only for data on the screen you're looking at; everything else (and an idle app) checks in slowly.
+  let last = Date.now();
+  const t = setInterval(() => {
+    if (document.hidden) return;
+    let eff = iv;
+    if (iv < 30000) {
+      const g = key.slice(0, key.indexOf(':') + 1), tab = S.tab, det = !!S.detail;
+      const onScreen = g === 'd:' ? det : g === 'm:' ? (tab === 'movers' && !det) : g === 'wl:' ? ((tab === 'watch' || tab === 'home') && !det) : g === 'h:' ? (tab === 'home' && !det) : !det;
+      if (!onScreen) eff = 30000;
+      if (Date.now() - (window.__jtActive || 0) > 180000) eff = Math.max(eff * 4, 12000); // nobody has touched the app for 3 minutes
+    }
+    if (Date.now() - last >= eff - 50) { last = Date.now(); run(); }
+  }, iv);
   watches[key] = { off: () => { dead = true; clearInterval(t); }, sig: sig, run: run };
 }
 function unwatch(prefix) { Object.keys(watches).forEach((k) => { if (k.indexOf(prefix) === 0) { watches[k].off(); delete watches[k]; } }); }

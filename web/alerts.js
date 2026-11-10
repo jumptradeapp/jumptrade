@@ -65,7 +65,7 @@
       (t[0] === 'runners' && P.runners ? '<div class="alSub">Alert when the score is at least ' + chips('runnerMin', [70, 80, 90], (v) => v + '+') + '</div>' : '') +
       (t[0] === 'move' && P.move ? '<div class="alSub">Alert at ' + chips('movePct', [3, 5, 10], (v) => '±' + v + '%') + ' <small>and again at double</small></div>' : '');
     el.querySelector('.alBody').innerHTML =
-      '<div class="alStatus ' + (on ? 'on' : '') + '"><b>' + (on ? 'Alerts are on' : 'Alerts are off') + '</b><small>' + (on ? 'Watching ' + syms().length + ' stocks on your watchlist' : (isIOS && !standalone() ? 'Add jumptrade to your home screen first' : 'Turn on to get notified')) + '</small>' +
+      '<div class="alStatus ' + (on ? 'on' : '') + '"><b>' + (on ? 'Alerts are on' : 'Alerts are off') + '</b><small>' + (on ? (syms().length ? 'Watching ' + syms().length + ' stocks on your watchlist' : 'Market alerts are on. Add stocks to your watchlist for alerts on them') : (isIOS && !standalone() ? 'Add jumptrade to your home screen first' : 'Turn on to get notified')) + '</small>' +
       (on ? '<button class="alBtn ghost" data-al="off">Turn off</button>' : '<button class="alBtn" data-al="on">Turn on</button>') + '</div>' +
       (msg ? '<p class="alMsg">' + msg + '</p>' : '') +
       (on ? '' : '<p class="alMsg" style="color:#9AA6B6">Saved for when alerts are on. Nothing is sent until you turn them on.</p>') + '<div class="pmCap">What to get</div><div class="alList' + (on ? '' : ' alMuted') + '">' + T.slice(0, 9).map(row).join('') + '</div>' +

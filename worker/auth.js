@@ -110,7 +110,7 @@ export async function authRoutes(url, req, env, ctx, H) {
     return json({ seen: +((await vget(env, 'adminSeen')) || 0), locked: !!(await gate()).locked,
       users: Object.values(U).map((u) => ({ uid: u.uid, name: u.name, owner: !!u.owner, off: !!u.off, created: u.created, last: u.last, visits: u.visits || 0, week: Object.entries(u.days || {}).filter((e) => e[0] >= wk).reduce((a, e) => a + e[1], 0), activeDays: Object.keys(u.days || {}).length, devs: u.devs || [], inv: u.inv || '' })).sort((a, b) => (b.last || 0) - (a.last || 0)),
       invites: Object.entries(I).filter((e) => !e[1].dev).map((e) => ({ id: e[0], label: e[1].label, created: e[1].created, used: e[1].used || null, uid: e[1].uid || null, off: !!e[1].off })).sort((a, b) => b.created - a.created),
-      act: ((await vget(env, 'act')) || []).slice(0, 150), feedback: ((await vget(env, 'fb')) || []).slice(0, 200) });
+      act: ((await vget(env, 'act')) || []).slice(0, 150), feedback: ((await vget(env, 'fb')) || []).slice(0, 200), errors: ((await vget(env, 'cerr')) || []).slice(0, 60) });
   }
   if (p === '/api/admin/seen' && req.method === 'POST') { await vput(env, 'adminSeen', Date.now()); return json({ ok: true }); }
   if (p === '/api/admin/invite' && req.method === 'POST') {

@@ -927,9 +927,16 @@ async function runAlerts(env, ctx) {
   return { sent, subs: ids.length - dead.length };
 }
 
+// Tell the owner when live Webull prices stop and everyone falls back to the backup feed (at most every 6 hours), and when they're back.
+async function feedWatch(env) {
+  const st = await vget(env, 'tokstate').catch(() => null); const ok = !!(st && st.status === 'NORMAL') && Date.now() >= WBFAIL;
+  const fw = (await vget(env, 'feedwatch')) || { down: false, at: 0 };
+  if (!ok && (!fw.down || Date.now() - fw.at > 6 * 3600000)) { await notifyOwner(env, { title: 'Prices are on the backup feed', body: 'Webull live data isn’t connected' + (st && st.status ? ' (' + st.status + ')' : '') + '. Testers see backup prices without halt labels until it’s approved again in the Webull app.', url: '/#admin', tag: 'jt-admin' }); await vput(env, 'feedwatch', { down: true, at: Date.now() }); }
+  else if (ok && fw.down) { await notifyOwner(env, { title: 'Live prices are back', body: 'Webull data is connected again.', url: '/#admin', tag: 'jt-admin' }); await vput(env, 'feedwatch', { down: false, at: Date.now() }); }
+}
 let UPK = 0;
 export default {
-  async scheduled(ev, env, ctx) { CUR_ENV = env; const m = new Date().getUTCMinutes(); ctx.waitUntil(vput(env, 'cronbeat', { t: Date.now(), build: 'b2' }).catch(() => {})); /* proof the every-minute job is running */ { const n = etNow(); const live = !/Sat|Sun/.test(n.wd) && n.hm >= 230 && n.hm < 1210; if (live || m % 10 === 0) ctx.waitUntil(precompute(env, ctx).then((r) => vput(env, 'prerun', { t: Date.now(), r })).catch(() => {})); } if (m % 10 === 0) ctx.waitUntil(wbUpkeep(env).catch(() => {})); { const n2 = etNow(); if (n2.hm === 247) ctx.waitUntil(vault(env).then((v) => v && v.fetch('https://v/sweep')).catch(() => {})); } ctx.waitUntil(runAlerts(env, ctx).then((r) => vput(env, 'alertrun', Object.assign({ t: Date.now() }, r))).catch((e) => vput(env, 'alertrun', { t: Date.now(), error: String(e && e.message || e) }))); },
+  async scheduled(ev, env, ctx) { CUR_ENV = env; const m = new Date().getUTCMinutes(); ctx.waitUntil(vput(env, 'cronbeat', { t: Date.now(), build: 'b2' }).catch(() => {})); /* proof the every-minute job is running */ { const n = etNow(); const live = !/Sat|Sun/.test(n.wd) && n.hm >= 230 && n.hm < 1210; if (live || m % 10 === 0) ctx.waitUntil(precompute(env, ctx).then((r) => vput(env, 'prerun', { t: Date.now(), r })).catch(() => {})); } if (m % 10 === 0) ctx.waitUntil(wbUpkeep(env).catch(() => {})); if (m % 5 === 2) ctx.waitUntil(feedWatch(env).catch(() => {})); { const n2 = etNow(); if (n2.hm === 247) ctx.waitUntil(vault(env).then((v) => v && v.fetch('https://v/sweep')).catch(() => {})); } ctx.waitUntil(runAlerts(env, ctx).then((r) => vput(env, 'alertrun', Object.assign({ t: Date.now() }, r))).catch((e) => vput(env, 'alertrun', { t: Date.now(), error: String(e && e.message || e) }))); },
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     CUR_ENV = env;
@@ -956,6 +963,14 @@ export default {
         if (!b || typeof b.data !== 'object') return json({ error: { code: 'bad_request' } }, 400); const cur = await vget(env, k); if (cur && cur.t > (+b.t || 0)) return json(cur); await vput(env, k, { t: +b.t || Date.now(), data: b.data }); return json({ ok: true, t: +b.t }); }
     }
     if (url.pathname.indexOf('/api/auth/') === 0 || url.pathname.indexOf('/api/admin/') === 0) { const r = await authRoutes(url, req, env, ctx, { vget, vput, json, subId, notifyOwner: (m) => notifyOwner(env, m), lease: (k, ms) => vlease(env, k, ms), release: (k, id) => vrelease(env, k, id) }); if (r) return r; }
+    if (url.pathname === '/api/clienterr' && req.method === 'POST') { // app errors on testers' phones, shown to the owner in Admin
+      const txt = await req.text(); if (txt.length > 4000) return json({ ok: false }, 413); let b = {}; try { b = JSON.parse(txt); } catch (e) {}
+      const who = await sessionFrom(req, env, vget).catch(() => null); const L = (await vget(env, 'cerr')) || [];
+      const msg = String(b.msg || '').slice(0, 300); if (!msg) return json({ ok: true });
+      const k = msg.slice(0, 120); const hit = L.find((x) => x.k === k);
+      if (hit) { hit.n = (hit.n || 1) + 1; hit.t = Date.now(); hit.name = who ? who.u.name : hit.name; } else L.unshift({ k, t: Date.now(), n: 1, msg, src: String(b.src || '').slice(0, 160), page: String(b.page || '').slice(0, 40), name: who ? who.u.name : '', ua: String(req.headers.get('user-agent') || '').slice(0, 140) });
+      L.sort((x, y) => y.t - x.t); await vput(env, 'cerr', L.slice(0, 60)); return json({ ok: true });
+    }
     if (url.pathname === '/api/feedback') { // beta feedback: testers POST, owner reads with the diagnostics key
       if (req.method === 'POST') { let b; try { b = JSON.parse((await req.text()).slice(0, 6000)); } catch (e) { return json({ error: { code: 'bad_request' } }, 400); }
         const text = String(b.text || '').trim().slice(0, 2000); if (text.length < 3) return json({ error: { code: 'empty' } }, 400);
