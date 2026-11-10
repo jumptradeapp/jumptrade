@@ -34,8 +34,11 @@ export async function authRoutes(url, req, env, ctx, H) {
   if (p === '/api/auth/state') return json({ locked: !!(await gate()).locked });
 
   if (p === '/api/auth/redeem' && req.method === 'POST') {
-    const b = await body(); const code = String(b.code || '').trim(); const name = String(b.name || '').trim().slice(0, 30);
-    if (!/^[A-Za-z0-9]{12,60}$/.test(code)) return json({ error: 'bad_code' }, 400);
+    const b = await body(); let code = String(b.code || '').trim(); const name = String(b.name || '').trim().slice(0, 30);
+    const m0 = /invite=([A-Za-z0-9-]+)/.exec(code); if (m0) code = m0[1];
+    const short = code.replace(/[\s-]/g, ''); if (/^[A-Za-z0-9]{8}$/.test(short)) code = short.toUpperCase(); // 8-character device code, typed by hand
+    if (!/^[A-Za-z0-9]{8,60}$/.test(code)) return json({ error: 'invalid' }, 400);
+    const rl = 'rdm_' + new Date().toISOString().slice(0, 13) + '_' + String(req.headers.get('cf-connecting-ip') || '?').replace(/[^0-9a-f.:]/gi, ''); const tries = +((await vget(env, rl)) || 0); if (tries >= 30) return json({ error: 'slow' }, 429); await vput(env, rl, tries + 1);
     const ua = req.headers.get('user-agent') || ''; const U = await users(); const now = Date.now();
     const h = await sha(code);
     if (h === OWNER_HASH) { // owner bootstrap: works once
@@ -73,9 +76,11 @@ export async function authRoutes(url, req, env, ctx, H) {
 
   if (p === '/api/auth/devlink' && req.method === 'POST') {
     const w = await who(); if (!w) return json({ error: 'auth' }, 401);
-    const code = rnd(18).replace(/[^A-Za-z0-9]/g, 'z'); const I = (await vget(env, 'invites')) || {};
-    I[(await sha(code)).slice(0, 16)] = { label: w.u.name + ' · new device', created: Date.now(), dev: w.u.uid, exp: Date.now() + 2 * 864e5 }; await vput(env, 'invites', I);
-    return json({ code, link: 'https://jumptrade.app/#invite=' + code });
+    const AL = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', rb = crypto.getRandomValues(new Uint8Array(8)); const code = [...rb].map((b) => AL[b % AL.length]).join('');
+    const I = (await vget(env, 'invites')) || {}; const now = Date.now();
+    Object.keys(I).forEach((k) => { if (I[k].exp && I[k].exp < now) delete I[k]; });
+    I[(await sha(code)).slice(0, 16)] = { label: w.u.name + ' · new device', created: now, dev: w.u.uid, exp: now + 2 * 864e5 }; await vput(env, 'invites', I);
+    return json({ code: code.slice(0, 4) + '-' + code.slice(4), link: 'https://jumptrade.app/#invite=' + code });
   }
   if (p === '/api/auth/logout' && req.method === 'POST') { const w = await who(); if (w) await vput(env, 'sess_' + w.tokHash, null); return json({ ok: true }); }
 

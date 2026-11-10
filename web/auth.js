@@ -24,7 +24,22 @@
   }
   function ungate() { const g = D.getElementById('jtGate'); if (g) g.remove(); D.documentElement.classList.remove('jt-gated'); }
   function lockScreen() {
-    gate('<h2>Private beta</h2><p>jumptrade is invite-only right now. If you were sent an invite link, open it on this device to get in.</p>');
+    const g = gate('<h2>Private beta</h2><p>jumptrade is invite-only right now. Open your invite link to get in, or enter a sign-in code.</p>' +
+      '<input id="gCode" type="text" maxlength="80" autocapitalize="characters" autocomplete="one-time-code" spellcheck="false" placeholder="Sign-in code (like K7F2-9QXA)"><button id="gGo">Sign in</button><p id="gMsg" class="gMsg"></p>' +
+      '<p class="gHelp">Already signed in on Safari? There, open the menu → <b>Your other devices</b> to get a code for this app.</p>');
+    const go = g.querySelector('#gGo'), msg = g.querySelector('#gMsg'), ci = g.querySelector('#gCode');
+    const submit = () => { const v = ci.value.trim(); if (!v) { msg.textContent = 'Enter your code or paste your invite link.'; return; }
+      go.disabled = true; go.textContent = 'Checking…'; msg.textContent = '';
+      fetch('/api/auth/redeem', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: v }) }).then((r) => r.json())
+        .then((j) => { if (j.tok) return finish(j); if (j.error === 'need_name') { const m = /invite=([A-Za-z0-9]+)/.exec(v); inviteScreen(m ? m[1] : v); return; } throw j; })
+        .catch((e) => { go.disabled = false; go.textContent = 'Sign in'; msg.textContent = (e && e.error === 'slow') ? 'Too many tries. Wait a bit and try again.' : ERR[e && e.error] || 'That code didn’t work. Check it and try again.'; }); };
+    go.onclick = submit; ci.onkeydown = (e) => { if (e.key === 'Enter') submit(); };
+  }
+  function finish(j) {
+    set(TK, j.tok); if (j.user.name && j.user.name !== 'Owner') set('jt.name', j.user.name.split(/\s+/)[0]);
+    if (j.user.sync) set('jt.dsync', j.user.sync); set('jt.dsyncT', '0');
+    try { history.replaceState(null, '', '#home'); } catch (e) {}
+    location.reload();
   }
   const ERR = { used: 'This invite was already used. Each link works for one person. Ask for a new one.', invalid: 'This invite link isn’t valid. Check that you opened the whole link.', expired: 'This link has expired. Ask for a new one.', need_name: 'Type your first name to continue.' };
   function inviteScreen(code) {
@@ -36,11 +51,7 @@
       fetch('/api/auth/redeem', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code, name: nm.value.trim() }) }).then((r) => r.json())
         .then((j) => {
           if (!j.tok) throw j;
-          set(TK, j.tok); if (j.user.name && j.user.name !== 'Owner') set('jt.name', j.user.name.split(/\s+/)[0]);
-          if (j.user.sync) set('jt.dsync', j.user.sync); // watchlist + settings follow the account (device sync)
-          set('jt.dsyncT', '0');
-          try { history.replaceState(null, '', '#home'); } catch (e) {}
-          location.reload();
+          finish(j); // watchlist + settings follow the account (device sync)
         })
         .catch((e) => { go.disabled = false; go.textContent = 'Join the beta'; msg.textContent = ERR[e && e.error] || 'Couldn’t join right now. Check your connection and try again.'; });
     };
@@ -141,5 +152,16 @@
   }
   A.openAdmin = openAdmin; A.newCount = badgeN;
   A.devLink = () => api('/api/auth/devlink', {});
+  // "Your other devices": a short code to type into the Home Screen app or another phone/iPad, plus a link to send
+  A.deviceSheet = function () {
+    let w = D.getElementById('jtDev'); if (w) w.remove(); w = D.createElement('div'); w.id = 'jtDev';
+    w.innerHTML = '<div class="fbBg" data-dx></div><div class="fbSheet"><div class="fbHead"><div><h3>Sign in on another device<em>.</em></h3><p>Your watchlist, alerts and settings come with you.</p></div><button class="fbX" data-dx aria-label="Close">✕</button></div><div class="dvCode">…</div>' +
+      '<ol class="dvSteps"><li>On the other device, or in the jumptrade Home Screen app, open <b>jumptrade.app</b>.</li><li>Type this code on the sign-in screen and tap <b>Sign in</b>.</li></ol><button class="fbGo" data-dshare disabled>Send as a link instead</button><p class="fbMsg">Works once, for the next 2 days.</p></div>';
+    D.body.appendChild(w); requestAnimationFrame(() => w.classList.add('on'));
+    let link = '';
+    w.addEventListener('click', (e) => { if (e.target.closest('[data-dx]')) { w.classList.remove('on'); setTimeout(() => w.remove(), 220); return; }
+      if (e.target.closest('[data-dshare]') && link) { const msg = 'Open this to sign in to jumptrade (works once, for 2 days): ' + link; if (navigator.share) navigator.share({ title: 'jumptrade sign-in', text: msg }).catch(() => {}); else navigator.clipboard.writeText(link).then(() => { e.target.textContent = 'Link copied'; }); } });
+    A.devLink().then((r) => { link = r.link; w.querySelector('.dvCode').textContent = r.code; w.querySelector('[data-dshare]').disabled = false; }).catch(() => { w.querySelector('.dvCode').textContent = 'Try again'; });
+  };
   A.signOut = () => api('/api/auth/logout', {}).finally(() => { set(TK, null); set('jt.dsync', null); location.reload(); });
 })();
