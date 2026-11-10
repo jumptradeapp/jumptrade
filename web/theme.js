@@ -32,7 +32,7 @@
   var wrap = D.createElement('div'); wrap.id = 'thm'; wrap.setAttribute('role', 'dialog'); wrap.setAttribute('aria-label', 'Appearance');
   function paint() {
     var p = window.JT_PREF || 'dark';
-    wrap.innerHTML = '<div class="tbg" data-thclose="1"></div><div class="tp2"><h3>Appearance<em>.</em></h3><div class="tsub">Pick how jumptrade looks. Dark is the default.</div>' +
+    wrap.innerHTML = '<div class="tbg" data-thclose="1"></div><div class="tp2"><h3>Appearance<em class="sq">.</em></h3><div class="tsub">Pick how jumptrade looks. Dark is the default.</div>' +
       OPTS.map(function (o) {
         return '<button class="topt' + (p === o[0] ? ' on' : '') + '" data-th="' + o[0] + '"><span class="sw" style="background:' + o[3] + '"></span><span>' + o[1] + '<small>' + o[2] + '</small></span><span class="ck">' + (p === o[0] ? '✓' : '') + '</span></button>';
       }).join('') + '</div>';

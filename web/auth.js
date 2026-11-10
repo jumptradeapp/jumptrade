@@ -22,7 +22,7 @@
   // ---------- full-screen gate (lock screen or invite screen) ----------
   function gate(html) {
     let g = D.getElementById('jtGate'); if (!g) { g = D.createElement('div'); g.id = 'jtGate'; D.body.appendChild(g); }
-    g.innerHTML = '<div class="gBox"><div class="gMark">' + MARK() + '</div><div class="gWm"><b>jump</b>trade<em>.</em></div>' + html +
+    g.innerHTML = '<div class="gBox"><div class="gMark">' + MARK() + '</div><div class="gWm"><b>jump</b>trade<em class="sq">.</em></div>' + html +
       '<div class="gBeta"><b>BETA TESTING · NOT FOR PUBLIC USE</b><span>Do not share with unauthorized users.</span></div></div>';
     D.documentElement.classList.add('jt-gated'); return g;
   }
@@ -136,7 +136,7 @@
       (d.invites.length ? '<div class="adList">' + d.invites.map((i) => '<div class="adRow"><i class="adI ' + (i.used ? 'join' : i.off ? 'off' : 'wait') + '"></i><span><b>' + esc2(i.label || 'Invite') + '</b> ' + (i.used ? 'joined ' + ago(i.used) : i.off ? 'cancelled' : 'not used yet') + '</span>' + (!i.used && !i.off ? '<button class="adX" data-adioff="' + i.id + '">Cancel</button>' : '<small>' + when(i.created) + '</small>') + '</div>').join('') + '</div>' : '') +
       '<div class="adSet"><div class="adSetR"><span><b>Lock the site</b><small>' + (d.locked ? 'On: only people with an invite can use jumptrade.' : 'Off: anyone with the address can use it.') + '</small></span><button class="adTog' + (d.locked ? ' on' : '') + '" data-adlock aria-label="Lock"></button></div>' +
       '<div class="adSetR"><span><b>Alerts on this device</b><small>Get a notification when someone joins or sends feedback.' + (window.Notification && Notification.permission === 'granted' ? ' On.' : ' Turn on notifications first (bell at the top), then tap Connect.') + '</small></span><button class="adBtn ghost sm" data-adpush>Connect</button></div></div>';
-    w.innerHTML = '<div class="adTop"><div><h2>Admin<em>.</em></h2><small>Only you can see this</small></div><button class="fsX" data-adx aria-label="Close">✕</button></div>' +
+    w.innerHTML = '<div class="adTop"><div><h2>Admin<em class="sq">.</em></h2><small>Only you can see this</small></div><button class="fsX" data-adx aria-label="Close">✕</button></div>' +
       '<div class="adTabs">' + tabs.map((t) => '<button class="' + (AD.tab === t[0] ? 'on' : '') + '" data-adt="' + t[0] + '">' + t[1] + (t[2] ? ' <i class="' + ((t[0] === 'activity' && cnt.activity) || (t[0] === 'feedback' && newFb) ? 'nw' : '') + '">' + t[2] + '</i>' : '') + '</button>').join('') + '</div><div class="adBody">' + body + '</div>';
   }
   function onClick(e) {
@@ -159,7 +159,7 @@
   // "Your other devices": a short code to type into the Home Screen app or another phone/iPad, plus a link to send
   A.deviceSheet = function () {
     let w = D.getElementById('jtDev'); if (w) w.remove(); w = D.createElement('div'); w.id = 'jtDev';
-    w.innerHTML = '<div class="fbBg" data-dx></div><div class="fbSheet"><div class="fbHead"><div><h3>Sign in on another device<em>.</em></h3><p>Your watchlist, alerts and settings come with you.</p></div><button class="fbX" data-dx aria-label="Close">✕</button></div><div class="dvCode">…</div>' +
+    w.innerHTML = '<div class="fbBg" data-dx></div><div class="fbSheet"><div class="fbHead"><div><h3>Sign in on another device<em class="sq">.</em></h3><p>Your watchlist, alerts and settings come with you.</p></div><button class="fbX" data-dx aria-label="Close">✕</button></div><div class="dvCode">…</div>' +
       '<ol class="dvSteps"><li>On the other device, or in the jumptrade Home Screen app, open <b>jumptrade.app</b>.</li><li>Type this code on the sign-in screen and tap <b>Sign in</b>.</li></ol><button class="fbGo" data-dshare disabled>Send as a link instead</button><p class="fbMsg">Works once, for the next 2 days.</p></div>';
     D.body.appendChild(w); requestAnimationFrame(() => w.classList.add('on'));
     let link = '';

@@ -12,7 +12,7 @@
     if (k) kind = k; if (D.getElementById('fbS')) return;
     const w = D.createElement('div'); w.id = 'fbS';
     let nm = ''; try { nm = localStorage.getItem('jt.name') || ''; } catch (e) {}
-    w.innerHTML = '<div class="fbBg" data-fbx></div><div class="fbSheet"><div class="fbHead"><div><h3>Send feedback<em>.</em></h3><p>Thanks for beta testing. Every note is read.</p></div><button class="fbX" data-fbx aria-label="Close">✕</button></div>' +
+    w.innerHTML = '<div class="fbBg" data-fbx></div><div class="fbSheet"><div class="fbHead"><div><h3>Send feedback<em class="sq">.</em></h3><p>Thanks for beta testing. Every note is read.</p></div><button class="fbX" data-fbx aria-label="Close">✕</button></div>' +
       '<div class="fbK"></div><textarea rows="6" maxlength="2000"></textarea><input class="fbN" type="text" maxlength="40" placeholder="Your name (optional)" value="' + nm.replace(/"/g, '') + '">' +
       '<button class="fbGo">Send</button><p class="fbMsg"></p></div>';
     w.addEventListener('click', (e) => {

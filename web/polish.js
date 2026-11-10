@@ -38,7 +38,7 @@
   function paint() {
     const c = CARDS[k];
     w.innerHTML = '<div class="inbx"><button class="inX" data-in="skip" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' + (c[2] === 'B' ? '<div class="inbeta">BETA TESTER</div>' : '') + (k === 0 ? '<div class="inlogo">' + (window.jmMark ? jmMark(76) : '') + '</div>' : '<div class="inico">' + ICON[c[2]] + '</div>') +
-      '<h2>' + c[0].replace(/\.$/, '<em>.</em>') + '</h2><p>' + c[1] + '</p>' +
+      '<h2>' + c[0].replace(/\.$/, '<em class="sq">.</em>') + '</h2><p>' + c[1] + '</p>' +
       '<div class="indots">' + CARDS.map((_, i) => '<i class="' + (i === k ? 'on' : '') + '"></i>').join('') + '</div>' +
       '<button class="inbtn" data-in="next">' + (k < CARDS.length - 1 ? 'Next' : 'Get started') + '</button>' + '<div class="inrow">' + (k < CARDS.length - 1 ? '<button class="inskip" data-in="skip">Skip</button>' : '') + '<button class="inskip innever" data-in="never">Don’t show this again</button></div><div class="beta"><b>BETA TESTING · NOT FOR PUBLIC USE</b><span>Do not share with unauthorized users.</span></div></div>';
   }

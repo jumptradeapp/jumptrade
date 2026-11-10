@@ -1139,7 +1139,7 @@ function crRefresh() { $('crRows').innerHTML = crRows(); $('crTot').innerHTML = 
 function crMode() { return '<button class="' + (S.cr.eq ? 'on' : '') + '" data-creq="1">Equal</button><button class="' + (!S.cr.eq ? 'on' : '') + '" data-creq="0">Custom</button>'; }
 function renderCreator() {
   const c = S.cr;
-  let h = '<div class="title shTitle"><h1><span>' + (c.id ? 'EDIT' : 'NEW') + '</span><br><b>PORTFOLIO<em class="dot">.</em></b></h1><div class="sub">Prices live,<br>tracks from today</div></div>';
+  let h = '<div class="title shTitle"><h1><span>' + (c.id ? 'EDIT' : 'NEW') + '</span><br><b>PORTFOLIO<em class="dot sq">.</em></b></h1><div class="sub">Prices live,<br>tracks from today</div></div>';
   h += '<div class="glass"><label class="cap" for="crName">NAME</label><input id="crName" class="cin" maxlength="40" placeholder="e.g. AI Power Book" value="' + esc(c.name) + '"></div>';
   h += '<div class="glass"><label class="cap" for="crQ">ADD STOCKS</label><input id="crQ" class="cin" placeholder="Ticker or company name" autocomplete="off" autocorrect="off" spellcheck="false"><div id="crHits"></div></div>';
   h += '<div class="glass"><div class="ih"><span class="cap" id="crCount">HOLDINGS · ' + c.h.length + '</span><span class="segmini" id="crMode">' + crMode() + '</span></div><div id="crRows">' + crRows() + '</div><div id="crTot">' + crTot() + '</div></div>';
