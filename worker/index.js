@@ -539,6 +539,7 @@ async function vlease(env, k, ms) { const v = await vault(env); if (!v) return {
 async function vrelease(env, k, id) { const v = await vault(env); if (v && id) await v.fetch('https://v/lease?k=' + k + '&release=1&id=' + id); }
 async function vput(env, k, val) { const v = await vault(env); if (!v) return; await v.fetch('https://v/put?k=' + k, { method: 'POST', body: JSON.stringify(val) }); }
 let WBCFG = null;
+let GATE_C = null; const SESS_C = new Map();
 async function wbToken(env, wb) {
   if (!WBCFG || Date.now() - WBCFG.t > 3600000) { const r = await wb.raw('GET', '/openapi/config'); WBCFG = { t: Date.now(), status: r.status, need: !!(r.data && r.data.token_check_enabled), data: r.data }; }
   if (!WBCFG.need) return null;
@@ -908,8 +909,16 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'POST, GET' } });
     // Private beta: while the site is locked, every data endpoint needs a signed-in account (cookie or bearer token).
     if (url.pathname.startsWith('/api/') && !/^\/api\/(auth\/|admin\/|health$|logo\/|alertstate$|wbstate$|wb\/)/.test(url.pathname) && !(url.pathname === '/api/feedback' && req.method === 'GET')) {
-      const g = (await vget(env, 'gate')) || { locked: true };
-      if (g.locked && !(await sessionFrom(req, env, vget))) return json({ error: { code: 'signin_required', message: 'jumptrade is invite-only. Sign in to continue.' } }, 401, { 'cache-control': 'no-store' });
+      // remembered per server for a minute so the 1-second price polling doesn't add storage lookups to every request
+      if (!GATE_C || Date.now() - GATE_C.t > 60000) GATE_C = { t: Date.now(), g: (await vget(env, 'gate')) || { locked: true } };
+      if (GATE_C.g.locked) {
+        const ck = (req.headers.get('authorization') || '') + '|' + ((/(?:^|;\s*)jt_s=([A-Za-z0-9]+)/.exec(req.headers.get('cookie') || '') || [])[1] || '');
+        const hit = SESS_C.get(ck);
+        if (!(hit && Date.now() - hit < 60000)) {
+          if (!(await sessionFrom(req, env, vget))) return json({ error: { code: 'signin_required', message: 'jumptrade is invite-only. Sign in to continue.' } }, 401, { 'cache-control': 'no-store' });
+          if (SESS_C.size > 500) SESS_C.clear(); SESS_C.set(ck, Date.now());
+        }
+      }
     }
     if (url.pathname === '/api/sync') { // device sync: a long random code is the only key; whoever has the link shares one saved copy
       const c = url.searchParams.get('c') || ''; if (!/^[A-Za-z0-9]{24,64}$/.test(c)) return json({ error: { code: 'bad_request' } }, 400);
