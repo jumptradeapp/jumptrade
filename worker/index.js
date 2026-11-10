@@ -573,7 +573,6 @@ export class Vault {
   }
 }
 
-const shape = (k) => { k = String(k || ''); return k.length + ' chars' + (/-/.test(k) ? ', has dashes' : ''); };
 async function wbRoutes(url, env) {
   const wb = new Webull(env);
   if (url.pathname.indexOf('/api/wb/') === 0) { // owner-only diagnostics: locked behind a key whose hash is all that lives in code
