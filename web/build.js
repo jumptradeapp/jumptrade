@@ -76,7 +76,7 @@
     '<div class="bldSug">' + ['AI photonics', 'Nuclear', 'Space', 'Quantum', 'Defense & drones', 'Crypto'].map((s) => '<button data-bldq="' + esc(s) + '">' + esc(s) + '</button>').join('') + '</div>';
   const amtRow = () => '<div class="bldAmt"><span>Invest</span>' + AMTS.map((a) => '<button class="' + (a === B.amt ? 'on' : '') + '" data-bldamt="' + a + '">' + amtL(a) + '</button>').join('') + '</div>';
 
-  const themeCards = () => '<div class="bldGrid">' + B.data.themes.map((t) => '<button class="bldCard" data-bldth="' + t.id + '"><span class="bldLg">' + t.names.slice(0, 3).map((n) => logoHTML(n[0], 26)).join('') + '</span><b>' + esc(t.name) + '</b><small>' + t.names.length + ' stocks · ' + t.etf.join(', ') + '</small></button>').join('') + '</div>';
+  const themeCards = () => '<div class="bldGrid">' + B.data.themes.map((t) => '<button class="bldCard thc" data-bldth="' + t.id + '" style="--tc:' + (window.THEMEART ? THEMEART.color(t.id) : '#7C9CFF') + '">' + (window.THEMEART ? THEMEART.svg(t.id) : '') + '<span class="bldLg">' + t.names.slice(0, 3).map((n) => logoHTML(n[0], 26)).join('') + '</span><b>' + esc(t.name) + '</b><small>' + t.names.length + ' stocks · ' + t.etf.join(', ') + '</small></button>').join('') + '</div>';
 
   const simpleRet = (st) => { const w = simpleW(st); if (!w) return null; let r = 0, ok = 1; w.forEach((x) => { const v = r1y(B.q[x[0]]); if (v == null) ok = 0; else r += v * x[1] / 100; }); return ok ? r : null; };
   const simpleW = (st) => {
