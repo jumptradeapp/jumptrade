@@ -231,7 +231,7 @@ function renderMovers() {
   if (!rows.length && S.transient && mcp && !Object.keys(S.stamp || {}).some((k) => k.indexOf('m:') === 0)) { box.innerHTML = '<div class="empty"><b>Market data isn’t coming through</b><span>jumptrade can’t reach the data server right now (' + esc(S.transient) + '). It keeps retrying on its own. If this lasts, try again in a few minutes.</span><button class="pbtn" id="retryData" style="margin-top:12px">Retry now</button></div>'; return; }
   if (!rows.length) { box.innerHTML = '<div class="empty"><b>' + (mcp ? (S.ready ? 'No movers in this filter yet' : 'Loading live movers…') : 'Can’t reach live data') + '</b><span>' + (mcp ? (S.ready ? (S.cap === 'mid' ? 'Only names in the top 200 movers plus the 100 largest stocks are scanned for mid caps.' : 'Try another cap size or session.') : 'Pulling today’s movers.') : 'Couldn’t reach the server. Pull down to retry.') + '</span></div>'; box.style.height = 'auto'; return; }
   const W = box.clientWidth || 358, gap = 12, colW = (W - gap) / 2;
-  const scEl = $('scroller'), szKey = scEl.clientHeight + 'x' + W;
+  const scEl = $('scroller'), szKey = W + 'x' + (window.innerHeight > window.innerWidth ? 'p' : 'l'); // width/orientation only: header height changes every second made tiles jump between sizes
   if (S.tileKey !== szKey && !touching && !document.getElementById('vMovers').classList.contains('tcol') && $('ptr1').offsetHeight === 0 && scEl.clientHeight > 0) { S.tileKey = szKey; const nv = document.querySelector('nav.main, .nav, nav'); const bt = box.getBoundingClientRect().top + scEl.scrollTop - scEl.getBoundingClientRect().top; const vb = nv && nv.getBoundingClientRect().height ? Math.min(scEl.clientHeight, nv.getBoundingClientRect().top - scEl.getBoundingClientRect().top) : scEl.clientHeight; const avail = vb - bt - 10; S.tileH = Math.max(118, Math.min(146, Math.floor((avail - 2 * 12) / 3))); }
   const tileH = S.tileH || 140;
   const rowH = 74;
@@ -1570,4 +1570,4 @@ document.addEventListener('DOMContentLoaded', () => {
 })();
 
 document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-wladd]'); if (!b || !mcp) return; e.preventDefault(); b.disabled = true; b.classList.add('on');
-  mcp.callTool(SERVER, 'add_watchlist_instruments', { watchlist_id: (S.wlists && S.wlists[0] && S.wlists[0].watchlist_id) || 'mine', symbols: [b.dataset.wladd], category: 'US_STOCK' }).then(() => { setTimeout(() => { if (typeof loadWatch === 'function') loadWatch(); }, 600); }).catch(() => { b.disabled = false; }); });
+  mcp.callTool(SERVER, 'add_watchlist_instruments', { watchlist_id: (S.wlists && S.wlists[0] && S.wlists[0].watchlist_id) || 'mine', symbols: [b.dataset.wladd], category: 'US_STOCK' }).then(() => { setTimeout(() => { if (typeof loadWatch === 'function') loadWatch(); if (window.HOME && HOME.load) HOME.load(); render(); }, 400); }).catch(() => { b.disabled = false; }); });
