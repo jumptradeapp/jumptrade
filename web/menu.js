@@ -12,7 +12,10 @@
     const b = document.createElement('button'); b.className = 'menuBtn'; b.setAttribute('aria-label', 'All pages'); b.innerHTML = IC;
     const s = bar.querySelector('.searchBtn'); s ? bar.insertBefore(b, s) : bar.appendChild(b);
   });
-  add(); setInterval(add, 1500);
+  // The menu lives in the bottom bar: the last button (was Portfolios, which is now in the menu) becomes "More".
+  const nb = document.getElementById('navPort');
+  if (nb) { nb.id = 'navMore'; nb.setAttribute('aria-label', 'All pages'); nb.innerHTML = '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg><span>More</span>';
+    nb.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); open(); }); }
   let el = null;
   function open() {
     if (el) return; el = document.createElement('div'); el.id = 'pgMenu';
