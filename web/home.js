@@ -96,8 +96,8 @@
     W[cur] = (W[cur] || '') + card('THIS WEEK', '#F2C27A', '<div class="hmwk">' + days.map((dd) => {
       const big = ev.filter((x) => x.publish_date === dd).slice(0, 2).map((x) => '<p class="hot">' + esc(x.event_name.replace(/\s*\(.*?\)/g, '').slice(0, 22)) + '</p>').join('');
       let ern = ready(C) ? ((C.earnings || {}).upcoming || []).filter((e) => e.date === dd) : [];
-      const own = ern.filter((e) => watched[e.ticker]); ern = (own.length ? own : ern).slice(0, 3).map((e) => e.ticker);
-      return '<div><b>' + new Date(dd + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase() + '</b>' + big + (ern.length ? '<p>' + ern.join(', ') + ' earnings</p>' : '') + (!big && !ern.length ? '<p class="dim">Quiet</p>' : '') + '</div>';
+      const own = ern.filter((e) => watched[e.ticker]); ern = (own.length ? own.concat(ern.filter((e) => !watched[e.ticker])) : ern).slice(0, 6).map((e) => e.ticker);
+      return '<div><b>' + new Date(dd + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase() + '</b>' + big + (ern.length ? '<small class="wkl">EARNINGS</small><span class="wklg">' + ern.map((t) => '<i data-open="' + esc(t) + '" title="' + esc(t) + '">' + logoHTML(t, 26) + '</i>').join('') + '</span>' : '') + (!big && !ern.length ? '<p class="dim">Quiet</p>' : '') + '</div>';
     }).join('') + '</div>', '<button class="hmr" data-tab="catalysts">Calendar ›</button>');
     // 7. track record
     cur = 'record';
