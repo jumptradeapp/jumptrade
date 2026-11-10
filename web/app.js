@@ -446,6 +446,9 @@ function renderDetail() {
   if (main) {
     h += '<div class="dPrice">$' + px(main.price) + '</div><div class="dChg" style="color:' + (up ? P.up : P.dn) + '">' + chgS(main.chg, main.pct, main.price) + ' <span>' + (v === 'regular' && S.auto === 'regular' ? 'today' : 'at the close') + '</span></div>';
     if (ext && ext.price) h += '<div class="dExt">' + sessIcon(v, 15) + SESS[v].label + ' <b>$' + px(ext.price) + '</b> <span style="color:' + (ext.pct >= 0 ? P.up : P.dn) + '">' + mvS(ext.pct, ext.price, ext.chg) + '</span></div>';
+    // quote time strip: which session, what the change is measured against, and when the quote was taken
+    { const st = S.stamp && (S.stamp['d:snap'] || S.stamp['d:snap:' + sym]); const age = st ? Date.now() - st : null; const tm = new Date(st || Date.now()).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', timeZone: 'America/New_York' });
+      h += '<div class="dQt">' + (SESS[S.auto] ? SESS[S.auto].label : 'Market closed') + ' · vs yesterday’s close · ' + (st ? tm + ' ET' : 'loading…') + (age > 90000 ? ' <b style="color:#F2C27A">· delayed</b>' : '') + '</div>'; }
   }
   if (window.ENR) h += ENR.stats(sym, main);
   if (window.VERD) h += VERD.card(sym, main);
@@ -842,7 +845,7 @@ function renderCatalysts() {
   if (!ready(C)) { box.innerHTML = '<div class="empty"><b>Loading catalysts…</b></div>'; return; }
   const today = et().ymd;
   const items = [];
-  (C.earnings.upcoming || []).forEach((e) => items.push({ date: e.date, kind: 'earnings', ticker: e.ticker, title: e.company + ' earnings', detail: (e.timing ? e.timing + ' · ' : '') + (e.eps_est != null ? 'EPS est $' + e.eps_est : '') + (e.rev_est_usd ? ' · Rev est ' + money(e.rev_est_usd) : ''), impact: 'medium', url: e.source_url }));
+  (C.earnings.upcoming || []).forEach((e) => items.push({ date: e.date, kind: 'earnings', ticker: e.ticker, title: e.company + ' earnings', detail: (e.timing === 'BMO' ? 'Before open · ' : e.timing === 'AMC' ? 'After close · ' : e.timing ? e.timing + ' · ' : '') + (e.eps_est != null ? 'Expected profit/share $' + e.eps_est : '') + (e.rev_est_usd ? ' · Expected sales ' + money(e.rev_est_usd) : ''), impact: 'medium', url: e.source_url }));
   (C.catalysts || []).forEach((c) => { if (c.status === 'done') return; const t = (c.type || '').toLowerCase(); items.push({ date: c.date, kind: /fda|pdufa|adcom/.test(t) ? 'fda' : /macro|econ|fed|cpi|jobs/.test(t) ? 'macro' : /ipo/.test(t) ? 'ipo' : /earn/.test(t) ? 'earnings' : 'other', ticker: c.ticker, title: c.title, detail: c.detail, impact: c.impact, url: c.source_url, company: c.company }); });
   const list = items.filter((x) => x.date >= today && (S.catF === 'all' || x.kind === S.catF)).sort((a, b) => a.date.localeCompare(b.date) || ((a.impact === 'high') ? -1 : 1));
   const K = { earnings: ['Earnings', '#8CB8E0'], fda: ['FDA', '#5EE0A0'], macro: ['Economy', '#F2C27A'], ipo: ['IPO', '#C3A8FF'], other: ['Event', '#C9D2E0'] };
@@ -1458,8 +1461,8 @@ function valCard(sym) {
   const tile = (lab, val, col) => '<div' + (col ? ' style="--c:' + col + '"' : '') + ' class="' + (col && col !== P.txt ? 'vt' : '') + '"><span>' + lab + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + val + '</b></div>';
   h += fvChart(v, d, P);
   if (v.hotRank) h += '<div class="pt"><span class="tag">#' + v.hotRank + ' most discussed</span></div>';
-  h += '<div class="tg4">' + tile('Fwd P/E', v.fwdPE ? v.fwdPE.toFixed(1) : '—', v.fwdPE ? c(v.fwdPE, 15, 40) : '') + tile('P/E (TTM)', v.peTTM ? v.peTTM.toFixed(1) : '—', v.peTTM ? c(v.peTTM, 15, 40) : '') +
-    tile('P/S', v.ps ? v.ps.toFixed(1) : '—', v.ps ? c(v.ps, 2, 12) : '') + tile('PEG', v.peg != null ? v.peg.toFixed(2) : '—', v.peg != null ? c(v.peg, 1, 2) : '') + '</div>';
+  h += '<div class="tg4">' + tile('P/E next yr', v.fwdPE ? v.fwdPE.toFixed(1) : '—', v.fwdPE ? c(v.fwdPE, 15, 40) : '') + tile('P/E last yr', v.peTTM ? v.peTTM.toFixed(1) : '—', v.peTTM ? c(v.peTTM, 15, 40) : '') +
+    tile('Price / sales', v.ps ? v.ps.toFixed(1) : '—', v.ps ? c(v.ps, 2, 12) : '') + tile('P/E ÷ growth', v.peg != null ? v.peg.toFixed(2) : '—', v.peg != null ? c(v.peg, 1, 2) : '') + '</div>';
   h += '<div class="tg4">' + tile('EPS growth', v.growth != null ? (v.growth >= 0 ? '+' : '') + Math.round(v.growth * 100) + '%' : '—', v.growth == null ? '' : v.growth >= 0 ? P.up : P.dn) +
     tile('Fwd EPS', v.fwdEps ? '$' + v.fwdEps.toFixed(2) : '—', '') + tile('Avg target', v.tMean ? '$' + px(v.tMean) : '—', v.tMean ? P.acc : '') +
     tile('Upside', v.upside != null ? pctS(v.upside * 100) : '—', v.upside == null ? '' : v.upside >= 0 ? P.up : P.dn) + '</div>';

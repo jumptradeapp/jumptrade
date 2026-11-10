@@ -66,13 +66,13 @@
       '<div class="alStatus ' + (on ? 'on' : '') + '"><b>' + (on ? 'Alerts are on' : 'Alerts are off') + '</b><small>' + (on ? 'Watching ' + syms().length + ' stocks on your watchlist' : (isIOS && !standalone() ? 'Add jumptrade to your home screen first' : 'Turn on to get notified')) + '</small>' +
       (on ? '<button class="alBtn ghost" data-al="off">Turn off</button>' : '<button class="alBtn" data-al="on">Turn on</button>') + '</div>' +
       (msg ? '<p class="alMsg">' + msg + '</p>' : '') +
-      '<div class="pmCap">What to get</div><div class="alList">' + T.slice(0, 7).map(row).join('') + '</div>' +
+      (on ? '' : '<p class="alMsg" style="color:#9AA6B6">Saved for when alerts are on. Nothing is sent until you turn them on.</p>') + '<div class="pmCap">What to get</div><div class="alList' + (on ? '' : ' alMuted') + '">' + T.slice(0, 7).map(row).join('') + '</div>' +
       '<div class="pmCap">When &amp; how often</div><div class="alList">' + T.slice(7).map(row).join('') + '<div class="alRow"><span><b>Daily limit</b><small>Most alerts per day</small></span>' + chips('cap', [6, 12, 25], (v) => String(v)) + '</div></div>' +
       '<div class="pmCap">Price alerts</div><div class="alList">' + (P.prices.length ? P.prices.map((p, i) => '<div class="alRow"><span><b>' + esc(p.sym) + ' ' + (p.dir === 'below' ? 'below' : 'above') + ' $' + (+p.price).toFixed(2) + '</b><small>One alert when it’s hit</small></span><button class="alX" data-alrm="' + i + '" aria-label="Remove">✕</button></div>').join('') : '<p class="desc dim" style="margin:10px 2px">Open any stock and tap <b>🔔 Alert</b> to add one.</p>') + '</div>' +
       (on ? '<button class="alBtn ghost wide" data-al="test">Send a test alert</button>' : '');
   }
   function open() {
-    if (el) return; el = document.createElement('div'); el.id = 'alMenu';
+    if (el) return; const he = document.getElementById('hmEdit'); if (he) he.classList.remove('on'); // one sheet at a time el = document.createElement('div'); el.id = 'alMenu';
     el.innerHTML = '<div class="pmSheet" role="dialog" aria-label="Alerts"><div class="pmHead"><b>Alerts</b><button class="popX pmX" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div><div class="alBody"></div></div>';
     el.addEventListener('click', async (e) => {
       e.stopPropagation();

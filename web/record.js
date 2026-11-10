@@ -142,7 +142,7 @@
     const X = REC.res; $('recSub').innerHTML = 'Did the signals<br>actually work?';
     const lv = REC.liveStats();
     if (window.PLAY && PLAY.recordCard) h += PLAY.recordCard();
-    h += '<div class="glass sec rec" style="--c:' + P.vi + '">' + secCap('YOUR LIVE RECORD', P.vi);
+    h += '<div class="glass sec rec" style="--c:' + P.vi + '">' + secCap('JUMPTRADE PICKS · LIVE RECORD', P.vi);
     if (lv.s.n) h += '<div class="recg">' + '<div><span>Closed</span><b>' + lv.s.n + '</b><small>since ' + md(lv.since) + '</small></div><div><span>Win rate</span><b style="color:' + (lv.s.win >= 0.5 ? P.up : P.txt) + '">' + Math.round(lv.s.win * 100) + '%</b></div><div><span>Avg result</span><b style="color:' + (lv.s.avgR > 0 ? P.up : P.dn) + '">' + (lv.s.avgR >= 0 ? '+' : '') + lv.s.avgR.toFixed(2) + 'R</b></div><div><span>Open</span><b>' + lv.open + '</b></div></div>';
     else h += '<p class="desc dim">Every setup jumptrade shows you is now logged with its entry, stop and target, then scored as prices come in. ' + (lv.L.length ? lv.L.length + ' logged so far; results appear once they play out (up to 20 trading days).' : 'Nothing logged yet: open Setups during the week to start the record.') + '</p>';
     h += '</div>';

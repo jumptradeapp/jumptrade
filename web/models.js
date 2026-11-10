@@ -64,7 +64,7 @@
       '<div class="ih"><div><span class="stag" style="color:' + m.color + '">' + m.tag + '</span><h3>' + esc(m.name) + '</h3></div><span class="vbadge" style="color:' + P().up + ';border-color:' + P().up + '66">Backtest beats S&amp;P</span></div>' +
       '<div class="small" style="opacity:.85">' + esc(m.line) + '</div>' +
       '<div class="stg"><div><span>Per year</span><b style="color:' + col(m.bt.cagr - m.btSpy.cagr) + '">' + sg(m.bt.cagr) + '%</b><small>S&amp;P ' + sg(m.btSpy.cagr) + '%</small></div>' +
-      '<div><span>Sharpe</span><b style="color:' + col(m.bt.sharpe - m.btSpy.sharpe) + '">' + m.bt.sharpe.toFixed(2) + '</b><small>S&amp;P ' + m.btSpy.sharpe.toFixed(2) + '</small></div>' +
+      '<div><span>Return per risk</span><b style="color:' + col(m.bt.sharpe - m.btSpy.sharpe) + '">' + m.bt.sharpe.toFixed(2) + '</b><small>S&amp;P ' + m.btSpy.sharpe.toFixed(2) + '</small></div>' +
       '<div><span>Worst drop</span><b>' + m.bt.mdd.toFixed(0) + '%</b><small>S&amp;P ' + m.btSpy.mdd.toFixed(0) + '%</small></div></div>' +
       spark(m) + liveTag(m) + '</button>').join('');
     h += '<div class="rsec cap" style="margin-top:14px">STOCK STRATEGIES · RUN LIVE</div>';
@@ -121,7 +121,7 @@
     h += '<p class="small" style="opacity:.85;margin:6px 4px 0;text-align:center;line-height:1.5">' + esc(m.line) + '</p>';
     h += '<div class="tg4 six" style="margin-top:12px">' + [
       ['Per year', sg(m.bt.cagr) + '%', col(m.bt.cagr - m.btSpy.cagr)], ['S&amp;P per year', sg(m.btSpy.cagr) + '%'],
-      ['Sharpe', m.bt.sharpe.toFixed(2) + ' <small style="font-size:11px;opacity:.7">vs ' + m.btSpy.sharpe.toFixed(2) + '</small>', col(m.bt.sharpe - m.btSpy.sharpe)],
+      ['Return per risk', m.bt.sharpe.toFixed(2) + ' <small style="font-size:11px;opacity:.7">vs ' + m.btSpy.sharpe.toFixed(2) + '</small>', col(m.bt.sharpe - m.btSpy.sharpe)],
       ['Worst drop', m.bt.mdd.toFixed(0) + '% <small style="font-size:11px;opacity:.7">vs ' + m.btSpy.mdd.toFixed(0) + '%</small>'],
       ['Live /yr', sg(m.live.cagr) + '%', col(m.live.cagr - m.liveSpy.cagr)], ['S&amp;P live /yr', sg(m.liveSpy.cagr) + '%']
     ].map((c) => '<div><span>' + c[0] + '</span><b' + (c[2] ? ' style="color:' + c[2] + '"' : '') + '>' + c[1] + '</b></div>').join('') + '</div>';

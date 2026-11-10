@@ -228,12 +228,13 @@
       try { const slim = {}; Object.keys(ST.res).forEach((k) => { const r = ST.res[k]; if (!r) return; const tr = (r.trades || []).filter((t) => t.exitD).sort((a, b) => (a.exitD > b.exitD ? -1 : 1)).slice(0, 20); slim[k] = Object.assign({}, r, { trades: tr, rebal: undefined, sim: r.sim ? Object.assign({}, r.sim, { curve: thin(r.sim.curve), spy: thin(r.sim.spy) }) : null }); });
         localStorage.setItem('jt.strat', JSON.stringify({ stamp: ST.stamp, n: ST.U.length, res: slim })); } catch (e) {}
       ST.bars = {}; ST.idx = {}; ST.ins = {}; ST.inc = {}; ST.fc = {}; // results are kept; free the raw history so iOS doesn't evict the page
-    } catch (e) { ST.err = 'Couldn’t finish pulling the data. Pull down to retry.'; }
+    } catch (e) { ST.err = 'Couldn’t finish pulling the data.'; }
     ST.running = false; ST.prog = null; render();
   }
   function thin(c) { if (!c || c.length < 400) return c; const step = Math.ceil(c.length / 300), o = []; for (let i = 0; i < c.length; i += step) o.push(c[i]); if (o[o.length - 1] !== c[c.length - 1]) o.push(c[c.length - 1]); return o; }
   try { const saved = JSON.parse(localStorage.getItem('jt.strat') || 'null'); if (saved && Date.now() - saved.stamp < 12 * 3600e3) { ST.res = saved.res; ST.stamp = saved.stamp; ST.U = { length: saved.n }; ST.done = true; } } catch (e) {}
   ST.run = run;
+  document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('[data-stretry]')) { ST.err = null; run(); } });
   ST.rerun = () => { if (ST.running) return; ST.done = false; ST.res = {}; run(); };
 
   /* ---------- UI ---------- */
@@ -241,7 +242,7 @@
   const fmtP = (p) => p == null || !isFinite(p) ? '—' : '$' + (p < 1 ? p.toFixed(4) : p >= 1000 ? p.toFixed(0) : p.toFixed(2));
   const sg = (v) => (v >= 0 ? '+' : '') + v.toFixed(1);
   function cardStats(m, r) {
-    if (!r) return '<div class="small dim">' + (ST.running ? 'Testing…' : 'Waiting to run') + '</div>';
+    if (!r) return '<div class="small dim">' + (ST.running ? 'Testing…' : 'Runs when you open this page') + '</div>';
     if (m.id === 'revisions') return '<div class="stg"><div><span>Status</span><b>Day ' + r.daysLogged + ' of 20</b></div><div><span>Scored</span><b>' + r.scanned + '</b></div><div><span>Picks</span><b>' + r.holdings.length + '</b></div></div>';
     const s = r.sim; if (!s) return '<div class="small dim">Not enough data to test.</div>';
     return '<div class="stg"><div><span>Per year</span><b style="color:' + gc(s.cagr - s.spyCagr) + '">' + sg(s.cagr) + '%</b><small>S&amp;P ' + sg(s.spyCagr) + '%</small></div>' +
@@ -254,7 +255,7 @@
     if (window.QM) h += QM.renderCards();
     if (!mcp || mcp.delayed) h += '<div class="empty"><b>Coming soon to the web version</b><span>The strategies pull five years of prices, filings and estimates.</span></div>';
     if (ST.prog) { const p = ST.prog; h += '<div class="glass"><div class="ih"><span class="cap">' + esc(p.label.toUpperCase()) + '</span><span class="cap">' + p.done + ' / ' + p.total + '</span></div><span class="wbar" style="height:6px"><i style="height:6px;width:' + (p.total ? p.done / p.total * 100 : 0).toFixed(1) + '%;background:#A8C8E8"></i></span><span class="small dim">First run pulls about 5 years of data for ' + (ST.U ? ST.U.length : '~250') + ' stocks. Later runs use the cache.</span></div>'; }
-    if (ST.err) h += '<div class="empty"><b>' + esc(ST.err) + '</b></div>';
+    if (ST.err) h += '<div class="empty"><b>' + esc(ST.err) + '</b><button class="cta ghostcta" data-stretry="1" style="margin-top:10px">Retry</button></div>';
     const ORD = { BEATS: 0, SAFER: 1, BUILDING: 2, MIXED: 3, LAGS: 4 };
     const vis = MODELS.filter((m) => !isHidden('strat:' + m.id)).sort((a, b) => (ORD[(ST.res[a.id] || {}).verdict] ?? 2) - (ORD[(ST.res[b.id] || {}).verdict] ?? 2));
     const keep = vis.filter((m) => (ST.res[m.id] || {}).verdict !== 'LAGS'), cut = vis.filter((m) => (ST.res[m.id] || {}).verdict === 'LAGS');

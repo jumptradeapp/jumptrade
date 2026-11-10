@@ -52,7 +52,7 @@
       const t = (lab, v, col) => '<div><small>' + lab + '</small><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b></div>';
       W[cur] = (W[cur] || '') + '<button class="glass sec hm hmreg" data-plan="1" style="--c:' + hv[1] + ';border-color:' + hv[1] + '44"><div class="hmcap">' + secCap('MARKET REGIME', hv[1]) + '<span class="hmr">Plan ›</span></div>' +
         '<div class="hmrg"><b style="color:' + hv[1] + '">' + hv[0] + '</b><span>' + esc(hv[2]) + '</span></div><div class="hmst">' +
-        (spy && spy.pct != null ? t('S&amp;P', pctS(spy.pct), spy.pct >= 0 ? P.up : P.dn) : '') + t('VS 200-DAY', (Hh.d200 >= 0 ? '+' : '') + Hh.d200.toFixed(1) + '%') + (Hh.br != null ? t('BREADTH', Math.round(Hh.br * 100) + '%') : '') + (Hh.fg != null ? t('MOOD', Hh.fg, Hh.fg < 30 ? P.dn : Hh.fg > 70 ? P.up : null) : '') + '</div></button>';
+        (spy && spy.pct != null ? t('S&amp;P', pctS(spy.pct), spy.pct >= 0 ? P.up : P.dn) : '') + t('VS 200-DAY AVG', (Hh.d200 >= 0 ? '+' : '') + Hh.d200.toFixed(1) + '%') + (Hh.br != null ? t('STOCKS UP', Math.round(Hh.br * 100) + '%') : '') + (Hh.fg != null ? t('FEAR / GREED', Hh.fg + (Hh.fg < 30 ? ' fear' : Hh.fg > 70 ? ' greed' : ''), Hh.fg < 30 ? P.dn : Hh.fg > 70 ? P.up : null) : '') + '</div></button>';
     } else W[cur] = (W[cur] || '') + card('MARKET REGIME', P.mute, '<div class="skel"></div><div class="skel" style="width:60%"></div>');
     // 2. top news
     cur = 'news';
@@ -150,7 +150,7 @@
       W.dips = card('DIPS', '#5EE0A0', D.length ? D.map((a) => row(a.sym, (a.state === 'turning' ? 'Turning' : 'Reclaiming') + ' · buy $' + px(a.plan.zoneHi || a.plan.trig) + ' · stop $' + px(a.plan.stop), a.price ? '$' + px(a.price) : '', null, '')).join('') : (Object.keys(S.dips || {}).length ? '<p class="desc dim">No dip buys triggering right now.</p>' : skel), '<button class="hmr" data-tab="dips">Dip Radar ›</button>'); }
     if (on('value')) { if (!H.vk && typeof loadValue === 'function') { H.vk = 1; setTimeout(loadValue, 500); }
       const V = Object.keys(S.val || {}).map((k) => [k, S.val[k]]).filter((x) => x[1] && x[1].peg && x[1].peg >= 0.2 && x[1].peg < 1.3 && x[1].fwdPE > 0).sort((a, b) => a[1].peg - b[1].peg).slice(0, 4);
-      W.value = card('UNDERVALUED', '#5EE0A0', V.length ? V.map((x) => row(x[0], 'Fwd P/E ' + x[1].fwdPE.toFixed(1) + ' · growth ' + Math.round((x[1].growth || 0) * 100) + '%', 'PEG ' + x[1].peg.toFixed(2), P.up, x[1].upside != null ? (x[1].upside >= 0 ? '+' : '') + Math.round(x[1].upside * 100) + '% to target' : '')).join('') : skel, '<button class="hmr" data-tab="value">Value ›</button>'); }
+      W.value = card('UNDERVALUED', '#5EE0A0', V.length ? V.map((x) => row(x[0], 'P/E next yr ' + x[1].fwdPE.toFixed(1) + ' · growth ' + Math.round((x[1].growth || 0) * 100) + '%', 'PEG ' + x[1].peg.toFixed(2), P.up, x[1].upside != null ? (x[1].upside >= 0 ? '+' : '') + Math.round(x[1].upside * 100) + '% to target' : '')).join('') : skel, '<button class="hmr" data-tab="value">Value ›</button>'); }
     if (on('watch')) { const Q = (TODAY && TODAY.wlQ) || {};
       // Show last time's five right away, and only re-rank once every list and its prices are in (no more shuffling while it loads). Re-rank at most once a minute.
       const allS = Object.keys(S.allWl || {}); const have = allS.filter((k) => Q[k] && Q[k].pct != null);
@@ -184,6 +184,7 @@
     box.innerHTML = c.order.map((id) => '<div class="hmeRow' + (c.hide[id] ? ' off' : '') + '" data-id="' + id + '"><button class="hmeEye" data-hmeye="' + id + '" aria-label="' + (c.hide[id] ? 'Show ' : 'Hide ') + NAMES[id][0] + '">' + (c.hide[id] ? EYEX : EYE) + '</button><span class="hmeTx"><b>' + NAMES[id][0] + '</b><small>' + NAMES[id][1] + '</small></span><span class="hmeGrip" aria-label="Drag to reorder">' + GRIP + '</span></div>').join('');
   }
   function openEdit() {
+    if (window.ALERTS && ALERTS.close) ALERTS.close(); // one sheet at a time
     let w = $('hmEdit'); if (!w) { w = document.createElement('div'); w.id = 'hmEdit'; w.innerHTML = '<div class="hmeBg" data-hmeclose="1"></div><div class="hmeSheet"><div class="hmeHead"><div><h3>Customize<em>.</em></h3><p>Tap the eye to show or hide. Drag ≡ to reorder.</p></div><button class="hmeX" data-hmeclose="1" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div><label class="hmeName"><span>Your first name</span><input id="hmeName" type="text" maxlength="20" autocomplete="given-name" placeholder="Shown in the greeting"></label><div id="hmEditList"></div><button class="hmeReset" data-hmereset="1">Reset to default</button></div>'; document.body.appendChild(w); }
     const ni = $('hmeName'); try { ni.value = localStorage.getItem('jt.name') || ''; } catch (e) {} ni.oninput = () => { try { localStorage.setItem('jt.name', ni.value.trim()); } catch (e) {} render(); };
     paintEdit(); w.classList.add('on');
