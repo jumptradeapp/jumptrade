@@ -1,7 +1,7 @@
 /* jumptrade. alerts: push notification setup, what to get, how often, and price alerts per stock */
 (function () {
   const KEY = 'jt.alerts';
-  const DEF = { news: true, newsMarket: true, runners: true, runnerMin: 80, move: true, movePct: 5, flow: true, ratings: true, earnings: true, open: false, close: true, quiet: true, cap: 12, prices: [] };
+  const DEF = { news: true, newsMarket: true, newsMovers: true, newsGeneral: true, runners: true, runnerMin: 80, move: true, movePct: 5, flow: true, ratings: true, earnings: true, open: false, close: true, quiet: true, cap: 12, prices: [] };
   const load = () => { try { return Object.assign({}, DEF, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { return Object.assign({}, DEF); } };
   const save = (p) => { try { localStorage.setItem(KEY, JSON.stringify(p)); } catch (e) {} };
   let P = load();
@@ -42,7 +42,9 @@
 
   const T = [
     ['news', 'News on your stocks', 'What happened, the move in $ and %, and the source'],
-    ['newsMarket', 'Market-moving news', 'Fed, CPI, jobs, tariffs, halts · max 2 a day'],
+    ['newsMarket', 'Market-moving news', 'Fed, CPI, jobs, tariffs, halts'],
+    ['newsGeneral', 'Market headlines', 'The top market story, at most every 45 min'],
+    ['newsMovers', 'Top mover news', 'Why stocks up 20%+ today are moving'],
     ['runners', 'Jump radar', 'Stocks showing early signs of a run'],
     ['move', 'Big moves on your stocks', 'When a watchlist stock moves a lot today'],
     ['flow', 'Big buying or selling', 'Sudden money bursts on your stocks'],
@@ -66,8 +68,8 @@
       '<div class="alStatus ' + (on ? 'on' : '') + '"><b>' + (on ? 'Alerts are on' : 'Alerts are off') + '</b><small>' + (on ? 'Watching ' + syms().length + ' stocks on your watchlist' : (isIOS && !standalone() ? 'Add jumptrade to your home screen first' : 'Turn on to get notified')) + '</small>' +
       (on ? '<button class="alBtn ghost" data-al="off">Turn off</button>' : '<button class="alBtn" data-al="on">Turn on</button>') + '</div>' +
       (msg ? '<p class="alMsg">' + msg + '</p>' : '') +
-      (on ? '' : '<p class="alMsg" style="color:#9AA6B6">Saved for when alerts are on. Nothing is sent until you turn them on.</p>') + '<div class="pmCap">What to get</div><div class="alList' + (on ? '' : ' alMuted') + '">' + T.slice(0, 7).map(row).join('') + '</div>' +
-      '<div class="pmCap">When &amp; how often</div><div class="alList">' + T.slice(7).map(row).join('') + '<div class="alRow"><span><b>Daily limit</b><small>Most alerts per day</small></span>' + chips('cap', [6, 12, 25], (v) => String(v)) + '</div></div>' +
+      (on ? '' : '<p class="alMsg" style="color:#9AA6B6">Saved for when alerts are on. Nothing is sent until you turn them on.</p>') + '<div class="pmCap">What to get</div><div class="alList' + (on ? '' : ' alMuted') + '">' + T.slice(0, 9).map(row).join('') + '</div>' +
+      '<div class="pmCap">When &amp; how often</div><div class="alList">' + T.slice(9).map(row).join('') + '<div class="alRow"><span><b>Daily limit</b><small>Most alerts per day</small></span>' + chips('cap', [6, 12, 25], (v) => String(v)) + '</div></div>' +
       '<div class="pmCap">Price alerts</div><div class="alList">' + (P.prices.length ? P.prices.map((p, i) => '<div class="alRow"><span><b>' + esc(p.sym) + ' ' + (p.dir === 'below' ? 'below' : 'above') + ' $' + (+p.price).toFixed(2) + '</b><small>One alert when it’s hit</small></span><button class="alX" data-alrm="' + i + '" aria-label="Remove">✕</button></div>').join('') : '<p class="desc dim" style="margin:10px 2px">Open any stock and tap <b>🔔 Alert</b> to add one.</p>') + '</div>' +
       (on ? '<button class="alBtn ghost wide" data-al="test">Send a test alert</button>' : '');
   }
