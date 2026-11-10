@@ -252,7 +252,7 @@ T.get_fund_rating = async () => [];
 // Personal / brokerage tools: the public version has no brokerage. Return empty so screens show their in-app versions.
 ['get_watchlists', 'get_watchlist_instruments', 'get_account_list', 'get_account_positions', 'get_account_balance'].forEach((k) => { T[k] = async () => []; });
 // Not available from this provider yet: answer empty, the app hides those sections.
-['get_stock_capital_flow', 'get_stock_unusual_activities', 'get_insider_transactions', 'get_income_statement',
+['get_stock_capital_flow', 'get_insider_transactions', 'get_income_statement',
   'get_market_sentiment', 'get_macroeconomic_calendar', 'get_financial_indicators'].forEach((k) => { T[k] = async () => []; });
 
 
@@ -324,6 +324,28 @@ T.get_community_hot_stocks = async () => {
   const q = await quotes(syms).catch(() => []); const ok = {}; q.forEach((x) => { if (x.quoteType === 'EQUITY' || !x.quoteType) ok[x.symbol] = 1; });
   return syms.filter((s) => ok[s]).map((s, k) => ({ symbol: s, rank: k + 1, category: 'US_STOCK', heat: score[s] }));
 };
+
+// ---------- money flow (no tick feed): find 1-minute bursts far above a stock's normal minute volume ----------
+T.get_stock_unusual_activities = async (i) => {
+  const want = Math.min(60, +i.count || 30);
+  const act = (await screen(SCREENS.active, 60).catch(() => [])).map((q) => q.symbol).filter((s) => /^[A-Z]{1,5}$/.test(s)).slice(0, 45);
+  const out = [];
+  await Promise.all(act.map(async (s) => {
+    const d = await yget('/v8/finance/chart/' + s + '?interval=1m&range=1d&includePrePost=true', { base: Y1 }).catch(() => null);
+    const r = d && d.chart && d.chart.result && d.chart.result[0]; if (!r || !r.timestamp) return;
+    const q = r.indicators.quote[0]; const v = q.volume || [], c = q.close || [], o = q.open || [];
+    const vols = v.filter((x) => x > 0).sort((a, b) => a - b); if (vols.length < 30) return;
+    const med = vols[Math.floor(vols.length / 2)] || 1;
+    for (let k = 0; k < v.length; k++) {
+      const vol = v[k] || 0, cl = c[k], op = o[k]; if (!cl || !op || vol < med * 8) continue;
+      const amt = vol * cl; if (amt < 2e6) continue;
+      const mv = (cl - op) / op; if (Math.abs(mv) < 0.0008) continue;
+      out.push({ symbol: s, alert_type: mv > 0 ? 'MAJOR_BUY' : 'MAJOR_SELL', time: new Date(r.timestamp[k] * 1000).toISOString(), volume: vol, price: +cl.toFixed(4), amount: Math.round(amt), multiple: Math.round(vol / med) });
+    }
+  }));
+  out.sort((a, b) => Date.parse(b.time) - Date.parse(a.time));
+  return out.slice(0, want);
+};
 // ---------- sectors: industry groups built from ETFs + their leading stocks ----------
 const GROUPS = [
   [1, 'Semiconductors', 'SMH', 'NVDA,AVGO,AMD,TSM,QCOM,MU,INTC,TXN,ADI,LRCX,AMAT,KLAC,MRVL,ARM'],
@@ -386,7 +408,7 @@ T.get_market_sectors_detail = async (i) => {
   return { data: rows };
 };
 // How long each answer may be reused (seconds). Prices: short. Fundamentals: long.
-const TTL = { get_community_hot_stocks: 180, get_runners: 60, get_sparks: 60, get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 60, search_news: 45,
+const TTL = { get_stock_unusual_activities: 60, get_community_hot_stocks: 180, get_runners: 60, get_sparks: 60, get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 60, search_news: 45,
   get_company_profile: 86400, get_analyst_target_price: 21600, get_analyst_rating: 21600, get_stock_forecast_eps: 21600, get_stock_earnings_calendar: 21600,
   get_fund_brief: 86400, get_fund_holdings: 86400, get_fund_performance: 86400 };
 
