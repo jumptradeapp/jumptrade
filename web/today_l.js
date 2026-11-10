@@ -105,7 +105,7 @@
   function wlSyms() { if (!S.allWl && S.wlists) loadAllWatchSyms(); const s = Object.keys(S.allWl || {}); (S.wlSyms || []).forEach((x) => { if (s.indexOf(x) < 0) s.push(x); }); return s.slice(0, 100); }
   function loadPlan() {
     loadHealth(); loadMacro(); if (!S.wlists && live()) loadWatch(); file('catalysts.json'); loadFlow();
-    const syms = wlSyms(); if (syms.length && live()) watch('tp:wl', 'get_stock_snapshot', { symbols: syms.join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: false }, (p) => { arr(p).forEach((x) => { T.wlQ[x.symbol] = snapRow(x, view()); }); }, 60000);
+    const syms = wlSyms(); if (syms.length && live()) watch('tp:wl', 'get_stock_snapshot', { symbols: syms.join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: false }, (p) => { arr(p).forEach((x) => { T.wlQ[x.symbol] = typeof wlRow === 'function' ? wlRow(x, view()) : snapRow(x, view()); }); }, 60000);
   }
   function planCounts() {
     const day = nextSession(); const gaps = Object.values(T.wlQ).filter((r) => Math.abs(r.pct) >= 3).length;

@@ -62,7 +62,7 @@ const LGBAD = window.LGBAD = {};
 function lgNeed(sym) { const b = sym.charAt(1); const c = (/^[A-Z]/.test(sym) ? sym[0] : '_') + (!b || b < 'H' ? '1' : b < 'P' ? '2' : '3'); if (LGS[c]) return; LGS[c] = 1; fetch('lg2/' + c + '.json').then((r) => r.json()).then((j) => { Object.assign(LOGOS, j); LGS[c] = 2; clearTimeout(lgT); lgT = setTimeout(render, 60); }).catch(() => {}); }
 const HUES = [[139, 108, 255], [255, 140, 70], [32, 201, 151], [59, 160, 219], [240, 101, 149], [92, 124, 250], [255, 196, 60], [81, 207, 102], [21, 170, 191], [255, 110, 90]];
 /* every stock move shows dollars AND percent: "+$7.67 +65.72%" (dollar move is derived from price and % when a feed omits it) */
-function dS(chg, pct, price) { const c = chg != null && isFinite(chg) && chg !== '' ? +chg : (price > 0 && pct != null && isFinite(pct) && pct > -100 ? price - price / (1 + pct / 100) : null); return c == null ? '' : (c >= 0 ? '+$' : '−$') + px(Math.abs(c)); }
+function dS(chg, pct, price) { const c = chg != null && isFinite(chg) && chg !== '' ? +chg : (price > 0 && pct != null && isFinite(pct) && pct > -100 ? price - price / (1 + pct / 100) : null); if (c == null) return ''; const a = Math.abs(c); return (c >= 0 ? '+$' : '−$') + (a >= 0.1 ? a.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : a >= 0.01 ? a.toFixed(3) : a.toFixed(4)); }
 function mvS(pct, price, chg) { const d = dS(chg, pct, price); return (d ? d + ' ' : '') + pctS(pct); }
 function logoHTML(sym, size) {
   const r = Math.round(size / 2); // circles everywhere
@@ -859,6 +859,11 @@ function wlRow(x, sess) { // one watchlist quote: regular session on the main li
   n.ext = ok && sess !== 'regular' && sess !== 'closed' && isFinite(n.price) && n.price ? { price: n.price, chg: n.chg, pct: n.pct, k: sess } : null;
   if (!n.ext && x.extend_hour_last_price && +x.extend_hour_last_price !== g.price) { const e = snapRow(x, 'after'); n.ext = { price: e.price, chg: e.chg, pct: e.pct, k: x.market_state && /^PRE/.test(x.market_state) ? 'pre' : 'after' }; }
   return n; }
+/* right-hand column shared by the watchlist page and the Home watchlist widget: price, then $ move and %, then the pre/after-hours line */
+function wlRP(r) { if (!r || !r.price) return '<b class="dim">—</b>'; const P = dPal(); const m = r.reg && r.reg.price ? r.reg : r; const sg = (v) => dS(v, null, null) || '+$0.00';
+  let o = '<b>$' + px(m.price) + '</b><small style="color:' + ((m.pct || 0) >= 0 ? P.up : P.dn) + '">' + (dS(m.chg, m.pct, m.price) || '') + ' <i>' + pctS(m.pct || 0) + '</i></small>';
+  if (r.ext) o += '<small class="wxt">' + sessIcon(r.ext.k) + '<u>$' + px(r.ext.price) + '</u><span style="color:' + ((r.ext.pct || 0) >= 0 ? P.up : P.dn) + '">' + (dS(r.ext.chg, r.ext.pct, r.ext.price) || '') + ' ' + pctS(r.ext.pct || 0) + '</span></small>';
+  return o; }
 function wlQuotes(syms) { // one live quote watch for the open list; rebuilt whenever the list changes
   unwatch('wl:q'); if (!syms || !syms.length) { S.wlQ = {}; return; }
   watch('wl:q', 'get_stock_snapshot', { symbols: syms.slice(0, 100).join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: true }, (q) => {
@@ -893,10 +898,7 @@ function renderWatch() {
   if (!shown.length) { box.innerHTML = '<div class="empty"><b>' + (so === 'up' ? 'Nothing up yet' : 'Nothing down today') + '</b><span>' + (so === 'up' ? 'None of your stocks are green right now.' : 'None of your stocks are red right now.') + '</span></div>'; return; }
   box.innerHTML = '<div class="wlFlat">' + shown.map((r) => { const a = S.dips[r.sym]; const col = (r.pct || 0) >= 0 ? '#5EE0A0' : '#FF8A8A';
     return '<button class="wrow" data-open="' + esc(r.sym) + '" data-name="' + esc((S.wlNames || {})[r.sym] || '') + '">' + logoHTML(r.sym, 34) + '<span class="rn"><b>' + esc(r.sym) + ' ' + (window.TODAY && r.price ? TODAY.chip(r) : '') + (window.ENR ? (ENR.need(r.sym), ENR.badge(r.sym)) : '') + '</b><small>' + esc(cleanName(symName(r.sym) || (S.wlNames || {})[r.sym] || '')) + (r.mcap ? ' · ' + money(r.mcap) : '') + '</small></span>' +
-      (S.wlEdit ? '<span class="xdel' + (S.wlRm === r.sym ? ' arm' : '') + '" style="position:static" role="button" aria-label="Remove ' + esc(r.sym) + '" data-wlrm="' + esc(r.sym) + '">' + (S.wlRm === r.sym ? '…' : 'Remove') + '</span>' : '<span class="rp">' + (r.price ? (() => { const m = r.reg && r.reg.price ? r.reg : r; const mc = (m.pct || 0) >= 0 ? '#5EE0A0' : '#FF8A8A'; const sg = (v) => (v >= 0 ? '+' : '−') + '$' + px(Math.abs(v));
-        let o = '<b>$' + px(m.price) + '</b><small style="color:' + mc + '">' + sg(m.chg || 0) + ' <i>' + pctS(m.pct || 0) + '</i></small>';
-        if (r.ext) { const ec = (r.ext.pct || 0) >= 0 ? '#5EE0A0' : '#FF8A8A'; o += '<small class="wxt">' + sessIcon(r.ext.k) + '<u>$' + px(r.ext.price) + '</u><span style="color:' + ec + '">' + sg(r.ext.chg || 0) + ' ' + pctS(r.ext.pct || 0) + '</span></small>'; }
-        return o; })() : '<b class="dim">—</b>') + '</span>') + '</button>'; }).join('') + '</div>' + (window.JT_WEB && so !== 'up' && so !== 'down' && syms.length < 6 && !S.wlEdit ? '<div class="wlMore"><small>Add more</small><div class="wlPick">' + ['NVDA', 'TSLA', 'AAPL', 'AMD', 'PLTR', 'MSFT', 'AMZN', 'META', 'GOOGL', 'SOFI', 'HOOD', 'COIN'].filter((x) => syms.indexOf(x) < 0).slice(0, 8).map((x) => '<button data-wlq="' + x + '">' + logoHTML(x, 22) + x + '</button>').join('') + '</div></div>' : '');
+      (S.wlEdit ? '<span class="xdel' + (S.wlRm === r.sym ? ' arm' : '') + '" style="position:static" role="button" aria-label="Remove ' + esc(r.sym) + '" data-wlrm="' + esc(r.sym) + '">' + (S.wlRm === r.sym ? '…' : 'Remove') + '</span>' : '<span class="rp tvp">' + wlRP(r) + '</span>') + '</button>'; }).join('') + '</div>' + (window.JT_WEB && so !== 'up' && so !== 'down' && syms.length < 6 && !S.wlEdit ? '<div class="wlMore"><small>Add more</small><div class="wlPick">' + ['NVDA', 'TSLA', 'AAPL', 'AMD', 'PLTR', 'MSFT', 'AMZN', 'META', 'GOOGL', 'SOFI', 'HOOD', 'COIN'].filter((x) => syms.indexOf(x) < 0).slice(0, 8).map((x) => '<button data-wlq="' + x + '">' + logoHTML(x, 22) + x + '</button>').join('') + '</div></div>' : '');
 }
 
 /* ---------- portfolios: your models + your own portfolios + copy funds + 13D/G ---------- */
@@ -1663,7 +1665,7 @@ document.addEventListener('click', (e) => { const b = e.target.closest && e.targ
   const id = S.wl || (S.wlists && S.wlists[0] && S.wlists[0].watchlist_id) || 'mine';
   wlWrite(id, sym, true).then(() => {
     if (!S.wlists) loadWatch(); else if (!S.wlSyms) { if (!S.wl) S.wl = id; loadWatchItems(); }
-    mcp.callTool(SERVER, 'get_stock_snapshot', { symbols: sym, category: 'US_STOCK', extend_hour_required: true, overnight_required: false }).then(payloadOf).then((q) => { (Array.isArray(q) ? q : []).forEach((x) => { if (window.TODAY && TODAY.wlQ) TODAY.wlQ[x.symbol] = snapRow(x, view()); }); render(); }).catch(() => {});
+    mcp.callTool(SERVER, 'get_stock_snapshot', { symbols: sym, category: 'US_STOCK', extend_hour_required: true, overnight_required: false }).then(payloadOf).then((q) => { (Array.isArray(q) ? q : []).forEach((x) => { if (window.TODAY && TODAY.wlQ) TODAY.wlQ[x.symbol] = wlRow(x, view()); }); render(); }).catch(() => {});
     render();
   }).catch(() => { b.disabled = false; b.classList.remove('on'); });
 }, true);
