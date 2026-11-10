@@ -213,7 +213,8 @@ function moverRows() {
     rows = (S.ovnSnap || []).filter((r) => r.ovnT > start && r.pct > -100);
   } else rows = [].concat(S.lists.p1 || [], S.lists.p2 || []);
   const seen = {}; const out = [];
-  rows.concat(S.large || []).forEach((r) => { if (!seen[r.sym] && isFinite(r.pct)) { seen[r.sym] = 1; out.push(r); } });
+  const big = v === 'overnight' ? (S.large || []).filter((r) => r.ovnT > Date.now() - 9 * 3600000) : (S.large || []); // overnight: only real 24-hour quotes, never regular-session prices
+  rows.concat(big).forEach((r) => { if (!seen[r.sym] && r.pct != null && isFinite(r.pct)) { seen[r.sym] = 1; out.push(r); } });
   return out.filter((r) => S.cap === 'all' ? r.pct > 0 : capOf(r.mcap) === S.cap).sort((a, b) => b.pct - a.pct).slice(0, 60);
 }
 function newsFor(sym, every) {
@@ -263,7 +264,10 @@ function renderMovers() {
   const W = box.clientWidth || 358, gap = 12, colW = (W - gap) / 2;
   const scEl = $('scroller'), szKey = W + 'x' + (window.innerHeight > window.innerWidth ? 'p' : 'l'); // width/orientation only: header height changes every second made tiles jump between sizes
   if (S.tileKey !== szKey && !touching && !document.getElementById('vMovers').classList.contains('tcol') && $('ptr1').offsetHeight === 0 && scEl.clientHeight > 0) { S.tileKey = szKey; S.fitDone = 0; S.fitN = 0; const nv = document.querySelector('nav.main, .nav, nav'); const bt = box.getBoundingClientRect().top + scEl.scrollTop - scEl.getBoundingClientRect().top; const vb = nv && nv.getBoundingClientRect().height ? Math.min(scEl.clientHeight, nv.getBoundingClientRect().top - scEl.getBoundingClientRect().top) : scEl.clientHeight; const avail = vb - bt - 10; S.tileH = Math.max(118, Math.min(146, Math.floor((avail - 2 * 12) / 3))); }
-  const tileH = 154; // clean tile: logo, ticker, company, price, move
+  const tileH = 152; // tallest tile (with a signal pill)
+  // each row of two tiles is only as tall as its content: rows without a signal pill are shorter, so no empty space at the bottom
+  const chips = S.layout === 'tiles' ? rows.map((r) => (window.TODAY ? TODAY.chip(r) : '')) : [];
+  const rowHs = [], rowTop = [0]; for (let k = 0; k < rows.length; k += 2) { const hh = chips[k] || chips[k + 1] ? tileH : 124; rowHs.push(hh); rowTop.push(rowTop[rowTop.length - 1] + hh + gap); }
   const rowH = 58;
   const existing = {}; Array.from(box.children).forEach((el) => { if (el.dataset.sym) existing[el.dataset.sym] = el; else el.remove(); });
   needSparks(rows.slice(0, 40));
@@ -278,9 +282,9 @@ function renderMovers() {
     const hasWhy = !!(S.news[r.sym] && S.news[r.sym].why); const why = hasWhy ? S.news[r.sym].why : ('Vol ' + big(r.vol) + ' · ' + money(r.mcap) + ' cap');
     const arrow = '<svg width="16" height="11" viewBox="0 0 17 11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + (up ? 'M1.5 9.5l4.5-4.5 3 3 6-6M11 2h4.5v4.5' : 'M1.5 1.5l4.5 4.5 3-3 6 6M11 9h4.5V4.5') + '"></path></svg>';
     if (S.layout === 'tiles') {
-      el.className = 'card tile' + '' + (el.classList.contains('fadein') ? ' fadein' : ''); el.style.width = colW + 'px'; el.style.height = tileH + 'px';
-      el.style.left = (i % 2) * (colW + gap) + 'px'; el.style.top = Math.floor(i / 2) * (tileH + gap) + 'px';
-      const chip = window.TODAY ? TODAY.chip(r) : '';
+      el.className = 'card tile' + '' + (el.classList.contains('fadein') ? ' fadein' : ''); el.style.width = colW + 'px'; el.style.height = rowHs[Math.floor(i / 2)] + 'px';
+      el.style.left = (i % 2) * (colW + gap) + 'px'; el.style.top = rowTop[Math.floor(i / 2)] + 'px';
+      const chip = chips[i];
       el.innerHTML = '<span class="th">' + logoHTML(r.sym, 34) + '<span class="tn"><b>' + esc(r.sym) + '</b>' + '<small>' + esc(cleanName(symName(r.sym) || r.name || '')) + '</small>' + '</span></span>' +
         '<span class="tb"><span class="tp" style="' + (flash ? 'background:' + flash : '') + '">$' + px(r.price) + '</span>' +
         '<span class="tc" style="color:' + col + '">' + arrow + chgS(r.chg, r.pct, r.price) + '</span></span>' + sparkSVG(r.sym, 100, 30, col) + (chip ? '<span class="tsig">' + chip + '</span>' : '') + (hasWhy ? '<span class="nwb tnw" title="News today" aria-label="News today">★</span>' : '');
@@ -293,7 +297,7 @@ function renderMovers() {
     if (flash) setTimeout(() => { const t = el.querySelector('.tp,.rp b'); if (t) t.style.background = ''; }, 700);
   });
   Object.keys(existing).forEach((k) => { if (!seen[k]) existing[k].remove(); });
-  box.style.height = (S.layout === 'tiles' ? Math.ceil(rows.length / 2) * (tileH + gap) : rows.length * rowH) + 'px';
+  box.style.height = (S.layout === 'tiles' ? rowTop[rowTop.length - 1] : rows.length * rowH) + 'px';
   if (S.layout === 'tiles' && !S.fitDone) { const tt = [...box.querySelectorAll('.tile')].slice(0, 8); let need = 0; for (const t of tt) { const tb = t.getBoundingClientRect().bottom - 6; for (const c of t.querySelectorAll('.tsig')) { const r = c.getBoundingClientRect(); if (r.height && c.offsetParent) need = Math.max(need, r.bottom - tb); } need = Math.max(need, t.scrollHeight - t.clientHeight); } if (tt.length) { S.fitDone = 1; if (need > 0) { S.tileH = Math.min(170, tileH + Math.ceil(need) + 2); S.fitDone = 0; S.fitN = (S.fitN || 0) + 1; if (S.fitN < 4) requestAnimationFrame(() => render()); } } }
   // headline news for the first six visible
   if (window.ENR) ENR.needAvg(rows.slice(0, 40).map((r) => r.sym));

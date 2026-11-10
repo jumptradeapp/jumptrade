@@ -784,7 +784,7 @@ T.get_pick_record = async () => {
     return { symbol: x.s, date: x.d, price: x.p, entry: x.e, stop: x.st, target: x.tg, kind: x.k, signals: x.n, why: x.w || [], r1, r5, now: last && after.length ? last.close / x.p - 1 : null, outcome: out };
   }).reverse();
   const st = (k) => { const v = rows.map((r) => r[k]).filter((v) => v != null); return { n: v.length, win: v.length ? v.filter((x) => x > 0).length / v.length : null, avg: v.length ? v.reduce((a, b) => a + b, 0) / v.length : null }; };
-  return { updated: new Date().toISOString(), total: log.length, since: log.length ? log[0].d : null, d1: st('r1'), d5: st('r5'), targets: rows.filter((r) => r.outcome === 'target').length, stops: rows.filter((r) => r.outcome === 'stop').length, rows: rows.slice(0, 60) };
+  return { updated: new Date().toISOString(), total: log.length, since: log.length ? log[0].d : null, d1: st('r1'), d5: st('r5'), targets: rows.filter((r) => r.outcome === 'target').length, stops: rows.filter((r) => r.outcome === 'stop').length, open: rows.filter((r) => !r.outcome).length, rows: rows.slice(0, 60) };
 };
 // ---------- optional AI (free-typed themes + Ask). Off until an ANTHROPIC_API_KEY secret is set in Cloudflare. ----------
 const AI_MODEL = 'claude-haiku-5-5';
@@ -907,7 +907,7 @@ export default {
     if (Date.now() - UPK > 600000) { UPK = Date.now(); ctx.waitUntil(wbUpkeep(env).catch(() => {})); }
     if (req.method === 'OPTIONS') return new Response(null, { headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'POST, GET' } });
     // Private beta: while the site is locked, every data endpoint needs a signed-in account (cookie or bearer token).
-    if (url.pathname.startsWith('/api/') && !/^\/api\/(auth\/|admin\/|health$|logo\/|alertstate$|wb\/)/.test(url.pathname) && !(url.pathname === '/api/feedback' && req.method === 'GET')) {
+    if (url.pathname.startsWith('/api/') && !/^\/api\/(auth\/|admin\/|health$|logo\/|alertstate$|wbstate$|wb\/)/.test(url.pathname) && !(url.pathname === '/api/feedback' && req.method === 'GET')) {
       const g = (await vget(env, 'gate')) || { locked: true };
       if (g.locked && !(await sessionFrom(req, env, vget))) return json({ error: { code: 'signin_required', message: 'jumptrade is invite-only. Sign in to continue.' } }, 401, { 'cache-control': 'no-store' });
     }
@@ -946,10 +946,10 @@ export default {
       }
       const miss = new Response('', { status: 404, headers: { 'cache-control': 'public, max-age=86400' } }); ctx.waitUntil(caches.default.put(ck, miss.clone())); return miss;
     }
-    if (url.pathname === '/api/tool' && req.method === 'GET') { const raw = url.searchParams.get('input') || '{}'; if (raw.length > 2000) return json({ error: { code: 'too_big' } }, 413); let inp = {}; try { inp = JSON.parse(raw); } catch (e) {} return runTool(url.searchParams.get('tool'), inp, ctx, env); }
+    if (url.pathname === '/api/tool' && req.method === 'GET') { const raw = url.searchParams.get('input') || '{}'; if (raw.length > 16000) return json({ error: { code: 'too_big' } }, 413); let inp = {}; try { inp = JSON.parse(raw); } catch (e) {} return runTool(url.searchParams.get('tool'), inp, ctx, env); }
     if (url.pathname === '/api/scan') { try { const f = await scanAll(false); return json({ ok: true, count: f.length, top: f.slice(0, 8).map((q) => q.symbol + ' ' + (q.regularMarketChangePercent || 0).toFixed(1) + '%') }); } catch (e) { return json({ ok: false, error: String(e.message || e) }); } }
     if (url.pathname === '/api/session') { const s2 = await session(true); return json({ cookie: !!s2.cookie, crumb: !!s2.crumb }); }
-    if (url.pathname === '/api/tool' && req.method === 'POST') { if (+(req.headers.get('content-length') || 0) > 4000) return json({ error: { code: 'too_big' } }, 413); const b = await req.json().catch(() => ({})); return runTool(b.tool, b.input, ctx, env); }
+    if (url.pathname === '/api/tool' && req.method === 'POST') { if (+(req.headers.get('content-length') || 0) > 65536) return json({ error: { code: 'too_big' } }, 413); const b = await req.json().catch(() => ({})); return runTool(b.tool, b.input, ctx, env); }
     if (url.pathname.startsWith('/api/')) return json({ error: { code: 'bad_request', message: 'Unknown endpoint' } }, 404);
     return env.ASSETS.fetch(req);
   },

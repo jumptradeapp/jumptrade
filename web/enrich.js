@@ -216,9 +216,9 @@
       const rp = qq && qq.price ? '<span class="rp tvp tsq"><b>$' + px(qq.price) + '</b>' + (qq.pct != null ? '<small style="color:' + (qq.pct >= 0 ? C.up : C.dn) + '">' + (dS(qq.chg, qq.pct, qq.price) || '') + ' <i>' + pctS(qq.pct) + '</i></small>' : '') + '</span>' : '';
       return '<button class="tsrow" data-open="' + esc(x.sym) + '">' + logoHTML(x.sym, 34) +
       '<span class="tsm"><b>' + esc(x.sym) + ' <em style="color:' + x.col + ';border-color:' + x.col + '">' + x.kind + '</em></b><small>' + esc(x.why) + '</small>' +
-      '<span class="tsl"><i>Buy <b>' + usdP(x.e) + '</b></i><i>Stop <b style="color:' + C.dn + '">' + usdP(x.st) + '</b></i><i>Target <b style="color:' + C.up + '">' + usdP(x.tg) + '</b></i><i><b style="color:' + C.acc + '">Make $' + (Math.round(x.rr * 10) / 10).toFixed(2) + ' per $1 risked</b></i></span>' + (function () { const rt = ENR.rate && ENR.rate(x.kind); return rt ? '<span class="tsr"><b style="color:' + (rt.p >= .5 ? C.up : C.am) + '">Worked ' + Math.round(rt.p * 100) + '% of the time</b> in ' + rt.n.toLocaleString() + ' past cases like this</span>' : ''; })() + '</span>' + rp + '</button>'; }).join('');
+      '<span class="tsl"><i>Buy <b>' + usdP(x.e) + '</b></i><i>Stop <b style="color:' + C.dn + '">' + usdP(x.st) + '</b></i><i>Target <b style="color:' + C.up + '">' + usdP(x.tg) + '</b></i><i><b style="color:' + C.acc + '">Make $' + (Math.round(x.rr * 10) / 10).toFixed(2) + ' per $1 risked</b></i></span>' + (function () { const rt = ENR.rate && ENR.rate(x.kind); return rt ? '<span class="tsr"><b style="color:' + (rt.p >= .5 ? C.up : C.am) + '">Hit target ' + Math.round(rt.p * 100) + '%</b> · stopped ' + Math.round(rt.lp * 100) + '% · no result ' + Math.round(rt.up * 100) + '% <span class="dim">(' + rt.n.toLocaleString() + ' past cases)</span></span>' : ''; })() + '</span>' + rp + '</button>'; }).join('');
     if (!all) h += '<button class="seeall" data-tab="setups">See all setups ›</button>';
-    return h + '<p class="foot" style="text-align:left">Ranked across breakouts and Dip Radar, using the same entry and stop each scanner gives. “Worked X% of the time” is how often the same rule reached its target before its stop within 20 days, across 160 stocks over 2 years. Squeezes are left out on purpose: don’t chase them. Plans, not advice.</p></div>';
+    return h + '<p class="foot" style="text-align:left">Ranked across breakouts and Dip Radar, using the same entry and stop each scanner gives. “Hit target” is how often the same rule reached its target before its stop within 20 days; “no result” means it did neither. Every case counts, and breakouts assume you buy at the closing price. 160 stocks over 2 years. Squeezes are left out on purpose: don’t chase them. Plans, not advice.</p></div>';
   };
 })();
 /* ---------- stock history, headline pins, setup win rates, setups screen ---------- */
@@ -267,11 +267,11 @@
   };
 
   // backtested win rates for setup types (cached daily)
-  ENR.ss = (function () { try { return JSON.parse(localStorage.getItem('jt.sstats') || 'null'); } catch (e) { return null; } })();
+  ENR.ss = (function () { try { return JSON.parse(localStorage.getItem('jt.sstats2') || 'null'); } catch (e) { return null; } })();
   ENR.runStats = async function () {
     if (ENR.ssBusy || !mcp || (ENR.ss && Date.now() - ENR.ss.t < 86400000)) return; ENR.ssBusy = 1;
     const U = [...new Set(LARGE.split(',').concat(DIP_GROUPS.map((g) => g[1]).join(',').split(',')))].filter((s) => /^[A-Z.]{1,6}$/.test(s)).slice(0, 160);
-    const acc = { b: { w: 0, l: 0 }, d: { w: 0, l: 0 } };
+    const acc = { b: { w: 0, l: 0, u: 0 }, d: { w: 0, l: 0, u: 0 } };
     for (let k = 0; k < U.length; k += 20) {
       try {
         const res = await mcp.callTool(SERVER, 'get_stock_bars', { symbols: U.slice(k, k + 20), category: 'US_STOCK', timespan: 'D', count: 520 }, { cache: { staleTime: 43200000, gcTime: 86400000 } });
@@ -279,16 +279,16 @@
       } catch (e) {}
       await new Promise((r) => setTimeout(r, 300));
     }
-    ENR.ss = { t: Date.now(), b: acc.b, d: acc.d }; try { localStorage.setItem('jt.sstats', JSON.stringify(ENR.ss)); } catch (e) {}
+    ENR.ss = { t: Date.now(), b: acc.b, d: acc.d }; try { localStorage.setItem('jt.sstats2', JSON.stringify(ENR.ss)); } catch (e) {}
     ENR.ssBusy = 0; render();
   };
   function outcome(b, i, e, st, tg) { for (let j = i + 1; j < Math.min(b.length, i + 21); j++) { if (b[j].l <= st) return -1; if (b[j].h >= tg) return 1; } return 0; }
   function simulate(b, acc) {
     if (b.length < 280) return;
-    // breakout: first close above the prior 252-day high; entry at that high, stop 3% under, target 2R
+    // breakout: first close above the prior 252-day high; entry at THAT CLOSE (what you could actually buy), stop 3% under the old high, target 2R. Trades that hit neither within 20 days count as 'no result'.
     for (let i = 253; i < b.length - 1; i++) {
       let hi = 0; for (let j = i - 252; j < i; j++) hi = Math.max(hi, b[j].h);
-      if (b[i].c > hi && b[i - 1].c <= hi && b[i].c <= hi * 1.05) { const st = hi * 0.97, o = outcome(b, i, hi, st, hi + 2 * (hi - st)); if (o > 0) acc.b.w++; else if (o < 0) acc.b.l++; i += 10; }
+      if (b[i].c > hi && b[i - 1].c <= hi && b[i].c <= hi * 1.05) { const e = b[i].c, st = hi * 0.97, o = outcome(b, i, e, st, e + 2 * (e - st)); if (o > 0) acc.b.w++; else if (o < 0) acc.b.l++; else acc.b.u++; i += 10; }
     }
     // dip: down 15%+ from the 60-day high, RSI(14) reclaims 40 after sub-30; entry close, stop 10-day low, target 2R
     const rsi = []; let ag = 0, al = 0;
@@ -298,12 +298,12 @@
       let was = false; for (let j = i - 6; j < i; j++) if (rsi[j] != null && rsi[j] < 30) was = true; if (!was) continue;
       let h60 = 0; for (let j = i - 60; j < i; j++) h60 = Math.max(h60, b[j].h); if (b[i].c > h60 * 0.85) continue;
       let lo10 = Infinity; for (let j = i - 10; j <= i; j++) lo10 = Math.min(lo10, b[j].l); const e = b[i].c; if (e <= lo10) continue;
-      const o = outcome(b, i, e, lo10, e + 2 * (e - lo10)); if (o > 0) acc.d.w++; else if (o < 0) acc.d.l++; i += 10;
+      const o = outcome(b, i, e, lo10, e + 2 * (e - lo10)); if (o > 0) acc.d.w++; else if (o < 0) acc.d.l++; else acc.d.u++; i += 10;
     }
   }
   ENR.rate = function (kind) {
-    const s = ENR.ss && (kind === 'Breakout' ? ENR.ss.b : kind === 'Dip' ? ENR.ss.d : null); if (!s || s.w + s.l < 20) return null;
-    return { p: s.w / (s.w + s.l), n: s.w + s.l };
+    const s = ENR.ss && (kind === 'Breakout' ? ENR.ss.b : kind === 'Dip' ? ENR.ss.d : null); const n = s ? s.w + s.l + (s.u || 0) : 0; if (!s || n < 20) return null;
+    return { p: s.w / n, n, lp: s.l / n, up: (s.u || 0) / n }; // every case counts: wins, losses and trades that went nowhere
   };
 
   // Setups screen (Ideas › Setups)

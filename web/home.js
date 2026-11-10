@@ -6,7 +6,9 @@
   function greet() {
     const d = et(), h = d.getHours(), mins = h * 60 + d.getMinutes(), wd = d.getDay();
     const g = h < 5 ? 'EVENING' : h < 12 ? 'MORNING' : h < 17 ? 'AFTERNOON' : 'EVENING';
-    const ses = (wd === 0 || wd === 6) ? 'CLOSED' : mins < 240 ? 'OVERNIGHT' : mins < 570 ? 'PRE-MARKET' : mins < 960 ? 'MARKET OPEN' : mins < 1200 ? 'AFTER HOURS' : 'OVERNIGHT';
+    // same market calendar as the rest of the app (holidays, early closes)
+    const SL = { pre: 'PRE-MARKET', regular: 'MARKET OPEN', after: 'AFTER HOURS', overnight: 'OVERNIGHT', closed: 'MARKET CLOSED' };
+    const ses = typeof sessionAt === 'function' ? SL[sessionAt()] || 'MARKET CLOSED' : (wd === 0 || wd === 6) ? 'MARKET CLOSED' : mins < 240 ? 'OVERNIGHT' : mins < 570 ? 'PRE-MARKET' : mins < 960 ? 'MARKET OPEN' : mins < 1200 ? 'AFTER HOURS' : 'OVERNIGHT';
     const date = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase().replace(',', ' ·');
     const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     return { g: g, sub: date + '<br>' + ses + ' · ' + time };

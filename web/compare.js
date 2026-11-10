@@ -2,7 +2,7 @@
    ETFs: what they do, performance, top holdings, overlap and how they differ.
    Stocks: performance, risk, valuation, growth, analysts, quant score. */
 (function () {
-  const C = { a: '', b: '', data: {}, pend: {}, ai: {}, aiBusy: {} };
+  const C = { a: '', b: '', data: {}, pend: {}, qpend: {}, ai: {}, aiBusy: {} };
   try { const s = JSON.parse(localStorage.getItem('jt.cmp') || 'null'); if (s) { C.a = s.a || ''; C.b = s.b || ''; } } catch (e) {}
   if (!C.a || (C.a === 'SPY' && C.b === 'IVV')) { C.a = 'NVDA'; C.b = 'AMD'; }
   const PAIRS = [['NVDA', 'AMD'], ['VOO', 'QQQ'], ['VOO', 'SPMO'], ['SMH', 'SOXX'], ['MSFT', 'GOOGL'], ['TSLA', 'RIVN'], ['QQQ', 'QQQM'], ['PLTR', 'SNOW']];
@@ -16,8 +16,10 @@
 
   function save() { try { localStorage.setItem('jt.cmp', JSON.stringify({ a: C.a, b: C.b })); } catch (e) {} }
   function load(sym) {
+    if (sym && C.data[sym] && C.data[sym].snap && Date.now() - (C.data[sym].t || 0) > 60000 && !C.qpend[sym] && typeof mcp !== 'undefined' && mcp) { // keep the price fresh without reloading everything
+      C.qpend[sym] = 1; call('get_stock_snapshot', { symbols: sym, category: 'US_STOCK', extend_hour_required: false, overnight_required: false }, 0.02).then((p) => { const x = Array.isArray(p) ? p[0] : null; if (x) { C.data[sym].snap = x; C.data[sym].t = Date.now(); render(); } }).catch(() => {}).finally(() => { delete C.qpend[sym]; }); }
     if (!sym || C.data[sym] || C.pend[sym] || typeof mcp === 'undefined' || !mcp) return; C.pend[sym] = 1;
-    const D = { sym: sym };
+    const D = { sym: sym, t: Date.now() };
     Promise.all([
       call('get_fund_brief', { symbol: sym, category: 'US_STOCK' }, 24).then((p) => { if (p && (p.name || p.investment_objective)) D.fund = p; }).catch(() => {}),
       call('get_stock_snapshot', { symbols: sym, category: 'US_STOCK', extend_hour_required: false, overnight_required: false }, 0.02).then((p) => { D.snap = Array.isArray(p) ? p[0] : null; }).catch(() => {}),
