@@ -183,7 +183,7 @@
       else h += '<button class="rtile" data-res="' + E(a.id) + '"><div class="rcovw">' + RES.coverFor(a) + '</div><div class="rb">' + kick(a) + '<b class="rt">' + E(a.title) + '</b><small class="rmeta">' + a.mins + ' min read</small></div></button>';
     });
     if (list.length > 1) h += '</div>';
-    h += '<p class="foot">Research is for learning, not advice. Ask Claude to add a deep dive on any topic.</p>';
+    h += '<p class="foot">Research is for learning, not advice. New deep dives every week.</p>';
     setHTML(box, h);
     if ($('rsFresh')) $('rsFresh').textContent = all.length ? all.length + ' pieces' : '';
   };

@@ -464,7 +464,7 @@ function renderDetail() {
       ['Employees', pr && pr.employees ? (+pr.employees).toLocaleString() : '—'], ['CEO', (pr && pr.ceo) || '—'], ['Headquarters', pr && pr.address ? pr.address.split(',').slice(-3).join(',').trim() : '—'], ['Exchange', (pr && pr.exhibition_code) || '—']];
     h += '<div class="glass sec" style="--c:' + P.cy + '">' + secCap('KEY FACTS', P.cy) +
       (sn ? rangeBar('Today’s range', +sn.low, +sn.high, cur) + rangeBar('52-week range', +sn.fifty_two_wk_low, +sn.fifty_two_wk_high, cur) : '') +
-      '<div class="facts">' + f.map((x) => '<div><span>' + x[0] + '</span><b>' + esc(x[1]) + '</b></div>').join('') + '</div></div>';
+      '<div class="facts">' + f.filter((x) => x[1] && x[1] !== '—').map((x) => '<div><span>' + x[0] + '</span><b>' + esc(x[1]) + '</b></div>').join('') + '</div></div>';
   }
   // analysts
   const t = d.tgt, ra = d.rat;
@@ -474,9 +474,9 @@ function renderDetail() {
     h += '<div class="glass sec" style="--c:' + P.up + '">' + secCap('ANALYSTS' + (n ? ' · ' + n : ''), P.up) + (n ? anGauge(ra, P) +
       '<div class="ratleg">' + parts.filter((p) => p[1]).map((p) => '<span><i style="background:' + p[2] + '"></i>' + p[0] + ' ' + p[1] + '</span>').join('') + '</div>' : '') +
       (t && t.high ? '<div class="cap" style="margin-top:14px">PRICE TARGETS</div>' + tgtBar(t, cur, P) +
-        '<div class="tg tgc"><div style="--c:' + P.dn + '"><span>Low</span><b>$' + px(+t.low) + '</b>' + (cur ? '<em>' + pctS((+t.low / cur - 1) * 100) + '</em>' : '') + '</div>' +
-        '<div style="--c:' + P.acc + '"><span>Average</span><b>$' + px(+t.mean) + '</b>' + (cur ? '<em>' + pctS((+t.mean / cur - 1) * 100) + '</em>' : '') + '</div>' +
-        '<div style="--c:' + P.up + '"><span>High</span><b>$' + px(+t.high) + '</b>' + (cur ? '<em>' + pctS((+t.high / cur - 1) * 100) + '</em>' : '') + '</div></div>' : '') + '</div>';
+        '<div class="tg tgc"><div style="--c:' + P.dn + '"><span>Low</span><b>$' + px(+t.low) + '</b>' + (cur ? '<em>' + dS(+t.low - cur, null, cur) + ' ' + pctS((+t.low / cur - 1) * 100) + '</em>' : '') + '</div>' +
+        '<div style="--c:' + P.acc + '"><span>Average</span><b>$' + px(+t.mean) + '</b>' + (cur ? '<em>' + dS(+t.mean - cur, null, cur) + ' ' + pctS((+t.mean / cur - 1) * 100) + '</em>' : '') + '</div>' +
+        '<div style="--c:' + P.up + '"><span>High</span><b>$' + px(+t.high) + '</b>' + (cur ? '<em>' + dS(+t.high - cur, null, cur) + ' ' + pctS((+t.high / cur - 1) * 100) + '</em>' : '') + '</div></div>' : '') + '</div>';
   } else if (d.tgt !== undefined || d.rat !== undefined) h += '<div class="glass sec" style="--c:' + P.up + '">' + secCap('ANALYSTS', P.up) + '<p class="desc dim">No analyst coverage. Common for microcaps: there’s no Street target to measure against.</p></div>';
   if (window.ENR) h += ENR.earn(sym);
   h += valCard(sym);
@@ -683,7 +683,7 @@ function closeSearch() { S.searchOpen = false; document.body.classList.remove('s
 function renderSearch() {
   const q = ($('q').value || '').trim(); const Q = q.toUpperCase(); const box = $('results');
   if (window.ENR && ENR.askRes && ENR.askRes.q === q && q) { box.innerHTML = ENR.askRes.html; return; }
-  if (!q) { const r = recents(); box.innerHTML = (window.ENR ? ENR.askUI() : '') + (r.length ? '<div class="cap" style="padding:12px 2px 6px">RECENT</div>' + r.map(resRow).join('') : '<p class="small dim" style="padding:10px 2px">Search any US stock by ticker or company name.</p>'); return; }
+  if (!q) { const r = recents(); box.innerHTML = (window.ENR ? ENR.askUI() : '') + (r.length ? '<div class="cap" style="padding:12px 2px 6px">RECENT</div>' + (srQuotes(r), r.map(resRow).join('')) : '<p class="small dim" style="padding:10px 2px">Search any US stock by ticker or company name.</p>'); return; }
   const hits = []; const rec = {}; recents().forEach((x) => { rec[x] = 1; });
   if (SYMS && SYMS.length) {
     for (const r of SYMS) {
@@ -696,9 +696,14 @@ function renderSearch() {
   let list = hits.slice(0, 30).map((x) => x[1]);
   if (!list.length && /^[A-Z.]{1,6}$/.test(Q)) list.push(Q);
   const cp = window.CMP && CMP.parse(q); const askTop = (cp ? '<button class="srow askrow" data-cmpp="' + esc(cp.join(',')) + '"><span class="logo mono" style="width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#5B9BFF,#F2A65A);font-size:15px">⇄</span><span class="rn"><b>Compare ' + esc(cp[0]) + ' vs ' + esc(cp[1]) + '</b><small>Side by side: performance, holdings, overlap, valuation</small></span></button>' : '') + (window.ENR && ENR.looksLikeQ(q) && !cp ? ENR.askRow(q) : '');
+  srQuotes(list);
   box.innerHTML = askTop + (list.length ? list.map(resRow).join('') : (askTop ? '' : '<p class="small dim" style="padding:10px 2px">' + (SYMS && SYMS.length ? 'No matches.' : 'Loading the stock list…') + '</p>'));
 }
-function resRow(s) { return '<button class="srow" data-search="' + esc(s) + '">' + logoHTML(s, 32) + '<span class="rn"><b>' + esc(s) + '</b><small>' + esc(symName(s) || 'Open ' + s) + '</small></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9AA2AB" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>'; }
+// search rows show price, $ move and % like every other list (quotes fetched for the top results)
+S.srQ = S.srQ || {};
+let srT = null;
+function srQuotes(list) { const need = list.slice(0, 10).filter((s) => !S.srQ[s] || Date.now() - S.srQ[s].t > 60000); if (!need.length || !mcp) return; clearTimeout(srT); srT = setTimeout(() => { call('get_stock_snapshot', { symbols: need.join(','), category: 'US_STOCK', extend_hour_required: false, overnight_required: false }).then((p) => { (Array.isArray(p) ? p : []).forEach((x) => { const r = snapRow(x, 'regular'); if (r && r.price) S.srQ[x.symbol] = { price: r.price, pct: r.pct, chg: r.chg, t: Date.now() }; }); if (S.searchOpen) renderSearch(); }).catch(() => {}); }, 250); }
+function resRow(s) { const q = S.srQ[s] || qOf(s); return '<button class="srow tvr" data-search="' + esc(s) + '">' + logoHTML(s, 32) + '<span class="rn"><b>' + esc(s) + '</b><small>' + esc(cleanName(symName(s)) || 'Open ' + s) + '</small></span>' + (q && q.price ? rpHTML(q) : '') + '</button>'; }
 
 
 /* ---------- IPO watch ---------- */
@@ -817,8 +822,8 @@ function renderRatings() {
     const to = p && r.new_target ? (r.new_target / p - 1) * 100 : null; const tchg = r.old_target && r.new_target ? (r.new_target / r.old_target - 1) * 100 : null;
     const UP = '#5EE0A0', DN = '#FF8A8A'; const t$ = (v) => '$' + (v % 1 ? v.toFixed(2) : v.toFixed(0)); const d = r.old_target && r.new_target ? r.new_target - r.old_target : null;
     const gap = p && r.new_target ? r.new_target - p : null;
-    return '<button class="rat rat4" data-open="' + esc(r.ticker) + '" data-name="' + esc(r.company || '') + '">' + logoHTML(r.ticker, 34) + '<span class="rn"><b>' + esc(r.ticker) + ' <span class="badge" style="color:' + a[1] + ';border-color:' + a[1] + '66;background:' + a[1] + '14">' + a[0] + '</span></b>' + (r.from_rating || r.to_rating ? '<small class="rtR">' + esc((r.from_rating ? r.from_rating + ' → ' : '') + (r.to_rating || '')) + '</small>' : '') + '<small>' + esc(r.firm || '') + ' · ' + esc((r.date || '').slice(5)) + '</small></span>' +
-      '<span class="rp tvp">' + (r.new_target ? '<b>' + (p ? '$' + px(p) + ' → ' : 'Target ') + t$(r.new_target) + '</b>' + (gap != null ? '<small style="color:' + (gap >= 0 ? UP : DN) + '">' + (gap >= 0 ? '+$' : '−$') + Math.abs(gap).toFixed(2) + ' <i>' + (gap >= 0 ? '+' : '−') + Math.abs(to).toFixed(1) + '%</i></small>' : '') : '<b class="dim">No target</b>') + '</span></button>';
+    return '<button class="rat rat4" data-open="' + esc(r.ticker) + '" data-name="' + esc(r.company || '') + '">' + logoHTML(r.ticker, 34) + '<span class="rn"><b>' + esc(r.ticker) + ' <span class="badge" style="color:' + a[1] + ';border-color:' + a[1] + '66;background:' + a[1] + '14">' + a[0] + '</span></b>' + (r.from_rating || r.to_rating ? '<small class="rtR">' + esc((r.from_rating ? r.from_rating + ' → ' : '') + (r.to_rating || '')) + '</small>' : '') + '<small>' + esc(r.firm || '') + ' · ' + esc(r.date ? new Date(r.date.slice(0, 10) + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : '') + '</small></span>' +
+      '<span class="rp tvp">' + (r.new_target ? '<b>' + (p ? '$' + px(p) + ' → ' : 'Target ') + t$(r.new_target) + '</b>' + (gap != null ? '<small style="color:' + (gap >= 0 ? UP : DN) + '">' + (gap >= 0 ? '+$' : '−$') + Math.abs(gap).toFixed(2) + ' <i>' + (gap >= 0 ? '+' : '−') + Math.abs(to).toFixed(1) + '%</i></small>' : '') : (p ? '<b>$' + px(p) + '</b><small class="dim">no price target</small>' : '<b class="dim">No target</b>')) + '</span></button>';
   }).join('') + (list.length > lim ? '<button class="cta ghostcta" data-ratmore="1">Show more · ' + (list.length - lim) + ' left</button>' : '');
 }
 
@@ -1447,7 +1452,7 @@ function valCard(sym) {
   const c = (x, good, bad) => x == null ? '' : x <= good ? P.up : x >= bad ? P.dn : P.txt;
   const tile = (lab, val, col) => '<div' + (col ? ' style="--c:' + col + '"' : '') + ' class="' + (col && col !== P.txt ? 'vt' : '') + '"><span>' + lab + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + val + '</b></div>';
   h += fvChart(v, d, P);
-  h += '<div class="pt">' + verdictBadge(v) + (v.hotRank ? '<span class="tag">#' + v.hotRank + ' most discussed</span>' : '') + '</div>';
+  if (v.hotRank) h += '<div class="pt"><span class="tag">#' + v.hotRank + ' most discussed</span></div>';
   h += '<div class="tg4">' + tile('Fwd P/E', v.fwdPE ? v.fwdPE.toFixed(1) : '—', v.fwdPE ? c(v.fwdPE, 15, 40) : '') + tile('P/E (TTM)', v.peTTM ? v.peTTM.toFixed(1) : '—', v.peTTM ? c(v.peTTM, 15, 40) : '') +
     tile('P/S', v.ps ? v.ps.toFixed(1) : '—', v.ps ? c(v.ps, 2, 12) : '') + tile('PEG', v.peg != null ? v.peg.toFixed(2) : '—', v.peg != null ? c(v.peg, 1, 2) : '') + '</div>';
   h += '<div class="tg4">' + tile('EPS growth', v.growth != null ? (v.growth >= 0 ? '+' : '') + Math.round(v.growth * 100) + '%' : '—', v.growth == null ? '' : v.growth >= 0 ? P.up : P.dn) +

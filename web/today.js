@@ -151,6 +151,7 @@
     const a = S.d[sym] && S.d[sym].dip; const pl = a && a.plan; let e = px, st = null, tg = null;
     if (pl && pl.kind !== 'Wait') { e = pl.kind === 'Buy zone' ? pl.zoneHi : (pl.kind === 'Triggered' ? px : pl.trig || px); st = pl.stop; tg = pl.tgt; }
     else if (pl && pl.better) { e = pl.better; st = pl.stop; tg = pl.tgt; }
+    if (!st || !tg) { const V = window.VERD && VERD.calc ? (function () { try { return VERD.calc(sym, S.d[sym] && S.d[sym].snap ? snapRow(S.d[sym].snap, 'regular') : null); } catch (e) { return null; } })() : null; if (V && V.stop && V.target) { if (!st) { st = V.stop; e = V.entry || e; } if (!tg) tg = V.target; } }
     if (!st && px) st = +(px * 0.93).toFixed(2);
     return { e: e ? +(+e).toFixed(2) : '', st: st ? +(+st).toFixed(2) : '', tg: tg ? +(+tg).toFixed(2) : '' };
   }
@@ -159,7 +160,7 @@
     if (!(e > 0 && st > 0 && e > st)) return '<div class="small" style="color:#F2C27A">Set a stop below your entry to size the trade.</div>';
     let sh = Math.floor(risk / (e - st)); const cap = Math.floor(c.acct * 0.25 / e); const capped = sh > cap; if (capped) sh = cap;
     const pos = sh * e, loss = sh * (e - st), R = tg > e ? (tg - e) / (e - st) : null;
-    return '<div class="szo"><div><span>Buy</span><b>' + sh.toLocaleString() + '</b><small>shares</small></div><div><span>Position</span><b>' + usd(pos) + '</b><small>' + (pos / c.acct * 100).toFixed(0) + '% of account</small></div><div><span>Max loss</span><b style="color:#FF8A8A">' + usd(loss) + '</b><small>' + (loss / c.acct * 100).toFixed(2) + '% of account</small></div><div><span>Reward</span><b style="color:' + (R >= 2 ? '#5EE0A0' : R ? '#F2C27A' : '#A0A9B8') + '">' + (R ? R.toFixed(1) + 'R' : '—') + '</b><small>' + (R ? 'to target' : 'no target') + '</small></div></div>' +
+    return '<div class="szo"><div><span>Buy</span><b>' + sh.toLocaleString() + '</b><small>shares</small></div><div><span>Position</span><b>' + usd(pos) + '</b><small>' + (pos / c.acct * 100).toFixed(0) + '% of account</small></div><div><span>Max loss</span><b style="color:#FF8A8A">$' + px(loss) + '</b><small>' + (loss / c.acct * 100).toFixed(2) + '% of account</small></div><div><span>Reward</span><b style="color:' + (R >= 2 ? '#5EE0A0' : R ? '#F2C27A' : '#A0A9B8') + '">' + (R ? R.toFixed(1) + 'R' : '—') + '</b><small>' + (R ? 'to target' : 'no target') + '</small></div></div>' +
       (capped ? '<div class="small" style="color:#F2C27A">Capped at 25% of your account: the stop is tight enough that full risk would be an oversized position.</div>' : '') + (R && R < 1.5 ? '<div class="small" style="color:#F2C27A">Under 1.5R: the reward barely covers the risk. Better entries come closer to the stop.</div>' : '');
   }
   T.sizerCard = function (sym, px) {

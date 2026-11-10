@@ -82,9 +82,15 @@
     if (st.dyn === 'rotate') { const r = st.pool.map((s) => [s, r1y(B.q[s])]).filter((x) => x[1] != null).sort((a, b) => b[1] - a[1]).slice(0, 3); if (r.length < 3) return null; const NM = { XLK: 'Tech', XLF: 'Financials', XLE: 'Energy', XLV: 'Healthcare', XLI: 'Industrials', XLY: 'Consumer', XLP: 'Staples', XLU: 'Utilities', XLB: 'Materials', XLRE: 'Real estate', XLC: 'Communications' }; return r.map((x, i) => [x[0], i === 2 ? 34 : 33, NM[x[0]] + ' · ' + pc(x[1]) + ' past year']); }
     return st.w;
   };
+  // small donut of the mix weights (clearer than a stack of ticker bubbles)
+  const DC = ['#4C8DFF', '#5EE0A0', '#F2C27A', '#C3A8FF', '#FF8A8A', '#8CB8E0'];
+  const donut = (w) => { const tot = w.reduce((a, x) => a + (+x[1] || 0), 0) || 1; let a0 = -Math.PI / 2; const R = 15, r = 9, c = 18; const p = (A, rr) => (c + rr * Math.cos(A)).toFixed(2) + ' ' + (c + rr * Math.sin(A)).toFixed(2);
+    const seg = w.length === 1 ? '<circle cx="18" cy="18" r="12" fill="none" stroke="' + DC[0] + '" stroke-width="6"/>' : w.map((x, i) => { const a1 = a0 + (+x[1] || 0) / tot * Math.PI * 2; const big = a1 - a0 > Math.PI ? 1 : 0;
+      const d = 'M' + p(a0, R) + 'A' + R + ' ' + R + ' 0 ' + big + ' 1 ' + p(a1, R) + 'L' + p(a1, r) + 'A' + r + ' ' + r + ' 0 ' + big + ' 0 ' + p(a0, r) + 'Z'; a0 = a1; return '<path d="' + d + '" fill="' + DC[i % DC.length] + '"/>'; }).join('');
+    return '<span class="bldSl"><svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true">' + seg + '</svg></span>'; };
   const simpleSyms = () => { const s = new Set(); B.data.simple.forEach((st) => { st.w.forEach((x) => s.add(x[0])); (st.pool || []).forEach((x) => s.add(x)); }); return [...s]; };
   const simpleCards = () => { quotes(simpleSyms()); return '<div class="bldList">' + B.data.simple.map((st) => { const w = simpleW(st); const r = simpleRet(st);
-    return '<button class="bldS" data-bldst="' + st.id + '"><span class="bldSl">' + (w || st.w).slice(0, 3).map((x) => logoHTML(x[0], 26)).join('') + '</span><span class="bldSm"><b>' + esc(st.name) + '</b><small>' + (w ? w.map((x) => x[0] + ' ' + x[1] + '%').join(' · ') : 'Checking…') + '</small></span>' +
+    return '<button class="bldS" data-bldst="' + st.id + '">' + donut(w || st.w) + '<span class="bldSm"><b>' + esc(st.name) + '</b><small>' + (w ? w.map((x) => x[0] + ' ' + x[1] + '%').join(' · ') : 'Checking…') + '</small></span>' +
       (r != null ? '<span class="bldSr" style="color:' + (r >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + pc(r) + '<small>past year</small></span>' : '') + '</button>'; }).join('') + '</div><p class="bldNote">Past-year returns are price only and assume you held the mix all year.</p>'; };
 
   const rowsHTML = (rows) => rows.map((r) => { const p = price(r.x); const $a = B.amt * r.w; const sh = p ? $a / p : 0;

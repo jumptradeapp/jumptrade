@@ -216,7 +216,7 @@
       const rp = qq && qq.price ? '<span class="rp tvp tsq"><b>$' + px(qq.price) + '</b>' + (qq.pct != null ? '<small style="color:' + (qq.pct >= 0 ? C.up : C.dn) + '">' + (dS(qq.chg, qq.pct, qq.price) || '') + ' <i>' + pctS(qq.pct) + '</i></small>' : '') + '</span>' : '';
       return '<button class="tsrow" data-open="' + esc(x.sym) + '">' + logoHTML(x.sym, 34) +
       '<span class="tsm"><b>' + esc(x.sym) + ' <em style="color:' + x.col + ';border-color:' + x.col + '">' + x.kind + '</em></b><small>' + esc(x.why) + '</small>' +
-      '<span class="tsl"><i>Buy <b>' + usdP(x.e) + '</b></i><i>Stop <b style="color:' + C.dn + '">' + usdP(x.st) + '</b></i><i>Target <b style="color:' + C.up + '">' + usdP(x.tg) + '</b></i><i><b style="color:' + C.acc + '">Make $' + (x.rr % 1 ? x.rr.toFixed(1) : x.rr.toFixed(0)) + ' per $1 risked</b></i></span>' + (function () { const rt = ENR.rate && ENR.rate(x.kind); return rt ? '<span class="tsr"><b style="color:' + (rt.p >= .5 ? C.up : C.am) + '">Worked ' + Math.round(rt.p * 100) + '% of the time</b> in ' + rt.n.toLocaleString() + ' past cases like this</span>' : ''; })() + '</span>' + rp + '</button>'; }).join('');
+      '<span class="tsl"><i>Buy <b>' + usdP(x.e) + '</b></i><i>Stop <b style="color:' + C.dn + '">' + usdP(x.st) + '</b></i><i>Target <b style="color:' + C.up + '">' + usdP(x.tg) + '</b></i><i><b style="color:' + C.acc + '">Make $' + (Math.round(x.rr * 10) / 10).toFixed(2) + ' per $1 risked</b></i></span>' + (function () { const rt = ENR.rate && ENR.rate(x.kind); return rt ? '<span class="tsr"><b style="color:' + (rt.p >= .5 ? C.up : C.am) + '">Worked ' + Math.round(rt.p * 100) + '% of the time</b> in ' + rt.n.toLocaleString() + ' past cases like this</span>' : ''; })() + '</span>' + rp + '</button>'; }).join('');
     if (!all) h += '<button class="seeall" data-tab="setups">See all setups ›</button>';
     return h + '<p class="foot" style="text-align:left">Ranked across breakouts and Dip Radar, using the same entry and stop each scanner gives. “Worked X% of the time” is how often the same rule reached its target before its stop within 20 days, across 160 stocks over 2 years. Squeezes are left out on purpose: don’t chase them. Plans, not advice.</p></div>';
   };
@@ -240,7 +240,7 @@
     }
     const pct = Math.round(thr * 100);
     let h = '<div class="glass sec" style="--c:' + C.am + '">' + secCap('AFTER BIG JUMPS', C.am);
-    if (!ev.length) return h + '<p class="desc dim">' + esc(sym) + ' hasn’t had a ' + pct + '%+ up day in the last ' + Math.round(b.length / 252) + ' years. Today’s move is rare for it.</p></div>';
+    if (!ev.length) return h + '<p class="desc dim">' + esc(sym) + ' hasn’t had ' + (/^(8|11|18)/.test(String(pct)) ? 'an ' : 'a ') + pct + '%+ up day in the last ' + (Math.round(b.length / 252) > 1 ? Math.round(b.length / 252) + ' years' : 'year') + '. Today’s move is rare for it.</p></div>';
     const green = ev.filter((e) => e.n1 > 0).length, avg1 = ev.reduce((a, e) => a + e.n1, 0) / ev.length;
     const e5 = ev.filter((e) => e.n5 != null), avg5 = e5.length ? e5.reduce((a, e) => a + e.n5, 0) / e5.length : null;
     const giveA = ev.reduce((a, e) => a + e.give, 0) / ev.length;

@@ -118,7 +118,7 @@
   const md = (d) => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
   function ruleCard(name, blurb, R, P) {
     const a = R.all, q = R.d90;
-    if (!a.n) return '<div class="glass sec"><p class="desc dim">No ' + name.toLowerCase() + ' signals found.</p></div>';
+    if (!a.n) return '<div class="glass sec"><p class="desc dim">' + esc(name) + ': no trades in the test window.</p></div>';
     const tile = (lab, v, sub, col) => '<div><span>' + lab + '</span><b' + (col ? ' style="color:' + col + '"' : '') + '>' + v + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</div>';
     const good = a.avgR > 0.1, col = good ? P.up : a.avgR < -0.05 ? P.dn : P.txt;
     let h = '<div class="glass sec rec" style="--c:' + col + '">' + secCap(name.toUpperCase(), col) + '<p class="desc dim" style="margin:-2px 0 10px">' + blurb + '</p>' +
