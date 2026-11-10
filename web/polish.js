@@ -27,7 +27,7 @@
   if (seenNow()) return;
   const CARDS = [
     ['Find the move.', 'Top Gainers shows what’s jumping right now, why it’s moving, and whether it’s a squeeze, a breakout or a fade.', 'M'],
-    ['know before you <b>jump</b>.', 'Every stock page explains the move: the chart with VWAP, its history after big jumps, money flow, analysts and earnings.', 'K'],
+    ['Know before you jump.', 'Every stock page explains the move: the chart with VWAP, its history after big jumps, money flow, analysts and earnings.', 'K'],
     ['Plan the trade.', 'Setups ranks the best entries with stops, targets and real win rates. Size it, log it, and the journal grades you.', 'P'],
   ];
   const ICON = { M: '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>',
@@ -37,7 +37,7 @@
   function paint() {
     const c = CARDS[k];
     w.innerHTML = '<div class="inbx"><button class="inX" data-in="skip" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' + (k === 0 ? '<div class="inlogo">' + (window.jmMark ? jmMark(76) : '') + '</div>' : '<div class="inico">' + ICON[c[2]] + '</div>') +
-      '<h2>' + c[0].replace(/\.$/, '<em>.</em>') + '</h2><p>' + c[1] + '</p>' +
+      '<h2>' + c[0].replace('.', '<em>.</em>') + '</h2><p>' + c[1] + '</p>' +
       '<div class="indots">' + CARDS.map((_, i) => '<i class="' + (i === k ? 'on' : '') + '"></i>').join('') + '</div>' +
       '<button class="inbtn" data-in="next">' + (k < CARDS.length - 1 ? 'Next' : 'Get started') + '</button>' + '<div class="inrow">' + (k < CARDS.length - 1 ? '<button class="inskip" data-in="skip">Skip</button>' : '') + '<button class="inskip innever" data-in="never">Don’t show this again</button></div></div>';
   }
