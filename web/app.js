@@ -223,6 +223,16 @@ function haltCheck(rows) { // trading halts: the movers lists don't say, so re-c
     const was = JSON.stringify(S.halt || {}); S.halt = h; if (JSON.stringify(h) !== was) render();
   }, 30000);
 }
+// why each mover is moving (from the server's move scanner): a short label and whether the move looks real
+const MWC = { real: ['#5EE0A0', 'Real'], news: ['#8CB8E0', ''], warn: ['#F2C27A', 'Careful'], weak: ['#FF8A8A', 'Weak'], nonews: ['#AEB9C8', ''], halt: ['#FF8A8A', ''] };
+let mwT = 0;
+function loadMoverWhy() { if (!window.JT_WEB || Date.now() - mwT < 55000) return; mwT = Date.now(); fetch('/api/moverwhy', { cache: 'no-store' }).then((r) => r.ok ? r.json() : null).then((j) => { if (j && j.payload) { S.mwhy = j.payload.m || {}; render(); } }).catch(() => {}); }
+const isFresh = (sym) => { const w = S.mwhy && S.mwhy[sym]; return !!(w && w.fresh && Date.now() - w.fresh < 20 * 60000); };
+function whyLine(sym, fallback) {
+  const w = S.mwhy && S.mwhy[sym]; if (!w || !w.kind) return esc(fallback || '');
+  const c = MWC[w.v] || MWC.news; return '<span class="mwy" style="color:' + c[0] + '"><i style="background:' + c[0] + '"></i>' + (c[1] ? c[1] + ' · ' : '') + esc(w.kind) + '</span>';
+}
+const FRESH_CHIP = '<span class="sigchip freshchip">NEW</span>';
 let ovnTimer = null;
 function ovnSnap() { // overnight: re-price today's movers with their 24-hour quotes
   clearTimeout(ovnTimer);
@@ -279,7 +289,7 @@ function renderMovers() {
   $('sessChips').innerHTML = ['pre', 'regular', 'after', 'overnight'].map((k) => '<button class="chip' + (k === v ? ' on' : '') + '" data-sess="' + k + '">' + (k === S.auto ? '<i style="background:' + SESS[k].color + '"></i>' : '') + SESS[k].short + '</button>').join('') +
     (S.manual ? '<button class="chip ghost" data-sess="auto">Auto</button>' : '');
   setHTML($('caps'), CAPS.map((c) => '<button role="tab" aria-selected="' + (c[0] === S.cap) + '" class="seg' + (c[0] === S.cap ? ' on' : '') + '" data-cap="' + c[0] + '">' + c[1] + '</button>').join(''));
-  const rows = rankedRows(); rowsCache = rows; haltCheck(rows);
+  const rows = rankedRows(); rowsCache = rows; haltCheck(rows); loadMoverWhy();
   $('note').textContent = S.held ? '❚❚ ORDER PAUSED WHILE YOU SCROLL' : (rows.length + ' MOVERS · ' + (v === 'overnight' ? 'TODAY’S MOVERS IN 24H TRADING' : vs.name.toUpperCase() + ((v === 'pre' || v === 'after') ? ' · FROM TOP GAINERS + LARGE CAPS' : '')));
   $('layTiles').classList.toggle('on', S.layout === 'tiles'); $('layList').classList.toggle('on', S.layout === 'list');
   const box = $('grid');
@@ -319,12 +329,12 @@ function renderMovers() {
       el.className = 'card tile' + '' + (el.classList.contains('fadein') ? ' fadein' : ''); el.style.width = colW + 'px'; el.style.height = rowHs[Math.floor(i / 2)] + 'px';
       el.style.left = (i % 2) * (colW + gap) + 'px'; el.style.top = rowTop[Math.floor(i / 2)] + 'px';
       const chip = chips[i];
-      el.innerHTML = '<span class="th">' + logoHTML(r.sym, 32) + '<span class="tn"><b>' + esc(r.sym) + '</b>' + '<small>' + esc(cleanName(symName(r.sym) || r.name || '')) + '</small>' + '</span></span>' +
+      el.innerHTML = '<span class="th">' + logoHTML(r.sym, 32) + '<span class="tn"><b>' + esc(r.sym) + (isFresh(r.sym) ? ' ' + FRESH_CHIP : '') + '</b>' + '<small>' + whyLine(r.sym, cleanName(symName(r.sym) || r.name || '')) + '</small>' + '</span></span>' +
         '<span class="tb"><span class="tpr"><span class="tp" style="' + (flash ? 'background:' + flash : '') + '">$' + px(r.price) + '</span>' + (chip && !roomy ? '<span class="tsig2' + '' + '">' + chip + '</span>' : '') + '</span>' +
         '<span class="tc" style="color:' + col + '">' + arrow + chgS(r.chg, r.pct, r.price) + '</span></span>' + (chip && roomy ? '<span class="tsig">' + chip + '</span>' : '') + sparkSVG(r.sym, 100, 30, col) + (hasWhy ? '<span class="nwb tnw" title="News today" aria-label="News today">★</span>' : '');
     } else {
       el.className = 'card row' + (i === 0 ? ' rfirst' : '') + (i === rows.length - 1 ? ' rlast' : '') + (el.classList.contains('fadein') ? ' fadein' : ''); el.style.width = W + 'px'; el.style.height = rowH + 'px'; el.style.left = '0px'; el.style.top = i * rowH + 'px';
-      el.innerHTML = logoHTML(r.sym, 34) + '<span class="rn"><b>' + esc(r.sym) + ' ' + (isHalted(r.sym) ? HALT_CHIP : (window.TODAY ? TODAY.chip(r) : '')) + '</b><small>' + esc(cleanName(symName(r.sym) || r.name || '')) + '</small></span>' +
+      el.innerHTML = logoHTML(r.sym, 34) + '<span class="rn"><b>' + esc(r.sym) + ' ' + (isHalted(r.sym) ? HALT_CHIP : (isFresh(r.sym) ? FRESH_CHIP : '') + (window.TODAY ? TODAY.chip(r) : '')) + '</b><small>' + whyLine(r.sym, cleanName(symName(r.sym) || r.name || '')) + '</small></span>' +
         '<span class="rp tvp"><b style="' + (flash ? 'background:' + flash : '') + '">$' + px(r.price) + '</b><small style="color:' + col + '">' + (dS(r.chg, r.pct, r.price) || '') + ' <i>' + pctS(r.pct) + '</i></small></span>';
     }
     el.setAttribute('aria-label', r.sym + ' ' + px(r.price) + ' ' + pctS(r.pct));

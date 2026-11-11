@@ -32,7 +32,8 @@
     const c = P().acc; const ns = S.news[sym];
     if (!ns) return '';
     const n = ENR.whyItem(sym);
-    return '<div class="glass sec why2" style="--c:' + c + '">' + secCap('WHY IT’S MOVING', c) +
+    const w = S.mwhy && S.mwhy[sym]; const vv = w && w.kind ? '<p class="mwyBig">' + (typeof whyLine === 'function' ? whyLine(sym, '') : '') + (w.v === 'weak' ? ' <span>No headline and a small company: moves like this often fade.</span>' : w.v === 'warn' ? ' <span>New shares or a split can push the price back down.</span>' : w.v === 'real' ? ' <span>A real catalyst with real volume behind it.</span>' : '') + '</p>' : '';
+    return '<div class="glass sec why2" style="--c:' + c + '">' + secCap('WHY IT’S MOVING', c) + vv +
       (n ? '<a class="whyh" href="' + esc(n.url) + '" target="_blank" rel="noopener"><b>' + esc(n.title) + '</b><span>' + esc(n.source || '') + ' · ' + ago(Date.parse(n.publish_time)) + ' ›</span></a>'
          : '<p class="desc dim">No matching headline in the last 3 days.</p>') + '</div>';
   };
