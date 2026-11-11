@@ -349,7 +349,7 @@ function renderMovers() {
 }
 
 /* ---------- detail ---------- */
-function openDetail(sym, row) {
+function openDetail(sym, row) { S.dTab = 'overview'; S.dMore = 0;
   if (!S.wlists && mcp) loadWatch();
   S.detail = sym; S.d[sym] = S.d[sym] || { name: (row && row.name) || symName(sym) };
   document.body.classList.add('sheet-open'); $('sheet').scrollTop = 0;
@@ -369,7 +369,7 @@ function openDetail(sym, row) {
 }
 function loadChart() {
   const sym = S.detail; if (!sym) return;
-  const tf = S.chartTf; const spec = tf === '1m' ? ['M1', 240] : tf === '5m' ? ['M5', 192] : ['D', 130];
+  const tf = S.chartTf; const spec = tf === '1m' ? ['M1', 240] : tf === '5m' ? ['M5', 192] : ['D', 130]; // labels: 1m = today, 5m = ~2 days, D = 6 months
   watch('d:bars', 'get_stock_bars', { symbols: [sym], category: 'US_STOCK', timespan: spec[0], count: spec[1], real_time_required: true, trading_sessions: 'PRE,RTH,ATH,OVN' }, (p) => {
     const r = p && p.result && p.result[0]; S.d[sym].bars = r ? r.result.slice().reverse() : [];
   }, tf === 'D' ? 300000 : 30000);
@@ -484,9 +484,10 @@ function renderDetail() {
   let main = sn ? snapRow(sn, 'regular') : row; const ext = sn ? (v === 'overnight' ? snapRow(sn, 'overnight') : (v === 'pre' || v === 'after') ? snapRow(sn, v) : null) : null;
   const name = d.name || (row && row.name) || '';
   if (S.wlists && !S.wlMemTried) { S.wlMemTried = 1; memLoad(); } const wln = wlCount(sym);
-  let h = '<div class="dHead">' + logoHTML(sym, 46) + '<div style="min-width:0"><h2>' + esc(sym) + '</h2><span>' + esc(name) + '</span></div><button class="wlBtn' + (wln ? ' on' : '') + '" data-pick="' + esc(sym) + '">' + (wln ? '★ On ' + wln + ' list' + (wln > 1 ? 's' : '') : '☆ Watchlist') + '</button><button class="wlBtn shBtn" data-share="' + esc(sym) + '">Share</button><button class="wlBtn cmpBtn" data-cmpwith="' + esc(sym) + '" aria-label="Compare">⇄</button></div>';
   const up = main ? main.pct >= 0 : true;
-  // hero: price + chart together
+  // 1. who it is (close button lives in the sheet's grab bar)
+  let h = '<div class="grab2"></div><div class="dHead2">' + logoHTML(sym, 44) + '<div style="min-width:0;flex:1"><h2>' + esc(sym) + '</h2><span>' + esc(cleanName(name)) + '</span></div><button class="dX" id="back" aria-label="Close">✕</button></div>';
+  // 2. price
   h += '<div class="dTop">';
   if (main) {
     h += '<div class="dPrice">$' + px(main.price) + '</div><div class="dChg" style="color:' + (up ? P.up : P.dn) + '">' + chgS(main.chg, main.pct, main.price) + ' <span>' + (v === 'regular' && S.auto === 'regular' ? 'today' : 'at the close') + '</span></div>';
@@ -496,53 +497,61 @@ function renderDetail() {
     { const st = S.stamp && (S.stamp['d:snap'] || S.stamp['d:snap:' + sym]); const age = st ? Date.now() - st : null; const tm = new Date(st || Date.now()).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', timeZone: 'America/New_York' });
       h += '<div class="dQt">' + (SESS[S.auto] ? SESS[S.auto].label : 'Market closed') + ' · vs yesterday’s close · ' + (st ? tm + ' ET' : 'loading…') + (age > 90000 ? ' <b style="color:#F2C27A">· delayed</b>' : '') + '</div>'; }
   }
-  if (window.JC && main) h += JC.button(sym) + JC.card(sym, main, ext && ext.price ? ext : null);
-  if (window.VERD) h += VERD.card(sym, main);
-  if (window.ENR) h += ENR.stats(sym, main);
-  if (window.PEER) h += PEER.stats(sym, main) + PEER.card(sym);
-  h += '<div class="chart2">' + '<button class="fsBtn" data-fsopen><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Setup</button>' + chartSVG(d.bars, sn ? +sn.pre_close : null, window.ENR && S.chartTf !== 'D' ? ENR.levels(sym) : null) + '<div class="cfoot"><div class="tfs2">' + ['1m', '5m', 'D'].map((t) => '<button class="' + (t === S.chartTf ? 'on' : '') + '" data-tf="' + t + '">' + (t === 'D' ? '1D' : t) + '</button>').join('') + '</div>' +
+  h += '</div>';
+  // 3. the chart, right away
+  h += '<div class="chart2 c3">' + '<button class="fsBtn" data-fsopen><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Setup</button>' + chartSVG(d.bars, sn ? +sn.pre_close : null, window.ENR && S.chartTf !== 'D' ? ENR.levels(sym) : null) + '<div class="cfoot"><div class="tfs2">' + ['1m', '5m', 'D'].map((t) => '<button class="' + (t === S.chartTf ? 'on' : '') + '" data-tf="' + t + '">' + (t === 'D' ? '6M' : t === '5m' ? '2D' : '1D') + '</button>').join('') + '</div>' +
     '<div class="legend2">' + (S.chartTf !== 'D' ? '<span><i style="background:#C3A8FF;height:2px"></i>VWAP</span><span><b class="npin">N</b>News</span>' : '') + '<span><i style="background:#F2C27A"></i>Pre</span><span><i style="background:#8CB8E0"></i>After</span></div></div></div></div>';
-  if (window.ENR) h += ENR.why(sym);
-  if (main && window.TODAY) h += TODAY.banner(ext && ext.price ? ext : main);
-  if (window.ENR) h += ENR.hist(sym) + ENR.flow(sym);
-  if (window.QS) h += QS.card(sym);
-  // profile
-  const pr = d.prof; const mc = +(sn && sn.market_value); const cc = capClass(mc);
-  const chips = [];
-  if (cc) chips.push('<span class="pchip" style="--c:' + P[cc[1]] + '">' + cc[0] + '</span>');
-  if (pr && pr.industries && pr.industries[0]) chips.push('<span class="pchip" style="--c:' + P.acc + '">' + esc(pr.industries[0]) + '</span>');
-  if (pr && pr.exhibition_code) chips.push('<span class="pchip" style="--c:' + P.mute + '">' + esc(pr.exhibition_code) + '</span>');
-  h += '<div class="glass sec" style="--c:' + P.acc + '">' + secCap('WHAT IT DOES', P.acc) + (chips.length ? '<div class="pchips">' + chips.join('') + '</div>' : '') +
-    (pr ? '<p class="desc" id="desc">' + esc(pr.profile || 'No description available.') + '</p>' + (pr.profile && pr.profile.length > 260 ? '<button class="more" data-more="1">Read more</button>' : '') : '<div class="skel"></div><div class="skel" style="width:70%"></div>') + '</div>';
-  if (sn || pr) {
-    const cur = main ? main.price : 0;
-    const f = [['Market cap', money(mc)], ['Volume', big(+(sn && sn.volume))], ['P/E', sn && +sn.pe_ratio > 0 ? (+sn.pe_ratio).toFixed(1) : '—'], ['Shares out', big(+(sn && sn.out_standing_shares))],
-      ['Employees', pr && pr.employees ? (+pr.employees).toLocaleString() : '—'], ['CEO', (pr && pr.ceo) || '—'], ['Headquarters', pr && pr.address ? pr.address.split(',').slice(-3).join(',').trim() : '—'], ['Exchange', (pr && pr.exhibition_code) || '—']];
-    h += '<div class="glass sec" style="--c:' + P.cy + '">' + secCap('KEY FACTS', P.cy) +
-      (sn ? rangeBar('Today’s range', +sn.low, +sn.high, cur) + rangeBar('52-week range', +sn.fifty_two_wk_low, +sn.fifty_two_wk_high, cur) : '') +
-      '<div class="facts">' + f.filter((x) => x[1] && x[1] !== '—').map((x) => '<div><span>' + x[0] + '</span><b>' + esc(x[1]) + '</b></div>').join('') + '</div></div>';
-  }
+  // 4. three actions
+  h += '<div class="dActs"><button class="dAct pri' + (window.JC && JC.open[sym] ? ' on' : '') + '" data-jc="' + esc(sym) + '">✦ Jump check</button><button class="dAct' + (wln ? ' on' : '') + '" data-pick="' + esc(sym) + '">' + (wln ? '★ Watching' : '☆ Watchlist') + '</button><button class="dAct" data-share="' + esc(sym) + '">↗ Share</button></div>';
+  if (window.JC && main) h += JC.card(sym, main, ext && ext.price ? ext : null);
+  // 5. the call, in one line
+  const vc = window.VERD && main ? VERD.calc(sym, main) : null;
+  if (vc) { const col = vc.kind === 'buy' ? P.up : vc.kind === 'avoid' ? P.dn : P.am; const w = vc.kind === 'buy' ? 'BUY' : vc.kind === 'avoid' ? 'AVOID' : 'WATCH';
+    h += '<button class="dCall" data-dtab="analysis"><span class="w" style="color:' + col + ';background:' + col + '1f">' + w + '</span><p>' + (vc.kind === 'avoid' ? 'Stay out for now. Back on the table above <b>$' + px(vc.entry) + '</b>.' : (vc.kind === 'buy' ? 'Buy ' + (/above/i.test(vc.line) ? 'above' : 'near') : 'Turns into a buy above') + ' <b>$' + px(vc.entry) + '</b>. Stop $' + px(vc.stop) + ' · target $' + px(vc.target)) + '</p><i>›</i></button>'; }
+  // 6. tabs for everything else
+  const TABS = [['overview', 'Overview'], ['news', 'News'], ['peers', 'Peers'], ['analysis', 'Analysis']];
+  const tab = TABS.some((t) => t[0] === S.dTab) ? S.dTab : 'overview';
+  h += '<div class="dTabs">' + TABS.map((t) => '<button class="' + (t[0] === tab ? 'on' : '') + '" data-dtab="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>';
+  const pr = d.prof; const mc = +(sn && sn.market_value); const cur = main ? main.price : 0;
+  if (tab === 'overview') {
+    const rv = window.ENR && ENR.rvol ? ENR.rvol(sym, +(sn && sn.volume)) : null;
+    const g = [['Market cap', mc ? money(mc) : '—'], ['P/E', sn && +sn.pe_ratio > 0 ? (+sn.pe_ratio).toFixed(1) : '—'], ['Volume', sn && +sn.volume ? big(+sn.volume) + (rv && rv >= 1.5 ? ' <small style="color:#F2C27A">' + (rv >= 10 ? Math.round(rv) : rv.toFixed(1)) + '× avg</small>' : '') : '—'], ['52-week range', sn && +sn.fifty_two_wk_high ? '$' + px(+sn.fifty_two_wk_low) + ' – $' + px(+sn.fifty_two_wk_high) : '—']];
+    h += '<div class="dGrid">' + g.map((x) => '<div><span>' + x[0] + '</span><b>' + x[1] + '</b></div>').join('') + '</div>';
+    if (window.PEER) h += PEER.stats(sym, main);
+    const about = pr && pr.profile ? String(pr.profile) : '';
+    h += '<div class="dAbout"><h3>About ' + esc(cleanName((pr && pr.company_name) || name || sym)) + '</h3>' + (pr ? (about ? '<p class="' + (S.dMore ? '' : 'clamp') + '">' + esc(about) + '</p>' + (about.length > 180 ? '<button class="dMore" data-dmore="1">' + (S.dMore ? 'Show less' : 'Show more') + '</button>' : '') : '<p>No description available.</p>') + (pr && (pr.industries || [])[0] ? '<div class="dMeta">' + esc(pr.industries[0]) + (pr.ceo ? ' · CEO ' + esc(pr.ceo) : '') + (pr.employees ? ' · ' + (+pr.employees).toLocaleString() + ' employees' : '') + '</div>' : '') : '<div class="skel"></div><div class="skel" style="width:70%"></div>') + '</div>';
+  } else if (tab === 'news') {
+    let N = '';
+    if (window.ENR) N += ENR.why(sym);
+  const ns = S.news[sym];
+  N += '<div class="glass sec" style="--c:' + P.am + '">' + secCap('NEWS', P.am) + (ns ? (ns.items.length ? ns.items.slice(0, 6).map((n) => '<a class="news" href="' + esc(n.url) + '" target="_blank" rel="noopener"><b>' + esc(n.title) + '</b><span>' + esc(n.source || '') + ' · ' + ago(Date.parse(n.publish_time)) + '</span></a>').join('') : '<p class="desc dim">No recent news.</p>') : '<div class="skel"></div><div class="skel"></div>') + '</div>';
+    h += N;
+  } else if (tab === 'peers') {
+    h += window.PEER ? (PEER.card(sym) || '<div class="empty"><b>No peer group yet</b><span>We match companies by industry.</span></div>') : '';
+  } else {
+    let A = '';
+    if (window.VERD) A += VERD.card(sym, main);
   // analysts
   const t = d.tgt, ra = d.rat;
   if ((t && t.high) || (ra && +ra.number)) {
     const cur = main ? main.price : 0; const n = ra ? +ra.number : 0;
     const parts = ra ? [['Strong buy', +ra.strong_buy, '#3FD68F'], ['Buy', +ra.buy, '#8CE3B5'], ['Hold', +ra.hold, '#F2C27A'], ['Sell', +(ra.under_perform || 0) + +(ra.sell || 0), '#FF6B6B']] : [];
-    h += '<div class="glass sec" style="--c:' + P.up + '">' + secCap('ANALYST OPINION' + (n ? ' · ' + n + ' analysts' : ''), P.up) + (n ? anGauge(ra, P) +
+    A += '<div class="glass sec" style="--c:' + P.up + '">' + secCap('ANALYST OPINION' + (n ? ' · ' + n + ' analysts' : ''), P.up) + (n ? anGauge(ra, P) +
       '<div class="ratleg">' + parts.filter((p) => p[1]).map((p) => '<span><i style="background:' + p[2] + '"></i>' + p[0] + ' ' + p[1] + '</span>').join('') + '</div>' : '') +
       (t && t.high ? '<div class="cap" style="margin-top:14px">PRICE TARGETS</div>' + tgtBar(t, cur, P) +
         '<div class="tg tgc"><div style="--c:' + P.dn + '"><span>Low</span><b>$' + px(+t.low) + '</b>' + (cur ? '<em>' + dS(+t.low - cur, null, cur) + ' ' + pctS((+t.low / cur - 1) * 100) + '</em>' : '') + '</div>' +
         '<div style="--c:' + P.acc + '"><span>Average</span><b>$' + px(+t.mean) + '</b>' + (cur ? '<em>' + dS(+t.mean - cur, null, cur) + ' ' + pctS((+t.mean / cur - 1) * 100) + '</em>' : '') + '</div>' +
         '<div style="--c:' + P.up + '"><span>High</span><b>$' + px(+t.high) + '</b>' + (cur ? '<em>' + dS(+t.high - cur, null, cur) + ' ' + pctS((+t.high / cur - 1) * 100) + '</em>' : '') + '</div></div>' : '') + '</div>';
-  } else if (d.tgt !== undefined || d.rat !== undefined) h += '<div class="glass sec" style="--c:' + P.up + '">' + secCap('ANALYST OPINION', P.up) + '<p class="desc dim">No analyst coverage. Common for microcaps: there’s no Street target to measure against.</p></div>';
-  if (window.ENR) h += ENR.earn(sym);
-  h += valCard(sym);
-  if (window.ENR) h += ENR.ins(sym);
-  h += dipCard(sym);
-  if (window.TODAY && main) h += TODAY.sizerCard(sym, main.price);
-  const ns = S.news[sym];
-  h += '<div class="glass sec" style="--c:' + P.am + '">' + secCap('NEWS', P.am) + (ns ? (ns.items.length ? ns.items.slice(0, 6).map((n) => '<a class="news" href="' + esc(n.url) + '" target="_blank" rel="noopener"><b>' + esc(n.title) + '</b><span>' + esc(n.source || '') + ' · ' + ago(Date.parse(n.publish_time)) + '</span></a>').join('') : '<p class="desc dim">No recent news.</p>') : '<div class="skel"></div><div class="skel"></div>') + '</div>';
-  h += '<p class="foot">Live data. Refreshes about every 30 seconds; pull down for an instant update.</p>';
-  $('sheetBody').innerHTML = h;
+  } else if (d.tgt !== undefined || d.rat !== undefined) A += '<div class="glass sec" style="--c:' + P.up + '">' + secCap('ANALYST OPINION', P.up) + '<p class="desc dim">No analyst coverage. Common for microcaps: there’s no Street target to measure against.</p></div>';
+    if (window.ENR) A += ENR.earn(sym) + ENR.flow(sym) + ENR.ins(sym);
+    if (window.ENR) A += ENR.stats(sym, main);
+    A += valCard(sym) + dipCard(sym);
+    if (window.QS) A += QS.card(sym);
+    if (window.TODAY && main) A += TODAY.sizerCard(sym, main.price);
+    h += A;
+  }
+  h += '<p class="foot">Live data. Updates about every 2 seconds. Ideas, not advice.</p>';
+  setHTML($('sheetBody'), h);
 }
 
 /* ---------- sectors ---------- */
@@ -1642,6 +1651,8 @@ document.addEventListener('click', async (e) => {
   else if (t.dataset.search) { closeSearch(); openDetail(t.dataset.search, null); }
   else if (t.classList && t.classList.contains('searchBtn')) { openSearch(); return; }
   else if (t.id === 'closeSearch') { closeSearch(); return; }
+  else if (t.dataset.dtab) { S.dTab = t.dataset.dtab; S.dMore = 0; render(); if (t.classList.contains('dCall')) setTimeout(() => { const el = document.querySelector('.dTabs'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50); }
+  else if (t.dataset.dmore) { S.dMore = !S.dMore; render(); }
   else if (t.dataset.tf) { S.chartTf = t.dataset.tf; S.d[S.detail].bars = null; loadChart(); }
   else if (t.dataset.per) { S.sectorPeriod = t.dataset.per; }
   else if (t.dataset.sector) { openSector(t.dataset.sector); }

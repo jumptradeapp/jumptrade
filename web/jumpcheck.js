@@ -124,14 +124,15 @@
     return '<div class="jcEng"><div class="jcEngBg"></div><div class="jcHead"><span class="jcOrb big"><i></i></span><span class="jcHt"><b>JUMP CHECK ENGINE</b><small><em class="jcLive"></em>Scanning ' + (rows.length || 'the') + ' movers live</small></span></div>' +
       '<div class="jcReel" data-jcreel="1"></div>' +
       (rows.length ? '<div class="jcStats">' + stat(rows.length, 'scanned', '#E6EBF2') + stat(cnt.real, 'real catalysts', '#5EE0A0') + stat(cnt.warn + cnt.weak, 'red flags', '#FF8A8A') + '</div>' : '') +
-      '<form class="jcAsk" data-jchome="1"><input name="t" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Check any ticker, like NVDA"><button aria-label="Check">›</button></form></div>';
+      '<div class="jcEngF"><span>Tap any stock for its full check</span><button class="jcAnyB" data-opensearch="1">⌕ Check another</button></div></div>';
   };
   let reelI = 0, reelT = 0;
   function reelPaint(force) {
     const el = document.querySelector('[data-jcreel]'); if (!el || !JC.reel.length) return;
     if (!force && el.dataset.at && Date.now() - reelT < 2600) return; reelT = Date.now();
-    const x = JC.reel[reelI++ % JC.reel.length]; el.dataset.at = x.sym;
-    el.innerHTML = '<button class="jcReelIn" data-jcopen="' + E(x.sym) + '" style="--k:' + x.col + '">' + (typeof logoHTML === 'function' ? logoHTML(x.sym, 40) : '') + '<span class="jcRn"><b>' + E(x.sym) + ' <em style="color:#5EE0A0">+' + (x.pct >= 100 ? Math.round(x.pct) : x.pct.toFixed(1)) + '%</em></b><small style="color:' + x.col + '"><i style="background:' + x.col + '"></i>' + E(x.tag) + (x.why ? ' · ' + E(x.why) : '') + '</small></span><span class="jcGo">Check ›</span></button>';
+    const n = JC.reel.length, k = reelI++ % n; el.dataset.at = String(k);
+    const rowH = (x, top) => '<button class="jcReelIn' + (top ? ' lead' : '') + '" data-jcopen="' + E(x.sym) + '" style="--k:' + x.col + '">' + (typeof logoHTML === 'function' ? logoHTML(x.sym, top ? 38 : 30) : '') + '<span class="jcRn"><b>' + E(x.sym) + ' <em style="color:#5EE0A0">+' + (x.pct >= 100 ? Math.round(x.pct) : x.pct.toFixed(1)) + '%</em></b><small style="color:' + x.col + '"><i style="background:' + x.col + '"></i>' + E(x.tag) + (x.why ? ' · ' + E(x.why) : '') + '</small></span>' + (top ? '<span class="jcGo">Check ›</span><span class="jcScanL"></span>' : '') + '</button>';
+    el.innerHTML = [0, 1, 2].filter((o) => o < n).map((o) => rowH(JC.reel[(k + o) % n], o === 0)).join('');
   }
   setInterval(() => { const el = document.querySelector('[data-jcreel]'); if (el && (!el.firstChild || Date.now() - reelT >= 2600)) reelPaint(true); }, 300);
   function startScan(sym) { JC.reveal[sym] = Date.now() + 1600; let n = 0; const t = setInterval(() => { if (typeof render === 'function') render(); if (++n > 9) clearInterval(t); }, 200); setTimeout(() => { if (typeof render === 'function') render(); }, 3500); }
@@ -140,6 +141,7 @@
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-jc]'); if (b) { e.preventDefault(); e.stopPropagation(); const s = b.dataset.jc; JC.open[s] = !JC.open[s]; if (JC.open[s]) startScan(s); if (typeof render === 'function') render(); if (JC.open[s]) setTimeout(() => { const el = document.querySelector('.jc'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 120); return; }
     const c = e.target.closest('[data-jcq]'); if (c) { e.preventDefault(); e.stopPropagation(); ask(c.dataset.jcs, c.dataset.jcq); return; }
+    const os = e.target.closest('[data-opensearch]'); if (os) { e.preventDefault(); e.stopPropagation(); if (typeof openSearch === 'function') openSearch(); return; }
     const o = e.target.closest('[data-jcopen]'); if (o) { e.preventDefault(); e.stopPropagation(); openCheck(o.dataset.jcopen); }
   }, true);
   document.addEventListener('submit', (e) => {
