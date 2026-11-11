@@ -73,7 +73,7 @@ function LVB(buy, st, tg, now, buyTxt, lab) {
   const f = (x) => '$' + px(x); if (!(buy > 0)) return '';
   if (!(st > 0) || !(tg > 0) || !(tg > st)) return '<span class="lvb lvbOnly"><span class="lvbL"><span class="b">' + (lab && /bought/i.test(lab) ? 'Bought ' : 'Buy ') + (buyTxt || f(buy)) + '</span></span></span>';
   const pos = (x) => Math.max(0, Math.min(100, (x - st) / (tg - st) * 100)), B = pos(buy), Bl = Math.max(16, Math.min(84, B));
-  return '<span class="lvb"><span class="lvbB" style="left:' + Bl + '%">' + (lab && /bought/i.test(lab) ? 'Bought ' : 'Buy ') + (buyTxt || f(buy)) + '</span><span class="lvbT"><i class="lvbR" style="width:' + B + '%"></i><i class="lvbG" style="left:' + B + '%"></i><b class="lvbD" style="left:' + B + '%"></b>' + (now > 0 ? '<em style="left:' + pos(now) + '%"></em>' : '') + '</span><span class="lvbL"><span class="r">Stop ' + f(st) + '</span><span class="g">Target ' + f(tg) + '</span></span></span>';
+  return '<span class="lvb"><span class="lvbB" style="left:' + Bl + '%">' + (lab && /bought/i.test(lab) ? 'Bought ' : 'Buy ') + (buyTxt || f(buy)) + '</span><span class="lvbT"><i class="lvbR" style="width:' + B + '%"></i><i class="lvbG" style="left:' + B + '%"></i><b class="lvbD" style="left:' + B + '%"></b>' + (now > 0 ? '<em style="left:' + pos(now) + '%"></em>' : '') + '</span><span class="lvbL"><span class="r">Stop ' + f(st) + '</span><span class="g">Target ' + f(tg) + '</span></span>' + (window.BAS ? BAS.risk(buy, st, tg) : '') + '</span>';
 }
 function mvS(pct, price, chg) { const d = dS(chg, pct, price); return (d ? d + ' ' : '') + pctS(pct); }
 function logoHTML(sym, size) {
@@ -508,6 +508,7 @@ function renderDetail() {
       h += '<div class="dQt">' + (SESS[S.auto] ? SESS[S.auto].label : 'Market closed') + ' · vs yesterday’s close · ' + (st ? tm + ' ET' : 'loading…') + (age > 90000 ? ' <b style="color:#F2C27A">· delayed</b>' : '') + '</div>'; }
   }
   h += '</div>';
+  if (window.BAS && main) h += BAS.sheet(sym, main, sn);
   // 3. the chart, right away
   h += '<div class="chart2 c3">' + '<button class="fsBtn" data-fsopen><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Setup</button>' + chartSVG(d.bars, sn ? +sn.pre_close : null, window.ENR && S.chartTf !== 'D' ? ENR.levels(sym) : null) + '<div class="cfoot"><div class="tfs2">' + ['1m', '5m', 'D'].map((t) => '<button class="' + (t === S.chartTf ? 'on' : '') + '" data-tf="' + t + '">' + (t === 'D' ? '6M' : t === '5m' ? '2D' : '1D') + '</button>').join('') + '</div>' +
     '<div class="legend2">' + (S.chartTf !== 'D' ? '<span><i style="background:#C3A8FF;height:2px"></i>VWAP</span><span><b class="npin">N</b>News</span>' : '') + '<span><i style="background:#F2C27A"></i>Pre</span><span><i style="background:#8CB8E0"></i>After</span></div></div></div></div>';
@@ -517,7 +518,7 @@ function renderDetail() {
   // 5. the call, in one line
   const vc = window.VERD && main ? VERD.calc(sym, main) : null;
   if (vc) { const col = vc.kind === 'buy' ? P.up : vc.kind === 'avoid' ? P.dn : P.am; const w = vc.kind === 'buy' ? 'BUY' : vc.kind === 'avoid' ? 'AVOID' : 'WATCH';
-    h += '<button class="dCall" data-dtab="analysis"><span class="w" style="color:' + col + ';background:' + col + '1f">' + w + '</span><p>' + (vc.kind === 'avoid' ? 'Stay out for now. Back on the table above <b>$' + px(vc.entry) + '</b>.' : (vc.kind === 'buy' ? 'Buy ' + (/above/i.test(vc.line) ? 'above' : 'near') : 'Turns into a buy above') + ' <b>$' + px(vc.entry) + '</b>. Stop $' + px(vc.stop) + ' · target $' + px(vc.target)) + '</p><i>›</i></button>'; }
+    const hl = window.BAS ? BAS.light(vc.kind) : null; h += '<button class="dCall" data-dtab="analysis">' + (hl ? '<span class="bLight" style="--c:' + hl[0] + '"><i></i>' + hl[1] + '</span>' : '') + '<span class="w" style="color:' + col + ';background:' + col + '1f">' + w + '</span><p>' + (vc.kind === 'avoid' ? 'Stay out for now. Back on the table above <b>$' + px(vc.entry) + '</b>.' : (vc.kind === 'buy' ? 'Buy ' + (/above/i.test(vc.line) ? 'above' : 'near') : 'Turns into a buy above') + ' <b>$' + px(vc.entry) + '</b>. Stop $' + px(vc.stop) + ' · target $' + px(vc.target)) + '</p><i>›</i></button>'; }
   // 6. tabs for everything else
   const TABS = [['overview', 'Overview'], ['news', 'News'], ['peers', 'Peers'], ['analysis', 'Analysis']];
   const tab = TABS.some((t) => t[0] === S.dTab) ? S.dTab : 'overview';
