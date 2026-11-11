@@ -64,7 +64,17 @@ const HUES = [[139, 108, 255], [255, 140, 70], [32, 201, 151], [59, 160, 219], [
 /* every stock move shows dollars AND percent: "+$7.67 +65.72%" (dollar move is derived from price and % when a feed omits it) */
 function dS(chg, pct, price) { const c = chg != null && isFinite(chg) && chg !== '' ? +chg : (price > 0 && pct != null && isFinite(pct) && pct > -100 ? price - price / (1 + pct / 100) : null); if (c == null) return ''; const a = Math.abs(c); return (c >= 0 ? '+$' : '−$') + (price > 0 && price < 1 && a < 0.1 ? a.toFixed(4) : a.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })); }
 // one plan format everywhere: Buy / Stop / Target
-function planStrip(lab, e, st, tg) { const P = dPal(), f = (x) => '$' + px(x); return '<span class="tsl"><i>' + lab + ' <b>' + (Array.isArray(e) ? f(e[0]) + '–' + f(e[1]) : f(e)) + '</b></i>' + (st ? '<i>Stop <b style="color:' + P.dn + '">' + f(st) + '</b></i>' : '') + (tg ? '<i>Target <b style="color:' + P.up + '">' + f(tg) + '</b></i>' : '') + '</span>'; }
+function planStrip(lab, e, st, tg, now) { return LVB(Array.isArray(e) ? (e[0] + e[1]) / 2 : e, st, tg, now, Array.isArray(e) ? '$' + px(e[0]) + '–' + px(e[1]) : null, lab); }
+/* BUY NOW / WAIT label for Trade Ideas rows */
+function GOP(now, buy, wait) { const go = !wait && now > 0 && buy > 0 && now >= buy * 0.995; return ' <span class="gop ' + (go ? 'go' : 'wt') + '">' + (go ? 'BUY NOW' : 'WAIT') + '</span>'; }
+const GOLEG = '<div class="goleg"><span class="gop go">BUY NOW</span>at or above the buy price<span class="gop wt">WAIT</span>not there yet</div>';
+/* the level bar: stop (red) → buy → target (green) on one line, with today's price as a white tick */
+function LVB(buy, st, tg, now, buyTxt, lab) {
+  const f = (x) => '$' + px(x); if (!(buy > 0)) return '';
+  if (!(st > 0) || !(tg > 0) || !(tg > st)) return '<span class="lvb lvbOnly"><span class="lvbL"><span class="b">' + (lab && /bought/i.test(lab) ? 'Bought ' : 'Buy ') + (buyTxt || f(buy)) + '</span></span></span>';
+  const pos = (x) => Math.max(0, Math.min(100, (x - st) / (tg - st) * 100)), B = pos(buy), Bl = Math.max(16, Math.min(84, B));
+  return '<span class="lvb"><span class="lvbB" style="left:' + Bl + '%">' + (lab && /bought/i.test(lab) ? 'Bought ' : 'Buy ') + (buyTxt || f(buy)) + '</span><span class="lvbT"><i class="lvbR" style="width:' + B + '%"></i><i class="lvbG" style="left:' + B + '%"></i><b class="lvbD" style="left:' + B + '%"></b>' + (now > 0 ? '<em style="left:' + pos(now) + '%"></em>' : '') + '</span><span class="lvbL"><span class="r">Stop ' + f(st) + '</span><span class="g">Target ' + f(tg) + '</span></span></span>';
+}
 function mvS(pct, price, chg) { const d = dS(chg, pct, price); return (d ? d + ' ' : '') + pctS(pct); }
 function logoHTML(sym, size) {
   const r = Math.round(size / 2); // circles everywhere
@@ -692,7 +702,7 @@ function planLine(a) {
 function planHTML(a) {
   const p = a.plan; if (!p) return '';
   if (p.kind === 'Wait') return '<span class="tswait">' + esc(planLine(a)) + '</span>';
-  return planStrip(p.zoneLo ? 'Buy' : p.kind === 'Triggered' ? 'Bought at' : 'Buy above', p.zoneLo ? [p.zoneLo, p.zoneHi] : p.trig, p.stop, p.tgt);
+  return planStrip(p.zoneLo ? 'Buy' : p.kind === 'Triggered' ? 'Bought at' : 'Buy above', p.zoneLo ? [p.zoneLo, p.zoneHi] : p.trig, p.stop, p.tgt, a.px);
 }
 function dipBadge(st) { const s = STATE[st] || ['—', '#A0A9B8']; return '<span class="badge" style="color:' + s[1] + ';border-color:' + s[1] + '66;background:' + s[1] + '14">' + s[0] + '</span>'; }
 function renderDips() {
@@ -706,10 +716,10 @@ function renderDips() {
   list.sort((a, b) => (STATE_ORDER.indexOf(a.state) - STATE_ORDER.indexOf(b.state)) || (b.score - a.score));
   const box = $('dipList');
   if (!all.length) { box.innerHTML = '<div class="empty"><b>' + (S.err ? 'Can’t load live data' : mcp ? 'Scanning ' + U.all.length + ' stocks…' : 'Can’t reach live data') + '</b><span>' + esc(S.err ? (ERRCOPY[S.err] || '') : 'Pulling a year of daily prices for each name.') + '</span></div>'; return; }
-  let h = '', lastSt = null;
+  let h = GOLEG, lastSt = null;
   list.forEach((a) => {
     if (a.state !== lastSt) { lastSt = a.state; h += '<div class="dipH">' + dipBadge(a.state) + '<span>' + ({ turning: 'Selling has stopped and it’s turning back up', reclaiming: 'Just closed back above a key average price', support: 'Sold off hard and sitting on a floor', oversold: 'Sold off hard, no floor under it yet', basing: 'Holding up after a big drop, no trigger yet', extended: 'Already bounced hard. Wait for a pullback', falling: 'Still sliding. Don’t catch it yet', breaking: 'Broke a support level in the last 3 days', 'near-high': 'Within 18% of its 52-week high' }[a.state] || '') + '</span></div>'; }
-    h += tvR(a.sym, ' <span class="badge" style="color:#FF8A8A;border-color:#FF8A8A66">' + Math.round(a.off * 100) + '% off high</span>', [{ t: esc(cleanName(symName(a.sym)) || U.group[a.sym] || '') }, { t: planHTML(a), c: 'tvdo' }, { t: esc(a.why.join(' · ')), c: 'dim' }], qOf(a.sym, a.px, a.pc));
+    h += tvR(a.sym, GOP(a.px, a.plan && (a.plan.zoneLo || a.plan.trig), a.plan && a.plan.kind === 'Wait'), [{ t: esc(cleanName(symName(a.sym)) || U.group[a.sym] || '') }, { t: planHTML(a), c: 'tvdo lvbRow' }, { t: esc(a.why.join(' · ')), c: 'dim' }], qOf(a.sym, a.px, a.pc));
   });
   box.innerHTML = h ? h : '<div class="empty"><b>Nothing in this filter</b><span>Try another filter or group.</span></div>';
 }
