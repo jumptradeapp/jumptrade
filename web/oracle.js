@@ -77,16 +77,7 @@
       '<button class="orcFake" data-orcopen="1"><span class="orcTw"><span class="orcType" data-orctype="' + E(JSON.stringify(sug)) + '">Ask anything…</span></span><em>↑</em></button>' +
       '<div class="orcSug">' + sug.map(chip).join('') + '</div></div>';
   };
-  // typewriter in the Home box: cycles through example questions
-  let tyI = 0, tyC = 0, tyDel = false, tyHold = 0; var tyText = 'Ask anything…';
-  setInterval(() => {
-    const el = document.querySelector('[data-orctype]'); if (!el) return; let L = []; try { L = JSON.parse(el.dataset.orctype); } catch (e) {} if (!L.length) return;
-    const full = L[tyI % L.length];
-    if (tyHold > 0) { tyHold--; return; }
-    if (!tyDel) { tyC++; if (tyC >= full.length) { tyC = full.length; tyDel = true; tyHold = 28; } }
-    else { tyC -= 2; if (tyC <= 0) { tyC = 0; tyDel = false; tyI++; tyHold = 4; } }
-    tyText = full.slice(0, tyC) || 'Ask anything…'; el.textContent = tyText;
-  }, 55);
+  var tyText = 'Ask anything…';
   // the conversation sheet (lives outside the app's re-rendered views, so typing is never interrupted)
   function sheet() {
     let el = document.getElementById('orcSheet'); if (el) return el;
