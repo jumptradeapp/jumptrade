@@ -58,9 +58,9 @@
   function suggestions() {
     const M = movers(), out = [];
     if (M[0]) out.push('Why is ' + M[0].sym + ' up ' + Math.round(M[0].pct) + '%?');
-    if (M[1]) out.push('Is ' + M[1].sym + ' worth buying here?');
-    out.push('What’s the market doing right now?');
-    if (out.length < 3) out.push('Is NVDA a buy here?');
+    if (M[1]) out.push('Is ' + M[1].sym + ' a buy?');
+    out.push('How’s the market?');
+    if (out.length < 3) out.push('Is NVDA a buy?');
     return out.slice(0, 3);
   }
   const MK = (px) => '<span class="orcMk" style="width:' + px + 'px;height:' + px + 'px">' + (window.jmMark ? jmMark(px) : '') + '</span>';
