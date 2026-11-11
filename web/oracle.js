@@ -68,7 +68,7 @@
   ORC.card = function () {
     const last = ORC.msgs.filter((x) => x.a && !x.live).slice(-1)[0], M = movers(), sug = suggestions();
     const chip = (s, i) => { const r = i < 2 ? M[i] : null; return '<button data-orcq="' + E(s) + '">' + (r && typeof logoHTML === 'function' ? logoHTML(r.sym, 20) : '<span class="orcSi">✦</span>') + '<span>' + E(s) + '</span></button>'; };
-    return '<div class="orcCard v2"><div class="orcGrid"></div><div class="orcGlow"></div>' +
+    return '<div class="orcCard v2"><div class="orcGlow"></div>' +
       '<div class="orcHero">' + MK(34) + '<div class="orcTt"><b>ASK JUMP</b><small>Know before you jump</small></div></div>' +
       (last ? '<button class="orcLast" data-orcopen="1"><small>Last answer</small>' + E(last.a.slice(0, 150)) + (last.a.length > 150 ? '…' : '') + '</button>' : '') +
       '<button class="orcFake" data-orcopen="1"><span class="orcTw"><span class="orcType" data-orctype="' + E(JSON.stringify(sug)) + '">' + E(tyText) + '</span></span><em>↑</em></button>' +
