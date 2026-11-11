@@ -1,19 +1,23 @@
-/* jumptrade. mark: two stacked 3D diamond tiles with a piece jumping off the top. Pure vector, sharp at any size. */
+/* jumptrade. mark: hexagon C with three stepped bars (flipped, bars climb toward the C). Pure vector. jmMark(px) flat, jmMark3d(px) extruded. */
 (function () {
-  var uid = 0;
-  function g(id, a, b) { return '<linearGradient id="' + id + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="' + a + '"/><stop offset="1" stop-color="' + b + '"/></linearGradient>'; }
-  function mk(px) {
-    var B = Math.round(px), k = 'jmk' + (uid++);
-    return '<span class="jm3" style="width:' + B + 'px;height:' + B + 'px"><svg width="' + B + '" height="' + B + '" viewBox="-3 -3 108 108" shape-rendering="geometricPrecision" aria-hidden="true"><defs>' +
-      g(k + 'b', '#5B8CFF', '#2450C8') + g(k + 'u', '#9DBEFF', '#4C7FF0') + g(k + 'q', '#E4F0FF', '#9CC4F8') +
-      '<linearGradient id="' + k + 's" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>' +
-      '<path d="M9 47.7L49.8 70.1V75.1L9 52.7Z" fill="#2F5BD0"/><path d="M90.6 47.7L49.8 70.1V75.1L90.6 52.7Z" fill="#3E6FE6"/>' +
-      '<path d="M49.8 25.2L90.6 47.7L49.8 70.1L9 47.7Z" fill="url(#' + k + 'u)"/><path d="M49.8 47.7L70.5 36.2L90.6 47.7L70.5 59.1Z" fill="url(#' + k + 'q)"/>' +
-      '<path d="M9 73.6L49.8 96.3V102.3L9 79.6Z" fill="#16307E"/><path d="M90.6 73.6L49.8 96.3V102.3L90.6 79.6Z" fill="#1E3E99"/>' +
-      '<path d="M49.8 50.7L90.6 73.6L49.8 96.3L9 73.6Z" fill="url(#' + k + 'b)"/><path d="M49.8 50.7L90.6 73.6L49.8 96.3L9 73.6Z" fill="url(#' + k + 's)" opacity=".7"/>' +
-      '<path d="M56.9 9.7L74.8 19.9V22.9L56.9 12.7Z" fill="#9CC4F8"/><path d="M92.6 9.7L74.8 19.9V22.9L92.6 12.7Z" fill="#BCD6FB"/><path d="M74.8 0L92.6 9.7L74.8 19.9L56.9 9.7Z" fill="#fff"/></svg></span>';
+  var uid = 0, VB = '0 0 90.85 90.85';
+  var C = 'M48.17 8.87L83.53 27.42L83.53 26.33L69.93 33.45L48.17 22.04ZM83.53 28.52L83.53 67.42L48.17 85.98L48.17 72.81L70.98 60.84L70.98 35.10Z', B0 = 'M42.67 4.87L32.28 10.32L32.28 76.53L42.67 81.98Z', B1 = 'M30.19 13.42L19.80 18.87L19.80 71.97L30.19 77.43Z', B2 = 'M17.71 21.97L7.32 27.42L7.32 67.42L17.71 72.88Z';
+  function g(id, a, b) { return '<linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + a + '"/><stop offset="1" stop-color="' + b + '"/></linearGradient>'; }
+  function svg(k, w, h, cw) {
+    return '<svg width="' + w + '" height="' + h + '" viewBox="' + VB + '" shape-rendering="geometricPrecision" aria-hidden="true"><defs>' +
+      g(k + 'u', '#9DBEFF', '#4C7FF0') + g(k + 'b', '#5B8CFF', '#2450C8') + g(k + 'd', '#2F5BD0', '#16307E') + '</defs>' +
+      '<path d="' + C + '" fill="' + (cw || '#fff') + '"/><path d="' + B0 + '" fill="url(#' + k + 'u)"/><path d="' + B1 + '" fill="url(#' + k + 'b)"/><path d="' + B2 + '" fill="url(#' + k + 'd)"/></svg>';
   }
-  function fill() { var els = document.querySelectorAll('.jm:not(.done)'); for (var i = 0; i < els.length; i++) { els[i].innerHTML = mk(+els[i].getAttribute('data-px') || 40); els[i].classList.add('done'); } }
-  window.jmMark = mk; fill();
+  function mk(px) { var B = Math.round(px), k = 'jmk' + (uid++); return '<span class="jm3" style="width:' + B + 'px;height:' + B + 'px">' + svg(k, B, B) + '</span>'; }
+  var URI = null;
+  function uri() { if (!URI) URI = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg('u', 300, 300).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ')); return URI; }
+  function mk3(px) {
+    var B = Math.round(px), n = 18, dep = Math.max(4, B * 0.17), s = '', u = uri();
+    for (var i = n; i > 0; i--) s += '<img alt="" src="' + u + '" style="position:absolute;inset:0;width:100%;height:100%;transform:translateZ(' + (-dep * i / n).toFixed(2) + 'px);filter:brightness(' + (0.42 - 0.2 * i / n).toFixed(3) + ') saturate(1.25)">';
+    s += '<img alt="" src="' + u + '" style="position:absolute;inset:0;width:100%;height:100%">';
+    return '<span class="jm3 jm3d" style="width:' + B + 'px;height:' + B + 'px;perspective:' + (B * 7) + 'px"><span style="position:relative;display:block;width:100%;height:100%;transform-style:preserve-3d;transform:rotateY(-28deg) rotateX(12deg) rotateZ(-4deg)">' + s + '</span></span>';
+  }
+  function fill() { var els = document.querySelectorAll('.jm:not(.done)'); for (var i = 0; i < els.length; i++) { var p = +els[i].getAttribute('data-px') || 40; els[i].innerHTML = els[i].hasAttribute('data-3d') ? mk3(p) : mk(p); els[i].classList.add('done'); } }
+  window.jmMark = mk; window.jmMark3d = mk3; window.jmMarkSVG = function (w, h) { return svg('x' + (uid++), w, h); }; fill();
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fill);
 })();

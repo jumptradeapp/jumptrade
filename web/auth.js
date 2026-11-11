@@ -10,7 +10,7 @@
   const set = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} };
   const esc2 = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const api = (path, body) => fetch(path, { method: body ? 'POST' : 'GET', headers: Object.assign({ 'content-type': 'application/json' }, get(TK) ? { authorization: 'Bearer ' + get(TK) } : {}), body: body ? JSON.stringify(body) : undefined }).then((r) => r.json().then((j) => (r.ok ? j : Promise.reject(j))));
-  const MARK = () => (window.jmMark ? jmMark(64) : '');
+  const MARK = () => (window.jmMark3d ? jmMark3d(72) : (window.jmMark ? jmMark(64) : ''));
   const A = { user: null, badge: { joins: 0, visits: 0, feedback: 0 }, ready: false };
   window.JT_AUTH = A;
   const of = window.fetch; window.fetch = function (u, o) {
