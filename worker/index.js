@@ -833,6 +833,7 @@ async function ndWrite(env, kind, tag, data, extra) {
   return ndShape(o, kind, tag, extra);
 }
 async function newsdesk(env, ctx) {
+  if (!env.ANTHROPIC_API_KEY) { const k = Object.keys(env).find((x) => x.trim().toUpperCase() === 'ANTHROPIC_API_KEY'); if (k) env.ANTHROPIC_API_KEY = String(env[k]).trim(); }
   if (!env.ANTHROPIC_API_KEY) return;
   const now = etNow(); if (/Sat|Sun/.test(now.wd) || now.hm < 240 || now.hm > 1200) return;
   const L = await vlease(env, 'newsdesk', 170000); if (!L.ok) return;
@@ -928,7 +929,8 @@ async function moverScan(env, ctx) {
   await vput(env, 'mhist', hist.slice(-14)); await vput(env, 'mwhy', { t: Date.now(), session: pre ? 'pre' : post ? 'after' : 'regular', m: out });
 }
 async function aiRoutes(url, req, env) {
-  if (url.pathname === '/api/ai/status') return json({ on: !!env.ANTHROPIC_API_KEY });
+  if (!env.ANTHROPIC_API_KEY) { const k = Object.keys(env).find((x) => x.trim().toUpperCase() === 'ANTHROPIC_API_KEY'); if (k) env.ANTHROPIC_API_KEY = String(env[k]).trim(); }
+  if (url.pathname === '/api/ai/status') return json({ on: !!env.ANTHROPIC_API_KEY, names: Object.keys(env).filter((k) => /anthrop|claude/i.test(k)).map((k) => JSON.stringify(k)) }); // names only, never values
   if (url.pathname !== '/api/ai' || req.method !== 'POST') return null;
   if (!env.ANTHROPIC_API_KEY) return json({ error: { code: 'not_granted', message: 'AI is not turned on.' } }, 503);
   const body = await req.json().catch(() => ({}));
