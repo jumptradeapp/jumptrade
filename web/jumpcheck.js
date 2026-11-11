@@ -128,13 +128,13 @@
   };
   let reelI = 0, reelT = 0;
   function reelPaint(force) {
-    const el = document.querySelector('[data-jcreel]'); if (!el || !JC.reel.length) return;
+    const el = document.querySelector('[data-jcreel]'); if (!el) return; if (!JC.reel.length) { if (!el.firstChild) el.innerHTML = '<div class="jcWait"><i></i><i></i><i></i><span>Waiting for today\'s movers. The scan picks up again in premarket.</span></div>'; return; }
     if (!force && el.dataset.at && Date.now() - reelT < 2600) return; reelT = Date.now();
     const n = JC.reel.length, k = reelI++ % n; el.dataset.at = String(k);
     const rowH = (x, top) => '<button class="jcReelIn' + (top ? ' lead' : '') + '" data-jcopen="' + E(x.sym) + '" style="--k:' + x.col + '">' + (typeof logoHTML === 'function' ? logoHTML(x.sym, top ? 38 : 30) : '') + '<span class="jcRn"><b>' + E(x.sym) + ' <em style="color:#5EE0A0">+' + (x.pct >= 100 ? Math.round(x.pct) : x.pct.toFixed(1)) + '%</em></b><small style="color:' + x.col + '"><i style="background:' + x.col + '"></i>' + E(x.tag) + (x.why ? ' · ' + E(x.why) : '') + '</small></span>' + (top ? '<span class="jcGo">Check ›</span><span class="jcScanL"></span>' : '') + '</button>';
     el.innerHTML = [0, 1, 2].filter((o) => o < n).map((o) => rowH(JC.reel[(k + o) % n], o === 0)).join('');
   }
-  setInterval(() => { const el = document.querySelector('[data-jcreel]'); if (el && (!el.firstChild || Date.now() - reelT >= 2600)) reelPaint(true); }, 300);
+  setInterval(() => { const el = document.querySelector('[data-jcreel]'); if (el && (!el.firstChild || el.querySelector('.jcWait') || Date.now() - reelT >= 2600)) { if (el.querySelector('.jcWait') && JC.reel.length) el.innerHTML = ''; reelPaint(true); } }, 300);
   function startScan(sym) { JC.reveal[sym] = Date.now() + 1600; let n = 0; const t = setInterval(() => { if (typeof render === 'function') render(); if (++n > 9) clearInterval(t); }, 200); setTimeout(() => { if (typeof render === 'function') render(); }, 3500); }
   function openCheck(sym) { sym = String(sym || '').toUpperCase().replace(/[^A-Z.]/g, '').slice(0, 6); if (!sym) return; JC.open[sym] = 1; startScan(sym); if (typeof openDetail === 'function') openDetail(sym); setTimeout(() => { const el = document.querySelector('.jc'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 900); }
 
