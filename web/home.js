@@ -58,10 +58,11 @@
     if (window.JC) W.jc = JC.homeCard();
     // 2. top news
     cur = 'news';
-    const web = ((S.webNews && S.webNews.items) || []).map((w) => ({ title: w.title, url: w.url, t: Date.parse(w.time || (S.webNews && S.webNews.updated)), tk: w.tickers || [] }));
-    const wb = (S.newsItems || []).map((n) => ({ title: n.title, url: n.url, t: Date.parse(n.publish_time), tk: n.related_symbols || [] }));
+    const web = ((S.webNews && S.webNews.items) || []).map((w) => ({ title: w.title, url: w.url, source: w.source, summary: w.summary, t: Date.parse(w.time || (S.webNews && S.webNews.updated)), tk: w.tickers || [] }));
+    const wb = (S.newsItems || []).map((n) => ({ title: n.title, url: n.url, source: n.source, summary: n.summary, t: Date.parse(n.publish_time), tk: n.related_symbols || [] }));
+    if (window.NR) NR.load();
     const news = wb.concat(web).filter((n) => n.title && !isNaN(n.t)).sort((a, b) => b.t - a.t).filter((n, i, A) => A.findIndex((y) => y.title === n.title) === i).slice(0, 3);
-    W[cur] = (W[cur] || '') + card('TOP NEWS', '#8CB8E0', news.length ? news.map((n) => '<a class="hmli hmn" href="' + esc(n.url) + '" target="_blank" rel="noopener"><i style="background:#8CB8E0"></i><span>' + esc(n.title) + ' <em>· ' + ago2(n.t) + '</em></span></a>').join('') : '<div class="skel"></div><div class="skel" style="width:75%"></div>', '<button class="hmr" data-tab="news">All news ›</button>');
+    window.__hnx = news; W[cur] = (W[cur] || '') + card('TOP NEWS', '#8CB8E0', (window.NR ? NR.featured(true) : '') + (news.length ? news.map((n, i) => '<a class="hmli hmn" href="' + esc(n.url) + '" target="_blank" rel="noopener" data-hnx="' + i + '"><i style="background:#8CB8E0"></i><span>' + esc(n.title) + ' <em>· ' + ago2(n.t) + '</em></span></a>').join('') : '<div class="skel"></div><div class="skel" style="width:75%"></div>'), '<button class="hmr" data-tab="news">All news ›</button>');
     // 3. what changed
     cur = 'changed';
     const ch = [];

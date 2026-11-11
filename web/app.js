@@ -835,17 +835,21 @@ function renderNews() {
   $('nFresh').textContent = (S.stamp['nw:feed'] ? 'Live ' + ago(S.stamp['nw:feed']) : (mcp ? 'Loading…' : '')) + (S.webNews && S.webNews.updated ? ' · web ' + ago(Date.parse(S.webNews.updated)) : '');
   const KRE = { 'Market': /./, 'AI': /\bai\b|artificial intelligence|nvidia|chip|semiconductor|anthropic|openai|data center/i, 'Fed & rates': /\bfed\b|federal reserve|rate|treasur|yield|inflation|jobs|payroll/i, 'Earnings': /earnings|revenue|guidance|quarter|profit/i, 'Anthropic IPO': /anthropic/i, 'Crypto': /bitcoin|crypto|ether|coinbase/i };
   const web = ((S.webNews && S.webNews.items) || []).filter((w) => (KRE[S.newsK] || /./).test(w.title + ' ' + (w.summary || ''))).map((w) => ({ title: w.title, source: w.source, url: w.url, publish_time: w.time || (S.webNews && S.webNews.updated), summary: w.summary, related_symbols: w.tickers || [], web: true }));
-  const items = (S.newsItems || (S.delayed ? [] : null)) ? (S.newsItems || []).concat(web).sort((a, b) => Date.parse(b.publish_time) - Date.parse(a.publish_time)) : null; const box = $('newsList');
+  if (window.NR) NR.load();
+  const ours = window.NR && NR.list ? NR.list.slice(1).filter((a) => S.newsK === 'Market' || (KRE[S.newsK] || /./).test(a.title + ' ' + (a.dek || ''))).map((a) => ({ ours: a, title: a.title, publish_time: new Date(a.t).toISOString() })) : [];
+  const items = (S.newsItems || (S.delayed ? [] : null)) ? (S.newsItems || []).concat(web).filter((n, i, A) => n.title && A.findIndex((y) => y.title === n.title) === i).concat(ours).sort((a, b) => Date.parse(b.publish_time) - Date.parse(a.publish_time)) : null; const box = $('newsList');
+  window.__nx = items || [];
   if (!items) { box.innerHTML = '<div class="empty"><b>' + (S.err ? 'Can’t load live data' : mcp ? 'Loading news…' : 'Can’t reach live data') + '</b><span>' + esc(S.err ? (ERRCOPY[S.err] || '') : 'Live market headlines.') + '</span></div>'; return; }
   const now = Date.now();
   const TOPIC = [['Crypto', /bitcoin|crypto|ether|coinbase|stablecoin/i, '#F2C27A'], ['Fed & rates', /\bfed\b|federal reserve|rate (cut|hike)|treasur|yield|inflation|cpi|payroll|jobs report/i, '#C3A8FF'], ['AI & chips', /\bai\b|nvidia|semiconductor|chip|anthropic|openai|data center/i, '#8CB8E0'], ['Energy', /oil|crude|opec|energy|natural gas|nuclear|power/i, '#FFB38A'], ['Healthcare', /fda|pharma|biotech|drug|trial|health/i, '#5EE0A0'], ['Earnings', /earnings|revenue|guidance|eps|quarter/i, '#8CE3B5'], ['Consumer', /retail|consumer|restaurant|apparel|travel|airline/i, '#E58BD0'], ['Deals', /acquir|merger|buyout|ipo|deal/i, '#9AA8FF'], ['Markets', /./, '#A0A9B8']];
-  box.innerHTML = items.map((n) => {
+  box.innerHTML = (window.NR && S.newsK === 'Market' ? NR.featured() : '') + items.map((n, ix) => {
+    if (n.ours) { const a = n.ours; return '<button class="nitem nwOur" data-nrj="' + esc(a.id) + '"><span class="nrow"><span class="ncol"><span class="nwTags"><span class="nwTag ours">JUMPTRADE ANALYSIS</span><span class="nwTag k">' + esc(a.tag || '') + '</span></span><b>' + esc(a.title) + '</b><span class="nmeta">jumptrade newsdesk · ' + ago(a.t) + '</span></span>' + (a.tickers && a.tickers[0] ? '<span class="nthumb">' + logoHTML(a.tickers[0], 58) + '</span>' : '') + '</span>' + (a.dek ? '<p>' + esc(a.dek) + '</p>' : '') + '</button>'; }
     const t = Date.parse(n.publish_time); const fresh = now - t < 90 * 60000; const big = fresh || /plunge|soar|surge|halt|crash|record|fda|acquir|merger|bankrupt|guidance|rout|worst|best day/i.test(n.title);
     const sent = n.sentiment === 'POSITIVE' ? ['#5EE0A0', 'Positive'] : n.sentiment === 'NEGATIVE' ? ['#FF8A8A', 'Negative'] : null;
     const tk = (n.related_symbols || []).filter((s) => /^[A-Z]{1,5}$/.test(s) && !/^(ES|NQ|YM|RTY|ZN|UB|EMD)/.test(s)).slice(0, 3);
     const topic = TOPIC.find((x) => x[1].test(n.title + ' ' + (n.summary || '')));
     const thumb = tk.length ? '<span class="nthumb">' + logoHTML(tk[0], 58) + '</span>' : '<span class="nthumb nt2" style="background:linear-gradient(150deg,' + topic[2] + '55,' + topic[2] + '18)"><b style="color:' + topic[2] + '">' + esc(topic[0].split(' ')[0].toUpperCase()) + '</b></span>';
-    return '<a class="nitem' + (big ? ' big' : '') + '" href="' + esc(n.url) + '" target="_blank" rel="noopener"><span class="nrow"><span class="ncol">' + (fresh ? '<span class="brk">BREAKING</span>' : '') +
+    return '<a class="nitem' + (big ? ' big' : '') + '" href="' + esc(n.url) + '" target="_blank" rel="noopener" data-nrx="' + ix + '"><span class="nrow"><span class="ncol">' + (fresh ? '<span class="brk">BREAKING</span>' : '') +
       '<b>' + esc(n.title) + '</b><span class="nmeta"><i style="color:' + topic[2] + ';font-weight:800;letter-spacing:.06em">' + esc(topic[0].toUpperCase()) + '</i> ' + esc(n.source || '') + ' · ' + ago(t) + (sent ? ' · <i style="color:' + sent[0] + '">' + sent[1] + '</i>' : '') + '</span></span>' + thumb + '</span>' +
       (n.summary ? '<p>' + esc(n.summary) + '</p>' : '') + (tk.length ? '<span class="nmeta">' + tk.map((s) => '<em class="tkc" data-open="' + esc(s) + '">' + logoHTML(s, 14) + esc(s) + '</em>').join(' ') + '</span>' : '') + '</a>';
   }).join('') || '<div class="empty"><b>No headlines</b></div>';
@@ -1635,7 +1639,7 @@ document.addEventListener('click', async (e) => {
   else if (t.dataset.more) { const el = $('desc'); if (el) { el.classList.add('open'); t.remove(); } return; }
   else if (t.id === 'allow') { try { await call('get_gainers_losers', { category: 'US_STOCK', rank_type: 'DAY_1', sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '5', page_index: '1' }, true); S.err = null; loadMovers(); } catch (err) { handleErr(err); } }
   else if (t.id === 'layTiles' || t.id === 'layList') { S.layout = t.id === 'layTiles' ? 'tiles' : 'list'; try { localStorage.setItem('jt.layout2', S.layout); } catch (err) {} $('grid').innerHTML = ''; }
-  else if (t.id && t.id.indexOf('nav') === 0) { goTab({ navHome: 'home', navMovers: 'movers', navDips: S.lastIdeas || 'setups', navWatch: 'watch', navIntel: S.lastIntel || 'research', navPort: 'portfolios' }[t.id]); }
+  else if (t.id && t.id.indexOf('nav') === 0) { goTab({ navHome: 'home', navMovers: 'movers', navDips: S.lastIdeas || 'setups', navWatch: 'watch', navIntel: S.lastIntel || 'news', navPort: 'portfolios' }[t.id]); }
   else if (t.dataset.tab) { goTab(t.dataset.tab); }
   else if (t.dataset.valf) { S.valF = t.dataset.valf; }
   else if (t.dataset.newsk) { S.newsK = t.dataset.newsk; S.newsItems = null; loadNews(); }

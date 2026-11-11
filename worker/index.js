@@ -814,6 +814,82 @@ async function aiCall(env, system, user, maxTokens) {
   const a = t.indexOf('{'), b = t.lastIndexOf('}'); if (a < 0 || b <= a) throw new Error('ai no json');
   return JSON.parse(t.slice(a, b + 1));
 }
+// ---------- jumptrade newsdesk: short analysis pieces written from real data ----------
+// Breaking pieces when something happens (a big real mover, market-moving headline, earnings reaction, a hard market swing),
+// plus five fixed briefs a day. Max 25 a day. Every piece is written ONLY from the data passed in, and labeled AI-assisted.
+const ND_BRIEFS = [[510, 'Pre-market brief'], [615, 'The open'], [750, 'Midday check'], [975, 'Closing recap'], [1050, 'After hours']];
+const ND_BIG = /\b(fed|fomc|powell|rate (cut|hike)|cuts rates|raises rates|cpi|inflation|jobs report|payrolls|unemployment|recession|tariff|default|circuit breaker|crash|plunge|record high|biggest (drop|gain)|treasury yields?)\b/i;
+const ND_SYS = 'You are the newsdesk of jumptrade, a stock app. You write short, sharp market analysis for retail traders. HARD RULES: use ONLY facts and numbers in the DATA. Never invent numbers, quotes, events, causes or sources. If a cause is not in the headlines, say the cause is not clear. Attribute headline facts to their source ("according to Reuters"). No personal financial advice, no predictions stated as fact, no hype words (soars to the moon, etc). Plain English, short sentences. Return JSON only.';
+function ndShape(o, kind, tag, extra) {
+  const S = (v, m) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, m);
+  const t = Date.now();
+  return Object.assign({ id: t.toString(36) + Math.random().toString(36).slice(2, 5), t, kind, tag, title: S(o.title, 110), dek: S(o.dek, 220), summary: S(o.summary, 600), what: S(o.what, 1400), why: S(o.why, 900), levels: S(o.levels, 400), bigger: S(o.bigger, 700),
+    tickers: (Array.isArray(o.tickers) ? o.tickers : []).map(String).filter((x) => /^[A-Z.]{1,6}$/.test(x)).slice(0, 4) }, extra || {});
+}
+async function ndWrite(env, kind, tag, data, extra) {
+  const user = 'DATA (as of ' + new Date().toISOString() + '):\n' + JSON.stringify(data) + '\n\nWrite a ' + (kind === 'brief' ? 'market brief' : 'breaking analysis') + '. Return JSON: {"title": headline under 90 characters, specific and factual, "dek": one sentence under 160 characters, "summary": 2-3 sentences, "what": "What happened" in 3-5 sentences with the real numbers, "why": "Why it matters" in 2-4 sentences, "levels": "Levels to watch" in 1-2 sentences using only prices in the DATA (or "" if none), "bigger": "The bigger picture" in 2-3 sentences, "tickers": up to 4 tickers from the DATA}.';
+  const o = await aiCall(env, ND_SYS, user, 1100);
+  if (!o || !o.title || !o.what) throw new Error('nd empty');
+  return ndShape(o, kind, tag, extra);
+}
+async function newsdesk(env, ctx) {
+  if (!env.ANTHROPIC_API_KEY) return;
+  const now = etNow(); if (/Sat|Sun/.test(now.wd) || now.hm < 240 || now.hm > 1200) return;
+  const L = await vlease(env, 'newsdesk', 170000); if (!L.ok) return;
+  try {
+    let st = (await vget(env, 'nd_state')) || {}; if (st.day !== now.day) st = { day: now.day, n: 0, seen: Object.fromEntries(Object.entries(st.seen || {}).filter((e) => Date.now() - e[1] < 6 * 3600000)), briefs: {} };
+    const list = (await vget(env, 'jtnews')) || []; const add = []; const cap = () => st.n + add.length >= 25;
+    const pre = now.hm < 570, post = now.hm >= 960;
+    const rank = pre ? 'PRE_MARKET' : post ? 'AFTER_MARKET' : 'DAY_1';
+    const gl = await cachedTool('get_gainers_losers', { category: 'US_STOCK', rank_type: rank, sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '30', page_index: '1' }, ctx, env).catch(() => null);
+    const G = (((gl || {}).data) || []).filter((x) => x && x.symbol && /^[A-Z.]{1,6}$/.test(x.symbol));
+    const mkt = (((await cachedTool('search_news', {}, ctx, env).catch(() => null)) || {}).data || []).filter((n) => n && n.title);
+    const idx = await cachedTool('get_stock_snapshot', { symbols: 'SPY,QQQ,IWM', category: 'US_STOCK', extend_hour_required: true, overnight_required: false }, ctx, env).catch(() => null);
+    const IX = {}; (Array.isArray(idx) ? idx : []).forEach((x) => { IX[x.symbol] = { price: +x.price, pct: +x.change_ratio * 100 }; });
+    const hl = (arr, k) => arr.slice(0, k).map((n) => ({ title: n.title, source: n.source || '', time: n.publish_time, tickers: (n.related_symbols || []).slice(0, 3) }));
+    const row = (x) => ({ symbol: x.symbol, name: x.name, price: +x.price, change_usd: +x.change, change_pct: +(x.change_ratio * 100).toFixed(1), volume: +x.volume || null, market_cap: +x.market_value || null });
+    // 1. fixed briefs
+    for (const [slot, name] of ND_BRIEFS) {
+      if (cap() || st.briefs[slot] || now.hm < slot || now.hm > slot + 25) continue;
+      const lo = await cachedTool('get_gainers_losers', { category: 'US_STOCK', rank_type: rank, sort_by: 'CHANGE_RATIO', direction: 'ASC', page_size: '10', page_index: '1' }, ctx, env).catch(() => null);
+      const a = await ndWrite(env, 'brief', name, { brief: name, session: pre ? 'pre-market' : post ? 'after hours' : 'regular session', indexes: IX, top_gainers: G.filter((x) => +x.price >= 1).slice(0, 8).map(row), top_losers: ((((lo || {}).data) || []).filter((x) => +x.price >= 1).slice(0, 5)).map(row), headlines: hl(mkt, 10) }).catch(() => null);
+      st.briefs[slot] = 1; if (a) add.push(a);
+    }
+    // 2. a hard market swing (once per direction per day)
+    const spy = IX.SPY; if (!cap() && spy && Math.abs(spy.pct) >= 1.5 && !pre) { const k = 'swing:' + (spy.pct > 0 ? 'up' : 'dn'); if (!st.seen[k]) { st.seen[k] = Date.now(); const a = await ndWrite(env, 'breaking', 'Market move', { event: 'Broad market move', indexes: IX, top_gainers: G.slice(0, 5).map(row), headlines: hl(mkt, 10) }, { sym: 'SPY' }).catch(() => null); if (a) add.push(a); } }
+    // 3. market-moving headline (macro), one at a time
+    const fresh = (n) => Date.now() - Date.parse(n.publish_time) < 25 * 60000;
+    const big = mkt.find((n) => fresh(n) && ND_BIG.test(n.title) && !st.seen['h:' + n.title.toLowerCase().slice(0, 60)]);
+    if (!cap() && big) { st.seen['h:' + big.title.toLowerCase().slice(0, 60)] = Date.now(); const a = await ndWrite(env, 'breaking', 'Breaking', { event: big.title, event_source: big.source || '', related_headlines: hl(mkt.filter((n) => n !== big), 8), indexes: IX }, { src: [{ title: big.title, source: big.source || '', url: big.url || '' }] }).catch(() => null); if (a) add.push(a); }
+    // 4. big real movers (20%+, $1+, 1M+ shares), up to 2 per run, not again for 3 hours
+    const movers = G.filter((x) => +x.change_ratio >= 0.2 && +x.price >= 1 && (+x.volume || 0) >= 1e6 && !(st.seen['m:' + x.symbol] && Date.now() - st.seen['m:' + x.symbol] < 3 * 3600000)).slice(0, 2);
+    for (const x of movers) {
+      if (cap()) break; st.seen['m:' + x.symbol] = Date.now();
+      const nd = await cachedTool('get_stock_news', { symbol: x.symbol }, ctx, env).catch(() => null);
+      const sn = await cachedTool('get_stock_snapshot', { symbols: x.symbol, category: 'US_STOCK', extend_hour_required: true, overnight_required: false }, ctx, env).catch(() => null);
+      const s0 = Array.isArray(sn) ? sn[0] || {} : {};
+      const news = (((nd || {}).data) || []).filter((n) => n && n.title && Date.now() - Date.parse(n.publish_time) < 36 * 3600000);
+      const a = await ndWrite(env, 'breaking', 'Big mover', { event: x.symbol + ' is one of today\'s biggest movers', stock: Object.assign(row(x), { high_52w: +s0.fifty_two_wk_high || null, low_52w: +s0.fifty_two_wk_low || null, eps_ttm: s0.eps_ttm != null ? +s0.eps_ttm : null, day_high: +s0.high || null, day_low: +s0.low || null, open: +s0.open || null, prev_close: +s0.pre_close || null }),
+        its_headlines: hl(news, 6), note_if_no_headlines: news.length ? '' : 'No company headline was found for this move.', market: IX }, { sym: x.symbol, src: news.slice(0, 3).map((n) => ({ title: n.title, source: n.source || '', url: n.url || '' })) }).catch(() => null);
+      if (a) add.push(a);
+    }
+    // 5. earnings reactions on well-known names (headline about results + the stock moving 4%+)
+    if (!cap()) {
+      const er = mkt.filter((n) => fresh(n) && /\b(earnings|quarterly results|revenue|guidance|q[1-4] (results|profit|sales))\b/i.test(n.title) && (n.related_symbols || []).length).slice(0, 4);
+      for (const n of er) {
+        const sym = (n.related_symbols || []).find((s) => /^[A-Z.]{1,5}$/.test(s)); if (!sym || st.seen['e:' + sym]) continue;
+        const sn = await cachedTool('get_stock_snapshot', { symbols: sym, category: 'US_STOCK', extend_hour_required: true, overnight_required: false }, ctx, env).catch(() => null); const s0 = Array.isArray(sn) ? sn[0] || {} : {};
+        const mv = +s0.change_ratio * 100, ext = s0.extend_hour_change_ratio != null ? +s0.extend_hour_change_ratio * 100 : null, mc = +s0.market_value || 0;
+        if (mc < 2e9 || (Math.abs(mv) < 4 && !(ext != null && Math.abs(ext) >= 4))) continue;
+        st.seen['e:' + sym] = Date.now();
+        const a = await ndWrite(env, 'breaking', 'Earnings', { event: sym + ' earnings reaction', headline: { title: n.title, source: n.source || '' }, stock: { symbol: sym, price: +s0.price, change_pct: +mv.toFixed(1), after_hours_pct: ext != null ? +ext.toFixed(1) : null, after_hours_price: +s0.extend_hour_last_price || null, market_cap: mc, high_52w: +s0.fifty_two_wk_high || null, low_52w: +s0.fifty_two_wk_low || null }, other_headlines: hl(mkt.filter((y) => y !== n && (y.related_symbols || []).indexOf(sym) >= 0), 4) }, { sym, src: [{ title: n.title, source: n.source || '', url: n.url || '' }] }).catch(() => null);
+        if (a) add.push(a); if (cap()) break;
+      }
+    }
+    if (add.length) { st.n += add.length; const keep = add.concat(list).filter((a) => Date.now() - a.t < 4 * 86400000).slice(0, 160); await vput(env, 'jtnews', keep); }
+    await vput(env, 'nd_state', st);
+  } finally { await vrelease(env, 'newsdesk', L.id); }
+}
 async function aiRoutes(url, req, env) {
   if (url.pathname === '/api/ai/status') return json({ on: !!env.ANTHROPIC_API_KEY });
   if (url.pathname !== '/api/ai' || req.method !== 'POST') return null;
@@ -936,7 +1012,7 @@ async function feedWatch(env) {
 }
 let UPK = 0;
 export default {
-  async scheduled(ev, env, ctx) { CUR_ENV = env; const m = new Date().getUTCMinutes(); ctx.waitUntil(vput(env, 'cronbeat', { t: Date.now(), build: 'b2' }).catch(() => {})); /* proof the every-minute job is running */ { const n = etNow(); const live = !/Sat|Sun/.test(n.wd) && n.hm >= 230 && n.hm < 1210; if (live || m % 10 === 0) ctx.waitUntil(precompute(env, ctx).then((r) => vput(env, 'prerun', { t: Date.now(), r })).catch(() => {})); } if (m % 10 === 0) ctx.waitUntil(wbUpkeep(env).catch(() => {})); if (m % 5 === 2) ctx.waitUntil(feedWatch(env).catch(() => {})); { const n2 = etNow(); if (n2.hm === 247) ctx.waitUntil(vault(env).then((v) => v && v.fetch('https://v/sweep')).catch(() => {})); } ctx.waitUntil(runAlerts(env, ctx).then((r) => vput(env, 'alertrun', Object.assign({ t: Date.now() }, r))).catch((e) => vput(env, 'alertrun', { t: Date.now(), error: String(e && e.message || e) }))); },
+  async scheduled(ev, env, ctx) { CUR_ENV = env; const m = new Date().getUTCMinutes(); ctx.waitUntil(vput(env, 'cronbeat', { t: Date.now(), build: 'b2' }).catch(() => {})); /* proof the every-minute job is running */ { const n = etNow(); const live = !/Sat|Sun/.test(n.wd) && n.hm >= 230 && n.hm < 1210; if (live || m % 10 === 0) ctx.waitUntil(precompute(env, ctx).then((r) => vput(env, 'prerun', { t: Date.now(), r })).catch(() => {})); } if (m % 10 === 0) ctx.waitUntil(wbUpkeep(env).catch(() => {})); if (m % 5 === 2) ctx.waitUntil(feedWatch(env).catch(() => {})); if (m % 3 === 1) ctx.waitUntil(newsdesk(env, ctx).catch(() => {})); { const n2 = etNow(); if (n2.hm === 247) ctx.waitUntil(vault(env).then((v) => v && v.fetch('https://v/sweep')).catch(() => {})); } ctx.waitUntil(runAlerts(env, ctx).then((r) => vput(env, 'alertrun', Object.assign({ t: Date.now() }, r))).catch((e) => vput(env, 'alertrun', { t: Date.now(), error: String(e && e.message || e) }))); },
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     CUR_ENV = env;
@@ -963,6 +1039,7 @@ export default {
         if (!b || typeof b.data !== 'object') return json({ error: { code: 'bad_request' } }, 400); const cur = await vget(env, k); if (cur && cur.t > (+b.t || 0)) return json(cur); await vput(env, k, { t: +b.t || Date.now(), data: b.data }); return json({ ok: true, t: +b.t }); }
     }
     if (url.pathname.indexOf('/api/auth/') === 0 || url.pathname.indexOf('/api/admin/') === 0) { const r = await authRoutes(url, req, env, ctx, { vget, vput, json, subId, notifyOwner: (m) => notifyOwner(env, m), lease: (k, ms) => vlease(env, k, ms), release: (k, id) => vrelease(env, k, id) }); if (r) return r; }
+    if (url.pathname === '/api/jtnews') { const L = (await vget(env, 'jtnews')) || []; const id = url.searchParams.get('id'); if (id) { const a = L.find((x) => x.id === id); return a ? json({ payload: a }) : json({ error: 'not found' }, 404); } return json({ payload: L.slice(0, 60).map((a) => ({ id: a.id, t: a.t, kind: a.kind, tag: a.tag, title: a.title, dek: a.dek, tickers: a.tickers })) }); }
     if (url.pathname === '/api/clienterr' && req.method === 'POST') { // app errors on testers' phones, shown to the owner in Admin
       const txt = await req.text(); if (txt.length > 4000) return json({ ok: false }, 413); let b = {}; try { b = JSON.parse(txt); } catch (e) {}
       const who = await sessionFrom(req, env, vget).catch(() => null); const L = (await vget(env, 'cerr')) || [];
