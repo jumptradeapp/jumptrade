@@ -71,18 +71,18 @@
     return '<div class="orcCard v2"><div class="orcGrid"></div><div class="orcGlow"></div>' +
       '<div class="orcHero">' + MK(34) + '<div class="orcTt"><b>ASK JUMP</b><small>Know before you jump</small></div></div>' +
       (last ? '<button class="orcLast" data-orcopen="1"><small>Last answer</small>' + E(last.a.slice(0, 150)) + (last.a.length > 150 ? '…' : '') + '</button>' : '') +
-      '<button class="orcFake" data-orcopen="1"><span class="orcType" data-orctype="' + E(JSON.stringify(sug)) + '"></span><i class="orcCaret"></i><em>↑</em></button>' +
+      '<button class="orcFake" data-orcopen="1"><span class="orcTw"><span class="orcType" data-orctype="' + E(JSON.stringify(sug)) + '">' + E(tyText) + '</span></span><em>↑</em></button>' +
       '<div class="orcSug">' + sug.map(chip).join('') + '</div></div>';
   };
   // typewriter in the Home box: cycles through example questions
-  let tyI = 0, tyC = 0, tyDel = false, tyHold = 0;
+  let tyI = 0, tyC = 0, tyDel = false, tyHold = 0; var tyText = 'Ask anything…';
   setInterval(() => {
     const el = document.querySelector('[data-orctype]'); if (!el) return; let L = []; try { L = JSON.parse(el.dataset.orctype); } catch (e) {} if (!L.length) return;
     const full = L[tyI % L.length];
     if (tyHold > 0) { tyHold--; return; }
     if (!tyDel) { tyC++; if (tyC >= full.length) { tyC = full.length; tyDel = true; tyHold = 28; } }
     else { tyC -= 2; if (tyC <= 0) { tyC = 0; tyDel = false; tyI++; tyHold = 4; } }
-    el.textContent = full.slice(0, tyC) || 'Ask anything…';
+    tyText = full.slice(0, tyC) || 'Ask anything…'; el.textContent = tyText;
   }, 55);
   // the conversation sheet (lives outside the app's re-rendered views, so typing is never interrupted)
   function sheet() {
