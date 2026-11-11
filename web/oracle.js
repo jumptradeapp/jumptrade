@@ -1,4 +1,4 @@
-/* jumptrade. The Oracle: ask anything about a stock or the market. It pulls live quotes, headlines and today's movers,
+/* jumptrade. Jump check (Home): ask anything about a stock or the market. It pulls live quotes, headlines and today's movers,
    then answers like a sharp trading desk analyst. Home shows the card; the conversation opens in its own sheet. */
 (function () {
   const ORC = window.ORC = { msgs: [], busy: false };
@@ -33,9 +33,9 @@
     }
     return D;
   }
-  const SYS = 'You are the jumptrade Oracle, a sharp, confident trading-desk analyst inside a stock app. Answer the trader\'s question in 2 to 5 short, plain sentences. Lead with the answer. Use concrete numbers from DATA: price, % move, levels, the headline that explains a move. If a move has no headline, say so in a few words and read what price and volume show. For "should I buy" questions, give a clear lean and the levels that matter (where to get in, where you are wrong), not a refusal. Never say "my data", never open with what you can\'t do, no bullet points, no markdown. If DATA lacks the stock, say you couldn\'t pull it and suggest typing the ticker. End with nothing extra.';
+  const SYS = 'You are jumptrade's Jump check, a sharp, confident trading-desk analyst inside a stock app. Answer the trader\'s question in 2 to 5 short, plain sentences. Lead with the answer. Use concrete numbers from DATA: price, % move, levels, the headline that explains a move. If a move has no headline, say so in a few words and read what price and volume show. For "should I buy" questions, give a clear lean and the levels that matter (where to get in, where you are wrong), not a refusal. Never say "my data", never open with what you can\'t do, no bullet points, no markdown. If DATA lacks the stock, say you couldn\'t pull it and suggest typing the ticker. End with nothing extra.';
   function prompt(q, D) {
-    const hist = ORC.msgs.slice(-7, -1).map((m) => (m.q ? 'Trader: ' + m.q : 'Oracle: ' + m.a)).join('\n');
+    const hist = ORC.msgs.slice(-7, -1).map((m) => (m.q ? 'Trader: ' + m.q : 'Jump check: ' + m.a)).join('\n');
     return (hist ? 'EARLIER:\n' + hist + '\n\n' : '') + 'DATA:\n' + JSON.stringify(D) + '\n\nQUESTION: ' + q;
   }
   let sampleP = null; const getSample = () => (sampleP = sampleP || (window.claude && claude.use ? claude.use('sample').catch(() => null) : Promise.resolve(null)));
@@ -50,9 +50,9 @@
       } else {
         const res = await fetch('/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: 'ask', prompt: SYS + '\n\nReturn JSON: {"answer": "your answer"}.\n\n' + prompt(q, D) }) });
         const j = await res.json().catch(() => ({}));
-        m.a = res.status === 503 ? 'The Oracle isn’t switched on yet.' : res.status === 429 ? 'You’ve hit today’s question limit. It resets tomorrow.' : (j.payload && j.payload.answer) ? String(j.payload.answer).slice(0, 1400) : 'Couldn’t get an answer right now. Try again in a moment.';
+        m.a = res.status === 503 ? 'Jump check isn’t switched on yet.' : res.status === 429 ? 'You’ve hit today’s question limit. It resets tomorrow.' : (j.payload && j.payload.answer) ? String(j.payload.answer).slice(0, 1400) : 'Couldn’t get an answer right now. Try again in a moment.';
       }
-    } catch (e) { m.a = e && e.code === 'not_granted' ? 'The Oracle needs permission to answer. Tap Allow when asked.' : e && e.code === 'rate_limited' ? 'Too many questions at once. Give it a minute.' : (m.a || 'Couldn’t reach the Oracle. Try again.'); }
+    } catch (e) { m.a = e && e.code === 'not_granted' ? 'Jump check needs permission to answer. Tap Allow when asked.' : e && e.code === 'rate_limited' ? 'Too many questions at once. Give it a minute.' : (m.a || 'Couldn’t reach Jump check. Try again.'); }
     m.live = false; ORC.busy = false; paint(true);
   }
   function suggestions() {
@@ -64,20 +64,20 @@
     return out.slice(0, 3);
   }
   const ORB = '<span class="orcOrb"><i></i><b></b></span>';
-  // Home card: tap anywhere to open the Oracle
+  // Home card: tap anywhere to open the chat
   ORC.card = function () {
     const last = ORC.msgs.filter((x) => x.a && !x.live).slice(-1)[0];
     return '<div class="orcCard"><div class="orcGlow"></div>' +
-      '<div class="orcTop">' + ORB + '<span class="orcTt"><b>THE ORACLE</b><small>Ask anything about a stock or the market</small></span></div>' +
+      '<div class="orcTop">' + ORB + '<span class="orcTt"><b>JUMP CHECK</b><small>Ask anything about a stock or the market</small></span></div>' +
       (last ? '<button class="orcLast" data-orcopen="1"><small>Last answer</small>' + E(last.a.slice(0, 150)) + (last.a.length > 150 ? '…' : '') + '</button>' : '') +
-      '<button class="orcFake" data-orcopen="1"><span>Ask the Oracle…</span><em>↑</em></button>' +
+      '<button class="orcFake" data-orcopen="1"><span>Ask Jump check…</span><em>↑</em></button>' +
       '<div class="orcSug">' + suggestions().map((s) => '<button data-orcq="' + E(s) + '">' + E(s) + '</button>').join('') + '</div></div>';
   };
   // the conversation sheet (lives outside the app's re-rendered views, so typing is never interrupted)
   function sheet() {
     let el = document.getElementById('orcSheet'); if (el) return el;
     el = document.createElement('div'); el.id = 'orcSheet';
-    el.innerHTML = '<div class="orcBar"><span class="orcTop">' + ORB + '<span class="orcTt"><b>THE ORACLE</b><small>Live quotes, headlines and movers</small></span></span><button class="orcX" data-orcclose="1" aria-label="Close">✕</button></div>' +
+    el.innerHTML = '<div class="orcBar"><span class="orcTop">' + ORB + '<span class="orcTt"><b>JUMP CHECK</b><small>Live quotes, headlines and movers</small></span></span><button class="orcX" data-orcclose="1" aria-label="Close">✕</button></div>' +
       '<div class="orcLog" id="orcLog"></div><form class="orcForm" id="orcForm"><input id="orcIn" autocomplete="off" enterkeyhint="send" placeholder="Ask about any stock…" maxlength="300"><button aria-label="Ask">↑</button></form>';
     document.body.appendChild(el);
     el.querySelector('#orcForm').addEventListener('submit', (e) => { e.preventDefault(); const i = el.querySelector('#orcIn'); const v = i.value; i.value = ''; ask(v); });
