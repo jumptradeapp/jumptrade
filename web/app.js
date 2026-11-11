@@ -1429,7 +1429,7 @@ function loadBuzz() { loadHot(); loadBuzzQuotes(); }
 function rpHTML(q) { const P = dPal(); if (!q || !q.price) return '<span class="rp tvp"><b class="dim">—</b></span>'; return '<span class="rp tvp"><b>$' + px(q.price) + '</b>' + (q.pct != null ? '<small style="color:' + (q.pct >= 0 ? P.up : P.dn) + '">' + (dS(q.chg, q.pct, q.price) || '') + ' <i>' + pctS(q.pct) + '</i></small>' : '') + '</span>'; }
 function tvR(sym, tags, lines, q) {
   const rp = rpHTML(q);
-  return '<button class="rat rat4 tvr" data-open="' + esc(sym) + '" data-name="' + esc(symName(sym) || '') + '">' + logoHTML(sym, 34) + '<span class="rn"><b>' + esc(sym) + (tags || '') + '</b>' + lines.filter(Boolean).map((l) => '<small' + (l.c ? ' class="' + l.c + '"' : '') + '>' + l.t + '</small>').join('') + '</span>' + rp + '</button>';
+  return '<button class="rat rat4 tvr" data-open="' + esc(sym) + '" data-name="' + esc(symName(sym) || '') + '">' + logoHTML(sym, 34) + '<span class="rn"><b>' + esc(sym) + (tags || '') + '</b>' + (function (L) { L = L.filter(Boolean); if (L.length > 2) L = L.filter((l) => l.c !== 'dim'); return L.slice(0, 2); })(lines).map((l) => '<small' + (l.c ? ' class="' + l.c + '"' : '') + '>' + l.t + '</small>').join('') + '</span>' + rp + '</button>';
 }
 function qOf(sym, px0, pc0) { const r = S.vRow && S.vRow[sym]; if (r && r.price) return { price: r.price, pct: r.pct, chg: r.chg }; if (px0 && pc0) return { price: px0, pct: (px0 / pc0 - 1) * 100, chg: px0 - pc0 }; return px0 ? { price: px0 } : null; }
 const VALDO = { under: 'Cheap for its growth', reasonable: 'Fair price for its growth', full: 'Fully priced. Better on a dip', expensive: 'Pricey for its growth', perfection: 'Priced for perfection. One miss can hurt', unprofitable: 'Losing money. A bet on future growth' };
@@ -1536,7 +1536,7 @@ function valCard(sym) {
 let rq = false;
 let pDown = 0, rPend = false;
 const DISC = 'For information only, not investment advice. Data can be delayed or wrong. Trading involves risk.';
-function ensureDisc() { document.querySelectorAll('.scroller').forEach((sc) => { const l = sc.lastElementChild; if (l && l.classList.contains('disc')) return; const d = document.createElement('p'); d.className = 'disc'; d.textContent = DISC; sc.appendChild(d); }); }
+function ensureDisc() { return; document.querySelectorAll('.scroller').forEach((sc) => { const l = sc.lastElementChild; if (l && l.classList.contains('disc')) return; const d = document.createElement('p'); d.className = 'disc'; d.textContent = DISC; sc.appendChild(d); }); }
 function render() { if (pDown && Date.now() - pDown < 2500) { rPend = true; return; } if (rq) return; rq = true; setTimeout(() => { rq = false; try { doRender(); } catch (e) { console.error(e); } try { ensureDisc(); } catch (e) {} }, 0); }
 (() => { const up = () => { setTimeout(() => { pDown = 0; if (rPend) { rPend = false; render(); } }, 80); };
   document.addEventListener('pointerdown', () => { pDown = Date.now(); }, true);
