@@ -115,7 +115,8 @@
   // home: the Jump check engine. A live readout cycling through today's movers, with what the scanner found.
   const MWV = { real: ['#5EE0A0', 'Real catalyst'], warn: ['#F2C27A', 'Careful'], weak: ['#FF8A8A', 'Weak move'], halt: ['#FF8A8A', 'Halted'], news: ['#8CB8E0', 'In the news'], nonews: ['#AEB9C8', 'No news'] };
   JC.reel = [];
-  JC.homeCard = function () {
+  JC.homeCard = function () { if (window.ORC) return ORC.card(); return JC.homeCardOld(); };
+  JC.homeCardOld = function () {
     const rows = (typeof rowsCache !== 'undefined' && rowsCache.length ? rowsCache : (typeof moverRows === 'function' ? moverRows() : [])).filter((r) => r.price >= 1 && r.pct > 0).slice(0, 12);
     const W = (typeof S !== 'undefined' && S.mwhy) || {};
     JC.reel = rows.map((r) => { const w = W[r.sym]; const m = w ? MWV[w.v] || MWV.news : null; return { sym: r.sym, pct: r.pct, price: r.price, tag: m ? m[1] : (r.pct >= 40 ? 'Too hot to chase' : 'Checking…'), why: w && w.kind && w.kind !== m[1] ? w.kind : '', col: m ? m[0] : (r.pct >= 40 ? '#F2C27A' : '#8CB8E0') }; });
@@ -134,7 +135,7 @@
     const rowH = (x, top) => '<button class="jcReelIn' + (top ? ' lead' : '') + '" data-jcopen="' + E(x.sym) + '" style="--k:' + x.col + '">' + (typeof logoHTML === 'function' ? logoHTML(x.sym, top ? 38 : 30) : '') + '<span class="jcRn"><b>' + E(x.sym) + ' <em style="color:#5EE0A0">+' + (x.pct >= 100 ? Math.round(x.pct) : x.pct.toFixed(1)) + '%</em></b><small style="color:' + x.col + '"><i style="background:' + x.col + '"></i>' + E(x.tag) + (x.why ? ' · ' + E(x.why) : '') + '</small></span>' + (top ? '<span class="jcGo">Check ›</span><span class="jcScanL"></span>' : '') + '</button>';
     JC.reelHTML = [0, 1, 2].filter((o) => o < n).map((o) => rowH(JC.reel[(k + o) % n], o === 0)).join(''); el.innerHTML = JC.reelHTML;
   }
-  setInterval(() => { const el = document.querySelector('[data-jcreel]'); if (el && (!el.firstChild || el.querySelector('.jcWait') || Date.now() - reelT >= 2600)) { if (el.querySelector('.jcWait') && JC.reel.length) el.innerHTML = ''; reelPaint(true); } }, 300);
+  /* the cycling mover reel was replaced by the Oracle on Home */
   function startScan(sym) { JC.reveal[sym] = Date.now() + 1600; let n = 0; const t = setInterval(() => { if (typeof render === 'function') render(); if (++n > 9) clearInterval(t); }, 200); setTimeout(() => { if (typeof render === 'function') render(); }, 3500); }
   function openCheck(sym) { sym = String(sym || '').toUpperCase().replace(/[^A-Z.]/g, '').slice(0, 6); if (!sym) return; JC.open[sym] = 1; startScan(sym); if (typeof openDetail === 'function') openDetail(sym); setTimeout(() => { const el = document.querySelector('.jc'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 900); }
 
