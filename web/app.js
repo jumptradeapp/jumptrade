@@ -931,6 +931,7 @@ function sessIcon(k, px) { const s = px || 13;
   return k === 'pre' ? '<svg class="sIc" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="#F2C27A" stroke-width="2.4" stroke-linecap="round" aria-label="Pre-market"><circle cx="12" cy="12" r="4.2" fill="#F2C27A"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7L7 17M17 7l1.7-1.7"/></svg>'
     : '<svg class="sIc" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" aria-label="' + (k === 'overnight' ? 'Overnight' : 'After hours') + '"><path fill="#B58CFF" d="M20.5 14.6A9 9 0 0 1 9.4 3.5a.7.7 0 0 0-.9-.8A9.5 9.5 0 1 0 21.3 15.5a.7.7 0 0 0-.8-.9z"/></svg>'; }
 function wlRow(x, sess) { // one watchlist quote: regular session on the main line, pre/after/overnight on its own line
+  if (sess === 'overnight' && !(+x.ovn_price) && +x.extend_hour_last_price) sess = 'after'; /* most small caps don't trade overnight: show their after-hours price (the moon) instead of nothing */
   const ok = !((sess === 'overnight' && !x.ovn_price) || ((sess === 'pre' || sess === 'after') && !x.extend_hour_last_price));
   const n = snapRow(x, sess); n._s = ok ? sess : 'regular'; n._ok = ok;
   const g = snapRow(x, 'regular'); n.reg = { price: g.price, chg: g.chg, pct: g.pct };
@@ -949,7 +950,7 @@ function wlQuotes(syms) { // one live quote watch for the open list; rebuilt whe
     (Array.isArray(q) ? q : []).forEach((x) => {
       // a quote that lacks this session's price would show the regular-day % instead: don't let it replace a good one (that was the flash of wrong %)
       const n = wlRow(x, sess); const old = nq[x.symbol];
-      if (old && old._s === sess && !n._ok) { old.reg = n.reg; return; } // keep the good session quote, refresh the regular line
+      if (old && old._ok && !n._ok) { old.reg = n.reg; return; } // keep the good session quote, refresh the regular line
       nq[x.symbol] = n; });
     S.wlQ = nq; });
 }
