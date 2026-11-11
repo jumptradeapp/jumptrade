@@ -64,13 +64,13 @@
     if (!JC.open[sym]) return '';
     const f = facts(sym, main, ext); const r = read(f);
     const now = Date.now(); const rv = JC.reveal[sym] || 0;
-    const head = '<div class="jcHead"><span class="jcOrb"><i></i></span><span class="jcHt"><b>BEFORE YOU JUMP</b><small><em class="jcLive"></em>' + (now < rv ? 'Analyzing ' + E(sym) + '…' : 'Live · updates with the price') + '</small></span></div>';
+    const head = '<div class="jcHead"><span class="jcOrb jcMk">' + (window.jmMark ? jmMark(30) : '') + '</span><span class="jcHt"><b>BEFORE YOU JUMP</b><small><em class="jcLive"></em>' + (now < rv ? 'Analyzing ' + E(sym) + '…' : 'Live · updates with the price') + '</small></span></div>';
     if (now < rv) { // the scan: each check ticks off in turn
       const step = Math.floor((1 - (rv - now) / 1600) * SCAN.length);
       return '<div class="jc jcGlow scanning">' + head + '<div class="jcScan">' + SCAN.map((t, i) => '<div class="jcStep' + (i < step ? ' done' : i === step ? ' on' : '') + '"><i>' + (i < step ? '✓' : '') + '</i>' + t + '</div>').join('') + '</div><div class="jcBar"><i style="width:' + Math.min(100, Math.round((1 - (rv - now) / 1600) * 100)) + '%"></i></div></div>';
     }
     const fresh = now - rv < 1800; 
-    if (!r) return '<div class="jc"><div class="jcCap"><i></i>JUMP CHECK</div><div class="skel"></div><div class="skel" style="width:70%"></div><p class="jcNote">Loading price history…</p></div>';
+    if (!r) return '<div class="jc"><div class="jcCap"><i></i>BEFORE YOU JUMP</div><div class="skel"></div><div class="skel" style="width:70%"></div><p class="jcNote">Loading price history…</p></div>';
     const col = r.call === 'BUY' ? '#5EE0A0' : r.call === 'AVOID' ? '#FF8A8A' : '#F2C27A';
     const row = (k, t) => '<div class="jcRow"><em>' + k + '</em><p>' + E(t) + '</p></div>';
     const sc = f.v ? f.v.score : 0; const lit = Math.max(1, Math.min(r.call === 'BUY' ? 5 : r.call === 'WATCH' ? 3 : 2, Math.round(sc + 3)));
