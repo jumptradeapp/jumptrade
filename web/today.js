@@ -2,7 +2,7 @@
    position sizer, trade journal, Leaders, Insiders, Calendar and Flow. */
 (function () {
   const T = { sent: null, spyB: null, idx: {}, macro: null, flow: null, flowF: 'all', lead: null, ins: null, earn: {}, earnBars: {}, szSym: {}, jForm: null, jClose: null, sigSnap: {}, wlQ: {} };
-  window.TODAY = T;
+  window.TODAY = T; T.loadMacro = function () { try { loadMacro(); } catch (e) {} }; T.bigEvents = function (f, d) { try { return bigEvents(f, d); } catch (e) { return { big: [], fed: [] }; } };
   const ctool = (tool, input, hours) => mcp.callTool(SERVER, tool, input, { cache: { staleTime: hours * 3600e3, gcTime: Math.max(hours, 1) * 3600e3 } }).then(payloadOf);
   const arr = (p) => Array.isArray(p) ? p : p && Array.isArray(p.data) ? p.data : [];
   const fmtP = (p) => p == null || !isFinite(p) ? '—' : '$' + (p < 1 ? p.toFixed(4) : p >= 1000 ? Math.round(p).toLocaleString('en-US') : p.toFixed(2));
