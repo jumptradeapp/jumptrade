@@ -48,7 +48,7 @@
     cur = 'regime';
     const Hh = X.health(); const I = (TODAY && TODAY.idx) || {}; const hv = Hh ? X.HV[Hh.v] : null;
     const pre = /pre|over|after|closed/i.test(typeof view === 'function' ? view() : '');
-    const ix = (s, lab) => { const r = I[s]; const up = r && r.pct != null ? r.pct >= 0 : null; return '<div class="mkI" data-open="' + s + '"><small>' + lab + '</small><b style="color:' + (up == null ? P.txt : up ? P.up : P.dn) + '">' + (r && r.pct != null ? pctS(r.pct) : '—') + '</b><em>' + (r && r.chg != null ? (r.chg >= 0 ? '+' : '−') + '$' + px(Math.abs(r.chg)) + ' · ' : '') + (r && r.price ? '$' + px(r.price) : '') + '</em></div>'; };
+    const ix = (s, lab) => { const r = I[s]; const up = r && r.pct != null ? r.pct >= 0 : null; return '<div class="mkI" data-open="' + s + '"><small>' + lab + '</small><b style="color:' + (up == null ? P.txt : up ? P.up : P.dn) + '">' + (r && r.pct != null ? pctS(r.pct) : '—') + '</b><em>' + (r && r.chg != null ? (r.chg >= 0 ? '+' : '−') + '$' + px(Math.abs(r.chg)) : '') + '</em></div>'; };
     W[cur] = '<div class="glass sec hm mkStrip"' + (hv ? ' style="--c:' + hv[1] + '"' : '') + '><div class="hmcap">' + secCap(pre ? 'MARKET · ' + (typeof view === 'function' ? String(view()).toUpperCase() : '') : 'MARKET', hv ? hv[1] : P.mute) + (hv ? '<button class="mkReg" data-plan="1" style="color:' + hv[1] + ';border-color:' + hv[1] + '66;background:' + hv[1] + '14">' + hv[0] + ' ›</button>' : '') + '</div><div class="mkRow">' + ix('SPY', 'S&amp;P 500') + ix('QQQ', 'Nasdaq') + ix('IWM', 'Small caps') + '</div></div>';
     // Jump check: any ticker, plus today's biggest movers
     if (window.JC) W.jc = JC.homeCard();
