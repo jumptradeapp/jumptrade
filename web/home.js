@@ -114,9 +114,13 @@
         t('Your live log', lv.s.n ? Math.round(lv.s.win * 100) + '%' : lv.L.length, lv.s.n ? lv.s.n + ' closed' : 'logged so far', P.txt) + '</div>', '<button class="hmr" data-tab="record">2 yrs ›</button>');
     } else W[cur] = (W[cur] || '') + card('SIGNAL TRACK RECORD', P.vi, '<p class="desc dim">' + (window.REC && REC.busy ? 'Testing the signals… ' + Math.round(REC.prog * 100) + '%' : 'Testing the signals on two years of prices…') + '</p>', '<button class="hmr" data-tab="record">Open ›</button>');
     Object.assign(W, H.extra(X, P, mine, watched));
-    const cfg = H.cfg(); h = cfg.order.filter((id) => !cfg.hide[id] && W[id]).map((id) => W[id]).join('');
-    if (!h) h = '<p class="desc dim" style="text-align:center;margin:40px 0">Every widget is hidden. Tap ⊕ to add some back.</p>';
-    setHTML($('hmList'), h);
+    const cfg = H.cfg(); const ids = cfg.order.filter((id) => !cfg.hide[id] && W[id]);
+    const list = $('hmList');
+    if (!ids.length) { setHTML(list, '<p class="desc dim" style="text-align:center;margin:40px 0">Every widget is hidden. Tap ⊕ to add some back.</p>'); return; }
+    /* update each card on its own, so one card changing never rebuilds (and jumps) the whole page */
+    if (list.__h != null && !list.querySelector(':scope > [data-hw]')) { list.innerHTML = ''; } list.__h = null;
+    ids.forEach((id, i) => { let el = list.querySelector(':scope > [data-hw="' + id + '"]'); if (!el) { el = document.createElement('div'); el.dataset.hw = id; el.style.display = 'contents'; } if (list.children[i] !== el) list.insertBefore(el, list.children[i] || null); setHTML(el, W[id]); });
+    [...list.children].forEach((c) => { if (!c.dataset.hw || ids.indexOf(c.dataset.hw) < 0) c.remove(); });
   };
 
   // ---------- widgets: config, extra widgets, customize sheet ----------

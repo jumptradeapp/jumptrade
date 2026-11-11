@@ -55,23 +55,26 @@
     } catch (e) { m.a = e && e.code === 'not_granted' ? 'Ask Jump needs permission to answer. Tap Allow when asked.' : e && e.code === 'rate_limited' ? 'Too many questions at once. Give it a minute.' : (m.a || 'Couldn’t reach Ask Jump. Try again.'); }
     m.live = false; ORC.busy = false; paint(true);
   }
+  let sugC = null, sugT = 0;
   function suggestions() {
+    if (sugC && Date.now() - sugT < 300000) return sugC;
     const M = movers(), out = [];
     if (M[0]) out.push('Why is ' + M[0].sym + ' up ' + Math.round(M[0].pct) + '%?');
     if (M[1]) out.push('Is ' + M[1].sym + ' a buy?');
     out.push('How’s the market?');
     if (out.length < 3) out.push('Is NVDA a buy?');
+    if (M.length) { sugC = out.slice(0, 3); sugT = Date.now(); }
     return out.slice(0, 3);
   }
   const MK = (px) => '<span class="orcMk" style="width:' + px + 'px;height:' + px + 'px">' + (window.jmMark ? jmMark(px) : '') + '</span>';
   // Home card: tap anywhere to open the chat
   ORC.card = function () {
     const last = ORC.msgs.filter((x) => x.a && !x.live).slice(-1)[0], M = movers(), sug = suggestions();
-    const chip = (s, i) => { const r = i < 2 ? M[i] : null; return '<button data-orcq="' + E(s) + '">' + (r && typeof logoHTML === 'function' ? logoHTML(r.sym, 20) : '<span class="orcSi">✦</span>') + '<span>' + E(s) + '</span></button>'; };
+    const chip = (s) => { const t = (s.match(/\b[A-Z]{1,5}\b/) || [])[0]; return '<button data-orcq="' + E(s) + '">' + (t && typeof logoHTML === 'function' ? logoHTML(t, 20) : '<span class="orcSi">✦</span>') + '<span>' + E(s) + '</span></button>'; };
     return '<div class="orcCard v2"><div class="orcGlow"></div>' +
       '<div class="orcHero">' + MK(34) + '<div class="orcTt"><b>ASK JUMP</b><small>Know before you jump</small></div></div>' +
       (last ? '<button class="orcLast" data-orcopen="1"><small>Last answer</small>' + E(last.a.slice(0, 150)) + (last.a.length > 150 ? '…' : '') + '</button>' : '') +
-      '<button class="orcFake" data-orcopen="1"><span class="orcTw"><span class="orcType" data-orctype="' + E(JSON.stringify(sug)) + '">' + E(tyText) + '</span></span><em>↑</em></button>' +
+      '<button class="orcFake" data-orcopen="1"><span class="orcTw"><span class="orcType" data-orctype="' + E(JSON.stringify(sug)) + '">Ask anything…</span></span><em>↑</em></button>' +
       '<div class="orcSug">' + sug.map(chip).join('') + '</div></div>';
   };
   // typewriter in the Home box: cycles through example questions
