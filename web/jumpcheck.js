@@ -56,7 +56,7 @@
     return { call, sub, what, risk, plan, change, F, levels: { entry: v.entry, stop: v.stop, target: v.target } };
   }
 
-  JC.button = function (sym) { return '<button class="jcBtn' + (JC.open[sym] ? ' on' : '') + '" data-jc="' + E(sym) + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.2 6.3L20.5 10l-6.3 2.2L12 18.5l-2.2-6.3L3.5 10l6.3-1.7z"/></svg>Jump check</button>'; };
+  JC.button = function (sym) { return '<button class="jcBtn' + (JC.open[sym] ? ' on' : '') + '" data-jc="' + E(sym) + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.2 6.3L20.5 10l-6.3 2.2L12 18.5l-2.2-6.3L3.5 10l6.3-1.7z"/></svg>Before you jump</button>'; };
 
   JC.reveal = {};
   const SCAN = ['Price and trend', 'Volume vs normal', 'News and catalysts', 'Company size and risk', 'Your plan levels'];
@@ -64,7 +64,7 @@
     if (!JC.open[sym]) return '';
     const f = facts(sym, main, ext); const r = read(f);
     const now = Date.now(); const rv = JC.reveal[sym] || 0;
-    const head = '<div class="jcHead"><span class="jcOrb"><i></i></span><span class="jcHt"><b>JUMP CHECK</b><small><em class="jcLive"></em>' + (now < rv ? 'Analyzing ' + E(sym) + '…' : 'Live · updates with the price') + '</small></span></div>';
+    const head = '<div class="jcHead"><span class="jcOrb"><i></i></span><span class="jcHt"><b>BEFORE YOU JUMP</b><small><em class="jcLive"></em>' + (now < rv ? 'Analyzing ' + E(sym) + '…' : 'Live · updates with the price') + '</small></span></div>';
     if (now < rv) { // the scan: each check ticks off in turn
       const step = Math.floor((1 - (rv - now) / 1600) * SCAN.length);
       return '<div class="jc jcGlow scanning">' + head + '<div class="jcScan">' + SCAN.map((t, i) => '<div class="jcStep' + (i < step ? ' done' : i === step ? ' on' : '') + '"><i>' + (i < step ? '✓' : '') + '</i>' + t + '</div>').join('') + '</div><div class="jcBar"><i style="width:' + Math.min(100, Math.round((1 - (rv - now) / 1600) * 100)) + '%"></i></div></div>';

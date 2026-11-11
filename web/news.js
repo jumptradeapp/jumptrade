@@ -45,7 +45,7 @@
     return (typeof logoHTML === 'function' ? logoHTML(s, 34) : '') + '<span class="nrQn"><b>' + E(s) + '</b><small>' + E((typeof symName === 'function' && symName(s)) || '') + '</small></span>' +
       '<span class="nrQp"><b>' + (q && q.price ? '$' + (q.price < 1 ? q.price.toFixed(4) : q.price.toFixed(2)) : '—') + '</b><small style="color:' + c + '">' + (q && isFinite(q.pct) ? (up ? '+' : '−') + '$' + Math.abs(q.chg || 0).toFixed(q.price < 1 ? 4 : 2) + ' ' + (up ? '+' : '') + q.pct.toFixed(2) + '%' : '') + '</small></span>';
   }
-  const stockCards = (tk) => (tk || []).filter((s) => /^[A-Z.]{1,6}$/.test(s)).slice(0, 3).map((s) => '<div class="nrQ"><div class="nrQr" data-nrq="' + E(s) + '" data-open="' + E(s) + '">' + cardInner(s, NR.q[s]) + '</div><div class="nrQb"><button class="nrBtn" data-jcopen="' + E(s) + '">✦ Jump check</button><button class="nrBtn ghost" data-open="' + E(s) + '">Open ' + E(s) + ' ›</button></div></div>').join('');
+  const stockCards = (tk) => (tk || []).filter((s) => /^[A-Z.]{1,6}$/.test(s)).slice(0, 3).map((s) => '<div class="nrQ"><div class="nrQr" data-nrq="' + E(s) + '" data-open="' + E(s) + '">' + cardInner(s, NR.q[s]) + '</div><div class="nrQb"><button class="nrBtn" data-jcopen="' + E(s) + '">✦ Before you jump</button><button class="nrBtn ghost" data-open="' + E(s) + '">Open ' + E(s) + ' ›</button></div></div>').join('');
 
   NR.openOurs = function (id) {
     NR.cur = id; const show = (a) => {
