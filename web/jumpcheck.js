@@ -122,7 +122,7 @@
     const cnt = { real: 0, warn: 0, weak: 0 }; rows.forEach((r) => { const w = W[r.sym]; if (w && cnt[w.v] != null) cnt[w.v]++; });
     const stat = (n, l, c) => '<div><b style="color:' + c + '">' + n + '</b><span>' + l + '</span></div>';
     return '<div class="jcEng"><div class="jcEngBg"></div><div class="jcHead"><span class="jcOrb big"><i></i></span><span class="jcHt"><b>JUMP CHECK ENGINE</b><small><em class="jcLive"></em>Scanning ' + (rows.length || 'the') + ' movers live</small></span></div>' +
-      '<div class="jcReel" data-jcreel="1"></div>' +
+      '<div class="jcReel' + (rows.length ? ' full' : '') + '" data-jcreel="1">' + (rows.length ? (JC.reelHTML || '') : '') + '</div>' +
       (rows.length ? '<div class="jcStats">' + stat(rows.length, 'scanned', '#E6EBF2') + stat(cnt.real, 'real catalysts', '#5EE0A0') + stat(cnt.warn + cnt.weak, 'red flags', '#FF8A8A') + '</div>' : '') +
       '<div class="jcEngF"><span>Tap any stock for its full check</span><button class="jcAnyB" data-opensearch="1">⌕ Check another</button></div></div>';
   };
@@ -132,7 +132,7 @@
     if (!force && el.dataset.at && Date.now() - reelT < 2600) return; reelT = Date.now();
     const n = JC.reel.length, k = reelI++ % n; el.dataset.at = String(k);
     const rowH = (x, top) => '<button class="jcReelIn' + (top ? ' lead' : '') + '" data-jcopen="' + E(x.sym) + '" style="--k:' + x.col + '">' + (typeof logoHTML === 'function' ? logoHTML(x.sym, top ? 38 : 30) : '') + '<span class="jcRn"><b>' + E(x.sym) + ' <em style="color:#5EE0A0">+' + (x.pct >= 100 ? Math.round(x.pct) : x.pct.toFixed(1)) + '%</em></b><small style="color:' + x.col + '"><i style="background:' + x.col + '"></i>' + E(x.tag) + (x.why ? ' · ' + E(x.why) : '') + '</small></span>' + (top ? '<span class="jcGo">Check ›</span><span class="jcScanL"></span>' : '') + '</button>';
-    el.innerHTML = [0, 1, 2].filter((o) => o < n).map((o) => rowH(JC.reel[(k + o) % n], o === 0)).join('');
+    JC.reelHTML = [0, 1, 2].filter((o) => o < n).map((o) => rowH(JC.reel[(k + o) % n], o === 0)).join(''); el.innerHTML = JC.reelHTML;
   }
   setInterval(() => { const el = document.querySelector('[data-jcreel]'); if (el && (!el.firstChild || el.querySelector('.jcWait') || Date.now() - reelT >= 2600)) { if (el.querySelector('.jcWait') && JC.reel.length) el.innerHTML = ''; reelPaint(true); } }, 300);
   function startScan(sym) { JC.reveal[sym] = Date.now() + 1600; let n = 0; const t = setInterval(() => { if (typeof render === 'function') render(); if (++n > 9) clearInterval(t); }, 200); setTimeout(() => { if (typeof render === 'function') render(); }, 3500); }
