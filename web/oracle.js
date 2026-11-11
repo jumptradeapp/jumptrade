@@ -66,13 +66,24 @@
   const MK = (px) => '<span class="orcMk" style="width:' + px + 'px;height:' + px + 'px">' + (window.jmMark ? jmMark(px) : '') + '</span>';
   // Home card: tap anywhere to open the chat
   ORC.card = function () {
-    const last = ORC.msgs.filter((x) => x.a && !x.live).slice(-1)[0];
-    return '<div class="orcCard"><div class="orcGlow"></div>' +
-      '<div class="orcTop">' + MK(42) + '<span class="orcTt"><b>ASK JUMP</b><small>Before you jump, ask anything</small></span></div>' +
+    const last = ORC.msgs.filter((x) => x.a && !x.live).slice(-1)[0], M = movers(), sug = suggestions();
+    const chip = (s, i) => { const r = i < 2 ? M[i] : null; return '<button data-orcq="' + E(s) + '">' + (r && typeof logoHTML === 'function' ? logoHTML(r.sym, 20) : '<span class="orcSi">✦</span>') + '<span>' + E(s) + '</span></button>'; };
+    return '<div class="orcCard v2"><div class="orcGrid"></div><div class="orcGlow"></div>' +
+      '<div class="orcHero">' + MK(34) + '<div class="orcTt"><b>ASK JUMP</b><small>Know before you jump</small></div></div>' +
       (last ? '<button class="orcLast" data-orcopen="1"><small>Last answer</small>' + E(last.a.slice(0, 150)) + (last.a.length > 150 ? '…' : '') + '</button>' : '') +
-      '<button class="orcFake" data-orcopen="1"><span>Ask anything…</span><em>↑</em></button>' +
-      '<div class="orcSug">' + suggestions().map((s) => '<button data-orcq="' + E(s) + '">' + E(s) + '</button>').join('') + '</div></div>';
+      '<button class="orcFake" data-orcopen="1"><span class="orcType" data-orctype="' + E(JSON.stringify(sug)) + '"></span><i class="orcCaret"></i><em>↑</em></button>' +
+      '<div class="orcSug">' + sug.map(chip).join('') + '</div></div>';
   };
+  // typewriter in the Home box: cycles through example questions
+  let tyI = 0, tyC = 0, tyDel = false, tyHold = 0;
+  setInterval(() => {
+    const el = document.querySelector('[data-orctype]'); if (!el) return; let L = []; try { L = JSON.parse(el.dataset.orctype); } catch (e) {} if (!L.length) return;
+    const full = L[tyI % L.length];
+    if (tyHold > 0) { tyHold--; return; }
+    if (!tyDel) { tyC++; if (tyC >= full.length) { tyC = full.length; tyDel = true; tyHold = 28; } }
+    else { tyC -= 2; if (tyC <= 0) { tyC = 0; tyDel = false; tyI++; tyHold = 4; } }
+    el.textContent = full.slice(0, tyC) || 'Ask anything…';
+  }, 55);
   // the conversation sheet (lives outside the app's re-rendered views, so typing is never interrupted)
   function sheet() {
     let el = document.getElementById('orcSheet'); if (el) return el;
