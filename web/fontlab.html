@@ -1,0 +1,28 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex">
+<title>jumptrade. font options</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;600;800&family=Geist:wght@400;500;600;700;800&family=Schibsted+Grotesk:wght@400;500;600;700;800&family=Archivo:wght@400;500;600;700;800&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Onest:wght@400;500;600;700;800&family=Familjen+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0B1322;color:#ECEBE8;font-family:'Inter Tight',system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:18px 14px 40px}
+h1{font-size:15px;letter-spacing:.12em;font-weight:600;color:#8FA3BF;margin:4px 4px 16px}
+.opt{border-radius:22px;background:#0F1A2E;border:1px solid rgba(160,190,255,.12);padding:16px 16px 18px;margin-bottom:16px}
+.lab{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.lab b{font-family:'Inter Tight';font-size:13px;letter-spacing:.1em;color:#9DBEFF}.lab span{font-family:'Inter Tight';font-size:12px;color:#7F92AD}
+.wm{font-family:'Inter Tight';font-size:22px;letter-spacing:-.03em;margin-bottom:10px}.wm b{font-weight:800}.wm em{font-style:normal;color:#3B7BFF;font-weight:800}
+.big{font-size:38px;line-height:.95;letter-spacing:-.01em;font-weight:400;text-transform:uppercase}.big strong{font-weight:800;display:block}
+.cap{font-size:12.5px;font-weight:700;letter-spacing:.1em;margin:14px 0 8px;display:flex;align-items:center;gap:8px}.cap:before{content:"";width:8px;height:8px;border-radius:2px;background:#3B7BFF}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.t{background:#0B1322;border-radius:14px;padding:10px}.t small{display:block;font-size:12px;color:#AFC3DE}.t b{display:block;font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;color:#3FD68F;margin:2px 0}.t b.dn{color:#FF7B7B}.t i{font-style:normal;font-size:12px;color:#8FA3BF;font-variant-numeric:tabular-nums}
+.row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-top:1px solid rgba(255,255,255,.07)}.row .s b{font-size:16px;font-weight:700;display:block}.row .s span{font-size:12.5px;color:#AFC3DE}.row .p{text-align:right;font-variant-numeric:tabular-nums}.row .p b{display:block;font-size:16px;font-weight:600}.row .p span{font-size:13px;color:#3FD68F;font-weight:600}
+.news{font-size:15.5px;line-height:1.35;font-weight:500;margin-top:10px}.news small{display:block;font-size:12px;color:#8FA3BF;margin-top:4px;font-weight:400}
+.body{font-size:14px;line-height:1.5;color:#C9D2E0;margin-top:10px}
+</style></head><body>
+<h1>FONT OPTIONS · LOGO STAYS THE SAME</h1>
+<div id="list"></div>
+<script>
+var F=[['Inter Tight','Current'],['Geist','Clean, built for data'],['Schibsted Grotesk','Newsroom, sharp'],['Archivo','Sturdy, Bloomberg-ish'],['Hanken Grotesk','Soft, friendly'],['Onest','Modern, round'],['Familjen Grotesk','Distinct, a bit quirky']];
+var h='';F.forEach(function(f,i){h+='<div class="opt" style="font-family:\''+f[0]+'\',system-ui,sans-serif"><div class="lab"><b>'+(i+1)+' · '+f[0].toUpperCase()+'</b><span>'+f[1]+'</span></div>'+
+'<div class="wm"><b>jump</b>trade<em>.</em></div><div class="big">Good<strong>Afternoon.</strong></div>'+
+'<div class="cap">MARKET · AFTER</div><div class="tiles"><div class="t"><small>S&amp;P 500</small><b>+1.04%</b><i>+$2.43</i></div><div class="t"><small>Nasdaq</small><b class="dn">−0.98%</b><i>−$2.79</i></div><div class="t"><small>Small caps</small><b>+1.21%</b><i>+$1.67</i></div></div>'+
+'<div class="cap">TOP GAINERS</div><div class="row"><div class="s"><b>NVDA</b><span>Nvidia</span></div><div class="p"><b>$331.11</b><span>+$24.53 +8.0%</span></div></div><div class="row"><div class="s"><b>IREN</b><span>IREN Ltd</span></div><div class="p"><b>$48.72</b><span>+$5.06 +11.6%</span></div></div>'+
+'<div class="news">Nvidia jumps after data-center revenue beats estimates by $1.2B<small>4:12 PM · 8m ago</small></div><div class="body">Buy above $334.40, stop $318.20, target $356.00. On $1,000: −$48 if stopped, +$65 at target.</div></div>'});
+document.getElementById('list').innerHTML=h;
+</script></body></html>
