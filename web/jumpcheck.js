@@ -58,13 +58,24 @@
 
   JC.button = function (sym) { return '<button class="jcBtn' + (JC.open[sym] ? ' on' : '') + '" data-jc="' + E(sym) + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.2 6.3L20.5 10l-6.3 2.2L12 18.5l-2.2-6.3L3.5 10l6.3-1.7z"/></svg>Jump check</button>'; };
 
+  JC.reveal = {};
+  const SCAN = ['Price and trend', 'Volume vs normal', 'News and catalysts', 'Company size and risk', 'Your plan levels'];
   JC.card = function (sym, main, ext) {
     if (!JC.open[sym]) return '';
     const f = facts(sym, main, ext); const r = read(f);
+    const now = Date.now(); const rv = JC.reveal[sym] || 0;
+    const head = '<div class="jcHead"><span class="jcOrb"><i></i></span><span class="jcHt"><b>JUMP CHECK</b><small><em class="jcLive"></em>' + (now < rv ? 'Analyzing ' + E(sym) + '…' : 'Live · updates with the price') + '</small></span></div>';
+    if (now < rv) { // the scan: each check ticks off in turn
+      const step = Math.floor((1 - (rv - now) / 1600) * SCAN.length);
+      return '<div class="jc jcGlow scanning">' + head + '<div class="jcScan">' + SCAN.map((t, i) => '<div class="jcStep' + (i < step ? ' done' : i === step ? ' on' : '') + '"><i>' + (i < step ? '✓' : '') + '</i>' + t + '</div>').join('') + '</div><div class="jcBar"><i style="width:' + Math.min(100, Math.round((1 - (rv - now) / 1600) * 100)) + '%"></i></div></div>';
+    }
+    const fresh = now - rv < 1800; 
     if (!r) return '<div class="jc"><div class="jcCap"><i></i>JUMP CHECK</div><div class="skel"></div><div class="skel" style="width:70%"></div><p class="jcNote">Loading price history…</p></div>';
     const col = r.call === 'BUY' ? '#5EE0A0' : r.call === 'AVOID' ? '#FF8A8A' : '#F2C27A';
     const row = (k, t) => '<div class="jcRow"><em>' + k + '</em><p>' + E(t) + '</p></div>';
-    let h = '<div class="jc"><div class="jcCap"><i></i>JUMP CHECK</div><div class="jcCall"><b style="color:' + col + '">' + r.call + '</b><span>' + E(r.sub) + '</span></div>' +
+    const sc = f.v ? f.v.score : 0; const lit = Math.max(1, Math.min(r.call === 'BUY' ? 5 : r.call === 'WATCH' ? 3 : 2, Math.round(sc + 3)));
+    const meter = '<div class="jcMeter" title="How many signals line up">' + [1, 2, 3, 4, 5].map((i) => '<i' + (i <= lit ? ' style="background:' + col + ';box-shadow:0 0 8px ' + col + '88"' : '') + '></i>').join('') + '<span>' + (lit >= 4 ? 'Strong' : lit === 3 ? 'Mixed' : 'Weak') + ' setup</span></div>';
+    let h = '<div class="jc jcGlow' + (fresh ? ' jcIn' : '') + '" style="--jc:' + col + '">' + head + '<div class="jcCall"><b class="jcPill" style="color:' + col + ';border-color:' + col + '66;background:' + col + '14;box-shadow:0 0 24px ' + col + '33">' + r.call + '</b><span>' + E(r.sub) + '</span></div>' + meter +
       row('WHAT’S UP', r.what) + row('BIGGEST RISK', r.risk) + row('THE PLAN', r.plan) + row('CHANGES IF', r.change);
     if (r.F.length) h += '<div class="jcCap" style="margin-top:12px"><i style="background:#FF8A8A"></i>RED FLAGS</div><div class="jcFlags">' + r.F.map((x) => '<span class="jcF ' + x[0] + '">' + E(x[1]) + '</span>').join('') + '</div>';
     // follow-ups
@@ -82,10 +93,13 @@
     q = String(q || '').trim().slice(0, 200); if (!q || JC.busy[sym]) return;
     const C = JC.chat[sym] = JC.chat[sym] || []; C.push({ q }); JC.busy[sym] = 1; if (typeof render === 'function') render();
     const x = (JC._f && JC._f[sym]) || {}; const f = x.f || {}, r = x.r || {};
-    const data = { symbol: sym, name: f.name, industry: f.industry, price: f.price, change_pct_today: f.pct, change_usd_today: f.chg, after_hours: f.ext && f.ext.price ? { price: f.ext.price, pct: f.ext.pct } : null, volume: f.vol, relative_volume: f.rv, market_cap: f.mc, eps_ttm: f.eps, high_52w: f.hi52, low_52w: f.lo52, halted: !!f.halted, earnings_in_days: f.earnDays,
+    const dd = ((S.d[sym] || {}).daily || []).filter((b) => +b.close > 0); const cl = dd.map((b) => +b.close); const av = (a) => a.length ? +(a.reduce((x, y) => x + y, 0) / a.length).toFixed(2) : null;
+    const sn = (S.d[sym] || {}).snap || {}; const nws = ((S.news && S.news[sym] && S.news[sym].items) || []).slice(0, 5).map((n) => ({ title: n.title, source: n.source || '', when: n.publish_time }));
+    const lv = dd.length >= 20 ? { day_high: +sn.high || null, day_low: +sn.low || null, prev_close: +sn.pre_close || null, high_20d: Math.max.apply(null, dd.slice(0, 20).map((b) => +b.high)), low_20d: Math.min.apply(null, dd.slice(0, 20).map((b) => +b.low)), low_10d: Math.min.apply(null, dd.slice(0, 10).map((b) => +b.low)), avg_20d: av(cl.slice(0, 20)), avg_50d: av(cl.slice(0, 50)), avg_200d: cl.length >= 150 ? av(cl.slice(0, 200)) : null } : null;
+    const data = { symbol: sym, name: f.name, levels: lv, recent_headlines: nws, analyst_target: (S.d[sym] || {}).tgt ? +(S.d[sym].tgt.mean) || null : null, verdict_reasons: f.v ? { for: f.v.pros, against: f.v.cons } : null, industry: f.industry, price: f.price, change_pct_today: f.pct, change_usd_today: f.chg, after_hours: f.ext && f.ext.price ? { price: f.ext.price, pct: f.ext.pct } : null, volume: f.vol, relative_volume: f.rv, market_cap: f.mc, eps_ttm: f.eps, high_52w: f.hi52, low_52w: f.lo52, halted: !!f.halted, earnings_in_days: f.earnDays,
       news_headline: f.news ? f.news.title : (f.newsLoaded ? 'none found today' : 'not loaded'), jump_check_call: r.call, plan_levels: r.levels, red_flags: (r.F || []).map((y) => y[1]) };
     const hist = C.slice(-7, -1).map((m) => (m.q ? 'User: ' + m.q : 'You: ' + m.a)).join('\n');
-    const prompt = 'You answer follow-up questions about one stock inside jumptrade\'s "Jump check". Use ONLY the data below; if something isn\'t in it, say you don\'t have it. Keep the same call and levels as the Jump check (don\'t invent new prices). Plain English, short sentences, at most 90 words, no personal financial advice, no guarantees.\n\nDATA: ' + JSON.stringify(data) + (hist ? '\n\nEARLIER IN THIS CHAT:\n' + hist : '') + '\n\nQUESTION: ' + q + '\n\nReturn JSON only: {"answer": "..."} (you may use **bold** for a few key words).';
+    const prompt = 'You are jumptrade\'s Jump check analyst answering a trader\'s follow-up about one stock. STYLE: lead with a direct, confident answer in the first sentence, like a sharp trading desk analyst. Never open with what you don\'t know, never say "my data", never say "I can\'t advise". If the cause of a move isn\'t in the headlines, say so in a few words and give the most useful read of what the price and volume show. For entry questions, point to concrete levels from DATA.levels (support like the 10-day low, 20/50-day average, prior close; resistance like the 20-day high) and say what each would mean ("a pullback toward $X, its 20-day average, is a lower-risk spot"). Stay consistent with the Jump check call and levels. Use ONLY numbers in DATA; never invent facts or news. Plain English, 50-90 words, a few **bold** key numbers. No guarantees.\n\nDATA: ' + JSON.stringify(data) + (hist ? '\n\nEARLIER IN THIS CHAT:\n' + hist : '') + '\n\nQUESTION: ' + q + '\n\nReturn JSON only: {"answer": "..."} (you may use **bold** for a few key words).';
     try {
       const res = await fetch('/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: 'ask', prompt }) });
       const j = await res.json().catch(() => ({}));
@@ -98,17 +112,33 @@
   }
 
   // home widget: check any ticker, with today's biggest movers one tap away
+  // home: the Jump check engine. A live readout cycling through today's movers, with what the scanner found.
+  const MWV = { real: ['#5EE0A0', 'Real catalyst'], warn: ['#F2C27A', 'Careful'], weak: ['#FF8A8A', 'Weak move'], halt: ['#FF8A8A', 'Halted'], news: ['#8CB8E0', 'In the news'], nonews: ['#AEB9C8', 'No news'] };
+  JC.reel = [];
   JC.homeCard = function () {
-    const rows = (typeof rowsCache !== 'undefined' && rowsCache.length ? rowsCache : (typeof moverRows === 'function' ? moverRows() : [])).filter((r) => r.price >= 1).slice(0, 4);
-    return '<div class="glass sec hm jcHome" style="--c:#4C8DFF"><div class="hmcap">' + (typeof secCap === 'function' ? secCap('JUMP CHECK', '#4C8DFF') : '<b>JUMP CHECK</b>') + '</div>' +
-      '<p class="desc dim" style="margin:2px 0 10px">The call, the risks and the plan for any stock, in ten seconds.</p>' +
-      '<form class="jcAsk" data-jchome="1"><input name="t" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Type a ticker, like NVDA"><button aria-label="Check">›</button></form>' +
-      (rows.length ? '<div class="jcChips" style="margin-top:10px">' + rows.map((r) => '<button class="jcChip" data-jcopen="' + E(r.sym) + '">' + E(r.sym) + ' <span style="color:#5EE0A0">' + (r.pct >= 0 ? '+' : '') + Math.round(r.pct) + '%</span></button>').join('') + '</div>' : '') + '</div>';
+    const rows = (typeof rowsCache !== 'undefined' && rowsCache.length ? rowsCache : (typeof moverRows === 'function' ? moverRows() : [])).filter((r) => r.price >= 1 && r.pct > 0).slice(0, 12);
+    const W = (typeof S !== 'undefined' && S.mwhy) || {};
+    JC.reel = rows.map((r) => { const w = W[r.sym]; const m = w ? MWV[w.v] || MWV.news : null; return { sym: r.sym, pct: r.pct, price: r.price, tag: m ? m[1] : (r.pct >= 40 ? 'Too hot to chase' : 'Checking…'), why: w && w.kind && w.kind !== m[1] ? w.kind : '', col: m ? m[0] : (r.pct >= 40 ? '#F2C27A' : '#8CB8E0') }; });
+    const cnt = { real: 0, warn: 0, weak: 0 }; rows.forEach((r) => { const w = W[r.sym]; if (w && cnt[w.v] != null) cnt[w.v]++; });
+    const stat = (n, l, c) => '<div><b style="color:' + c + '">' + n + '</b><span>' + l + '</span></div>';
+    return '<div class="jcEng"><div class="jcEngBg"></div><div class="jcHead"><span class="jcOrb big"><i></i></span><span class="jcHt"><b>JUMP CHECK ENGINE</b><small><em class="jcLive"></em>Scanning ' + (rows.length || 'the') + ' movers live</small></span></div>' +
+      '<div class="jcReel" data-jcreel="1"></div>' +
+      (rows.length ? '<div class="jcStats">' + stat(rows.length, 'scanned', '#E6EBF2') + stat(cnt.real, 'real catalysts', '#5EE0A0') + stat(cnt.warn + cnt.weak, 'red flags', '#FF8A8A') + '</div>' : '') +
+      '<form class="jcAsk" data-jchome="1"><input name="t" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Check any ticker, like NVDA"><button aria-label="Check">›</button></form></div>';
   };
-  function openCheck(sym) { sym = String(sym || '').toUpperCase().replace(/[^A-Z.]/g, '').slice(0, 6); if (!sym) return; JC.open[sym] = 1; if (typeof openDetail === 'function') openDetail(sym); setTimeout(() => { const el = document.querySelector('.jc'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 900); }
+  let reelI = 0, reelT = 0;
+  function reelPaint(force) {
+    const el = document.querySelector('[data-jcreel]'); if (!el || !JC.reel.length) return;
+    if (!force && el.dataset.at && Date.now() - reelT < 2600) return; reelT = Date.now();
+    const x = JC.reel[reelI++ % JC.reel.length]; el.dataset.at = x.sym;
+    el.innerHTML = '<button class="jcReelIn" data-jcopen="' + E(x.sym) + '" style="--k:' + x.col + '">' + (typeof logoHTML === 'function' ? logoHTML(x.sym, 40) : '') + '<span class="jcRn"><b>' + E(x.sym) + ' <em style="color:#5EE0A0">+' + (x.pct >= 100 ? Math.round(x.pct) : x.pct.toFixed(1)) + '%</em></b><small style="color:' + x.col + '"><i style="background:' + x.col + '"></i>' + E(x.tag) + (x.why ? ' · ' + E(x.why) : '') + '</small></span><span class="jcGo">Check ›</span></button>';
+  }
+  setInterval(() => { const el = document.querySelector('[data-jcreel]'); if (el && (!el.firstChild || Date.now() - reelT >= 2600)) reelPaint(true); }, 300);
+  function startScan(sym) { JC.reveal[sym] = Date.now() + 1600; let n = 0; const t = setInterval(() => { if (typeof render === 'function') render(); if (++n > 9) clearInterval(t); }, 200); setTimeout(() => { if (typeof render === 'function') render(); }, 3500); }
+  function openCheck(sym) { sym = String(sym || '').toUpperCase().replace(/[^A-Z.]/g, '').slice(0, 6); if (!sym) return; JC.open[sym] = 1; startScan(sym); if (typeof openDetail === 'function') openDetail(sym); setTimeout(() => { const el = document.querySelector('.jc'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 900); }
 
   document.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-jc]'); if (b) { e.preventDefault(); e.stopPropagation(); const s = b.dataset.jc; JC.open[s] = !JC.open[s]; if (typeof render === 'function') render(); if (JC.open[s]) setTimeout(() => { const el = document.querySelector('.jc'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 120); return; }
+    const b = e.target.closest('[data-jc]'); if (b) { e.preventDefault(); e.stopPropagation(); const s = b.dataset.jc; JC.open[s] = !JC.open[s]; if (JC.open[s]) startScan(s); if (typeof render === 'function') render(); if (JC.open[s]) setTimeout(() => { const el = document.querySelector('.jc'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 120); return; }
     const c = e.target.closest('[data-jcq]'); if (c) { e.preventDefault(); e.stopPropagation(); ask(c.dataset.jcs, c.dataset.jcq); return; }
     const o = e.target.closest('[data-jcopen]'); if (o) { e.preventDefault(); e.stopPropagation(); openCheck(o.dataset.jcopen); }
   }, true);

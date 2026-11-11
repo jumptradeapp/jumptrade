@@ -74,7 +74,7 @@
         line = 'Avoid for now';
       } else {
         kind = 'watch';
-        entry = hi20 && hi20 > p ? hi20 * 1.003 : p * 1.03;
+        entry = hi20 && hi20 > p && hi20 <= p * 1.08 ? hi20 * 1.003 : p * 1.03; // a 1-month high far above isn't a usable trigger
         line = 'Watch · buy above ' + d$(entry);
       }
       const floor = lo10 && lo10 < entry ? lo10 * 0.995 : entry * 0.92;
