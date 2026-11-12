@@ -57,6 +57,8 @@
   }
 
   QM.renderCards = function () {
+    const ten = (m) => { const c = m.curve || []; if (c.length < 121) return ''; const a = c[c.length - 121], z = c[c.length - 1]; const v = 10000 * z[1] / a[1], sp = 10000 * z[2] / a[2]; const f$ = (x) => '$' + Math.round(x).toLocaleString('en-US');
+      return '<div class="m10k"><span>$10,000 over the last 10 years</span><div><b style="color:' + col(v - sp) + '">' + f$(v) + '</b><small>S&amp;P ' + f$(sp) + '</small></div></div>'; };
     const D = data();
     let h = '<div class="rsec cap" style="margin-top:2px">MACRO MODELS · QUANTEDGE-STYLE</div>';
     if (!D) return h + '<div class="glass"><span class="small dim">Loading models…</span></div>';
@@ -66,7 +68,7 @@
       '<div class="stg"><div><span>Per year</span><b style="color:' + col(m.bt.cagr - m.btSpy.cagr) + '">' + sg(m.bt.cagr) + '%</b><small>S&amp;P ' + sg(m.btSpy.cagr) + '%</small></div>' +
       '<div><span>Return per risk</span><b style="color:' + col(m.bt.sharpe - m.btSpy.sharpe) + '">' + m.bt.sharpe.toFixed(2) + '</b><small>S&amp;P ' + m.btSpy.sharpe.toFixed(2) + '</small></div>' +
       '<div><span>Worst drop</span><b>' + m.bt.mdd.toFixed(0) + '%</b><small>S&amp;P ' + m.btSpy.mdd.toFixed(0) + '%</small></div></div>' +
-      spark(m) + liveTag(m) + '</button>').join('');
+      ten(m) + spark(m) + liveTag(m) + '</button>').join('');
     h += '<div class="rsec cap" style="margin-top:14px">STOCK STRATEGIES · RUN LIVE</div>';
     return h;
   };
