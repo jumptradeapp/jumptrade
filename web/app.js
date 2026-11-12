@@ -506,7 +506,7 @@ function renderDetail() {
   if (S.wlists && !S.wlMemTried) { S.wlMemTried = 1; memLoad(); } const wln = wlCount(sym);
   const up = main ? main.pct >= 0 : true;
   // 1. who it is (close button lives in the sheet's grab bar)
-  let h = '<div class="grab2"></div><div class="dHead2">' + logoHTML(sym, 44) + '<div style="min-width:0;flex:1"><h2>' + esc(sym) + '</h2><span>' + esc(cleanName(name)) + '</span></div><button class="dX" id="back" aria-label="Close">✕</button></div>';
+  let h = '<div class="grab2"></div><div class="dHead2">' + logoHTML(sym, 44) + '<div style="min-width:0;flex:1"><h2>' + esc(sym) + '</h2><span>' + esc(cleanName(name)) + '</span></div>' + (window.JTMODE ? JTMODE.sw() : '') + '<button class="dX" id="back" aria-label="Close">✕</button></div>';
   // 2. price
   h += '<div class="dTop">';
   if (main) {
