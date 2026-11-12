@@ -316,7 +316,7 @@
   ENR.renderSetups = function () {
     if ($('setSeg')) setHTML($('setSeg'), ideasSeg('setups'));
     ENR.runStats();
-    $('setList').innerHTML = ENR.topSetups(true);
+    $('setList').innerHTML = window.IX ? (IX.load(), IX.html()) : ENR.topSetups(true);
     if ($('stFresh')) $('stFresh').textContent = ENR.ss ? 'Updated ' + ago(ENR.ss.t) : 'Testing…';
   };
 })();

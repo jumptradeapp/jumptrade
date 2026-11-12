@@ -800,7 +800,8 @@ function renderSearch() {
   if (!list.length && /^[A-Z.]{1,6}$/.test(Q)) list.push(Q);
   const cp = window.CMP && CMP.parse(q); const askTop = (cp ? '<button class="srow askrow" data-cmpp="' + esc(cp.join(',')) + '"><span class="logo mono" style="width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#5B9BFF,#F2A65A);font-size:15px">⇄</span><span class="rn"><b>Compare ' + esc(cp[0]) + ' vs ' + esc(cp[1]) + '</b><small>Side by side: performance, holdings, overlap, valuation</small></span></button>' : '') + (window.ENR && ENR.looksLikeQ(q) && !cp ? ENR.askRow(q) : '');
   srQuotes(list);
-  box.innerHTML = askTop + (list.length ? list.map(resRow).join('') : (askTop ? '' : '<p class="small dim" style="padding:10px 2px">' + (SYMS && SYMS.length ? 'No matches.' : 'Loading the stock list…') + '</p>'));
+  const top = window.SRC && list.length && !cp && (list[0] === Q || Q.length >= 2) ? list[0] : null; if (top) SRC.load(top);
+  box.innerHTML = askTop + (top ? SRC.card(top) : '') + (list.length ? list.filter((x) => x !== top).map(resRow).join('') : (askTop ? '' : '<p class="small dim" style="padding:10px 2px">' + (SYMS && SYMS.length ? 'No matches.' : 'Loading the stock list…') + '</p>'));
 }
 // search rows show price, $ move and % like every other list (quotes fetched for the top results)
 S.srQ = S.srQ || {};
@@ -1431,7 +1432,7 @@ function goTab(t) {
 }
 
 /* ---------- ideas: value + buzz ---------- */
-const IDEAS = [['setups', 'Setups'], ['runners', 'Runners'], ['dips', 'Dips'], ['leaders', 'Leaders'], ['value', 'Value'], ['buzz', 'Buzz'], ['insiders', 'Insiders'], ['record', 'Record']];
+const IDEAS = [['setups', 'All ideas'], ['leaders', 'Leaders'], ['buzz', 'Buzz'], ['insiders', 'Insiders'], ['record', 'Record']];
 const isIdeas = (t) => IDEAS.some((x) => x[0] === t);
 function ideasSeg(active) { return IDEAS.map((x) => '<button class="seg' + (x[0] === active ? ' on' : '') + '" data-tab="' + x[0] + '">' + x[1] + '</button>').join(''); }
 const VQ = []; let vBusy = 0; const VMAX = 4;
@@ -1819,7 +1820,7 @@ document.addEventListener('click', (e) => {
 /* ---------- one plain-English "What this means" line at the top of each page ---------- */
 const MEAN = {
 
-  setups: 'stocks lined up for a trade, with the price to buy, where to get out if wrong, and where to take profit.',
+  setups: 'every idea in one list — breakouts, dips, runners and cheap stocks — tagged. Tap a tag to filter.',
   runners: 'stocks showing early signs of a big run: heavy volume, news and a strong chart.',
   dips: 'good companies that just fell hard. We show the price to buy, where to get out if wrong, and where to take profit.',
   leaders: 'the strongest stocks in the market over the last few months. Leaders tend to keep leading.',

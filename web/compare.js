@@ -232,6 +232,6 @@
     else if (t.dataset.cmpwith) { const s = t.dataset.cmpwith; if (S.detail && typeof closeDetail === 'function') closeDetail(); C.set(s, C.a === s ? C.b : C.a); }
   });
   document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target && (e.target.id === 'cmpA' || e.target.id === 'cmpB')) { const a = $('cmpA').value, b = $('cmpB').value; e.target.blur(); C.set(a, b); } });
-  C.parse = function (q) { const m = String(q || '').trim().match(/^\$?([A-Za-z.]{1,6})\s*(?:vs\.?|v\.?|versus|,|\/|and)\s*\$?([A-Za-z.]{1,6})$/i); return m ? [m[1].toUpperCase(), m[2].toUpperCase()] : null; };
+  C.parse = function (q) { const m = String(q || '').trim().match(/^\$?([A-Za-z.]{1,6})(?:\s+(?:vs\.?|v\.?|versus|and)\s+|\s*(?:,|\/)\s*)\$?([A-Za-z.]{1,6})$/i); return m ? [m[1].toUpperCase(), m[2].toUpperCase()] : null; };
   window.CMP = C;
 })();
