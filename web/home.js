@@ -250,4 +250,10 @@
   setInterval(() => { if (S.tab === 'home' && !document.hidden) render(); }, 60000);
   window.HOME = H;
 })();
-document.addEventListener('scroll', (e) => { const el = e.target; if (!el.classList || !el.classList.contains('stScroll')) return; const i = Math.round(el.scrollLeft / Math.max(1, el.firstElementChild ? el.firstElementChild.offsetWidth + 10 : el.clientWidth)); const d = el.parentNode.querySelectorAll('.stDots i'); d.forEach((x, k) => x.classList.toggle('on', k === i)); }, true);
+document.addEventListener('scroll', (e) => { const el = e.target; if (!el.classList || !el.classList.contains('stScroll')) return; window.__stX = el.scrollLeft; window.__stT = Date.now(); const i = Math.round(el.scrollLeft / Math.max(1, el.firstElementChild ? el.firstElementChild.offsetWidth + 10 : el.clientWidth)); const d = el.parentNode.querySelectorAll('.stDots i'); d.forEach((x, k) => x.classList.toggle('on', k === i)); }, true);
+
+// keep the story cards where the user left them when Home re-renders with fresh prices
+(function () {
+  const fix = () => { const el = document.querySelector('.stScroll'); if (!el || window.__stX == null) return; if (Math.abs(el.scrollLeft - window.__stX) > 2) { el.style.scrollSnapType = 'none'; el.scrollLeft = window.__stX; requestAnimationFrame(() => { el.style.scrollSnapType = ''; }); const w = (el.firstElementChild ? el.firstElementChild.offsetWidth + 10 : el.clientWidth) || 1; const i = Math.round(window.__stX / w); el.parentNode.querySelectorAll('.stDots i').forEach((x, k) => x.classList.toggle('on', k === i)); } };
+  new MutationObserver(fix).observe(document.documentElement, { childList: true, subtree: true });
+})();
