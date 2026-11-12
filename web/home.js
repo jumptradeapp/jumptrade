@@ -148,8 +148,8 @@
     if (on('runners') && window.RUN) W.runners = RUN.widget(card, P);
     if (on('play') && window.PLAY) W.play = PLAY.widget(card, P);
     if (on('build') && window.BLD) W.build = BLD.widget(card, P);
-    const mv = typeof moverRows === 'function' ? moverRows() : [];
-    if (on('gainers')) W.gainers = card('TOP MOVERS', P.up, mv.length ? mv.slice(0, 4).map((r) => row(r.sym, esc(cleanName(r.name || symName(r.sym) || '')).slice(0, 26) || '&nbsp;', mvS(r.pct, r.price, r.chg), col(r.pct), '$' + px(r.price))).join('') : skel, '<button class="hmr" data-tab="movers">All ›</button>');
+    const mv = (() => { if (typeof moverRows !== 'function') return []; const c0 = S.cap; S.cap = 'all'; try { return moverRows(); } finally { S.cap = c0; } })(); // Home always shows the real top gainers, whatever size filter Movers was left on
+    if (on('gainers')) W.gainers = card('TOP MOVERS', P.up, mv.length ? mv.slice(0, 5).map((r) => '<button class="hmrow" data-open="' + esc(r.sym) + '">' + logoHTML(r.sym, 30) + '<span class="rn"><b>' + esc(r.sym) + '</b><small>' + (esc(cleanName(r.name || symName(r.sym) || '')).slice(0, 26) || '&nbsp;') + '</small></span><span class="rp"><b>' + (['pre', 'after', 'overnight'].indexOf(view()) >= 0 && typeof sessIcon === 'function' ? sessIcon(view(), 12) + ' ' : '') + '$' + px(r.price) + '</b><small style="color:' + col(r.pct) + '">' + mvS(r.pct, r.price, r.chg) + '</small></span></button>').join('') : skel, '<button class="hmr" data-tab="movers">All ›</button>');
     if (on('uvol')) { const U = mv.map((r) => ({ r: r, x: window.ENR ? ENR.rvol(r.sym, r.vol) : null })).filter((o) => o.x && o.x >= 2).sort((a, b) => b.x - a.x).slice(0, 5);
       W.uvol = card('UNUSUAL VOLUME', '#F2C27A', U.length ? U.map((o) => row(o.r.sym, mvS(o.r.pct, o.r.price, o.r.chg) + ' today', (o.x >= 10 ? Math.round(o.x) : o.x.toFixed(1)) + '×', '#F2C27A', 'normal volume')).join('') : (mv.length ? '<p class="desc dim">Nothing trading at 2× normal volume yet.</p>' : skel), '<button class="hmr" data-tab="movers">Movers ›</button>'); }
     if (on('uopt')) { const O = FILES['options.json']; if (!O) file('options.json');
