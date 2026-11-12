@@ -203,6 +203,7 @@ function normRank(arr) {
 }
 function snapRow(x, sess) {
   let price = +x.price, chg = nN(x.change), pct = nN(x.change_ratio) == null ? null : +x.change_ratio * 100;
+  if ((x.extend_hour_last_price || x.ovn_price) && +x.pre_close && nN(x.change) != null) price = +x.pre_close + +x.change; /* after the close, Webull's price is the last extended-hours trade; the regular-session close is pre_close + change */
   if ((sess === 'pre' || sess === 'after') && x.extend_hour_last_price) { price = +x.extend_hour_last_price; chg = +x.extend_hour_change; pct = +x.extend_hour_change_ratio * 100; }
   if (sess === 'overnight' && x.ovn_price) { price = +x.ovn_price; chg = +x.ovn_change; pct = +x.ovn_change_ratio * 100; }
   const ext = (sess === 'pre' || sess === 'after') && x.extend_hour_last_price;
