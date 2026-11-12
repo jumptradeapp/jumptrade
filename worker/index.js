@@ -980,6 +980,32 @@ async function aiRoutes(url, req, env) {
     return json({ error: { code: 'bad_request' } }, 400);
   } catch (e) { return json({ error: { code: e.status === 429 ? 'rate_limited' : 'server_unavailable', message: String(e.message || e) } }, 502); }
 }
+// ---------- money flow: rebuild rotation.json from fresh daily prices after each close (served at /rotation.json) ----------
+const ROT_THEMES = [["photonics","Photonics",["COHR","LITE","FN","CIEN","MRVL","AVGO","CRDO","ALAB","MTSI","AAOI","POET","LWLG"]],["aichips","AI chips",["NVDA","AVGO","TSM","AMD","MRVL","ARM","MU","ALAB","QCOM"]],["memory","Memory",["MU","SNDK","WDC","STX","RMBS","SIMO"]],["semicap","Chip equipment",["ASML","AMAT","LRCX","KLAC","TER","ONTO","CAMT","NVMI","ACMR","AEHR"]],["aipower","AI power",["VST","CEG","GEV","VRT","ETN","TLN","NRG","PWR","BE","POWL"]],["nuclear","Nuclear",["CEG","CCJ","BWXT","LEU","OKLO","SMR","NNE","LTBR","ASPI"]],["uranium","Uranium",["CCJ","NXE","UEC","DNN","UUUU","LEU","EU"]],["neocloud","Neoclouds",["CRWV","NBIS","IREN","CIFR","WULF","APLD","CORZ"]],["quantum","Quantum",["IBM","GOOGL","IONQ","RGTI","QBTS","QUBT"]],["robotics","Robotics",["TSLA","ISRG","ROK","TER","SYM","NVDA","SERV","RR"]],["space","Space",["RKLB","ASTS","PL","IRDM","LUNR","RDW","FLY","VSAT"]],["defense","Defense",["LMT","RTX","NOC","GD","LHX","HII"]],["drones","Drones",["AVAV","KTOS","ONDS","RCAT","UMAC","DPRO","PDYN"]],["cyber","Cybersecurity",["CRWD","PANW","ZS","NET","FTNT","OKTA","RBRK","S"]],["aisoftware","AI software",["MSFT","PLTR","NOW","APP","SNOW","DDOG","MDB","CRM","SOUN","AI"]],["crypto","Crypto",["COIN","HOOD","MSTR","CRCL","GLXY","MARA","RIOT","CLSK"]],["fintech","Fintech",["HOOD","NU","SOFI","AFRM","PYPL","XYZ","TOST","UPST"]],["glp1","Weight loss",["LLY","NVO","AMGN","HIMS","VKTX","ALT","GPCR"]],["biotech","Biotech",["VRTX","REGN","CRSP","NTLA","BEAM","RXRX"]],["rareearth","Rare earths",["MP","ALB","USAR","UAMY","NB","TMC","LAC"]],["gold","Gold",["NEM","AEM","WPM","FNV","KGC","AU"]],["grid","Grid",["ETN","PWR","GEV","HUBB","VRT","MYRG","POWL"]],["storage","Batteries",["TSLA","FLNC","EOSE","ENVX","QS","RIVN"]],["solar","Solar",["FSLR","NXT","ENPH","ARRY","RUN","SEDG"]],["cooling","Data centers",["EQIX","DLR","VRT","JCI","MOD","AAON"]],["healthai","Health tech",["ISRG","DXCM","PODD","TEM","HIMS","RXRX"]]];
+async function rotationJob(env, ctx) {
+  const all = [...new Set(ROT_THEMES.flatMap((t) => t[2]))]; const C = {};
+  for (let i = 0; i < all.length; i += 20) {
+    const p = await freshTool('get_stock_bars', { symbols: all.slice(i, i + 20), category: 'US_STOCK', timespan: 'D', count: 90, real_time_required: false, trading_sessions: 'RTH' }, ctx, env).catch(() => null);
+    ((p && p.result) || []).forEach((r) => { const m = {}; (r.result || []).forEach((b) => { const d = String(b.time || '').slice(0, 10); if (d && +b.close > 0) m[d] = +b.close; }); if (Object.keys(m).length > 30) C[r.symbol] = m; });
+  }
+  const days = [...new Set(Object.values(C).flatMap((m) => Object.keys(m)))].sort().filter((d) => Object.values(C).filter((m) => m[d]).length > Object.keys(C).length * 0.6);
+  if (days.length < 65 || Object.keys(C).length < all.length * 0.6) return { ok: false, n: Object.keys(C).length, days: days.length };
+  const TI = {};
+  ROT_THEMES.forEach((t) => { const idx = [1]; for (let k = 1; k < days.length; k++) { const v = t[2].map((s) => C[s] && C[s][days[k]] && C[s][days[k - 1]] ? C[s][days[k]] / C[s][days[k - 1]] - 1 : null).filter((x) => x != null && Math.abs(x) < 0.6); idx.push(idx[k - 1] * (1 + (v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0))); } TI[t[1]] = idx; });
+  const N = days.length - 1, r = (n, k) => Math.round((TI[n][N] / TI[n][N - k] - 1) * 1000) / 10;
+  const old = await (async () => { try { const a = await env.ASSETS.fetch('https://jumptrade.app/rotation.json'); return await a.json(); } catch (e) { return null; } })() || {};
+  const r5 = {}, r20 = {}; Object.keys(TI).forEach((n) => { r5[n] = r(n, 5); r20[n] = r(n, 20); });
+  const byR20 = Object.keys(TI).sort((a, b) => r20[b] - r20[a]);
+  const G = old.groups || { ai: [], safe: [] }; const grp = (L, a, b) => { const v = L.filter((n) => TI[n]).map((n) => TI[n][b] / TI[n][a] - 1); return v.length ? v.reduce((x, y) => x + y, 0) / v.length : 0; };
+  const wk = []; for (let e = N; e - 5 >= 0 && wk.length < 12; e -= 5) wk.unshift([days[e].slice(5), Math.round((grp(G.ai, e - 5, e) - grp(G.safe, e - 5, e)) * 1000) / 10]);
+  const oldD = {}; (old.dips || []).forEach((d) => { oldD[d.id] = d; });
+  const dips = ROT_THEMES.map((t) => { const x = TI[t[1]], hi = Math.max(...x.slice(N - 21)), off = Math.round((x[N] / hi - 1) * 1000) / 10; if (off > -10) return null;
+    const sma10 = x.slice(N - 9).reduce((a, b) => a + b, 0) / 10, r63 = N >= 63 ? x[N] / x[N - 63] - 1 : 0, med = r20[byR20[Math.floor(byR20.length / 2)]];
+    const v = r63 >= 0.10 ? 'buy' : r20[t[1]] < med ? 'wait' : 'watch'; const h = oldD[t[0]] || {};
+    return { id: t[0], name: t[1], off, v, hn: h.hn || 0, hwin: h.hwin || 0, havg: h.havg || 0, above10: x[N] > sma10 }; }).filter(Boolean).sort((a, b) => a.off - b.off).slice(0, 12);
+  const out = Object.assign({}, old, { asOf: days[N], r5, r20, wk, lead: byR20.slice(0, 3), lag: byR20.slice(-3).reverse(), dips, built: Date.now() });
+  await vput(env, 'rotation', out); return { ok: true, asOf: days[N], n: Object.keys(C).length };
+}
 async function freshTool(tool, input, ctx, env) { const r = await runTool(tool, input, ctx, env, true); const j = await r.json().catch(() => ({})); return j.payload; }
 async function cachedTool(tool, input, ctx, env) { const r = await runTool(tool, input, ctx, env); const j = await r.json().catch(() => ({})); return j.payload; }
 async function runAlerts(env, ctx) {
@@ -1078,7 +1104,7 @@ async function feedWatch(env) {
 }
 let UPK = 0;
 export default {
-  async scheduled(ev, env, ctx) { CUR_ENV = env; const m = new Date().getUTCMinutes(); ctx.waitUntil(vput(env, 'cronbeat', { t: Date.now(), build: 'b2' }).catch(() => {})); /* proof the every-minute job is running */ { const n = etNow(); const live = !/Sat|Sun/.test(n.wd) && n.hm >= 230 && n.hm < 1210; if (live || m % 10 === 0) ctx.waitUntil(precompute(env, ctx).then((r) => vput(env, 'prerun', { t: Date.now(), r })).catch(() => {})); } if (m % 10 === 0) ctx.waitUntil(wbUpkeep(env).catch(() => {})); if (m % 5 === 2) ctx.waitUntil(feedWatch(env).catch(() => {})); if (m % 3 === 1) ctx.waitUntil(newsdesk(env, ctx).catch(() => {})); if (m % 3 === 0) ctx.waitUntil(moverScan(env, ctx).catch(() => {})); { const n2 = etNow(); if (n2.hm === 247) ctx.waitUntil(vault(env).then((v) => v && v.fetch('https://v/sweep')).catch(() => {})); } ctx.waitUntil(runAlerts(env, ctx).then((r) => vput(env, 'alertrun', Object.assign({ t: Date.now() }, r))).catch((e) => vput(env, 'alertrun', { t: Date.now(), error: String(e && e.message || e) }))); },
+  async scheduled(ev, env, ctx) { CUR_ENV = env; const m = new Date().getUTCMinutes(); ctx.waitUntil(vput(env, 'cronbeat', { t: Date.now(), build: 'b2' }).catch(() => {})); /* proof the every-minute job is running */ { const n = etNow(); const live = !/Sat|Sun/.test(n.wd) && n.hm >= 230 && n.hm < 1210; if (live || m % 10 === 0) ctx.waitUntil(precompute(env, ctx).then((r) => vput(env, 'prerun', { t: Date.now(), r })).catch(() => {})); } if (m % 10 === 0) ctx.waitUntil(wbUpkeep(env).catch(() => {})); { const n3 = etNow(); if (!/Sat|Sun/.test(n3.wd) && (n3.hm === 1000 || n3.hm === 1030)) ctx.waitUntil(rotationJob(env, ctx).then((r) => vput(env, 'rotrun', Object.assign({ t: Date.now() }, r))).catch((e) => vput(env, 'rotrun', { t: Date.now(), error: String(e && e.message || e) }))); } if (m % 5 === 2) ctx.waitUntil(feedWatch(env).catch(() => {})); if (m % 3 === 1) ctx.waitUntil(newsdesk(env, ctx).catch(() => {})); if (m % 3 === 0) ctx.waitUntil(moverScan(env, ctx).catch(() => {})); { const n2 = etNow(); if (n2.hm === 247) ctx.waitUntil(vault(env).then((v) => v && v.fetch('https://v/sweep')).catch(() => {})); } ctx.waitUntil(runAlerts(env, ctx).then((r) => vput(env, 'alertrun', Object.assign({ t: Date.now() }, r))).catch((e) => vput(env, 'alertrun', { t: Date.now(), error: String(e && e.message || e) }))); },
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     CUR_ENV = env;
@@ -1115,6 +1141,7 @@ export default {
       if (hit) { hit.n = (hit.n || 1) + 1; hit.t = Date.now(); hit.name = who ? who.u.name : hit.name; } else L.unshift({ k, t: Date.now(), n: 1, msg, src: String(b.src || '').slice(0, 160), page: String(b.page || '').slice(0, 40), name: who ? who.u.name : '', ua: String(req.headers.get('user-agent') || '').slice(0, 140) });
       L.sort((x, y) => y.t - x.t); await vput(env, 'cerr', L.slice(0, 60)); return json({ ok: true });
     }
+    if (url.pathname === '/rotation.json') { const R = await vget(env, 'rotation').catch(() => null); if (R && R.asOf) return json(R, 200, { 'cache-control': 'public, max-age=600' }); return env.ASSETS.fetch(req); }
     if (url.pathname === '/api/ideas') { // members' ideas from Live Analysis: signed-in members post, everyone signed in reads
       const L = (await vget(env, 'ideas')) || [];
       if (req.method === 'GET') { const sym = (url.searchParams.get('sym') || '').toUpperCase(); return json({ payload: (sym ? L.filter((x) => x.sym === sym) : L).slice(0, 60) }, 200, { 'cache-control': 'no-store' }); }
@@ -1151,7 +1178,7 @@ export default {
       const a = r && r.payload ? (Array.isArray(r.payload) ? r.payload : r.payload.data || []) : null;
       const g = await wbCall(env, 'get_gainers_losers', { category: 'US_STOCK', rank_type: 'AFTER_MARKET', sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '100', page_index: '1' }).catch(() => null);
       const r0 = await wbCall(env, 'get_stock_snapshot', { symbols: 'NVDA', category: 'US_STOCK', extend_hour_required: true }).catch(() => null);
-      return json({ webull_basic: !!r0, webull: !!r && !r.err, err: r && r.err, last: WBLAST && { tool: WBLAST.tool, status: WBLAST.status, n: WBLAST.n, data: WBLAST.data, ago: Math.round((Date.now() - WBLAST.t) / 1000) }, fail_for: Math.max(0, Math.round((WBFAIL - Date.now()) / 1000)), ok: WBOK.ok, ah_count: g && g.payload && g.payload.data ? g.payload.data.length : null,
+      return json({ webull_basic: !!r0, webull: !!r && !r.err, err: r && r.err, last: WBLAST && { tool: WBLAST.tool, status: WBLAST.status, n: WBLAST.n, data: WBLAST.data, ago: Math.round((Date.now() - WBLAST.t) / 1000) }, fail_for: Math.max(0, Math.round((WBFAIL - Date.now()) / 1000)), rot: await vget(env, 'rotrun').catch(() => null), ok: WBOK.ok, ah_count: g && g.payload && g.payload.data ? g.payload.data.length : null,
         rows: a ? a.map((x) => ({ s: x.symbol, ovn: x.ovn_price, ovnPct: x.ovn_change_ratio, ovnVol: x.ovn_volume, ovnT: x.ovn_last_trade_time, ext: x.extend_hour_last_price, keys: Object.keys(x).filter((k) => /ovn|overnight/i.test(k)) })) : null }); }
     if (url.pathname === '/api/health') return json({ ok: true, provider: 'yahoo', time: new Date().toISOString() });
     if (url.pathname === '/api/nimg') { // small article thumbnail: the story's own preview image (og:image), proxied and cached
