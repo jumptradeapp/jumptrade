@@ -1118,6 +1118,21 @@ export default {
       return json({ webull_basic: !!r0, webull: !!r && !r.err, err: r && r.err, last: WBLAST && { tool: WBLAST.tool, status: WBLAST.status }, ah_count: g && g.payload && g.payload.data ? g.payload.data.length : null,
         rows: a ? a.map((x) => ({ s: x.symbol, ovn: x.ovn_price, ovnPct: x.ovn_change_ratio, ovnVol: x.ovn_volume, ovnT: x.ovn_last_trade_time, ext: x.extend_hour_last_price, keys: Object.keys(x).filter((k) => /ovn|overnight/i.test(k)) })) : null }); }
     if (url.pathname === '/api/health') return json({ ok: true, provider: 'yahoo', time: new Date().toISOString() });
+    if (url.pathname === '/api/nimg') { // small article thumbnail: the story's own preview image (og:image), proxied and cached
+      const u = url.searchParams.get('u') || ''; if (!/^https:\/\/[^\s]{8,600}$/.test(u)) return new Response('', { status: 400 });
+      const ck = new Request('https://cache.jumptrade/nimg/' + encodeURIComponent(u)); const hit = await caches.default.match(ck); if (hit) return hit;
+      const miss = () => { const m = new Response('', { status: 404, headers: { 'cache-control': 'public, max-age=21600' } }); ctx.waitUntil(caches.default.put(ck, m.clone())); return m; };
+      try {
+        const pg = await fetch(u, { headers: { 'user-agent': NUA, accept: 'text/html' }, redirect: 'follow', cf: { cacheTtl: 3600 } }); if (!pg.ok) return miss();
+        const html = (await pg.text()).slice(0, 300000);
+        let im = (html.match(/<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)(?::src)?["'][^>]*content=["']([^"']+)["']/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["'](?:og:image|twitter:image)["']/i) || [])[1];
+        if (!im) { const imgs = [...html.matchAll(/<img[^>]+src=["']([^"']+\.(?:jpe?g|png|webp)[^"']*)["']/gi)].map((m) => m[1]).filter((x) => !/logo|icon|avatar|sprite|pixel|badge/i.test(x)); im = imgs[0]; }
+        if (!im) return miss(); im = new URL(im.replace(/&amp;/g, '&'), pg.url || u).href;
+        const r = await fetch(im, { headers: { 'user-agent': NUA, referer: u }, cf: { cacheTtl: 86400 } }); const ct = r.headers.get('content-type') || '';
+        if (!r.ok || !/image/.test(ct)) return miss(); const buf = await r.arrayBuffer(); if (buf.byteLength < 2000 || buf.byteLength > 3000000) return miss();
+        const res = new Response(buf, { headers: { 'content-type': ct, 'cache-control': 'public, max-age=86400' } }); ctx.waitUntil(caches.default.put(ck, res.clone())); return res;
+      } catch (e) { return miss(); }
+    }
     if (url.pathname.indexOf('/api/logo/') === 0) { // backup logos for tickers missing from the built-in set
       const sym = decodeURIComponent(url.pathname.slice(10)).toUpperCase().replace(/[^A-Z.\-]/g, '').slice(0, 6);
       const ck = new Request('https://cache.jumptrade/logo/' + sym); const hit = await caches.default.match(ck); if (hit) return hit;
