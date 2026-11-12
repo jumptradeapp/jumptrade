@@ -549,7 +549,7 @@ async function wbToken(env, wb) {
   if (!WBCFG.need) return null;
   const t = await vget(env, 'token'); return t && t.status === 'NORMAL' ? t.token : null;
 }
-let WBOK = { t: 0, ok: false }, WBFAIL = 0;
+let WBOK = { t: 0, ok: false }, WBFAIL = 0, OVNNO = 0;
 async function wbCall(env, tool, input) {
   const wb = new Webull(env); if (!wb.ready || !WBMAP[tool]) return null;
   if (Date.now() - WBOK.t > 60000) { const st = await vget(env, 'tokstate').catch(() => null); WBOK = { t: Date.now(), ok: !!(st && st.status === 'NORMAL') }; }
@@ -557,10 +557,11 @@ async function wbCall(env, tool, input) {
   const token = await wbToken(env, wb);
   if (WBCFG && WBCFG.need && !token) return null; // not approved yet -> fall back
   const { method, path, args } = wbArgs(tool, input || {});
+  if (OVNNO > Date.now() && tool === 'get_stock_snapshot') delete args.overnight_required; // known: this key has no 24-hour quotes, skip the refused try
   const r = method === 'GET' ? await wb.raw('GET', path, args, null, token) : await wb.raw('POST', path, {}, args, token);
   if (r.status === 403 && tool === 'get_stock_snapshot' && args.overnight_required) { // this key isn't entitled to 24-hour quotes: retry without them, and don't take Webull offline for everyone
     const a2 = Object.assign({}, args); delete a2.overnight_required; const r2 = await wb.raw('GET', path, a2, null, token);
-    if (r2.status === 200) { WBLAST = { tool, status: 403, note: 'overnight not entitled', t: Date.now() }; return { payload: wbShape(tool, r2.data, input || {}) }; } }
+    if (r2.status === 200) { OVNNO = Date.now() + 3600000; WBLAST = { tool, status: 403, note: 'overnight not entitled', t: Date.now() }; return { payload: wbShape(tool, r2.data, input || {}) }; } }
   if (r.status !== 200) { if (!(r.status === 403 && tool === 'get_stock_snapshot')) WBFAIL = Date.now() + 120000; WBLAST = { tool, status: r.status, n: String(args.symbols || '').split(',').length, data: typeof r.data === 'string' ? r.data.slice(0, 300) : r.data, t: Date.now() }; return null; } // a refused snapshot (one bad symbol list) must not take live prices offline for everyone
   return { payload: wbShape(tool, r.data, input || {}) };
 }
