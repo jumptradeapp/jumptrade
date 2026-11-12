@@ -518,6 +518,7 @@ function renderDetail() {
       h += '<div class="dQt">' + (SESS[S.auto] ? SESS[S.auto].label : 'Market closed') + ' · vs yesterday’s close · ' + (st ? tm + ' ET' : 'loading…') + (age > 90000 ? ' <b style="color:#F2C27A">· delayed</b>' : '') + '</div>'; }
   }
   h += '</div>';
+  if (window.BN) { const A = BN.forSym(sym)[0]; if (A) h += BN.card(A, true); }
   if (window.BAS && main) h += BAS.sheet(sym, main, sn);
   // 3. the chart, right away
   h += '<div class="chart2 c3">' + '<button class="fsBtn" data-fsopen><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Setup</button>' + chartSVG(d.bars, sn ? +sn.pre_close : null, window.ENR && S.chartTf !== 'D' ? ENR.levels(sym) : null) + '<div class="cfoot"><div class="tfs2">' + ['1m', '5m', 'D'].map((t) => '<button class="' + (t === S.chartTf ? 'on' : '') + '" data-tf="' + t + '">' + (t === 'D' ? '6M' : t === '5m' ? '2D' : '1D') + '</button>').join('') + '</div>' +
@@ -903,7 +904,8 @@ function renderNews() {
     const tk = tkOf(n);
     if (n.ours) { const a = n.ours; return '<button class="nwTi" data-nrj="' + esc(a.id) + '"><span class="nwDot ours"></span><span class="nwTt"><b>' + tm(a.t) + '</b> · ' + ago(a.t) + '</span><b class="nwH">' + esc(a.title) + '</b><span class="nwSrc">jumptrade newsdesk</span>' + (tk.length ? '<span class="nwStks">' + tk.map(chip).join('') + '</span>' : '') + '</button>'; }
     const t = Date.parse(n.publish_time); const fresh = now - t < 90 * 60000;
-    return '<a class="nwTi' + (fresh ? ' fresh' : '') + '" href="' + esc(n.url) + '" target="_blank" rel="noopener" data-nrx="' + ix + '"><span class="nwDot"></span><span class="nwTt">' + (fresh ? '<span class="brk">NEW</span>' : '') + '<b>' + tm(t) + '</b> · ' + ago(t) + '</span><b class="nwH">' + esc(n.title) + '</b><span class="nwSrc">' + esc(n.source || '') + '</span>' + (tk.length ? '<span class="nwStks">' + tk.map(chip).join('') + '</span>' : '') + '</a>';
+    const al = window.BN ? BN.classify(n) : null;
+    return '<a class="nwTi' + (fresh ? ' fresh' : '') + (al ? ' ' + al.k : '') + '" href="' + esc(n.url) + '" target="_blank" rel="noopener" data-nrx="' + ix + '"><span class="nwDot"></span><span class="nwTt">' + (al ? '<span class="nwTag2 ' + al.k + '">' + BN.icon(al.k) + BN.label(al.k) + '</span>' : (fresh ? '<span class="brk">NEW</span>' : '')) + '<b>' + tm(t) + '</b> · ' + ago(t) + '</span><b class="nwH">' + esc(n.title) + '</b><span class="nwSrc">' + esc(n.source || '') + '</span>' + (tk.length ? '<span class="nwStks">' + tk.map(chip).join('') + '</span>' : '') + '</a>';
   }).join('') + '</div>' || '<div class="empty"><b>No headlines</b></div>';
 }
 
