@@ -6,7 +6,7 @@
   function svg(k, w, h, cw) {
     return '<svg width="' + w + '" height="' + h + '" viewBox="' + VB + '" shape-rendering="geometricPrecision" aria-hidden="true"><defs>' +
       g(k + 'u', '#9DBEFF', '#4C7FF0') + g(k + 'b', '#5B8CFF', '#2450C8') + g(k + 'd', '#2F5BD0', '#16307E') + '</defs>' +
-      '<path d="' + C + '" fill="' + (cw || '#fff') + '"/><path d="' + B0 + '" fill="url(#' + k + 'u)"/><path d="' + B1 + '" fill="url(#' + k + 'b)"/><path d="' + B2 + '" fill="url(#' + k + 'd)"/></svg>';
+      '<path d="' + C + '" fill="' + (cw || (window.JT_THEME === 'light' ? '#0F1B2D' : '#fff')) + '"/><path d="' + B0 + '" fill="url(#' + k + 'u)"/><path d="' + B1 + '" fill="url(#' + k + 'b)"/><path d="' + B2 + '" fill="url(#' + k + 'd)"/></svg>';
   }
   function mk(px) { var B = Math.round(px), k = 'jmk' + (uid++); return '<span class="jm3" style="width:' + B + 'px;height:' + B + 'px">' + svg(k, B, B) + '</span>'; }
   var URI = null;
