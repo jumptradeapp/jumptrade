@@ -17,7 +17,7 @@
     s += '<img alt="" src="' + u + '" style="position:absolute;inset:0;width:100%;height:100%">';
     return '<span class="jm3 jm3d" style="width:' + B + 'px;height:' + B + 'px;perspective:' + (B * 7) + 'px"><span style="position:relative;display:block;width:100%;height:100%;transform-style:preserve-3d;transform:rotateY(-28deg) rotateX(12deg) rotateZ(-4deg)">' + s + '</span></span>';
   }
-  function fill() { var els = document.querySelectorAll('.jm:not(.done)'); for (var i = 0; i < els.length; i++) { var p = +els[i].getAttribute('data-px') || 40; els[i].innerHTML = els[i].hasAttribute('data-3d') ? mk3(p) : mk(p); els[i].classList.add('done'); } }
-  window.jmMark = mk; window.jmMark3d = mk3; window.jmMarkSVG = function (w, h) { return svg('x' + (uid++), w, h); }; fill();
+  function fill() { var els = document.querySelectorAll('.jm:not(.done)'); for (var i = 0; i < els.length; i++) { var p = +els[i].getAttribute('data-px') || 40; els[i].innerHTML = mk(p); els[i].classList.add('done'); } }
+  window.jmMark = mk; window.jmMark3d = mk; // flat everywhere (3D retired) window.jmMarkSVG = function (w, h) { return svg('x' + (uid++), w, h); }; fill();
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fill);
 })();
