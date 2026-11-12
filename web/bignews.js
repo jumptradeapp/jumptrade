@@ -35,7 +35,7 @@
   const ago = (t) => { const m = Math.max(1, Math.round((Date.now() - t) / 60000)); return m < 60 ? m + 'm ago' : Math.round(m / 60) + 'h ago'; };
   BN.card = function (a, small) {
     const s = (a.n.summary || a.n.title || ''); const txt = s.length > 220 ? s.slice(0, 217).replace(/\s+\S*$/, '') + '…' : s;
-    return '<div class="bnA ' + a.k + (small ? ' sm' : '') + '" data-open="' + esc(a.sym) + '"><div class="bnH">' + ICON[a.k] + '<b>' + BN.label(a.k) + (a.strong ? ' · BIG NEWS' : '') + '</b><span>' + ago(a.t) + '</span></div>' +
+    return '<div class="bnA ' + a.k + (small ? ' sm' : '') + '" data-open="' + esc(a.sym) + '"><div class="bnH">' + ICON[a.k] + '<b>' + BN.label(a.k) + (a.strong ? ' · MAJOR NEWS' : '') + '</b><span>' + ago(a.t) + '</span></div>' +
       (small ? '<p>' + esc(a.n.title || '') + '</p>' : '<div class="hmrow bnR">' + logoHTML(a.sym, 34) + '<span class="rn"><b>' + esc(a.sym) + '</b><small>' + esc(cleanName(symName(a.sym) || '')) + '</small></span>' + priceB(a.sym) + '</div><p>' + esc(txt) + '</p>') + '</div>';
   };
   BN.homeCard = function () { BN.load(); const L = BN.list().slice(0, 3); return L.length ? '<div class="bnWrap">' + L.map((a) => BN.card(a)).join('') + '</div>' : ''; };
