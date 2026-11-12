@@ -9,7 +9,7 @@
     { id: 'insider', name: 'Insider Cluster', tag: 'Insider buying', color: '#C3A8FF',
       line: '2+ executives buy their own stock on the open market within 30 days. Hold about 6 months.',
       rules: ['Small and mid caps ($200M–$20B)', 'At least 2 different insiders buy on the open market within 30 days, each $25K+', 'Enter 3 days after the cluster (filings lag the trade)', 'Hold 126 trading days (≈6 months); 10 positions max, equal weight'] },
-    { id: 'drift', name: 'Earnings Drift', tag: 'Post-earnings drift', color: '#5EE0A0',
+    { id: 'drift', name: 'Earnings Drift', tag: 'Post-earnings drift', color: '#66C99A',
       line: 'Reports, gaps up 5%+ on 2× volume and holds it. Ride the drift for up to 40 trading days.',
       rules: ['Companies over $500M', 'Earnings reaction day: up 5%+, opened 3%+ higher, volume 2× the 50-day average, closed near or above the open', 'Buy at the next day’s close', 'Stop: a close under the reaction day’s low · time exit after 40 trading days', '10 positions max, equal weight'] },
     { id: 'flush', name: 'Quality Flush', tag: 'Mean reversion', color: '#F2C27A',
@@ -18,7 +18,7 @@
     { id: 'highs', name: '52-Week-High Leaders', tag: 'Trend + market switch', color: '#8CB8E0',
       line: 'Hold the 15 stocks closest to their 52-week highs. Go to cash whenever the S&P 500 is below its 200-day average.',
       rules: ['Companies over $2B, price above $5', 'Each month, rank by how close the price is to its 52-week high', 'Hold the top 15, equal weight, rebalanced the first trading day of the month', 'If SPY closes below its 200-day average at the rebalance, hold cash instead'] },
-    { id: 'revisions', name: 'Estimate Momentum', tag: 'Analyst estimates', color: '#FF8A8A',
+    { id: 'revisions', name: 'Estimate Momentum', tag: 'Analyst estimates', color: '#EC9191',
       line: 'Names beating estimates with the fastest-rising expected earnings. Real revision tracking builds from today.',
       rules: ['Companies over $2B with analyst coverage', 'Score: beats in the last 4 quarters + expected growth for next quarter vs a year ago', 'Once 4 weeks of estimate history is logged, rank by 4-week estimate revisions instead', 'Top 15, equal weight', 'No backtest possible yet: only today’s estimates are available'] }
   ];
@@ -238,7 +238,7 @@
   ST.rerun = () => { if (ST.running) return; ST.done = false; ST.res = {}; run(); };
 
   /* ---------- UI ---------- */
-  const BADGE = { BEATS: ['Beats S&P', '#5EE0A0'], MIXED: ['Mixed', '#F2C27A'], LAGS: ['Lags S&P', '#FF8A8A'], BUILDING: ['Building', '#A8C8E8'] };
+  const BADGE = { BEATS: ['Beats S&P', '#66C99A'], MIXED: ['Mixed', '#F2C27A'], LAGS: ['Lags S&P', '#EC9191'], BUILDING: ['Building', '#A8C8E8'] };
   const fmtP = (p) => p == null || !isFinite(p) ? '—' : '$' + (p < 1 ? p.toFixed(4) : p >= 1000 ? p.toFixed(0) : p.toFixed(2));
   const sg = (v) => (v >= 0 ? '+' : '') + v.toFixed(1);
   function cardStats(m, r) {
@@ -303,7 +303,7 @@
     h += '<div class="glass"><div class="ih"><span class="cap">' + (id === 'highs' || id === 'revisions' ? 'CURRENT PICKS' : 'LIVE POSITIONS') + '</span><span class="cap">' + hs.length + '</span></div>' + (hs.length ? hs.map((x, i) => {
       const ret = x.entryPx && x.px ? (x.px / x.entryPx - 1) * 100 : null; const col = PAL[i % PAL.length];
       const lv = [x.entryPx && x.entryD ? 'Entry ' + fmtP(x.entryPx) + ' ' + shortD(x.entryD) : x.action === 'BUY' && x.entryPx ? 'Signal ' + fmtP(x.entryPx) : '', x.stop ? 'Stop ' + fmtP(x.stop) : '', x.target ? 'Target ' + fmtP(x.target) : '', x.daysLeft != null && x.daysLeft > 0 ? x.daysLeft + 'd left' : ''].filter(Boolean).join(' · ');
-      return '<button class="srow hrow" data-open="' + esc(x.sym) + '"><i class="sw" style="background:' + col + '"></i>' + logoHTML(x.sym, 32) + '<span class="rn"><b>' + esc(x.sym) + ' <span class="badge" style="color:' + (x.action === 'BUY' ? '#5EE0A0' : '#A0A9B8') + ';border-color:' + (x.action === 'BUY' ? '#5EE0A066' : '#A0A9B866') + '">' + x.action + '</span></b><small>' + esc(x.note || '') + '</small>' + (lv ? '<small class="dim">' + esc(lv) + '</small>' : '') + '</span><span class="rp"><b>' + fmtP(x.px) + '</b>' + (ret != null ? '<small style="color:' + gc(ret) + '">' + pctS(ret) + '</small>' : '<small class="dim">' + (100 / hs.length).toFixed(1) + '%</small>') + '</span></button>'; }).join('') : '<p class="small dim" style="margin:8px 0 2px">' + (r.cash ? 'Holding cash until the market switch turns back on.' : 'No live signals right now. New ones appear here as they trigger.') + '</p>') + '</div>';
+      return '<button class="srow hrow" data-open="' + esc(x.sym) + '"><i class="sw" style="background:' + col + '"></i>' + logoHTML(x.sym, 32) + '<span class="rn"><b>' + esc(x.sym) + ' <span class="badge" style="color:' + (x.action === 'BUY' ? '#66C99A' : '#A0A9B8') + ';border-color:' + (x.action === 'BUY' ? '#66C99A66' : '#A0A9B866') + '">' + x.action + '</span></b><small>' + esc(x.note || '') + '</small>' + (lv ? '<small class="dim">' + esc(lv) + '</small>' : '') + '</span><span class="rp"><b>' + fmtP(x.px) + '</b>' + (ret != null ? '<small style="color:' + gc(ret) + '">' + pctS(ret) + '</small>' : '<small class="dim">' + (100 / hs.length).toFixed(1) + '%</small>') + '</span></button>'; }).join('') : '<p class="small dim" style="margin:8px 0 2px">' + (r.cash ? 'Holding cash until the market switch turns back on.' : 'No live signals right now. New ones appear here as they trigger.') + '</p>') + '</div>';
     const closed = (r.trades || []).filter((t) => t.exitD).sort((a, b) => (a.exitD > b.exitD ? -1 : 1)).slice(0, 8);
     if (closed.length) h += '<div class="glass"><div class="cap">RECENT CLOSED TRADES</div>' + closed.map((t) => { const rr = (t.exitPx / t.entryPx - 1 - COST) * 100; return '<button class="srow" data-open="' + esc(t.sym) + '">' + logoHTML(t.sym, 26) + '<span class="rn"><b>' + esc(t.sym) + '</b><small>' + shortD(t.entryD) + ' → ' + shortD(t.exitD) + ' · ' + fmtP(t.entryPx) + ' → ' + fmtP(t.exitPx) + '</small></span><span class="rp"><b style="font-size:15px;color:' + gc(rr) + '">' + pctS(rr) + '</b></span></button>'; }).join('') + '</div>';
     h += '<div class="glass"><div class="cap">RULES</div>' + m.rules.map((x) => '<div class="small" style="color:#C9D2E0;padding:5px 0;border-top:1px solid rgba(255,255,255,.06)">' + esc(x) + '</div>').join('') + '<div class="small dim" style="padding-top:6px">' + r.scanned + ' stocks scanned</div></div>';

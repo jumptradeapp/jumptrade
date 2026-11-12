@@ -71,13 +71,13 @@
     }
     const fresh = now - rv < 1800; 
     if (!r) return '<div class="jc"><div class="jcCap"><i></i>BEFORE YOU JUMP</div><div class="skel"></div><div class="skel" style="width:70%"></div><p class="jcNote">Loading price history…</p></div>';
-    const col = r.call === 'BUY' ? '#5EE0A0' : r.call === 'AVOID' ? '#FF8A8A' : '#F2C27A';
+    const col = r.call === 'BUY' ? '#66C99A' : r.call === 'AVOID' ? '#EC9191' : '#F2C27A';
     const row = (k, t) => '<div class="jcRow"><em>' + k + '</em><p>' + E(t) + '</p></div>';
     const sc = f.v ? f.v.score : 0; const lit = Math.max(1, Math.min(r.call === 'BUY' ? 5 : r.call === 'WATCH' ? 3 : 2, Math.round(sc + 3)));
     const meter = '<div class="jcMeter" title="How many signals line up">' + [1, 2, 3, 4, 5].map((i) => '<i' + (i <= lit ? ' style="background:' + col + ';box-shadow:0 0 8px ' + col + '88"' : '') + '></i>').join('') + '<span>' + (lit >= 4 ? 'Strong' : lit === 3 ? 'Mixed' : 'Weak') + ' setup</span></div>';
     let h = '<div class="jc jcGlow' + (fresh ? ' jcIn' : '') + '" style="--jc:' + col + '">' + head + '<div class="jcCall"><b class="jcPill" style="color:' + col + ';border-color:' + col + '66;background:' + col + '14;box-shadow:0 0 24px ' + col + '33">' + r.call + '</b><span>' + E(r.sub) + '</span></div>' + meter +
       row('WHAT’S UP', r.what) + row('BIGGEST RISK', r.risk) + row('THE PLAN', r.plan) + row('CHANGES IF', r.change);
-    if (r.F.length) h += '<div class="jcCap" style="margin-top:12px"><i style="background:#FF8A8A"></i>RED FLAGS</div><div class="jcFlags">' + r.F.map((x) => '<span class="jcF ' + x[0] + '">' + E(x[1]) + '</span>').join('') + '</div>';
+    if (r.F.length) h += '<div class="jcCap" style="margin-top:12px"><i style="background:#EC9191"></i>RED FLAGS</div><div class="jcFlags">' + r.F.map((x) => '<span class="jcF ' + x[0] + '">' + E(x[1]) + '</span>').join('') + '</div>';
     // follow-ups
     const C = JC.chat[sym] || [];
     h += '<div class="jcCap" style="margin-top:14px"><i></i>ASK A FOLLOW-UP</div>' + C.map((m) => m.q ? '<div class="jcQ">' + E(m.q) + '</div>' : '<div class="jcA">' + E(m.a).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>') + '</div>').join('') +
@@ -113,7 +113,7 @@
 
   // home widget: check any ticker, with today's biggest movers one tap away
   // home: the Jump check engine. A live readout cycling through today's movers, with what the scanner found.
-  const MWV = { real: ['#5EE0A0', 'Real catalyst'], warn: ['#F2C27A', 'Careful'], weak: ['#FF8A8A', 'Weak move'], halt: ['#FF8A8A', 'Halted'], news: ['#8CB8E0', 'In the news'], nonews: ['#AEB9C8', 'No news'] };
+  const MWV = { real: ['#66C99A', 'Real catalyst'], warn: ['#F2C27A', 'Careful'], weak: ['#EC9191', 'Weak move'], halt: ['#EC9191', 'Halted'], news: ['#8CB8E0', 'In the news'], nonews: ['#AEB9C8', 'No news'] };
   JC.reel = [];
   JC.homeCard = function () { if (window.ORC) return ORC.card(); return JC.homeCardOld(); };
   JC.homeCardOld = function () {
@@ -124,7 +124,7 @@
     const stat = (n, l, c) => '<div><b style="color:' + c + '">' + n + '</b><span>' + l + '</span></div>';
     return '<div class="jcEng"><div class="jcEngBg"></div><div class="jcHead"><span class="jcOrb big"><i></i></span><span class="jcHt"><b>JUMP CHECK ENGINE</b><small><em class="jcLive"></em>Scanning ' + (rows.length || 'the') + ' movers live</small></span></div>' +
       '<div class="jcReel' + (rows.length ? ' full' : '') + '" data-jcreel="1">' + (rows.length ? (JC.reelHTML || '') : '') + '</div>' +
-      (rows.length ? '<div class="jcStats">' + stat(rows.length, 'scanned', '#E6EBF2') + stat(cnt.real, 'real catalysts', '#5EE0A0') + stat(cnt.warn + cnt.weak, 'red flags', '#FF8A8A') + '</div>' : '') +
+      (rows.length ? '<div class="jcStats">' + stat(rows.length, 'scanned', '#E6EBF2') + stat(cnt.real, 'real catalysts', '#66C99A') + stat(cnt.warn + cnt.weak, 'red flags', '#EC9191') + '</div>' : '') +
       '<div class="jcEngF"><span>Tap any stock for its full check</span><button class="jcAnyB" data-opensearch="1">⌕ Check another</button></div></div>';
   };
   let reelI = 0, reelT = 0;
@@ -132,7 +132,7 @@
     const el = document.querySelector('[data-jcreel]'); if (!el) return; if (!JC.reel.length) { if (!el.firstChild) el.innerHTML = '<div class="jcWait"><i></i><i></i><i></i><span>Waiting for today\'s movers. The scan picks up again in premarket.</span></div>'; return; }
     if (!force && el.dataset.at && Date.now() - reelT < 2600) return; reelT = Date.now();
     const n = JC.reel.length, k = reelI++ % n; el.dataset.at = String(k);
-    const rowH = (x, top) => '<button class="jcReelIn' + (top ? ' lead' : '') + '" data-jcopen="' + E(x.sym) + '" style="--k:' + x.col + '">' + (typeof logoHTML === 'function' ? logoHTML(x.sym, top ? 38 : 30) : '') + '<span class="jcRn"><b>' + E(x.sym) + ' <em style="color:#5EE0A0">+' + (x.pct >= 100 ? Math.round(x.pct) : x.pct.toFixed(1)) + '%</em></b><small style="color:' + x.col + '"><i style="background:' + x.col + '"></i>' + E(x.tag) + (x.why ? ' · ' + E(x.why) : '') + '</small></span>' + (top ? '<span class="jcGo">Check ›</span><span class="jcScanL"></span>' : '') + '</button>';
+    const rowH = (x, top) => '<button class="jcReelIn' + (top ? ' lead' : '') + '" data-jcopen="' + E(x.sym) + '" style="--k:' + x.col + '">' + (typeof logoHTML === 'function' ? logoHTML(x.sym, top ? 38 : 30) : '') + '<span class="jcRn"><b>' + E(x.sym) + ' <em style="color:#66C99A">+' + (x.pct >= 100 ? Math.round(x.pct) : x.pct.toFixed(1)) + '%</em></b><small style="color:' + x.col + '"><i style="background:' + x.col + '"></i>' + E(x.tag) + (x.why ? ' · ' + E(x.why) : '') + '</small></span>' + (top ? '<span class="jcGo">Check ›</span><span class="jcScanL"></span>' : '') + '</button>';
     JC.reelHTML = [0, 1, 2].filter((o) => o < n).map((o) => rowH(JC.reel[(k + o) % n], o === 0)).join(''); el.innerHTML = JC.reelHTML;
   }
   /* the cycling mover reel was replaced by the Oracle on Home */

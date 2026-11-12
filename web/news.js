@@ -13,7 +13,7 @@
   };
   setInterval(() => { if (!document.hidden && typeof S !== 'undefined' && (S.tab === 'news' || S.tab === 'home')) NR.load(); }, 60000);
 
-  const art = (a) => { const k = a.kind === 'brief' ? ['#3B7BFF', '#14306F'] : a.tag === 'Earnings' ? ['#5EE0A0', '#0E3B2B'] : a.tag === 'Big mover' ? ['#F2C27A', '#3A2A10'] : ['#FF8A8A', '#3A1416']; return 'background:radial-gradient(120% 120% at 100% 0%,' + k[0] + '55,transparent 60%),linear-gradient(160deg,' + k[1] + ',#0A0D14)'; };
+  const art = (a) => { const k = a.kind === 'brief' ? ['#3B7BFF', '#14306F'] : a.tag === 'Earnings' ? ['#66C99A', '#0E3B2B'] : a.tag === 'Big mover' ? ['#F2C27A', '#3A2A10'] : ['#EC9191', '#3A1416']; return 'background:radial-gradient(120% 120% at 100% 0%,' + k[0] + '55,transparent 60%),linear-gradient(160deg,' + k[1] + ',#0A0D14)'; };
   const tagHTML = (a) => '<span class="nwTag ours">JUMPTRADE ANALYSIS</span><span class="nwTag k">' + E(a.tag || (a.kind === 'brief' ? 'Brief' : 'Breaking')) + '</span>';
 
   // featured piece: the top of the news page and of Home
@@ -41,7 +41,7 @@
     }).catch(() => {});
   }
   function cardInner(s, q) {
-    const up = q && q.pct >= 0; const c = q ? (up ? '#5EE0A0' : '#FF8A8A') : '#8B98AE';
+    const up = q && q.pct >= 0; const c = q ? (up ? '#66C99A' : '#EC9191') : '#8B98AE';
     return (typeof logoHTML === 'function' ? logoHTML(s, 34) : '') + '<span class="nrQn"><b>' + E(s) + '</b><small>' + E((typeof symName === 'function' && symName(s)) || '') + '</small></span>' +
       '<span class="nrQp"><b>' + (q && q.price ? '$' + (q.price < 1 ? q.price.toFixed(4) : q.price.toFixed(2)) : '—') + '</b><small style="color:' + c + '">' + (q && isFinite(q.pct) ? (up ? '+' : '−') + '$' + Math.abs(q.chg || 0).toFixed(q.price < 1 ? 4 : 2) + ' ' + (up ? '+' : '') + q.pct.toFixed(2) + '%' : '') + '</small></span>';
   }

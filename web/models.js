@@ -5,7 +5,7 @@
   const QM = { range: 'all' };
   window.QM = QM;
   const L = () => window.JT_THEME === 'light';
-  const P = () => (typeof dPal === 'function' ? dPal() : { up: '#5EE0A0', dn: '#FF8A8A', acc: '#4C8DFF', txt: '#ECEBE8', mute: '#9AA2AB', trk: 'rgba(255,255,255,.08)' });
+  const P = () => (typeof dPal === 'function' ? dPal() : { up: '#66C99A', dn: '#EC9191', acc: '#4C8DFF', txt: '#ECEBE8', mute: '#9AA2AB', trk: 'rgba(255,255,255,.08)' });
   const sg = (v) => (v >= 0 ? '+' : '') + Number(v).toFixed(1);
   const col = (v) => (v >= 0 ? P().up : P().dn);
   const usd = (v) => { const a = Math.abs(v); return (v < 0 ? '−' : '') + '$' + (a >= 1e6 ? (a / 1e6).toFixed(2) + 'M' : a >= 1e4 ? Math.round(a / 1e3) + 'k' : a >= 1e3 ? (a / 1e3).toFixed(1) + 'k' : Math.round(a)); };

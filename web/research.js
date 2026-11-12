@@ -5,7 +5,7 @@
   const E = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const md = (s) => E(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
   const rng = (seed) => { let h = 2166136261; for (const c of seed) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 10000) / 10000; }; };
-  const HUE = { power: '#4C8DFF', quantum: '#A08CFF', squeeze: '#3DDC97', selloff: '#FF6B6B', chip: '#3CC8DA', helix: '#E58BD0', orbit: '#7FB2FF', rates: '#F2C27A', waves: '#4C8DFF' };
+  const HUE = { power: '#4C8DFF', quantum: '#A08CFF', squeeze: '#5BBF8E', selloff: '#E07B7B', chip: '#3CC8DA', helix: '#E58BD0', orbit: '#7FB2FF', rates: '#F2C27A', waves: '#4C8DFF' };
   RES.hue = (a) => HUE[a] || '#4C8DFF';
 
   /* ---------- cover art: editorial, data-driven abstracts (no icons, no text) ---------- */
@@ -51,11 +51,11 @@
       return s + vig(p);
     },
     squeeze(p, r) { // a quiet base of short bars, then a surge
-      let s = base(p, '#04120E', '#082A21', '#3DDC97', '.75', '.3'); const o = [124, 112];
-      s += glow(p, 270, 130, 110, '#3DDC97', .2) + ifloor([114, 108], 9, 22, '#9FF2CB', .14);
+      let s = base(p, '#04120E', '#082A21', '#5BBF8E', '.75', '.3'); const o = [124, 112];
+      s += glow(p, 270, 130, 110, '#5BBF8E', .2) + ifloor([114, 108], 9, 22, '#9FF2CB', .14);
       const hs = [14, 17, 12, 16, 13, 16, 28, 52, 82, 110];
       hs.forEach((h, i) => { s += ibox(i * 18 + 4, 50, 0, 12, 12, h, i >= 6 ? GRN : GREY, o, i >= 6 ? 1 : .8); });
-      const e = IP(9 * 18 + 10, 56, 118, o); s += '<circle cx="' + e[0].toFixed(1) + '" cy="' + e[1].toFixed(1) + '" r="3" fill="#fff"/>' + '<circle cx="' + e[0].toFixed(1) + '" cy="' + e[1].toFixed(1) + '" r="10" fill="#3DDC97" opacity=".3"/>';
+      const e = IP(9 * 18 + 10, 56, 118, o); s += '<circle cx="' + e[0].toFixed(1) + '" cy="' + e[1].toFixed(1) + '" r="3" fill="#fff"/>' + '<circle cx="' + e[0].toFixed(1) + '" cy="' + e[1].toFixed(1) + '" r="10" fill="#5BBF8E" opacity=".3"/>';
       return s + vig(p);
     },
     quantum(p, r) { // a chip with a lattice of glowing qubits, wired up toward the cryostat
@@ -69,12 +69,12 @@
       return s + wires + dots + vig(p);
     },
     selloff(p, r) { // a run of rising bars, then a sharp red break
-      let s = base(p, '#0D0B16', '#241020', '#FF6B6B', '.75', '.75'); const o = [150, 95];
-      s += glow(p, 290, 180, 120, '#FF6B6B', .18) + ifloor([170, 90], 8, 22, '#ffffff', .12);
+      let s = base(p, '#0D0B16', '#241020', '#E07B7B', '.75', '.75'); const o = [150, 95];
+      s += glow(p, 290, 180, 120, '#E07B7B', .18) + ifloor([170, 90], 8, 22, '#ffffff', .12);
       const hs = [48, 66, 83, 101, 120, 96, 46];
       hs.forEach((h, i) => { s += ibox(i * 22 + 6, 40, 0, 14, 14, h, i >= 5 ? RED : GREY, o); });
       const a1 = IP(6 + 4 * 22 + 7, 47, 122, o), b1 = IP(6 + 6 * 22 + 7, 47, 48, o);
-      s += '<path d="M' + a1 + 'L' + b1 + '" stroke="#FF8A8A" stroke-width="1.6" stroke-dasharray="3 4"/>';
+      s += '<path d="M' + a1 + 'L' + b1 + '" stroke="#EC9191" stroke-width="1.6" stroke-dasharray="3 4"/>';
       return s + vig(p);
     },
     chip(p, r) {
@@ -115,7 +115,7 @@
 
   /* ---------- logo-collage covers: the article's real company logos on angled tiles ---------- */
   const SLOTS = [[8, 18, 36, -8], [36, 8, 30, 6], [39, 49, 33, -4], [66, 22, 28, 8], [69, 60, 25, -10], [9, 64, 22, 10]];
-  const BG = { '#FF6B6B': ['#140A12', '#2A0F1A', 'rgba(255,107,107,.38)'], '#4C8DFF': ['#04101F', '#0A2747', 'rgba(61,180,240,.38)'], '#A08CFF': ['#0A0820', '#1B1240', 'rgba(160,140,255,.38)'], '#3DDC97': ['#04120E', '#082A21', 'rgba(61,220,151,.32)'] };
+  const BG = { '#E07B7B': ['#140A12', '#2A0F1A', 'rgba(255,107,107,.38)'], '#4C8DFF': ['#04101F', '#0A2747', 'rgba(61,180,240,.38)'], '#A08CFF': ['#0A0820', '#1B1240', 'rgba(160,140,255,.38)'], '#5BBF8E': ['#04120E', '#082A21', 'rgba(61,220,151,.32)'] };
   RES.coverFor = function (a, cls) {
     const c = a.cover, L = (typeof LOGOS !== 'undefined' && LOGOS) || null;
     const mono = (c && c.mono) || {}; const syms = c && L ? c.logos.filter((x) => L[x] || mono[x]).slice(0, 6) : [];

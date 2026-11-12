@@ -49,7 +49,7 @@
     return { price: price, mcap: mcap, epsTTM: epsTTM, peTTM: peTTM, ps: ps, pb: pb, fwdEps: fwdEps, fwdPE: fwdPE, growth: growth, peg: peg, upside: upside, tMean: tMean, tHigh: tHigh,
       verdict: verdict, score: Math.round(score * 10) / 10, why: why, priced: priced, hotRank: hot ? hotRank : null, hype: hype, nextQ: next ? 'FY' + next.fiscal_year + ' Q' + next.fiscal_period : null };
   }
-  const VERDICT = { under: ['Undervalued', '#5EE0A0'], reasonable: ['Reasonable', '#8CE3B5'], full: ['Fully valued', '#C9D2E0'], expensive: ['Expensive', '#FFB38A'], perfection: ['Priced for perfection', '#FF8A8A'], unprofitable: ['Not profitable', '#F2C27A'] };
+  const VERDICT = { under: ['Undervalued', '#66C99A'], reasonable: ['Reasonable', '#8CE3B5'], full: ['Fully valued', '#C9D2E0'], expensive: ['Expensive', '#FFB38A'], perfection: ['Priced for perfection', '#EC9191'], unprofitable: ['Not profitable', '#F2C27A'] };
   const api = { value: value, VERDICT: VERDICT };
   if (typeof module !== 'undefined') module.exports = api; else root.VAL = api;
 })(this);

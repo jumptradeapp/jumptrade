@@ -55,7 +55,7 @@
       pts: [[6, 88], [36, 40], [48, 34], [60, 44], [72, 36], [84, 46], [96, 35], [108, 44], [120, 34], [134, 22], [156, 8]], ln: [[42, 33, 126, 33], [42, 47, 126, 47]], e: [124, 32], st: 48, tg: 6, lb: [[84,58,'Tight range']],
       buy: 'When price clears the top of the range on strong volume.', stop: 'Below the bottom of the range.', tgt: 'A common goal is 20–25% above the breakout.', warn: 'A range wider than about 15% is sloppy, not a base.' },
   ];
-  const COL = { bull: '#5EE0A0', bear: '#FF8A8A', either: '#9DB8FF' };
+  const COL = { bull: '#66C99A', bear: '#EC9191', either: '#9DB8FF' };
   const LBL = { bull: 'Bullish', bear: 'Bearish', either: 'Either way' };
   const E = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   function chart(p) {
@@ -68,7 +68,7 @@
     const labs = (p.lb || []).map((l) => '<text x="' + l[0] + '" y="' + l[1] + '" text-anchor="middle" class="pL">' + l[2] + '</text>').join('');
     const mid = 'pa' + p.id;
     return '<svg class="patSvg" viewBox="-4 -12 208 124" aria-hidden="true"><defs><marker id="' + mid + '" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="' + c + '"/></marker></defs>' +
-      zone + hl(p.tg, '#5EE0A0', 'TARGET') + hl(p.st, '#FF8A8A', 'STOP') + lines +
+      zone + hl(p.tg, '#66C99A', 'TARGET') + hl(p.st, '#EC9191', 'STOP') + lines +
       '<path d="' + path + '" fill="none" stroke="' + c + '" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#' + mid + ')"/>' + labs +
       '<circle cx="' + ex + '" cy="' + ey + '" r="4.2" fill="#fff" stroke="#3B7BFF" stroke-width="2.4"/>' +
       '<text x="' + (ex - 7) + '" y="' + (ey + (up ? 13 : -7)) + '" text-anchor="end" class="pB">' + (bear ? 'SELL' : 'BUY') + '</text></svg>';
@@ -98,20 +98,20 @@
     const first = q.ctx.length, x1 = gap * (first + 1) - gap / 2, x2 = gap * n + gap / 2;
     let h = '<svg class="patSvg" viewBox="0 0 200 100" aria-hidden="true"><rect x="' + (x1 + 2) + '" y="2" width="' + (x2 - x1 - 4) + '" height="96" rx="7" fill="#6FA8FF" opacity=".1"/>';
     all.forEach((k, i) => {
-      const x = gap * (i + 1), g = k[3] >= k[0], col = g ? '#5EE0A0' : '#FF6B6B', ctx = i < first, top = Y(Math.max(k[0], k[3])), bot = Y(Math.min(k[0], k[3]));
+      const x = gap * (i + 1), g = k[3] >= k[0], col = g ? '#66C99A' : '#E07B7B', ctx = i < first, top = Y(Math.max(k[0], k[3])), bot = Y(Math.min(k[0], k[3]));
       h += '<g opacity="' + (ctx ? .32 : 1) + '"><line x1="' + x + '" y1="' + Y(k[1]) + '" x2="' + x + '" y2="' + Y(k[2]) + '" stroke="' + col + '" stroke-width="1.6"/>' +
         '<rect x="' + (x - w / 2) + '" y="' + top + '" width="' + w + '" height="' + Math.max(1.6, bot - top) + '" rx="1.5" fill="' + col + '"/></g>';
     });
     return h + '</svg>';
   }
   function anatomy() {
-    const k = (x, g) => { const col = g ? '#5EE0A0' : '#FF6B6B', o = g ? 70 : 30, c = g ? 30 : 70;
+    const k = (x, g) => { const col = g ? '#66C99A' : '#E07B7B', o = g ? 70 : 30, c = g ? 30 : 70;
       return '<line x1="' + x + '" y1="8" x2="' + x + '" y2="92" stroke="' + col + '" stroke-width="2"/><rect x="' + (x - 11) + '" y="30" width="22" height="40" rx="2" fill="' + col + '"/>' +
         '<text x="' + (x + 18) + '" y="11" class="pL" text-anchor="start">High</text><text x="' + (x + 18) + '" y="94" class="pL" text-anchor="start">Low</text>' +
         '<text x="' + (x + 18) + '" y="' + (o + 3) + '" class="pT" fill="#E6EBF2" text-anchor="start">Open</text><text x="' + (x + 18) + '" y="' + (c + 3) + '" class="pT" fill="#E6EBF2" text-anchor="start">Close</text>'; };
     return '<div class="glass sec patCard patAna"><div class="patArt"><svg class="patSvg" viewBox="0 0 200 100" aria-hidden="true">' + k(38, true) + k(130, false) +
       '<text x="10" y="53" class="pL" text-anchor="middle" transform="rotate(-90 10 53)">BODY</text><text x="124" y="20" class="pL" text-anchor="end">Wick</text><text x="124" y="86" class="pL" text-anchor="end">Wick</text></svg></div>' +
-      '<div class="patHd"><b>How to read a candle</b></div><p class="patS">Each candle is one day (or one bar). The <b style="color:#fff">body</b> runs from the open to the close. <b style="color:#5EE0A0">Green</b> closed higher than it opened, <b style="color:#FF6B6B">red</b> closed lower. The thin <b style="color:#fff">wicks</b> show the highest and lowest prices it reached.</p>' +
+      '<div class="patHd"><b>How to read a candle</b></div><p class="patS">Each candle is one day (or one bar). The <b style="color:#fff">body</b> runs from the open to the close. <b style="color:#66C99A">Green</b> closed higher than it opened, <b style="color:#E07B7B">red</b> closed lower. The thin <b style="color:#fff">wicks</b> show the highest and lowest prices it reached.</p>' +
       '<p class="patS">Long wicks mean a price was tried and rejected. One candle is a hint. Always wait for the next one to confirm.</p></div>';
   }
   const PAT = { f: 'all', m: 'shapes', open: {} };
@@ -126,7 +126,7 @@
       const o = PAT.open[p.id];
       return '<div class="glass sec patCard' + (o ? ' open' : '') + '" data-pato="' + p.id + '"><div class="patArt">' + chart(p) + '</div>' +
         '<div class="patHd"><b>' + E(p.n) + '</b>' + pill(p.t) + '<small>' + p.k + '</small></div><p class="patS">' + E(p.s) + '</p>' +
-        (o ? '<div class="patHow">' + row('#3B7BFF', p.t === 'bear' ? 'Sell when' : 'Buy when', p.buy) + row('#FF8A8A', 'Stop', p.stop) + row('#5EE0A0', 'Target', p.tgt) + row('#F2C27A', 'Watch out', p.warn) + '</div>' : '<div class="patMore">How to trade it ›</div>') + '</div>';
+        (o ? '<div class="patHow">' + row('#3B7BFF', p.t === 'bear' ? 'Sell when' : 'Buy when', p.buy) + row('#EC9191', 'Stop', p.stop) + row('#66C99A', 'Target', p.tgt) + row('#F2C27A', 'Watch out', p.warn) + '</div>' : '<div class="patMore">How to trade it ›</div>') + '</div>';
     };
     const ccard = (q) => {
       const o = PAT.open[q.id];

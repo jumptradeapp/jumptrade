@@ -1,7 +1,7 @@
 /* Beta feedback sheet: Bug / Idea / Feel & navigation, a text box, Send. Posts to /api/feedback. FB.open() */
 (function () {
   const D = document; let kind = 'bug';
-  const KINDS = [['bug', 'Bug', '#FF8A8A'], ['idea', 'Idea', '#5EE0A0'], ['ux', 'Feel & navigation', '#9CC0FF']];
+  const KINDS = [['bug', 'Bug', '#EC9191'], ['idea', 'Idea', '#66C99A'], ['ux', 'Feel & navigation', '#9CC0FF']];
   const HINT = { bug: 'What happened, and on which page? What did you expect instead?', idea: 'What would make jumptrade more useful to you?', ux: 'What felt confusing, slow or hard to find?' };
   function close() { const w = D.getElementById('fbS'); if (w) { w.classList.remove('on'); setTimeout(() => w.remove(), 220); } }
   function paint(w) {

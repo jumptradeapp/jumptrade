@@ -7,7 +7,7 @@ const HOLIDAYS = new Set(['2026-11-26', '2026-12-25', '2027-01-01', '2027-01-18'
 const EARLY = new Set(['2026-11-27', '2026-12-24', '2027-11-26']);
 const SESS = {
   pre: { label: 'Pre-market', name: 'Pre-market', short: 'Pre', rank: 'PRE_MARKET', color: '#F2C27A' },
-  regular: { label: 'Market open', name: 'Regular session', short: 'Day', rank: 'DAY_1', color: '#5EE0A0' },
+  regular: { label: 'Market open', name: 'Regular session', short: 'Day', rank: 'DAY_1', color: '#66C99A' },
   after: { label: 'After hours', name: 'After hours', short: 'After', rank: 'AFTER_MARKET', color: '#8CB8E0' },
   overnight: { label: '24-hour market', name: '24-hour market', short: '24h', rank: null, color: '#C3A8FF' },
   closed: { label: 'Market closed', name: 'Closed', short: 'Closed', rank: null, color: '#A0A9B8' }
@@ -238,7 +238,7 @@ function haltCheck(rows) { // trading halts: the movers lists don't say, so re-c
   }, 30000);
 }
 // why each mover is moving (from the server's move scanner): a short label and whether the move looks real
-const MWC = { real: ['#5EE0A0', 'Real'], news: ['#8CB8E0', ''], warn: ['#F2C27A', 'Careful'], weak: ['#FF8A8A', 'Weak'], nonews: ['#AEB9C8', ''], halt: ['#FF8A8A', ''] };
+const MWC = { real: ['#66C99A', 'Real'], news: ['#8CB8E0', ''], warn: ['#F2C27A', 'Careful'], weak: ['#EC9191', 'Weak'], nonews: ['#AEB9C8', ''], halt: ['#EC9191', ''] };
 let mwT = 0;
 function loadMoverWhy() { if (!window.JT_WEB || Date.now() - mwT < 55000) return; mwT = Date.now(); fetch('/api/moverwhy', { cache: 'no-store' }).then((r) => r.ok ? r.json() : null).then((j) => { if (j && j.payload) { S.mwhy = j.payload.m || {}; render(); } }).catch(() => {}); }
 const isFresh = (sym) => { const w = S.mwhy && S.mwhy[sym]; return !!(w && w.fresh && Date.now() - w.fresh < 20 * 60000); };
@@ -339,7 +339,7 @@ function renderMovers() {
     let el = existing[r.sym];
     if (!el) { el = document.createElement('button'); el.dataset.sym = r.sym; box.appendChild(el); el.classList.add('fadein'); }
     seen[r.sym] = 1;
-    const up = r.pct >= 0, col = up ? '#5EE0A0' : '#FF8A8A';
+    const up = r.pct >= 0, col = up ? '#66C99A' : '#EC9191';
     const prevP = el.dataset.p ? +el.dataset.p : r.price; const flash = ''; void prevP; // flashing is handled once, calmly, by flash.js
     el.dataset.p = r.price;
     const hasWhy = !!(S.news[r.sym] && S.news[r.sym].why); const why = hasWhy ? S.news[r.sym].why : ('Vol ' + big(r.vol) + ' · ' + money(r.mcap) + ' cap');
@@ -397,7 +397,7 @@ function closeDetail() { S.detail = null; unwatch('d:'); document.body.classList
 const SESSCOL = { PRE: 'rgba(242,194,122,0.10)', ATH: 'rgba(140,184,224,0.10)', OVN: 'rgba(195,168,255,0.10)' };
 function chartSVG(bars, prev, lv) {
   if (!bars || bars.length < 2) return '<div class="skel" style="height:200px;margin:0"></div>';
-  const P = (typeof dPal === 'function') ? dPal() : { up: '#5EE0A0', dn: '#FF8A8A', mute: '#9AA2AB', txt: '#ECEBE8' };
+  const P = (typeof dPal === 'function') ? dPal() : { up: '#66C99A', dn: '#EC9191', mute: '#9AA2AB', txt: '#ECEBE8' };
   const L = window.JT_THEME === 'light';
   const W = 360, H = 200, T = 16, B = 26, R = 6;
   const cl = bars.map((b) => +b.close);
@@ -456,7 +456,7 @@ function chartSVG(bars, prev, lv) {
 function dPal() {
   const L = window.JT_THEME === 'light';
   return L ? { up: '#15965A', dn: '#D63B3B', am: '#B7791F', acc: '#2457E6', cy: '#0E9AAE', vi: '#6D5BD8', txt: '#14171C', mute: '#6B7280', trk: 'rgba(17,24,39,.09)', hub: '#14171C' }
-           : { up: '#5EE0A0', dn: '#FF8A8A', am: '#F2C27A', acc: '#4C8DFF', cy: '#3CC8DA', vi: '#A08CFF', txt: '#ECEBE8', mute: '#9AA2AB', trk: 'rgba(255,255,255,.08)', hub: '#ECEBE8' };
+           : { up: '#66C99A', dn: '#EC9191', am: '#F2C27A', acc: '#4C8DFF', cy: '#3CC8DA', vi: '#A08CFF', txt: '#ECEBE8', mute: '#9AA2AB', trk: 'rgba(255,255,255,.08)', hub: '#ECEBE8' };
 }
 function secCap(label, c) { return '<div class="cap ci" style="--c:' + c + '">' + label + '</div>'; }
 function rangeBar(lab, lo, hi, cur) {
@@ -470,7 +470,7 @@ function anGauge(ra, P) {
   const sb = +ra.strong_buy || 0, b = +ra.buy || 0, hd = +ra.hold || 0, u = +ra.under_perform || 0, s = +ra.sell || 0;
   const n = sb + b + hd + u + s; if (!n) return '';
   const score = (5 * sb + 4 * b + 3 * hd + 2 * u + s) / n, t = (score - 1) / 4;
-  const ZC = ['#FF6B6B', '#FF9F7A', '#F2C27A', '#8CE3B5', '#3FD68F'];
+  const ZC = ['#E07B7B', '#FF9F7A', '#F2C27A', '#8CE3B5', '#5BBF8E'];
   const zi = score >= 4.5 ? 4 : score >= 3.5 ? 3 : score >= 2.5 ? 2 : score >= 1.5 ? 1 : 0;
   const lab = ['Strong sell', 'Sell', 'Hold', 'Buy', 'Strong buy'][zi];
   const cx = 110, cy = 104, r = 82, pt = (deg, rr) => [cx + rr * Math.cos(deg * Math.PI / 180), cy - rr * Math.sin(deg * Math.PI / 180)];
@@ -555,7 +555,7 @@ function renderDetail() {
   const t = d.tgt, ra = d.rat;
   if ((t && t.high) || (ra && +ra.number)) {
     const cur = main ? main.price : 0; const n = ra ? +ra.number : 0;
-    const parts = ra ? [['Strong buy', +ra.strong_buy, '#3FD68F'], ['Buy', +ra.buy, '#8CE3B5'], ['Hold', +ra.hold, '#F2C27A'], ['Sell', +(ra.under_perform || 0) + +(ra.sell || 0), '#FF6B6B']] : [];
+    const parts = ra ? [['Strong buy', +ra.strong_buy, '#5BBF8E'], ['Buy', +ra.buy, '#8CE3B5'], ['Hold', +ra.hold, '#F2C27A'], ['Sell', +(ra.under_perform || 0) + +(ra.sell || 0), '#E07B7B']] : [];
     A += '<div class="glass sec" style="--c:' + P.up + '">' + secCap('ANALYST OPINION' + (n ? ' · ' + n + ' analysts' : ''), P.up) + (n ? anGauge(ra, P) +
       '<div class="ratleg">' + parts.filter((p) => p[1]).map((p) => '<span><i style="background:' + p[2] + '"></i>' + p[0] + ' ' + p[1] + '</span>').join('') + '</div>' : '') +
       (t && t.high ? '<div class="cap" style="margin-top:14px">PRICE TARGETS</div>' + tgtBar(t, cur, P) +
@@ -617,14 +617,14 @@ function renderSectors() {
   // seesaw: biggest winners vs losers this period
   const sorted = items.slice().sort((a, b) => b.p - a.p); const win = sorted.slice(0, 6), lose = sorted.slice(-6).reverse();
   const mx = Math.max.apply(null, sorted.map((s) => Math.abs(s.p)).concat([0.5]));
-  const bar = (s) => '<button class="ss" data-sector="' + s.id + '"><span class="ssn">' + esc(shortName(s.name)) + '</span><span class="ssb"><i style="' + (s.p >= 0 ? 'left:50%;width:' : 'right:50%;width:') + (Math.abs(s.p) / mx * 50).toFixed(1) + '%;background:' + (s.p >= 0 ? '#3FD68F' : '#FF7A7A') + '"></i></span><span class="ssp" style="color:' + (s.p >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + pctS(s.p) + '</span></button>';
+  const bar = (s) => '<button class="ss" data-sector="' + s.id + '"><span class="ssn">' + esc(shortName(s.name)) + '</span><span class="ssb"><i style="' + (s.p >= 0 ? 'left:50%;width:' : 'right:50%;width:') + (Math.abs(s.p) / mx * 50).toFixed(1) + '%;background:' + (s.p >= 0 ? '#5BBF8E' : '#FF7A7A') + '"></i></span><span class="ssp" style="color:' + (s.p >= 0 ? '#66C99A' : '#EC9191') + '">' + pctS(s.p) + '</span></button>';
   $('seesaw').innerHTML = '<div class="cap">MONEY IN</div>' + win.map(bar).join('') + '<div class="cap" style="margin-top:12px">MONEY OUT</div>' + lose.map(bar).join('');
   // rotation: today vs last month
   const d1 = {}, m1 = {}; (S.sectors.D1 || []).forEach((s) => { d1[s.id] = +s.change_ratio * 100; }); (S.sectors.MO1 || []).forEach((s) => { m1[s.id] = +s.change_ratio * 100; });
   const groups = { in: [], out: [], lead: [], lag: [] };
   items.forEach((s) => { if (d1[s.id] == null || m1[s.id] == null) return; const a = d1[s.id], b = m1[s.id]; const k = a >= 0 && b < 0 ? 'in' : a < 0 && b >= 0 ? 'out' : a >= 0 ? 'lead' : 'lag'; groups[k].push({ s: s, a: a, b: b }); });
-  const G = [['in', 'Rotating in', 'Up today, down over the month', '#5EE0A0'], ['out', 'Rotating out', 'Down today, up over the month', '#FF8A8A'], ['lead', 'Leaders', 'Up today and over the month', '#5EE0A0'], ['lag', 'Laggards', 'Down today and over the month', '#A0A9B8']];
-  $('rotation').innerHTML = (S.sectors.D1 && S.sectors.MO1) ? G.map((g) => { const arr = groups[g[0]].sort((x, y) => Math.abs(y.a) - Math.abs(x.a)).slice(0, 5); return '<div class="rot"><div class="rotH"><i style="background:' + g[3] + '"></i><b>' + g[1] + '</b><span>' + g[2] + '</span></div>' + (arr.length ? arr.map((x) => '<button class="rotR" data-sector="' + x.s.id + '"><span>' + esc(shortName(x.s.name)) + '</span><em style="color:' + (x.a >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + pctS(x.a) + ' today</em><em style="color:' + (x.b >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + pctS(x.b) + ' 1M</em></button>').join('') : '<p class="dim small">None right now</p>') + '</div>'; }).join('') : '<p class="dim small">Loading today vs last month…</p>';
+  const G = [['in', 'Rotating in', 'Up today, down over the month', '#66C99A'], ['out', 'Rotating out', 'Down today, up over the month', '#EC9191'], ['lead', 'Leaders', 'Up today and over the month', '#66C99A'], ['lag', 'Laggards', 'Down today and over the month', '#A0A9B8']];
+  $('rotation').innerHTML = (S.sectors.D1 && S.sectors.MO1) ? G.map((g) => { const arr = groups[g[0]].sort((x, y) => Math.abs(y.a) - Math.abs(x.a)).slice(0, 5); return '<div class="rot"><div class="rotH"><i style="background:' + g[3] + '"></i><b>' + g[1] + '</b><span>' + g[2] + '</span></div>' + (arr.length ? arr.map((x) => '<button class="rotR" data-sector="' + x.s.id + '"><span>' + esc(shortName(x.s.name)) + '</span><em style="color:' + (x.a >= 0 ? '#66C99A' : '#EC9191') + '">' + pctS(x.a) + ' today</em><em style="color:' + (x.b >= 0 ? '#66C99A' : '#EC9191') + '">' + pctS(x.b) + ' 1M</em></button>').join('') : '<p class="dim small">None right now</p>') + '</div>'; }).join('') : '<p class="dim small">Loading today vs last month…</p>';
 }
 async function openSector(id) {
   const all = S.sectors[S.sectorPeriod] || []; const s = all.find((x) => String(x.id) === String(id)); if (!s) return;
@@ -635,9 +635,9 @@ async function openSector(id) {
 }
 function renderSector() {
   const s = S.sector; if (!s) return; const p = +s.change_ratio * 100;
-  let h = '<div class="dHead"><div><h2>' + esc(shortName(s.name)) + '</h2><span>' + esc(s.name) + '</span></div></div><div class="dChg" style="color:' + (p >= 0 ? '#5EE0A0' : '#FF8A8A') + ';font-size:22px">' + pctS(p) + ' <span>' + ({ D1: 'today', D5: '5 days', MO1: '1 month', MO3: '3 months' }[S.sectorPeriod]) + '</span></div>';
+  let h = '<div class="dHead"><div><h2>' + esc(shortName(s.name)) + '</h2><span>' + esc(s.name) + '</span></div></div><div class="dChg" style="color:' + (p >= 0 ? '#66C99A' : '#EC9191') + ';font-size:22px">' + pctS(p) + ' <span>' + ({ D1: 'today', D5: '5 days', MO1: '1 month', MO3: '3 months' }[S.sectorPeriod]) + '</span></div>';
   const adv = +s.advanced, dec = +s.declined, fl = +s.flat; const tot = adv + dec + fl || 1;
-  h += '<div class="glass"><div class="cap">BREADTH</div><div class="ratbar"><i style="flex:' + adv + ';background:#3FD68F"></i><i style="flex:' + fl + ';background:#4A5363"></i><i style="flex:' + dec + ';background:#FF7A7A"></i></div><div class="ratleg"><span><i style="background:#3FD68F"></i>' + adv + ' up</span><span><i style="background:#4A5363"></i>' + fl + ' flat</span><span><i style="background:#FF7A7A"></i>' + dec + ' down</span><span>' + Math.round(adv / tot * 100) + '% advancing</span></div></div>';
+  h += '<div class="glass"><div class="cap">BREADTH</div><div class="ratbar"><i style="flex:' + adv + ';background:#5BBF8E"></i><i style="flex:' + fl + ';background:#4A5363"></i><i style="flex:' + dec + ';background:#FF7A7A"></i></div><div class="ratleg"><span><i style="background:#5BBF8E"></i>' + adv + ' up</span><span><i style="background:#4A5363"></i>' + fl + ' flat</span><span><i style="background:#FF7A7A"></i>' + dec + ' down</span><span>' + Math.round(adv / tot * 100) + '% advancing</span></div></div>';
   h += '<div class="glass"><div class="cap" style="display:flex;justify-content:space-between;align-items:center">STOCKS<span class="mini">' + [['CHANGE_RATIO', 'Top movers'], ['MARKET_VALUE', 'Biggest']].map((x) => '<button class="seg' + (S.sectorSort === x[0] ? ' on' : '') + '" data-ssort="' + x[0] + '">' + x[1] + '</button>').join('') + '</span></div>';
   h += S.sectorRows == null ? '<p class="desc dim">Loading…</p>' : S.sectorRows.length ? '<div class="tvwrap">' + S.sectorRows.map((x) => tvR(x.symbol, '', [{ t: esc(cleanName(x.name)) + ' · ' + money(+x.market_value) }], { price: +x.price, pct: +x.change_ratio * 100, chg: x.change != null ? +x.change : null })).join('') + '</div>' : '<p class="desc dim">Couldn’t load this sector’s stocks.</p>';
   h += '</div>';
@@ -663,8 +663,8 @@ const DIP_GROUPS = [
   ['S&P 500', 'MMM,AOS,AES,AFL,A,APD,AKAM,ALB,ARE,ALGN,ALLE,LNT,ALL,GOOG,MO,AMCR,AEE,AEP,AIG,AMT,AWK,AMP,AME,APH,AON,APA,APO,APTV,ACGL,ADM,ARES,AJG,AIZ,ATO,ADSK,AZO,AVY,AXON,BKR,BALL,BAX,BDX,BRK.B,BBY,TECH,BIIB,BX,XYZ,BNY,BA,BR,BRO,BF.B,BG,BXP,CHRW,CPT,COF,CAH,CCL,CARR,CVNA,CASY,CBOE,CBRE,CDW,COR,CNC,CNP,CF,CRL,CHTR,CHD,CIEN,CI,CINF,CTAS,CFG,CLX,CME,CMS,CTSH,CL,FIX,COP,ED,STZ,COO,CPRT,GLW,CPAY,CSGP,CRH,CCI,CSX,CMI,CVS,DHR,DRI,DVA,DAL,DVN,FANG,DLR,DG,DLTR,D,DPZ,DOV,DOW,DHI,DTE,DUK,DD,EBAY,ECHO,ECL,EIX,EW,ELV,EME,EMR,ETR,EOG,EQT,EFX,EQIX,ERIE,ESS,EL,EG,EVRG,ES,EXC,EXE,EXPE,EXPD,EXR,FFIV,FDS,FICO,FAST,FRT,FDX,FDXF,FERG,FIS,FITB,FE,FISV,FLEX,FTV,FOXA,FOX,BEN,FCX,GRMN,IT,GEHC,GEN,GNRC,GD,GIS,GM,GPC,GPN,GL,GDDY,HAL,HIG,HAS,HCA,DOC,HSIC,HSY,HPE,HLT,HONA,HRL,HST,HWM,HPQ,HUBB,HUM,HBAN,HII,IEX,IDXX,ITW,ILMN,INCY,IR,PODD,IBKR,ICE,IFF,IP,IVZ,INVH,IQV,IRM,JBHT,JBL,JKHY,J,JCI,KDP,KEY,KEYS,KMB,KIM,KMI,KKR,KHC,KR,LHX,LH,LVS,LDOS,LEN,LII,LYV,L,LYB,MTB,MPC,MAR,MRSH,MLM,MAS,MKC,MCK,MET,MTD,MGM,MCHP,MAA,MDLZ,MNST,MCO,MOS,MSI,MSCI,NDAQ,NTAP,NEM,NWSA,NWS,NI,NDSN,NSC,NTRS,NOC,NCLH,NRG,NUE,NVR,ORLY,OXY,ODFL,OMC,OKE,OTIS,PCAR,PKG,PH,PAYX,PYPL,PNR,PCG,PSX,PNW,PNC,PPG,PPL,PFG,PLD,PRU,PTC,PEG,PSA,PHM,PWR,DGX,RL,RJF,O,REG,RF,RSG,RMD,RVTY,ROK,ROL,ROP,ROST,RCL,SBAC,SLB,SRE,SHW,SPG,SKYD,SWKS,SJM,SW,SNA,SOLV,SO,LUV,SWK,STT,STLD,STE,SYF,SYY,TMUS,TROW,TTWO,TPR,TRGP,TGT,TEL,TDY,TPL,TXT,TKO,TSCO,TT,TDG,TRV,TRMB,TFC,TWLO,TYL,TSN,USB,UDR,ULTA,UAL,UPS,URI,UHS,VLO,VEEV,VTR,VLTO,VRSN,VRSK,VTRS,VICI,VMRK,VMC,VYLR,WRB,GWW,WAB,WM,WAT,WEC,WELL,WST,WY,WSM,WMB,WTW,WDAY,WYNN,XEL,XYL,YUM,ZBRA,ZBH,ZTS']
 ];
 const STATE = {
-  turning: ['Turning up', '#5EE0A0'], reclaiming: ['Reclaiming', '#8CE3B5'], support: ['At support', '#8CB8E0'], oversold: ['Oversold', '#F2C27A'],
-  basing: ['Basing', '#C9D2E0'], extended: ['Bounced · wait', '#C3A8FF'], falling: ['Still falling', '#FFB38A'], breaking: ['Breaking down', '#FF8A8A'], 'near-high': ['Near highs', '#A0A9B8']
+  turning: ['Turning up', '#66C99A'], reclaiming: ['Reclaiming', '#8CE3B5'], support: ['At support', '#8CB8E0'], oversold: ['Oversold', '#F2C27A'],
+  basing: ['Basing', '#C9D2E0'], extended: ['Bounced · wait', '#C3A8FF'], falling: ['Still falling', '#FFB38A'], breaking: ['Breaking down', '#EC9191'], 'near-high': ['Near highs', '#A0A9B8']
 };
 const STATE_ORDER = ['turning', 'reclaiming', 'support', 'oversold', 'basing', 'extended', 'falling', 'breaking', 'near-high'];
 const DIPF = [['all', 'All'], ['buy', 'Setups'], ['turning', 'Turning'], ['support', 'At support'], ['oversold', 'Oversold'], ['breaking', 'Breaking down']];
@@ -739,14 +739,14 @@ function dipCard(sym) {
   if (!a) return h + '<p class="desc dim">' + (d.dipLoading === false ? 'Not enough price history yet.' : 'Reading a year of daily prices…') + '</p></div>';
   const f = DIP.fmtP, p = a.plan;
   h += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' + dipBadge(a.state) + '<span class="small" style="color:#C9D2E0">' + esc(a.why.join(' · ')) + '</span></div>';
-  h += '<div class="tg4"><div><span>From high</span><b style="color:#FF8A8A">' + Math.round(a.off * 100) + '%</b></div><div><span>RSI</span><b>' + a.rsi.toFixed(0) + ' <small style="font-weight:500;color:#9AA6B6">' + (a.rsi < 30 ? 'oversold' : a.rsi > 70 ? 'stretched' : 'normal') + '</small></b></div><div><span>5 days</span><b>' + pctS(a.chg5 * 100) + '</b></div><div><span>20 days</span><b>' + pctS(a.chg20 * 100) + '</b></div></div>';
+  h += '<div class="tg4"><div><span>From high</span><b style="color:#EC9191">' + Math.round(a.off * 100) + '%</b></div><div><span>RSI</span><b>' + a.rsi.toFixed(0) + ' <small style="font-weight:500;color:#9AA6B6">' + (a.rsi < 30 ? 'oversold' : a.rsi > 70 ? 'stretched' : 'normal') + '</small></b></div><div><span>5 days</span><b>' + pctS(a.chg5 * 100) + '</b></div><div><span>20 days</span><b>' + pctS(a.chg20 * 100) + '</b></div></div>';
   const lines = [['Resistance', a.res], ['Support', a.sup], ['Next support', a.sup2]].filter((x) => x[1]).map((x) => '<div><span>' + x[0] + '</span><b>' + f(x[1].p) + '</b><em>' + esc(x[1].k) + '</em></div>');
   if (a.s50) lines.push('<div><span>50-day avg</span><b>' + f(a.s50) + '</b><em>' + (a.px > a.s50 ? 'above' : 'below') + '</em></div>');
   if (a.s200) lines.push('<div><span>200-day avg</span><b>' + f(a.s200) + '</b><em>' + (a.px > a.s200 ? 'above' : 'below') + '</em></div>');
   h += '<div class="lines">' + lines.join('') + '</div>';
   if (p) {
     if (p.kind === 'Wait') h += '<div class="planBox wait"><b>No entry yet.</b> ' + esc(planLine(a)) + '</div>';
-    else h += '<div class="planBox"><div class="pg"><div><span>' + (p.zoneLo ? 'Buy zone' : p.kind) + '</span><b>' + (p.zoneLo ? f(p.zoneLo) + '–' + f(p.zoneHi) : f(p.trig)) + '</b></div><div><span>Stop</span><b style="color:#FF8A8A">' + f(p.stop) + '</b><em>−' + Math.round(p.risk * 100) + '%</em></div><div><span>Target</span><b style="color:#5EE0A0">' + f(p.tgt) + '</b><em>+' + Math.round(p.reward * 100) + '%</em></div></div><div class="small" style="color:#C9D2E0">Reward-to-risk <b style="color:' + (p.rr >= 2 ? '#5EE0A0' : p.rr >= 1 ? '#F2C27A' : '#FF8A8A') + '">' + p.rr.toFixed(1) + '</b> · target is the ' + esc(p.tgtK) + (p.note ? ' · ' + esc(p.note) : '') + '</div></div>';
+    else h += '<div class="planBox"><div class="pg"><div><span>' + (p.zoneLo ? 'Buy zone' : p.kind) + '</span><b>' + (p.zoneLo ? f(p.zoneLo) + '–' + f(p.zoneHi) : f(p.trig)) + '</b></div><div><span>Stop</span><b style="color:#EC9191">' + f(p.stop) + '</b><em>−' + Math.round(p.risk * 100) + '%</em></div><div><span>Target</span><b style="color:#66C99A">' + f(p.tgt) + '</b><em>+' + Math.round(p.reward * 100) + '%</em></div></div><div class="small" style="color:#C9D2E0">Reward-to-risk <b style="color:' + (p.rr >= 2 ? '#66C99A' : p.rr >= 1 ? '#F2C27A' : '#EC9191') + '">' + p.rr.toFixed(1) + '</b> · target is the ' + esc(p.tgtK) + (p.note ? ' · ' + esc(p.note) : '') + '</div></div>';
   }
   return h + '<p class="foot" style="text-align:left">Rule-based levels from daily prices, not advice. Size positions so the stop is a loss you can take.</p></div>';
 }
@@ -793,9 +793,9 @@ function resRow(s) { const q = S.srQ[s] || qOf(s); return '<button class="srow t
 
 /* ---------- IPO watch ---------- */
 let IPOS = null;
-const REL = { investor: ['Investor', '#C3A8FF'], supplier: ['Supplier', '#8CB8E0'], customer: ['Customer', '#5EE0A0'], comparable: ['Peer', '#F2C27A'] };
+const REL = { investor: ['Investor', '#C3A8FF'], supplier: ['Supplier', '#8CB8E0'], customer: ['Customer', '#66C99A'], comparable: ['Peer', '#F2C27A'] };
 function statusRank(s) { s = (s || '').toLowerCase(); return /s-1 public/.test(s) && !/postpon|delay/.test(s) ? 0 : /confidential/.test(s) && !/hold/.test(s) ? 1 : /s-1 public/.test(s) ? 2 : /prep/.test(s) ? 3 : 4; }
-function statusColor(r) { return ['#5EE0A0', '#8CB8E0', '#F2C27A', '#C9D2E0', '#A0A9B8'][r]; }
+function statusColor(r) { return ['#66C99A', '#8CB8E0', '#F2C27A', '#C9D2E0', '#A0A9B8'][r]; }
 function loadIpos() {
   if (!IPOS) fetch('ipos.json').then((r) => r.json()).then((j) => { IPOS = j; loadIpos(); render(); }).catch(() => { IPOS = { ipos: [] }; render(); });
   if (!IPOS || !mcp) return;
@@ -818,7 +818,7 @@ function renderIpos() {
       return '<button class="play" data-open="' + esc(p.ticker) + '" data-name="' + esc(p.company) + '">' + logoHTML(p.ticker, 34) +
         '<span class="pm"><span class="pt"><b>' + esc(p.ticker) + '</b><span class="badge" style="color:' + rel[1] + ';border-color:' + rel[1] + '66;background:' + rel[1] + '14">' + rel[0] + '</span>' + (a ? dipBadge(a.state) : '') + '</span>' +
         '<small>' + esc(p.detail) + (p.stake_or_size ? ' · ' + esc(p.stake_or_size) : '') + '</small></span>' +
-        '<span class="rp">' + (q ? '<b>$' + px(q.price) + '</b><small style="color:' + (q.pct >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + mvS(q.pct, q.price, q.chg) + '</small>' : '<b class="dim">—</b>') + (a ? '<small class="dim">' + Math.round(a.off * 100) + '% off high</small>' : '') + '</span></button>';
+        '<span class="rp">' + (q ? '<b>$' + px(q.price) + '</b><small style="color:' + (q.pct >= 0 ? '#66C99A' : '#EC9191') + '">' + mvS(q.pct, q.price, q.chg) + '</small>' : '<b class="dim">—</b>') + (a ? '<small class="dim">' + Math.round(a.off * 100) + '% off high</small>' : '') + '</span></button>';
     }).join('');
     const src = (ipo.sources || []).slice(0, 4).map((s) => '<a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.title || s.url) + (s.date ? ' · ' + esc(s.date) : '') + '</a>').join('');
     return '<div class="glass ipo"><div class="ih"><div><h3>' + esc(ipo.name.replace(/,? PBC$/, '')) + (ipo.ticker ? ' <em>' + esc(ipo.ticker) + '</em>' : '') + '</h3><span class="small dim">' + esc(ipo.sector || '') + '</span></div><span class="badge" style="color:' + col + ';border-color:' + col + '66;background:' + col + '14">' + ['Filed', 'Filed (private)', 'Delayed', 'Preparing', 'Later'][r] + '</span></div>' +
@@ -852,7 +852,7 @@ function intelSub() {
 const FILES = {};
 function file(name, cb) { if (FILES[name]) return FILES[name]; FILES[name] = 'loading'; fetch(name).then((r) => r.json()).then((j) => { FILES[name] = j; if (cb) cb(j); render(); }).catch(() => { FILES[name] = { error: true }; render(); }); return 'loading'; }
 const ready = (x) => x && x !== 'loading' && !x.error;
-const PAL = ['#8CB8E0', '#5EE0A0', '#F2C27A', '#C3A8FF', '#FF8A8A', '#5FA8D3', '#B9D6EE', '#3FD68F', '#F0A35E', '#9AA8FF', '#E58BD0', '#6FD3C7'];
+const PAL = ['#8CB8E0', '#66C99A', '#F2C27A', '#C3A8FF', '#EC9191', '#5FA8D3', '#B9D6EE', '#5BBF8E', '#F0A35E', '#9AA8FF', '#E58BD0', '#6FD3C7'];
 function donut(parts, size) { // parts: [[label, pct]]
   let acc = 0; const tot = parts.reduce((a, p) => a + p[1], 0) || 1; const stops = [];
   parts.forEach((p, i) => { const a0 = acc / tot * 360, a1 = (acc + p[1]) / tot * 360; stops.push(PAL[i % PAL.length] + ' ' + a0.toFixed(1) + 'deg ' + a1.toFixed(1) + 'deg'); acc += p[1]; });
@@ -880,11 +880,11 @@ function renderNews() {
   window.__nx = items || [];
   if (!items) { box.innerHTML = '<div class="empty"><b>' + (S.err ? 'Can’t load live data' : mcp ? 'Loading news…' : 'Can’t reach live data') + '</b><span>' + esc(S.err ? (ERRCOPY[S.err] || '') : 'Live market headlines.') + '</span></div>'; return; }
   const now = Date.now();
-  const TOPIC = [['Crypto', /bitcoin|crypto|ether|coinbase|stablecoin/i, '#F2C27A'], ['Fed & rates', /\bfed\b|federal reserve|rate (cut|hike)|treasur|yield|inflation|cpi|payroll|jobs report/i, '#C3A8FF'], ['AI & chips', /\bai\b|nvidia|semiconductor|chip|anthropic|openai|data center/i, '#8CB8E0'], ['Energy', /oil|crude|opec|energy|natural gas|nuclear|power/i, '#FFB38A'], ['Healthcare', /fda|pharma|biotech|drug|trial|health/i, '#5EE0A0'], ['Earnings', /earnings|revenue|guidance|eps|quarter/i, '#8CE3B5'], ['Consumer', /retail|consumer|restaurant|apparel|travel|airline/i, '#E58BD0'], ['Deals', /acquir|merger|buyout|ipo|deal/i, '#9AA8FF'], ['Markets', /./, '#A0A9B8']];
+  const TOPIC = [['Crypto', /bitcoin|crypto|ether|coinbase|stablecoin/i, '#F2C27A'], ['Fed & rates', /\bfed\b|federal reserve|rate (cut|hike)|treasur|yield|inflation|cpi|payroll|jobs report/i, '#C3A8FF'], ['AI & chips', /\bai\b|nvidia|semiconductor|chip|anthropic|openai|data center/i, '#8CB8E0'], ['Energy', /oil|crude|opec|energy|natural gas|nuclear|power/i, '#FFB38A'], ['Healthcare', /fda|pharma|biotech|drug|trial|health/i, '#66C99A'], ['Earnings', /earnings|revenue|guidance|eps|quarter/i, '#8CE3B5'], ['Consumer', /retail|consumer|restaurant|apparel|travel|airline/i, '#E58BD0'], ['Deals', /acquir|merger|buyout|ipo|deal/i, '#9AA8FF'], ['Markets', /./, '#A0A9B8']];
   box.innerHTML = (window.NR && S.newsK === 'Market' ? NR.featured() : '') + items.map((n, ix) => {
     if (n.ours) { const a = n.ours; return '<button class="nitem nwOur" data-nrj="' + esc(a.id) + '"><span class="nrow"><span class="ncol"><span class="ntime"><b>' + (isFinite(a.t) ? new Date(a.t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' }) : '') + '</b><small>' + ago(a.t) + '</small></span><span class="nwTags"><span class="nwTag ours">JUMPTRADE ANALYSIS</span><span class="nwTag k">' + esc(a.tag || '') + '</span></span><b>' + esc(a.title) + '</b><span class="nmeta">jumptrade newsdesk</span></span>' + (a.tickers && a.tickers[0] ? '<span class="nthumb">' + logoHTML(a.tickers[0], 58) + '</span>' : '') + '</span>' + (a.dek ? '<p>' + esc(a.dek) + '</p>' : '') + '</button>'; }
     const t = Date.parse(n.publish_time); const fresh = now - t < 90 * 60000; const big = fresh || /plunge|soar|surge|halt|crash|record|fda|acquir|merger|bankrupt|guidance|rout|worst|best day/i.test(n.title);
-    const sent = n.sentiment === 'POSITIVE' ? ['#5EE0A0', 'Positive'] : n.sentiment === 'NEGATIVE' ? ['#FF8A8A', 'Negative'] : null;
+    const sent = n.sentiment === 'POSITIVE' ? ['#66C99A', 'Positive'] : n.sentiment === 'NEGATIVE' ? ['#EC9191', 'Negative'] : null;
     const tk = (n.related_symbols || []).filter((s) => /^[A-Z]{1,5}$/.test(s) && !/^(ES|NQ|YM|RTY|ZN|UB|EMD)/.test(s)).slice(0, 3);
     const topic = TOPIC.find((x) => x[1].test(n.title + ' ' + (n.summary || '')));
     const thumb = window.NTH ? NTH({ title: n.title, summary: n.summary, tk: tk }, 64) : tk.length ? '<span class="nthumb">' + logoHTML(tk[0], 58) + '</span>' : '<span class="nthumb nt2" style="background:linear-gradient(150deg,' + topic[2] + '55,' + topic[2] + '18)"><b style="color:' + topic[2] + '">' + esc(topic[0].split(' ')[0].toUpperCase()) + '</b></span>';
@@ -905,11 +905,11 @@ function renderRatings() {
   const m = { up: 'upgrade', down: 'downgrade', init: 'initiate', raise: 'target_raise', cut: 'target_cut' };
   const list = R.ratings.filter((r) => S.ratF === 'all' || r.action === m[S.ratF]);
   const lim = S.ratLim || 30;
-  const AC = { upgrade: ['Upgrade', '#5EE0A0'], downgrade: ['Downgrade', '#FF8A8A'], initiate: ['New', '#8CB8E0'], target_raise: ['Target ↑', '#8CE3B5'], target_cut: ['Target ↓', '#FFB38A'], reiterate: ['Reiterated', '#C9D2E0'] };
+  const AC = { upgrade: ['Upgrade', '#66C99A'], downgrade: ['Downgrade', '#EC9191'], initiate: ['New', '#8CB8E0'], target_raise: ['Target ↑', '#8CE3B5'], target_cut: ['Target ↓', '#FFB38A'], reiterate: ['Reiterated', '#C9D2E0'] };
   box.innerHTML = list.slice(0, lim).map((r) => {
     const a = AC[r.action] || ['Note', '#C9D2E0']; const p = (S.ipoQ && S.ipoQ[r.ticker] && S.ipoQ[r.ticker].price) || R.prices[r.ticker];
     const to = p && r.new_target ? (r.new_target / p - 1) * 100 : null; const tchg = r.old_target && r.new_target ? (r.new_target / r.old_target - 1) * 100 : null;
-    const UP = '#5EE0A0', DN = '#FF8A8A'; const t$ = (v) => '$' + (v % 1 ? v.toFixed(2) : v.toFixed(0)); const d = r.old_target && r.new_target ? r.new_target - r.old_target : null;
+    const UP = '#66C99A', DN = '#EC9191'; const t$ = (v) => '$' + (v % 1 ? v.toFixed(2) : v.toFixed(0)); const d = r.old_target && r.new_target ? r.new_target - r.old_target : null;
     const gap = p && r.new_target ? r.new_target - p : null;
     return '<button class="rat rat4" data-open="' + esc(r.ticker) + '" data-name="' + esc(r.company || '') + '">' + logoHTML(r.ticker, 34) + '<span class="rn"><b>' + esc(r.ticker) + ' <span class="badge" style="color:' + a[1] + ';border-color:' + a[1] + '66;background:' + a[1] + '14">' + a[0] + '</span></b>' + (r.from_rating || r.to_rating ? '<small class="rtR">' + esc((r.from_rating ? r.from_rating + ' → ' : '') + (r.to_rating || '')) + '</small>' : '') + '<small>' + esc(r.firm || '') + ' · ' + esc(r.date ? new Date(r.date.slice(0, 10) + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : '') + '</small></span>' +
       '<span class="rp tvp">' + (r.new_target ? (p ? '<em>Price → target</em>' : '') + '<b>' + (p ? '$' + px(p) + ' → ' : 'Target ') + t$(r.new_target) + '</b>' + (gap != null ? '<em>Gap to target</em><small style="color:' + (gap >= 0 ? UP : DN) + '">' + (gap >= 0 ? '+$' : '−$') + Math.abs(gap).toFixed(2) + ' <i>' + (gap >= 0 ? '+' : '−') + Math.abs(to).toFixed(1) + '%</i></small>' : '') : (p ? '<b>$' + px(p) + '</b><small class="dim">no price target</small>' : '<b class="dim">No target</b>')) + '</span></button>';
@@ -929,13 +929,13 @@ function renderCatalysts() {
   (C.earnings.upcoming || []).forEach((e) => items.push({ date: e.date, kind: 'earnings', ticker: e.ticker, title: e.company + ' earnings', detail: (e.timing === 'BMO' ? 'Before open · ' : e.timing === 'AMC' ? 'After close · ' : e.timing ? e.timing + ' · ' : '') + (e.eps_est != null ? 'Expected profit/share $' + e.eps_est : '') + (e.rev_est_usd ? ' · Expected sales ' + money(e.rev_est_usd) : ''), impact: 'medium', url: e.source_url }));
   (C.catalysts || []).forEach((c) => { if (c.status === 'done') return; const t = (c.type || '').toLowerCase(); items.push({ date: c.date, kind: /fda|pdufa|adcom/.test(t) ? 'fda' : /macro|econ|fed|cpi|jobs/.test(t) ? 'macro' : /ipo/.test(t) ? 'ipo' : /earn/.test(t) ? 'earnings' : 'other', ticker: c.ticker, title: c.title, detail: c.detail, impact: c.impact, url: c.source_url, company: c.company }); });
   const list = items.filter((x) => x.date >= today && x.kind !== 'macro' && (S.catF === 'all' ? x.kind !== 'earnings' : x.kind === S.catF && S.catF !== 'earnings')).sort((a, b) => a.date.localeCompare(b.date) || ((a.impact === 'high') ? -1 : 1));
-  const K = { earnings: ['Earnings', '#8CB8E0'], fda: ['FDA', '#5EE0A0'], macro: ['Economy', '#F2C27A'], ipo: ['IPO', '#C3A8FF'], other: ['Event', '#C9D2E0'] };
+  const K = { earnings: ['Earnings', '#8CB8E0'], fda: ['FDA', '#66C99A'], macro: ['Economy', '#F2C27A'], ipo: ['IPO', '#C3A8FF'], other: ['Event', '#C9D2E0'] };
   let h = '', last = '';
   list.slice(0, 120).forEach((x) => {
     if (x.date !== last) { last = x.date; const d = new Date(x.date + 'T12:00:00Z'); h += '<div class="dipH"><b style="color:#E6EBF2;font-size:13px">' + d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }) + '</b>' + (x.date === today ? '<span>Today</span>' : '') + '</div>'; }
     const k = K[x.kind]; const tk = x.ticker && /^[A-Z.]{1,6}$/.test(x.ticker) ? x.ticker : null;
     h += '<div class="cat' + (x.impact === 'high' ? ' hi' : '') + '"' + (tk ? ' data-open="' + esc(tk) + '" data-name="' + esc(x.company || '') + '"' : '') + '>' + (tk ? logoHTML(tk, 32) : '<span class="logo mono" style="width:32px;height:32px;border-radius:9px;background:#2A3240;font-size:11px">' + esc(k[0].slice(0, 3).toUpperCase()) + '</span>') +
-      '<span class="rn"><span class="pt"><b>' + esc(tk || k[0]) + '</b><span class="badge" style="color:' + k[1] + ';border-color:' + k[1] + '66;background:' + k[1] + '14">' + k[0] + '</span>' + (x.impact === 'high' ? '<span class="badge" style="color:#FF8A8A;border-color:#FF8A8A66">High impact</span>' : '') + '</span><small>' + esc(x.title || '') + '</small>' + (x.detail ? '<small class="dim">' + esc(x.detail) + '</small>' : '') + '</span></div>';
+      '<span class="rn"><span class="pt"><b>' + esc(tk || k[0]) + '</b><span class="badge" style="color:' + k[1] + ';border-color:' + k[1] + '66;background:' + k[1] + '14">' + k[0] + '</span>' + (x.impact === 'high' ? '<span class="badge" style="color:#EC9191;border-color:#EC919166">High impact</span>' : '') + '</span><small>' + esc(x.title || '') + '</small>' + (x.detail ? '<small class="dim">' + esc(x.detail) + '</small>' : '') + '</span></div>';
   });
   box.innerHTML = h || '<div class="empty"><b>Nothing upcoming in this filter</b><span>This list was collected Nov 7. Earnings dates beyond it need a refresh.</span></div>';
 }
@@ -996,7 +996,7 @@ function renderWatch() {
   $('wSum').innerHTML = syms.length + ' stocks<br>' + up + ' up · ' + dn + ' down';
   const shown = so === 'up' ? rows.filter((r) => r.pct > 0) : so === 'down' ? rows.filter((r) => r.pct < 0) : rows;
   if (!shown.length) { box.innerHTML = '<div class="empty"><b>' + (so === 'up' ? 'Nothing up yet' : 'Nothing down today') + '</b><span>' + (so === 'up' ? 'None of your stocks are green right now.' : 'None of your stocks are red right now.') + '</span></div>'; return; }
-  box.innerHTML = '<div class="wlFlat">' + shown.map((r) => { const a = S.dips[r.sym]; const col = (r.pct || 0) >= 0 ? '#5EE0A0' : '#FF8A8A';
+  box.innerHTML = '<div class="wlFlat">' + shown.map((r) => { const a = S.dips[r.sym]; const col = (r.pct || 0) >= 0 ? '#66C99A' : '#EC9191';
     return '<button class="wrow" data-open="' + esc(r.sym) + '" data-name="' + esc((S.wlNames || {})[r.sym] || '') + '">' + logoHTML(r.sym, 34) + '<span class="rn"><b>' + esc(r.sym) + ' ' + (window.TODAY && r.price ? TODAY.chip(r) : '') + (window.ENR ? (ENR.need(r.sym), ENR.badge(r.sym)) : '') + '</b><small>' + esc(cleanName(symName(r.sym) || (S.wlNames || {})[r.sym] || '')) + (r.mcap ? ' · ' + money(r.mcap) : '') + '</small></span>' +
       (S.wlEdit ? '<span class="xdel' + (S.wlRm === r.sym ? ' arm' : '') + '" style="position:static" role="button" aria-label="Remove ' + esc(r.sym) + '" data-wlrm="' + esc(r.sym) + '">' + (S.wlRm === r.sym ? '…' : 'Remove') + '</span>' : '<span class="rp tvp">' + wlRP(r) + '</span>') + '</button>'; }).join('') + '</div>' + (window.JT_WEB && so !== 'up' && so !== 'down' && syms.length < 6 && !S.wlEdit ? '<div class="wlMore"><small>Add more</small><div class="wlPick">' + ['NVDA', 'TSLA', 'AAPL', 'AMD', 'PLTR', 'MSFT', 'AMZN', 'META', 'GOOGL', 'SOFI', 'HOOD', 'COIN'].filter((x) => syms.indexOf(x) < 0).slice(0, 8).map((x) => '<button data-wlq="' + x + '">' + logoHTML(x, 22) + x + '</button>').join('') + '</div></div>' : '');
 }
@@ -1039,7 +1039,7 @@ function statsOf(h, q) { // h: [[sym, weight, entryPrice?]]
   return { avg: wr / ws, up: rs.filter((r) => r.pct > 0).length, n: rs.length, best: s[0], worst: s[s.length - 1], since: wsi ? wi / wsi : null };
 }
 const modelH = (m) => (m.syms || []).map((s) => [s, 100 / ((m.syms || []).length || 1)]);
-const gc = (v) => v >= 0 ? '#5EE0A0' : '#FF8A8A';
+const gc = (v) => v >= 0 ? '#66C99A' : '#EC9191';
 function delBtn(key, name) { if (!S.pEdit) return ''; const arm = S.delArm === key; return '<span class="xdel' + (arm ? ' arm' : '') + '" role="button" aria-label="' + (key.indexOf('mine:') === 0 ? 'Delete ' : 'Hide ') + esc(name) + '" data-del="' + esc(key) + '">' + (arm ? 'Delete?' : '✕') + '</span>'; }
 function pCard(key, attr, name, sub, st, spy, syms, tag) {
   const vs = st && spy ? st.avg - spy.pct : null;
@@ -1100,7 +1100,7 @@ function renderPortfolios() {
   setHTML(box, pActions('funds', F.funds.length - funds.length) + list.map((f) => { const nw = f.h.filter((h) => h[3] === 'new').length;
     return '<button class="glass fund' + (S.pEdit ? ' editing' : '') + '" data-fund="' + esc(f.slug) + '">' + delBtn('fund:' + f.slug, f.fund) + donut(f.h.slice(0, 10).map((h) => [h[0], h[2]]).concat([['Other', Math.max(0, 100 - f.h.slice(0, 10).reduce((a, h) => a + h[2], 0))]]), 54) +
       '<span class="rn"><b>' + esc(f.fund) + '</b><small>' + esc(f.manager || '') + '</small><small class="dim">' + esc(f.period || '') + ' · ' + money(f.total) + ' · ' + (f.n || f.h.length) + ' positions</small>' +
-      '<span class="pt">' + (nw ? '<span class="badge" style="color:#5EE0A0;border-color:#5EE0A066">' + nw + ' new</span>' : '') + (f.x.length ? '<span class="badge" style="color:#FF8A8A;border-color:#FF8A8A66">' + f.x.length + ' sold out</span>' : '') + f.h.slice(0, 3).map((h) => '<span class="tag">' + esc(h[0]) + ' ' + h[2].toFixed(1) + '%</span>').join('') + '</span></span></button>'; }).join(''));
+      '<span class="pt">' + (nw ? '<span class="badge" style="color:#66C99A;border-color:#66C99A66">' + nw + ' new</span>' : '') + (f.x.length ? '<span class="badge" style="color:#EC9191;border-color:#EC919166">' + f.x.length + ' sold out</span>' : '') + f.h.slice(0, 3).map((h) => '<span class="tag">' + esc(h[0]) + ' ' + h[2].toFixed(1) + '%</span>').join('') + '</span></span></button>'; }).join(''));
 }
 function openSheet() { document.body.classList.add('fund-open'); $('fundSheet').scrollTop = 0; $('fundBody').__h = null; }
 function openFund(slug) {
@@ -1133,7 +1133,7 @@ function renderFund() {
   if (f.plan && window.TODAY) { $('fundBody').innerHTML = TODAY.renderPlan(); return; }
   if (f.journal && window.TODAY) { if (document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('jin')) return; $('fundBody').innerHTML = TODAY.renderJournal(); return; }
   const q = ((f.model || f.mine) ? S.pmQ : S.fundQ) || {};
-  const CH = { new: ['NEW', '#5EE0A0'], added: ['ADDED', '#8CE3B5'], reduced: ['TRIMMED', '#FFB38A'], unchanged: ['HELD', '#A0A9B8'] };
+  const CH = { new: ['NEW', '#66C99A'], added: ['ADDED', '#8CE3B5'], reduced: ['TRIMMED', '#FFB38A'], unchanged: ['HELD', '#A0A9B8'] };
   const hs = f.h.slice().sort((a, b) => b[2] - a[2]);
   let wret = 0, wsum = 0, wsi = 0, wsiS = 0;
   hs.forEach((x) => { const r = q[x[0]]; if (r && isFinite(r.pct)) { wret += r.pct * x[2]; wsum += x[2]; if (x[5] && r.price) { wsi += (r.price / x[5] - 1) * 100 * x[2]; wsiS += x[2]; } } });
@@ -1148,7 +1148,7 @@ function renderFund() {
     : [['Positions', f.n || hs.length], ['Value', f.total ? money(f.total) : '—'], ['Period', esc(f.period || '')], ['Today', today != null ? '<span style="color:' + gc(today) + '">' + pctS(today) + '</span>' : '—']];
   h += '<div class="tg4">' + cells.map((c) => { const m = /^<span style="color:([^"]+)">(.*)<\/span>$/.exec(String(c[1])); return '<div><span>' + c[0] + '</span><b' + (m ? ' style="color:' + m[1] + '"' : '') + '>' + (m ? m[2] : c[1]) + '</b></div>'; }).join('') + '</div>';
   const nw = hs.filter((x) => x[3] === 'new');
-  if (nw.length) h += '<div class="glass"><div class="cap">NEW BUYS</div><div class="pt">' + nw.map((x) => '<span class="tag" style="color:#5EE0A0;border-color:#5EE0A066" data-open="' + esc(x[0]) + '">' + logoHTML(x[0], 16) + esc(x[0]) + ' ' + x[2].toFixed(1) + '%</span>').join('') + '</div></div>';
+  if (nw.length) h += '<div class="glass"><div class="cap">NEW BUYS</div><div class="pt">' + nw.map((x) => '<span class="tag" style="color:#66C99A;border-color:#66C99A66" data-open="' + esc(x[0]) + '">' + logoHTML(x[0], 16) + esc(x[0]) + ' ' + x[2].toFixed(1) + '%</span>').join('') + '</div></div>';
   const maxW = hs.length ? hs[0][2] : 1;
   h += '<div class="glass"><div class="ih"><span class="cap">' + (f.model || f.mine ? 'ALLOCATION' : 'TOP ' + hs.length + ' HOLDINGS') + '</span><span class="cap">WEIGHT · TODAY</span></div>' + hs.map((x, i) => {
     const r = q[x[0]], c = CH[x[3]], col = i < 12 ? PAL[i % PAL.length] : '#4A5566';
@@ -1160,7 +1160,7 @@ function renderFund() {
       (sinceH != null || contrib != null ? '<small class="dim">' + (contrib != null ? (contrib >= 0 ? '+' : '') + contrib.toFixed(2) + ' pts to today' : '') + (sinceH != null ? (contrib != null ? ' · ' : '') + pctS(sinceH) + ' since start' : '') + '</small>' : '') +
       '<span class="wbar"><i style="width:' + Math.max(3, x[2] / maxW * 100).toFixed(1) + '%;background:' + col + '"></i></span></span>' +
       '<span class="rp"><b>' + x[2].toFixed(1) + '%</b>' + (r && isFinite(r.pct) ? '<small style="color:' + gc(r.pct) + '">' + mvS(r.pct, r.price, r.chg) + '</small>' : '') + '</span></button>'; }).join('') + '</div>';
-  if (f.x && f.x.length) h += '<div class="glass"><div class="cap">SOLD OUT</div>' + f.x.map((x) => '<div class="srow" style="cursor:default">' + (x[0] ? logoHTML(x[0], 32) : '') + '<span class="badge" style="color:#FF8A8A;border-color:#FF8A8A66">EXITED</span><span class="rn"><b>' + esc(x[0] || '—') + '</b><small>' + esc(x[1] || '') + (x[2] ? ' · was ' + (+x[2]).toFixed(1) + '%' : '') + '</small></span></div>').join('') + '</div>';
+  if (f.x && f.x.length) h += '<div class="glass"><div class="cap">SOLD OUT</div>' + f.x.map((x) => '<div class="srow" style="cursor:default">' + (x[0] ? logoHTML(x[0], 32) : '') + '<span class="badge" style="color:#EC9191;border-color:#EC919166">EXITED</span><span class="rn"><b>' + esc(x[0] || '—') + '</b><small>' + esc(x[1] || '') + (x[2] ? ' · was ' + (+x[2]).toFixed(1) + '%' : '') + '</small></span></div>').join('') + '</div>';
   if (f.notes) h += '<p class="foot" style="text-align:left">' + esc(f.notes) + '</p>';
   const arm = S.delArm === f.key;
   h += '<div class="dact">' + (f.mine ? '<button class="pbtn" data-pmod="' + esc(f.mine) + '">Edit portfolio</button>' : '') +
@@ -1194,7 +1194,7 @@ function crRows() {
 }
 function crTot() {
   const c = S.cr; if (c.eq || !c.h.length) return ''; const t = c.h.reduce((a, x) => a + (+x.w || 0), 0); const ok = Math.abs(t - 100) < 0.05;
-  return '<div class="crtot"><span style="color:' + (ok ? '#5EE0A0' : '#F2C27A') + '">Total ' + t.toFixed(1) + '%' + (ok ? '' : ' · should be 100%') + '</span>' + (ok || !t ? '' : '<button class="pbtn" data-crnorm="1">Scale to 100%</button>') + '</div>';
+  return '<div class="crtot"><span style="color:' + (ok ? '#66C99A' : '#F2C27A') + '">Total ' + t.toFixed(1) + '%' + (ok ? '' : ' · should be 100%') + '</span>' + (ok || !t ? '' : '<button class="pbtn" data-crnorm="1">Scale to 100%</button>') + '</div>';
 }
 function crRefresh() { $('crRows').innerHTML = crRows(); $('crTot').innerHTML = crTot(); $('crCount').textContent = 'HOLDINGS · ' + S.cr.h.length; $('crMode').innerHTML = crMode(); }
 function crMode() { return '<button class="' + (S.cr.eq ? 'on' : '') + '" data-creq="1">Equal</button><button class="' + (!S.cr.eq ? 'on' : '') + '" data-creq="0">Custom</button>'; }
@@ -1297,7 +1297,7 @@ function renderPick() {
   if (!S.wlists) h += '<p class="small dim">Loading your watchlists…</p>';
   else h += writableLists().map((w) => { const m = S.wlMem[w.watchlist_id]; const on = m && m.syms.has(sym); const busy = S.pkBusy[w.watchlist_id];
     return '<button class="pkRow' + (on ? ' on' : '') + '" data-pk="' + esc(w.watchlist_id) + '"' + (m ? '' : ' disabled') + ' aria-pressed="' + (on ? 'true' : 'false') + '"><span class="ck">' + (busy ? '…' : on ? '✓' : '') + '</span><span>' + esc(w.name) + '</span><small>' + (m ? m.syms.size : '…') + '</small></button>'; }).join('');
-  h += '<p class="small" style="margin:10px 2px 0;color:' + (S.pkMsg ? '#FF8A8A' : '#9AA2AB') + '">' + esc(S.pkMsg || 'Tap a list to add or remove. Changes save straight to your watchlist.') + '</p>';
+  h += '<p class="small" style="margin:10px 2px 0;color:' + (S.pkMsg ? '#EC9191' : '#9AA2AB') + '">' + esc(S.pkMsg || 'Tap a list to add or remove. Changes save straight to your watchlist.') + '</p>';
   $('pickBody').innerHTML = h;
 }
 async function togglePick(id) {
@@ -1318,8 +1318,8 @@ function wlSearch(v) {
 }
 async function wlAddHit(sym) {
   const msg = $('wlMsg'); if (msg) { msg.style.color = '#9AA2AB'; msg.textContent = 'Adding ' + sym + '…'; }
-  try { await wlWrite(S.wl, sym, true); const i = $('wlQ'); if (i) { i.value = ''; i.focus(); } if ($('wlHits')) $('wlHits').innerHTML = ''; if (msg) { msg.style.color = '#5EE0A0'; msg.textContent = sym + ' added.'; } }
-  catch (e) { if (msg) { msg.style.color = '#FF8A8A'; msg.textContent = 'Couldn’t add ' + sym + '. Try again.'; } }
+  try { await wlWrite(S.wl, sym, true); const i = $('wlQ'); if (i) { i.value = ''; i.focus(); } if ($('wlHits')) $('wlHits').innerHTML = ''; if (msg) { msg.style.color = '#66C99A'; msg.textContent = sym + ' added.'; } }
+  catch (e) { if (msg) { msg.style.color = '#EC9191'; msg.textContent = 'Couldn’t add ' + sym + '. Try again.'; } }
 }
 async function wlRemove(sym) {
   S.wlRm = sym; render();
@@ -1456,7 +1456,7 @@ function qOf(sym, px0, pc0) { const r = S.vRow && S.vRow[sym]; if (r && r.price)
 const VALDO = { under: 'Cheap for its growth', reasonable: 'Fair price for its growth', full: 'Fully priced. Better on a dip', expensive: 'Pricey for its growth', perfection: 'Priced for perfection. One miss can hurt', unprofitable: 'Losing money. A bet on future growth' };
 function valPlain(v) { const a = []; const pe = v.fwdPE || v.peTTM; if (pe) a.push('P/E ' + pe.toFixed(0)); else if (v.ps) a.push(v.ps.toFixed(1) + '× sales'); if (v.growth != null) a.push('profits ' + (v.growth >= 0 ? 'up ' : 'down ') + Math.abs(Math.round(v.growth * 100)) + '%/yr'); return a.join(' · '); }
 function valTgt(v) { if (!v.tMean || !v.price) return ''; const d = v.tMean - v.price, P = dPal(); return 'Analyst target <b>$' + px(v.tMean) + '</b> <span style="color:' + (d >= 0 ? P.up : P.dn) + '">' + dS(d, null, v.price) + ' ' + pctS(d / v.price * 100) + '</span>'; }
-function verdictBadge(v) { const x = VAL.VERDICT[v.verdict] || ['—', '#A0A9B8']; return '<span class="badge" style="color:' + x[1] + ';border-color:' + x[1] + '66;background:' + x[1] + '14">' + x[0] + '</span>' + (v.hype ? '<span class="badge" style="color:#FF6B6B;border-color:#FF6B6B66">Hype risk</span>' : ''); }
+function verdictBadge(v) { const x = VAL.VERDICT[v.verdict] || ['—', '#A0A9B8']; return '<span class="badge" style="color:' + x[1] + ';border-color:' + x[1] + '66;background:' + x[1] + '14">' + x[0] + '</span>' + (v.hype ? '<span class="badge" style="color:#E07B7B;border-color:#E07B7B66">Hype risk</span>' : ''); }
 function valMetrics(v) { const a = []; if (v.fwdPE) a.push('Fwd P/E ' + v.fwdPE.toFixed(1)); else if (v.peTTM) a.push('P/E ' + v.peTTM.toFixed(0)); else if (v.ps) a.push('P/S ' + v.ps.toFixed(1)); if (v.growth != null) a.push('EPS ' + (v.growth >= 0 ? '+' : '') + Math.round(v.growth * 100) + '%'); if (v.peg != null) a.push('PEG ' + v.peg.toFixed(2)); if (v.upside != null) a.push('target ' + (v.upside >= 0 ? '+' : '') + Math.round(v.upside * 100) + '%'); return a.join(' · '); }
 const VF = [['all', 'All'], ['under', 'Undervalued'], ['reasonable', 'Reasonable'], ['full', 'Fully valued'], ['expensive', 'Expensive'], ['perfection', 'Priced for perfection'], ['unprofitable', 'Not profitable'], ['hype', 'Hype risk']];
 function renderValue() {
@@ -1491,7 +1491,7 @@ function fvCalc(v, d) {
 }
 function fvChart(v, d, P) {
   const f = fvCalc(v, d); if (!f) return '';
-  const ZC = ['#3FD68F', '#8CE3B5', '#F2C27A', '#FF9F7A', '#FF6B6B'], LAB = ['Deep value', 'Undervalued', 'Fairly valued', 'Overvalued', 'Expensive'];
+  const ZC = ['#5BBF8E', '#8CE3B5', '#F2C27A', '#FF9F7A', '#E07B7B'], LAB = ['Deep value', 'Undervalued', 'Fairly valued', 'Overvalued', 'Expensive'];
   let head = '';
   if (f.fv) { const ratio = f.price / f.fv, diff = ratio - 1, zi = ratio < 0.8 ? 0 : ratio < 0.93 ? 1 : ratio <= 1.07 ? 2 : ratio <= 1.2 ? 3 : 4;
     head = '<div class="fvhd"><div><span class="fvk">FAIR VALUE</span><b>≈ $' + px(f.fv) + '</b><small>price is ' + Math.abs(Math.round(diff * 100)) + '% ' + (diff < 0 ? 'below' : 'above') + '</small></div><span class="fvchip" style="color:' + ZC[zi] + ';border-color:' + ZC[zi] + '66;background:' + ZC[zi] + '14">' + LAB[zi] + '</span></div>'; }

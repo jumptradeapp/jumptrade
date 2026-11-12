@@ -185,7 +185,7 @@
     if (etf && A.perf && B.perf) { const g = (D, f) => num(D.perf[f]); pb += row('1 month', g(A, 'return_1m'), g(B, 'return_1m'), 'hi', pc) + row('3 months', g(A, 'return_3m'), g(B, 'return_3m'), 'hi', pc) + row('6 months', g(A, 'return_6m'), g(B, 'return_6m'), 'hi', pc) + row('1 year (with dividends)', g(A, 'return_1y'), g(B, 'return_1y'), 'hi', pc) + row('Since launch', g(A, 'return_si'), g(B, 'return_si'), null, pc); }
     else if (stA && stB) pb += row('1 month', stA.r1m, stB.r1m, 'hi', pc) + row('3 months', stA.r3m, stB.r3m, 'hi', pc) + row('6 months', stA.r6m, stB.r6m, 'hi', pc) + row('Year to date', stA.ytd, stB.ytd, 'hi', pc) + row('1 year', stA.r1y, stB.r1y, 'hi', pc);
     if (stA && stB) pb += row('Yearly swings', stA.vol, stB.vol, 'lo', (x) => Math.round(x) + '%', 'lower = calmer') + row('Worst drop', stA.dd, stB.dd, 'hi', (x) => Math.round(x) + '%', 'past year, peak to low') + row('Moves vs S&amp;P', stA.beta, stB.beta, null, (x) => x == null ? '—' : x.toFixed(2) + '×', '1.0× = same as market');
-    h += card('PERFORMANCE', bars ? pb : '<div class="skel" style="height:120px"></div>', '#5EE0A0');
+    h += card('PERFORMANCE', bars ? pb : '<div class="skel" style="height:120px"></div>', '#66C99A');
     if (etf) {
       // overlap
       const pct = ov.cover ? ov.ov / ov.cover * 100 : 0;
@@ -215,7 +215,7 @@
       const lab = (x) => x == null ? '—' : x >= 1.2 ? 'Strong buy' : x >= 0.5 ? 'Buy' : x >= -0.3 ? 'Hold' : 'Sell';
       let ab = tableHead() + row('Consensus', cons(A.rat), cons(B.rat), 'hi', lab) + row('Analysts', A.rat ? +A.rat.number || null : null, B.rat ? +B.rat.number || null : null, null) + row('Room to target', g(va, 'upside') != null ? va.upside * 100 : null, g(vb, 'upside') != null ? vb.upside * 100 : null, 'hi', (x) => x == null ? '—' : pc(x, 0));
       if (window.QS) { S.d[a] = Object.assign(S.d[a] || {}, { snap: sa, fc: A.fc, tgt: A.tgt, rat: A.rat }); S.d[b] = Object.assign(S.d[b] || {}, { snap: sb, fc: B.fc, tgt: B.tgt, rat: B.rat }); const qa = QS.compute(a), qb = QS.compute(b); ab += row('Quant score', qa ? qa.tot : null, qb ? qb.tot : null, 'hi', (x) => x == null ? '—' : x + '/100'); }
-      h += card('ANALYSTS &amp; SCORE', ab, '#5EE0A0');
+      h += card('ANALYSTS &amp; SCORE', ab, '#66C99A');
       const what = (D, col) => D.prof ? '<div class="cmpwhat"><b style="color:' + col + '">' + esc(D.sym) + '</b> · ' + esc((D.prof.industries || [])[0] || '') + '<p>' + esc((D.prof.profile || '').slice(0, 320)) + ((D.prof.profile || '').length > 320 ? '…' : '') + '</p></div>' : '';
       h += card('WHAT THEY DO', what(A, CA) + what(B, CB), '#9AA6B6');
     }

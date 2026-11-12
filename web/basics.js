@@ -42,7 +42,7 @@
   };
 
   // 4. health light from the app's call
-  BAS.light = function (kind) { return kind === 'buy' ? ['#5EE0A0', 'Healthy'] : kind === 'avoid' ? ['#FF8A8A', 'Weak'] : ['#F2C27A', 'Mixed']; };
+  BAS.light = function (kind) { return kind === 'buy' ? ['#66C99A', 'Healthy'] : kind === 'avoid' ? ['#EC9191', 'Weak'] : ['#F2C27A', 'Mixed']; };
 
   // 5. risk in dollars on a $1,000 position
   BAS.risk = function (buy, st, tg) {
@@ -52,7 +52,7 @@
   };
 
   // 6. market mood in one word
-  BAS.mood = function (fg) { if (fg == null) return null; return fg < 25 ? ['Fearful', '#FF8A8A'] : fg < 45 ? ['Nervous', '#F2C27A'] : fg <= 60 ? ['Calm', '#9DB8FF'] : fg <= 75 ? ['Confident', '#8CE3B5'] : ['Greedy', '#5EE0A0']; };
+  BAS.mood = function (fg) { if (fg == null) return null; return fg < 25 ? ['Fearful', '#EC9191'] : fg < 45 ? ['Nervous', '#F2C27A'] : fg <= 60 ? ['Calm', '#9DB8FF'] : fg <= 75 ? ['Confident', '#8CE3B5'] : ['Greedy', '#66C99A']; };
 
   // the stock page block: why, earnings, context
   BAS.sheet = function (sym, main, sn) {

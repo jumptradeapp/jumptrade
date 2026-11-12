@@ -4,7 +4,7 @@
 (function () {
   const F = { sym: null, rng: '6M', bars: {}, on: { plan: true, ma: true, sr: true } };
   const RNG = { '1D': ['M5', 192], '3M': ['D', 63], '6M': ['D', 126], '1Y': ['D', 252] };
-  const C = { line: '#4C8DFF', buy: '#ECEBE8', stop: '#FF8A8A', tgt: '#5EE0A0', ma50: '#F2C27A', ma200: '#C3A8FF', sup: '#5EE0A0', res: '#FF8A8A', grid: 'rgba(255,255,255,.05)', mute: '#9AA6B6' };
+  const C = { line: '#4C8DFF', buy: '#ECEBE8', stop: '#EC9191', tgt: '#66C99A', ma50: '#F2C27A', ma200: '#C3A8FF', sup: '#66C99A', res: '#EC9191', grid: 'rgba(255,255,255,.05)', mute: '#9AA6B6' };
   const f$ = (x) => '$' + px(x);
 
   function el() {

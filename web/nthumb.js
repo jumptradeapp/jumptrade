@@ -7,7 +7,7 @@
     rates: ['#C3A8FF', '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>'],
     oil: ['#8CE3B5', '<path d="M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z"/>'],
     crypto: ['#F7A440', '<path d="M9 6v12M9 6h5a3 3 0 0 1 0 6H9m0 0h6a3 3 0 0 1 0 6H9M11 4v2M11 18v2"/>'],
-    gov: ['#FF8A8A', '<path d="M12 3v3M5 21h14M7 21V11h10v10M4 11h16l-8-5z"/>'],
+    gov: ['#EC9191', '<path d="M12 3v3M5 21h14M7 21V11h10v10M4 11h16l-8-5z"/>'],
     mkt: ['#6FA8FF', '<path d="M4 20V10M9 20V4M14 20v-7M19 20V8"/>'],
     news: ['#8FA3BF', '<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/>']
   };

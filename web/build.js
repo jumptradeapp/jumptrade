@@ -85,7 +85,7 @@
     return st.w;
   };
   // small donut of the mix weights (clearer than a stack of ticker bubbles)
-  const DC = ['#4C8DFF', '#5EE0A0', '#F2C27A', '#C3A8FF', '#FF8A8A', '#8CB8E0'];
+  const DC = ['#4C8DFF', '#66C99A', '#F2C27A', '#C3A8FF', '#EC9191', '#8CB8E0'];
   const donut = (w) => { const tot = w.reduce((a, x) => a + (+x[1] || 0), 0) || 1; let a0 = -Math.PI / 2; const R = 15, r = 9, c = 18; const p = (A, rr) => (c + rr * Math.cos(A)).toFixed(2) + ' ' + (c + rr * Math.sin(A)).toFixed(2);
     const seg = w.length === 1 ? '<circle cx="18" cy="18" r="12" fill="none" stroke="' + DC[0] + '" stroke-width="6"/>' : w.map((x, i) => { const a1 = a0 + (+x[1] || 0) / tot * Math.PI * 2; const big = a1 - a0 > Math.PI ? 1 : 0;
       const d = 'M' + p(a0, R) + 'A' + R + ' ' + R + ' 0 ' + big + ' 1 ' + p(a1, R) + 'L' + p(a1, r) + 'A' + r + ' ' + r + ' 0 ' + big + ' 0 ' + p(a0, r) + 'Z'; a0 = a1; return '<path d="' + d + '" fill="' + DC[i % DC.length] + '"/>'; }).join('');
@@ -93,7 +93,7 @@
   const simpleSyms = () => { const s = new Set(); B.data.simple.forEach((st) => { st.w.forEach((x) => s.add(x[0])); (st.pool || []).forEach((x) => s.add(x)); }); return [...s]; };
   const simpleCards = () => { quotes(simpleSyms()); return '<div class="bldList">' + B.data.simple.map((st) => { const w = simpleW(st); const r = simpleRet(st);
     return '<button class="bldS" data-bldst="' + st.id + '">' + donut(w || st.w) + '<span class="bldSm"><b>' + esc(st.name) + '</b><small>' + (w ? w.map((x) => x[0] + ' ' + x[1] + '%').join(' · ') : 'Checking…') + '</small></span>' +
-      (r != null ? '<span class="bldSr" style="color:' + (r >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + pc(r) + '<small>past year</small></span>' : '') + '</button>'; }).join('') + '</div><p class="bldNote">Past-year returns are price only and assume you held the mix all year.</p>'; };
+      (r != null ? '<span class="bldSr" style="color:' + (r >= 0 ? '#66C99A' : '#EC9191') + '">' + pc(r) + '<small>past year</small></span>' : '') + '</button>'; }).join('') + '</div><p class="bldNote">Past-year returns are price only and assume you held the mix all year.</p>'; };
 
   const allocSum = (rows, all) => { const inv = rows.reduce((a, r) => a + (price(r.x) ? B.amt * r.w : 0), 0), miss = (all || []).filter((n) => B.q[n[0]] && B.q[n[0]].missing).map((n) => n[0]);
     return '<div class="bldSum"><div><span>Invested</span><b>' + $$(inv) + '</b></div><div><span>Cash left</span><b>' + $$(Math.max(0, B.amt - inv)) + '</b></div><div><span>Names</span><b>' + rows.length + '</b></div></div>' + (miss.length ? '<p class="bldNote">Left out (no price right now): ' + miss.map(esc).join(', ') + '</p>' : ''); };
@@ -111,7 +111,7 @@
     else { const st = B.data.simple.find((x) => x.id === B.sel.id); quotes(simpleSyms()); const w = simpleW(st); const r = simpleRet(st);
       const rows = (w || []).filter((x) => x[1] > 0).map((x) => ({ s: x[0], w: x[1] / 100, why: x[2], x: B.q[x[0]], sc: { st: 'etf' }, role: 'core' }));
       return '<div class="glass sec bldRes"><button class="bldBack" data-bldback="1">‹ All mixes</button><div class="bldH">' + esc(st.name) + '</div><p class="bldB">' + esc(st.blurb) + '</p>' +
-        (r != null ? '<div class="bldStat"><div><span>Past year</span><b style="color:' + (r >= 0 ? '#5EE0A0' : '#FF8A8A') + '">' + pc(r) + '</b></div><div><span>Funds</span><b>' + rows.length + '</b></div><div><span>Upkeep</span><b>' + (st.dyn ? 'Monthly' : 'Rare') + '</b></div></div>' : '') +
+        (r != null ? '<div class="bldStat"><div><span>Past year</span><b style="color:' + (r >= 0 ? '#66C99A' : '#EC9191') + '">' + pc(r) + '</b></div><div><span>Funds</span><b>' + rows.length + '</b></div><div><span>Upkeep</span><b>' + (st.dyn ? 'Monthly' : 'Rare') + '</b></div></div>' : '') +
         amtRow() + (w ? allocSum(rows) + rowsHTML(rows) : '<div class="skel"></div><div class="skel"></div>') + '<p class="bldHow"><b>How to run it:</b> ' + esc(st.how) + '</p><button class="bldSave" data-bldsave="' + rows.map((x) => x.s).join(',') + '">☆ Add these to my watchlist</button><p class="bldNote">Ideas, not advice.</p></div>';
     }
     const list = B.mode === 'etf' && etf ? etf.map((s) => [s, 'core', 'Theme ETF: one fund, many names']) : names;
@@ -122,7 +122,7 @@
     let h = '<div class="glass sec bldRes"><button class="bldBack" data-bldback="1">‹ All themes</button><div class="bldH">' + esc(name) + '</div>' + (blurb ? '<p class="bldB">' + esc(blurb) + '</p>' : '');
     if (!names.length) return h + '<p class="bldB">Nothing matched. Try a theme like “nuclear”, “space” or “cybersecurity”, or pick one below.</p></div>' + themeCards();
     if (isTheme) h += '<div class="segs bldMode"><button class="seg' + (B.mode === 'stocks' ? ' on' : '') + '" data-bldmode="stocks">' + names.length + ' stocks</button><button class="seg' + (B.mode === 'etf' ? ' on' : '') + '" data-bldmode="etf">Keep it simple: ' + etf.length + ' ETF' + (etf.length > 1 ? 's' : '') + '</button></div>';
-    if (B.mode === 'stocks') h += '<div class="bldMix">' + (nC ? '<span><i style="background:#4C8DFF"></i>' + nC + ' core</span>' : '') + (nP ? '<span><i style="background:#5EE0A0"></i>' + nP + ' growth picks</span>' : '') + (nS ? '<span><i style="background:#F2C27A"></i>' + nS + ' speculative</span>' : '') + '</div>';
+    if (B.mode === 'stocks') h += '<div class="bldMix">' + (nC ? '<span><i style="background:#4C8DFF"></i>' + nC + ' core</span>' : '') + (nP ? '<span><i style="background:#66C99A"></i>' + nP + ' growth picks</span>' : '') + (nS ? '<span><i style="background:#F2C27A"></i>' + nS + ' speculative</span>' : '') + '</div>';
     h += amtRow() + (rows ? allocSum(rows, list) + rowsHTML(rows) : '<div class="skel"></div><div class="skel"></div><div class="skel"></div>');
     h += '<button class="bldSave" data-bldsave="' + list.map((n) => n[0]).join(',') + '">☆ Add all to my watchlist</button>';
     h += '<p class="bldNote">' + (B.mode === 'stocks' ? 'Core names get the most weight. Stocks in uptrends get more, downtrends less, and speculative names stay small. No stock goes over 18%. Rebalance every quarter.' : 'Split evenly. One fund holds dozens of names, so no single stock can sink you.') + ' Ideas, not advice.</p></div>';
