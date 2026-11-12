@@ -1,5 +1,5 @@
 /* jumptrade. service worker: push notifications + instant app open (app files cached, live data never cached) */
-const V = 'jt-shell-v4';
+const V = 'jt-shell-v5';
 const SHELL = ['/', '/index.html', '/app.js', '/home.js', '/today.js', '/enrich.js', '/polish.js', '/runners.js', '/menu.js', '/alerts.js', '/shim.js', '/mark.js', '/icon-192.png', '/apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(V).then((c) => c.addAll(SHELL).catch(() => {}))); self.skipWaiting(); });
