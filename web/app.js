@@ -355,7 +355,7 @@ function renderMovers() {
     } else {
       el.className = 'card row' + (i === 0 ? ' rfirst' : '') + (i === rows.length - 1 ? ' rlast' : '') + (el.classList.contains('fadein') ? ' fadein' : ''); el.style.width = W + 'px'; el.style.height = rowH + 'px'; el.style.left = '0px'; el.style.top = i * rowH + 'px';
       el.innerHTML = logoHTML(r.sym, 34) + '<span class="rn"><b>' + esc(r.sym) + ' ' + (isHalted(r.sym) ? HALT_CHIP : (isFresh(r.sym) ? FRESH_CHIP : '') + (window.TODAY ? TODAY.chip(r) : '')) + '</b><small>' + whyLine(r.sym, cleanName(symName(r.sym) || r.name || '')) + '</small></span>' +
-        '<span class="rp tvp"><b style="' + (flash ? 'background:' + flash : '') + '">' + (XI ? sessIcon(XI, 13) + ' ' : '') + '$' + px(r.price) + '</b><small style="color:' + col + '">' + (dS(r.chg, r.pct, r.price) || '') + ' <i>' + pctS(r.pct) + '</i></small></span>';
+        '<span class="rp tvp"><b style="' + (flash ? 'background:' + flash : '') + '">' + (XI ? sessIcon(XI, 13) + ' ' : '') + '$' + px(r.price) + '</b><small style="color:' + col + '">' + (dS(r.chg, r.pct, r.price) || '') + ' <i>' + pctS(r.pct) + '</i></small></span>' + starHTML(r.sym);
     }
     el.setAttribute('aria-label', r.sym + ' ' + px(r.price) + ' ' + pctS(r.pct));
     if (flash) setTimeout(() => { const t = el.querySelector('.tp,.rp b'); if (t) t.style.background = ''; }, 700);
@@ -843,9 +843,9 @@ function renderIpos() {
 
 
 /* ---------- shared: intel segment bar, static data ---------- */
-const INTEL = [['research', 'Research'], ['news', 'News'], ['catalysts', 'Calendar'], ['flow', 'Flow'], ['options', 'Options'], ['congress', 'Congress'], ['shorts', 'Shorts'], ['ratings', 'Ratings'], ['ipos', 'IPOs'], ['sectors', 'Sectors'], ['compare', 'Compare']];
+const INTEL = [['research', 'Research'], ['news', 'News'], ['catalysts', 'Calendar'], ['flow', 'Big trades'], ['options', 'Options bets'], ['congress', 'Congress'], ['shorts', 'Bet against'], ['ratings', 'Ratings'], ['ipos', 'IPOs'], ['sectors', 'Sectors'], ['compare', 'Compare']];
 const isIntel = (t) => INTEL.some((x) => x[0] === t);
-const IGROUPS = [['Market', ['news', 'catalysts', 'sectors', 'ipos']], ['Money', ['flow', 'options', 'congress', 'shorts', 'ratings']], ['Research', ['research', 'compare']]];
+const IGROUPS = [['What’s happening', ['news', 'catalysts', 'sectors', 'ipos']], ['Where money’s going', ['flow', 'options', 'congress', 'shorts', 'ratings']], ['Dig deeper', ['research', 'compare']]];
 const iName = (t) => (INTEL.find((x) => x[0] === t) || [t, t])[1];
 function intelSeg(active) {
   S.iLast = S.iLast || {}; const g = IGROUPS.find((x) => x[1].indexOf(active) >= 0) || IGROUPS[0]; if (active === S.tab) S.iLast[g[0]] = active;
@@ -1574,7 +1574,7 @@ let rq = false;
 let pDown = 0, rPend = false;
 const DISC = 'For information only, not investment advice. Data can be delayed or wrong. Trading involves risk.';
 function ensureDisc() { return; document.querySelectorAll('.scroller').forEach((sc) => { const l = sc.lastElementChild; if (l && l.classList.contains('disc')) return; const d = document.createElement('p'); d.className = 'disc'; d.textContent = DISC; sc.appendChild(d); }); }
-function render() { if (pDown && Date.now() - pDown < 2500) { rPend = true; return; } if (rq) return; rq = true; setTimeout(() => { rq = false; try { doRender(); } catch (e) { console.error(e); } try { ensureDisc(); } catch (e) {} }, 0); }
+function render() { if (pDown && Date.now() - pDown < 2500) { rPend = true; return; } if (rq) return; rq = true; setTimeout(() => { rq = false; try { doRender(); } catch (e) { console.error(e); } try { ensureDisc(); } catch (e) {} try { addMean(); } catch (e) {} }, 0); }
 (() => { const up = () => { setTimeout(() => { pDown = 0; if (rPend) { rPend = false; render(); } }, 80); };
   document.addEventListener('pointerdown', () => { pDown = Date.now(); }, true);
   document.addEventListener('pointerup', up, true); document.addEventListener('pointercancel', up, true);
@@ -1794,3 +1794,45 @@ document.addEventListener('click', (e) => { const b = e.target.closest && e.targ
     render();
   }).catch(() => { b.disabled = false; b.classList.remove('on'); });
 }, true);
+
+/* ---------- watchlist star: empty = not watching, gold = on your watchlist; one tap toggles ---------- */
+const STAR_P = 'M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z';
+function starHTML(sym) { const on = !!(S.allWl && S.allWl[sym]); return '<span class="wstar' + (on ? ' on' : '') + '" role="button" aria-label="' + (on ? 'Remove ' : 'Add ') + esc(sym) + (on ? ' from' : ' to') + ' watchlist" data-wstar="' + esc(sym) + '"><svg width="20" height="20" viewBox="0 0 24 24" fill="' + (on ? '#F2C27A' : 'none') + '" stroke="' + (on ? '#F2C27A' : 'currentColor') + '" stroke-width="1.8" stroke-linejoin="round"><path d="' + STAR_P + '"/></svg></span>'; }
+document.addEventListener('click', (e) => {
+  const b = e.target.closest && e.target.closest('[data-wstar]'); if (!b) return; e.preventDefault(); e.stopPropagation();
+  const sym = b.dataset.wstar; const on = !!(S.allWl && S.allWl[sym]); if (b.dataset.busy) return; b.dataset.busy = '1';
+  const ids = on ? Object.keys(S.wlMem || {}).filter((id) => S.wlMem[id] && S.wlMem[id].syms && S.wlMem[id].syms.has(sym)) : [];
+  const def = S.wl || (S.wlists && S.wlists[0] && S.wlists[0].watchlist_id) || 'mine';
+  const go = on ? Promise.all((ids.length ? ids : [def]).map((id) => wlWrite(id, sym, false))) : wlWrite(def, sym, true);
+  b.classList.toggle('on', !on); const sv = b.querySelector('svg'); if (sv) { sv.setAttribute('fill', on ? 'none' : '#F2C27A'); sv.setAttribute('stroke', on ? 'currentColor' : '#F2C27A'); }
+  go.then(() => { if (typeof toast === 'function') toast(on ? sym + ' removed from your watchlist' : sym + ' added to your watchlist'); }).catch(() => { b.classList.toggle('on', on); if (sv) { sv.setAttribute('fill', on ? '#F2C27A' : 'none'); sv.setAttribute('stroke', on ? '#F2C27A' : 'currentColor'); } }).finally(() => { delete b.dataset.busy; if (typeof render === 'function') render(); });
+}, true);
+
+/* ---------- one plain-English "What this means" line at the top of each page ---------- */
+const MEAN = {
+
+  setups: 'stocks lined up for a trade, with the price to buy, where to get out if wrong, and where to take profit.',
+  runners: 'stocks showing early signs of a big run: heavy volume, news and a strong chart.',
+  dips: 'good companies that just fell hard. We show the price to buy, where to get out if wrong, and where to take profit.',
+  leaders: 'the strongest stocks in the market over the last few months. Leaders tend to keep leading.',
+  value: 'stocks that look cheap for how fast their profits are growing.',
+  buzz: 'what traders are talking about most right now.',
+  insiders: 'executives buying or selling their own company’s stock. Buying with their own money is one of the strongest signs there is.',
+  news: 'the stories moving stocks today, newest first. Each one shows the stock’s price and move.',
+  catalysts: 'what’s coming up: earnings, FDA decisions and IPOs. Big moves often happen on these days.',
+  sectors: 'bigger box = bigger industry, brighter = up more. Tap a box to see the stocks in it.',
+  ipos: 'companies about to go public, and the stocks that move with them.',
+  ratings: 'what analysts are saying: upgrades, downgrades and price targets.',
+  research: 'deep dives on themes and companies, in plain English.',
+  compare: 'put stocks side by side to see which one looks better.',
+  record: 'how our past signals actually did, in dollars per $1,000.',
+  portfolios: 'ready-made portfolios and how $10,000 would have done.'
+};
+const MEANV = { movers: 'vMovers', setups: 'vSetups', runners: 'vRunners', dips: 'vDips', leaders: 'vLeaders', value: 'vValue', buzz: 'vBuzz', insiders: 'vInsiders', news: 'vNews', catalysts: 'vCatalysts', sectors: 'vSectors', ipos: 'vIpos', ratings: 'vRatings', research: 'vResearch', compare: 'vCompare', record: 'vRecord', portfolios: 'vPort' };
+function addMean() {
+  const t = S.tab, txt = MEAN[t], v = MEANV[t] && document.getElementById(MEANV[t]); if (!txt || !v) return;
+  const sc = v.querySelector('.scroller') || v; let el = v.querySelector('.meanL');
+  if (!el) { el = document.createElement('div'); el.className = 'meanL'; }
+  const ref = sc.querySelector(':scope > .head'); if (ref) { if (el.previousSibling !== ref) ref.parentNode.insertBefore(el, ref.nextSibling); } else if (!el.parentNode) { const ptr = sc.querySelector(':scope > .ptr'); sc.insertBefore(el, ptr ? ptr.nextSibling : sc.firstChild); }
+  const h = '<b>What this means:</b> ' + txt; if (el.__h !== h) { el.innerHTML = h; el.__h = h; }
+}
