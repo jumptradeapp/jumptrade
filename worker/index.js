@@ -1063,7 +1063,7 @@ export default {
     if (Date.now() - UPK > 600000) { UPK = Date.now(); ctx.waitUntil(wbUpkeep(env).catch(() => {})); }
     if (req.method === 'OPTIONS') return new Response(null, { status: 204 }); // the app only calls its own server (same origin), so no cross-site access is granted
     // Private beta: while the site is locked, every data endpoint needs a signed-in account (cookie or bearer token).
-    if (url.pathname.startsWith('/api/') && !/^\/api\/(auth\/|admin\/|health$|ovncheck$|logo\/|alertstate$|wbstate$|wb\/)/.test(url.pathname) && !(url.pathname === '/api/feedback' && req.method === 'GET')) {
+    if (url.pathname.startsWith('/api/') && !/^\/api\/(auth\/|admin\/|health$|ovncheck$|nimg$|logo\/|alertstate$|wbstate$|wb\/)/.test(url.pathname) && !(url.pathname === '/api/feedback' && req.method === 'GET')) {
       // remembered per server for a minute so the 1-second price polling doesn't add storage lookups to every request
       if (!GATE_C || Date.now() - GATE_C.t > 60000) GATE_C = { t: Date.now(), g: (await vget(env, 'gate')) || { locked: true } };
       if (GATE_C.g.locked) {
@@ -1119,7 +1119,7 @@ export default {
         rows: a ? a.map((x) => ({ s: x.symbol, ovn: x.ovn_price, ovnPct: x.ovn_change_ratio, ovnVol: x.ovn_volume, ovnT: x.ovn_last_trade_time, ext: x.extend_hour_last_price, keys: Object.keys(x).filter((k) => /ovn|overnight/i.test(k)) })) : null }); }
     if (url.pathname === '/api/health') return json({ ok: true, provider: 'yahoo', time: new Date().toISOString() });
     if (url.pathname === '/api/nimg') { // small article thumbnail: the story's own preview image (og:image), proxied and cached
-      const u = url.searchParams.get('u') || ''; if (!/^https:\/\/[^\s]{8,600}$/.test(u)) return new Response('', { status: 400 });
+      const rf = req.headers.get('referer') || ''; if (rf && !/^https:\/\/(www\.)?jumptrade\.app\//.test(rf)) return new Response('', { status: 403 }); const u = url.searchParams.get('u') || ''; if (!/^https:\/\/[^\s]{8,600}$/.test(u)) return new Response('', { status: 400 });
       const ck = new Request('https://cache.jumptrade/nimg/' + encodeURIComponent(u)); const hit = await caches.default.match(ck); if (hit) return hit;
       const miss = () => { const m = new Response('', { status: 404, headers: { 'cache-control': 'public, max-age=21600' } }); ctx.waitUntil(caches.default.put(ck, m.clone())); return m; };
       try {
