@@ -948,6 +948,7 @@ function wlRow(x, sess) { // one watchlist quote: regular session on the main li
   const n = snapRow(x, sess); n._s = ok ? sess : 'regular'; n._ok = ok;
   const g = snapRow(x, 'regular'); n.reg = { price: g.price, chg: g.chg, pct: g.pct };
   n.ext = ok && sess !== 'regular' && sess !== 'closed' && isFinite(n.price) && n.price ? { price: n.price, chg: n.chg, pct: n.pct, k: sess } : null;
+  if (!n.ext && sess === 'closed' && +x.ovn_price && isFinite(+x.ovn_change)) n.ext = { price: +x.ovn_price, chg: +x.ovn_change, pct: +x.ovn_change_ratio * 100, k: 'overnight' }; /* closed but the 24-hour market is trading: show that price */
   if (!n.ext && sess === 'closed' && x.extend_hour_last_price && +x.extend_hour_last_price !== g.price) { const e = snapRow(x, 'after'); n.ext = { price: e.price, chg: e.chg, pct: e.pct, k: x.market_state && /^PRE/.test(x.market_state) ? 'pre' : 'after' }; }
   return n; }
 /* right-hand column shared by the watchlist page and the Home watchlist widget: price, then $ move and %, then the pre/after-hours line */
@@ -1765,7 +1766,7 @@ document.addEventListener('click', (e) => { const b = e.target.closest && e.targ
   const id = S.wl || (S.wlists && S.wlists[0] && S.wlists[0].watchlist_id) || 'mine';
   wlWrite(id, sym, true).then(() => {
     if (!S.wlists) loadWatch(); else if (!S.wlSyms) { if (!S.wl) S.wl = id; loadWatchItems(); }
-    mcp.callTool(SERVER, 'get_stock_snapshot', { symbols: sym, category: 'US_STOCK', extend_hour_required: true, overnight_required: false }).then(payloadOf).then((q) => { (Array.isArray(q) ? q : []).forEach((x) => { if (window.TODAY && TODAY.wlQ) TODAY.wlQ[x.symbol] = wlRow(x, view()); }); render(); }).catch(() => {});
+    mcp.callTool(SERVER, 'get_stock_snapshot', { symbols: sym, category: 'US_STOCK', extend_hour_required: true, overnight_required: true }).then(payloadOf).then((q) => { (Array.isArray(q) ? q : []).forEach((x) => { if (window.TODAY && TODAY.wlQ) TODAY.wlQ[x.symbol] = wlRow(x, view()); }); render(); }).catch(() => {});
     render();
   }).catch(() => { b.disabled = false; b.classList.remove('on'); });
 }, true);

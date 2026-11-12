@@ -66,7 +66,7 @@
     if (!live()) return;
     if (!T.sent && !T.sentLoading) { T.sentLoading = 1; ctool('get_market_sentiment', {}, 1).then((p) => { T.sent = p; render(); }).catch(() => {}).finally(() => { setTimeout(() => { T.sentLoading = 0; }, 60000); }); }
     if (!T.spyB && !T.spyLoading) { T.spyLoading = 1; ctool('get_stock_bars', { symbols: ['SPY'], category: 'US_STOCK', timespan: 'D', count: 220 }, 6).then((p) => { const r = ((p && p.result) || [])[0]; T.spyB = r ? parseBars(r.result) : []; render(); }).catch(() => {}).finally(() => { setTimeout(() => { T.spyLoading = 0; }, 60000); }); }
-    watch('h:idx', 'get_stock_snapshot', { symbols: 'SPY,QQQ,IWM', category: 'US_STOCK', extend_hour_required: true, overnight_required: false }, (p) => { arr(p).forEach((x) => { T.idx[x.symbol] = snapRow(x, view()); }); }, 60000);
+    watch('h:idx', 'get_stock_snapshot', { symbols: 'SPY,QQQ,IWM', category: 'US_STOCK', extend_hour_required: true, overnight_required: true }, (p) => { arr(p).forEach((x) => { T.idx[x.symbol] = snapRow(x, view()); }); }, 60000);
     if (!S.sectors || !S.sectors.D1) loadSectors();
   }
   function health() {
@@ -105,7 +105,7 @@
   function wlSyms() { if (!S.allWl && S.wlists) loadAllWatchSyms(); const s = Object.keys(S.allWl || {}); (S.wlSyms || []).forEach((x) => { if (s.indexOf(x) < 0) s.push(x); }); return s.slice(0, 100); }
   function loadPlan() {
     loadHealth(); loadMacro(); if (!S.wlists && live()) loadWatch(); file('catalysts.json'); loadFlow();
-    const syms = wlSyms(); if (syms.length && live()) watch('tp:wl', 'get_stock_snapshot', { symbols: syms.join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: false }, (p) => { arr(p).forEach((x) => { T.wlQ[x.symbol] = typeof wlRow === 'function' ? wlRow(x, view()) : snapRow(x, view()); }); }, 60000);
+    const syms = wlSyms(); if (syms.length && live()) watch('tp:wl', 'get_stock_snapshot', { symbols: syms.join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: true }, (p) => { arr(p).forEach((x) => { T.wlQ[x.symbol] = typeof wlRow === 'function' ? wlRow(x, view()) : snapRow(x, view()); }); }, 60000);
   }
   function planCounts() {
     const day = nextSession(); const gaps = Object.values(T.wlQ).filter((r) => Math.abs(r.pct) >= 3).length;
@@ -191,7 +191,7 @@
     const open = J().filter((t) => t.exit == null), st = jStats();
     return '<button class="glass plancard" data-journal="1"><div class="ih"><span class="cap">TRADE JOURNAL</span><span class="cap" style="color:#A8C8E8">OPEN ›</span></div><div class="pcs">' + [[open.length, 'open trades'], [st ? st.n : 0, 'closed'], [st ? Math.round(st.win) + '%' : '—', 'win rate'], [st ? (st.avgR >= 0 ? '+' : '') + st.avgR.toFixed(1) + 'R' : '—', 'avg per trade']].map((x) => '<div><b>' + x[0] + '</b><span>' + x[1] + '</span></div>').join('') + '</div></button>';
   };
-  function jQuotes() { const syms = Array.from(new Set(J().filter((t) => t.exit == null).map((t) => t.sym))); if (syms.length && live()) watch('jr:q', 'get_stock_snapshot', { symbols: syms.join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: false }, (p) => { arr(p).forEach((x) => { T.wlQ[x.symbol] = snapRow(x, view()); }); }, 60000); }
+  function jQuotes() { const syms = Array.from(new Set(J().filter((t) => t.exit == null).map((t) => t.sym))); if (syms.length && live()) watch('jr:q', 'get_stock_snapshot', { symbols: syms.join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: true }, (p) => { arr(p).forEach((x) => { T.wlQ[x.symbol] = snapRow(x, view()); }); }, 60000); }
   T.openJournal = function (prefill) { S.fund = { journal: true, key: 'journal' }; T.jForm = prefill || null; T.jClose = null; document.body.classList.add('fund-open'); $('fundSheet').scrollTop = 0; $('fundBody').__h = null; render(); };
   T.renderJournal = function () {
     jQuotes(); const st = jStats(), all = J(); const open = all.filter((t) => t.exit == null), cl = all.filter((t) => t.exit != null).sort((a, b) => (a.exitD > b.exitD ? -1 : 1));
@@ -282,7 +282,7 @@
   };
 
   /* ========== 9. FLOW (Intel) ========== */
-  function loadFlow() { if (!live()) return; watch('fl:feed', 'get_stock_unusual_activities', { count: 30, extended_hours_required: true }, (p) => { T.flow = arr(p); const syms = Array.from(new Set(T.flow.map((x) => x.symbol))).filter((s) => /^[A-Z.]{1,6}$/.test(s)); if (syms.length) watch('fl:q', 'get_stock_snapshot', { symbols: syms.join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: false }, (q) => { arr(q).forEach((x) => { T.wlQ[x.symbol] = snapRow(x, view()); }); }, 60000); }, 300000); }
+  function loadFlow() { if (!live()) return; watch('fl:feed', 'get_stock_unusual_activities', { count: 30, extended_hours_required: true }, (p) => { T.flow = arr(p); const syms = Array.from(new Set(T.flow.map((x) => x.symbol))).filter((s) => /^[A-Z.]{1,6}$/.test(s)); if (syms.length) watch('fl:q', 'get_stock_snapshot', { symbols: syms.join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: true }, (q) => { arr(q).forEach((x) => { T.wlQ[x.symbol] = snapRow(x, view()); }); }, 60000); }, 300000); }
   T.loadFlow = function () { loadFlow(); };
   T.renderFlow = function () {
     setHTML($('flowSeg'), intelSeg('flow')); loadFlow(); $('flFresh').textContent = S.stamp['fl:feed'] ? 'Updated ' + ago(S.stamp['fl:feed']) : '';
