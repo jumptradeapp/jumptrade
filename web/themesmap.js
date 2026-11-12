@@ -38,3 +38,31 @@
   };
   document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-thm]'); if (!b) return; S.thOpen = S.thOpen === b.dataset.thm ? null : b.dataset.thm; render(); });
 })();
+/* Money flow, patterns and dip check, built from rotation.json (3 years of theme prices, refreshed after the close) */
+(function () {
+  const TH = window.TH; if (!TH) return;
+  const chip = (n, v) => { const P = dPal(); return '<span class="fc"><b>' + esc(n) + '</b><i style="color:' + (v >= 0 ? P.up : P.dn) + '">' + (v >= 0 ? '+' : '') + v.toFixed(1) + '%</i></span>'; };
+  const flow = (cap, d) => { const k = Object.keys(d); const outs = k.slice().sort((a, b) => d[a] - d[b]).slice(0, 3), ins = k.slice().sort((a, b) => d[b] - d[a]).slice(0, 3);
+    return '<div class="flow"><div class="flcap">' + cap + '</div><div class="flr"><div class="flc"><small>MONEY LEFT</small>' + outs.map((n) => chip(n, d[n])).join('') + '</div><div class="arr">→</div><div class="flc in"><small>MONEY WENT</small>' + ins.map((n) => chip(n, d[n])).join('') + '</div></div></div>'; };
+  TH.flowHTML = function () {
+    const R = typeof file === 'function' ? file('rotation.json') : null; if (!ready(R)) return '<div class="empty"><b>Loading money flow…</b></div>';
+    const asOf = new Date(R.asOf + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const mx = Math.max.apply(null, R.wk.map((w) => Math.abs(w[1])).concat([0.1]));
+    const bars = R.wk.map((w, i) => '<div class="wb"><span class="wbt"><i style="height:' + Math.max(3, Math.abs(w[1]) / mx * 46).toFixed(0) + 'px;' + (w[1] >= 0 ? 'bottom:50%' : 'top:50%') + ';background:' + (w[1] >= 0 ? '#3A76E6' : '#5E7396') + '"></i></span><small>' + (i % 2 === 0 ? esc(w[0].slice(3) ? w[0].replace('-', '/') : w[0]) : '') + '</small></div>').join('');
+    const last = R.wk[R.wk.length - 1][1];
+    let h = '<div class="meanL"><b>What this means:</b> which themes money is leaving and where it is going, compared with the average theme. Updated after each close (last: ' + asOf + ').</div>';
+    h += flow('THIS WEEK', R.r5) + flow('PAST MONTH', R.r20);
+    h += '<div class="card"><div class="sect"><span><i class="sq"></i>AI TRADE VS SAFER STOCKS</span><b>12 weeks</b></div><div class="wbars">' + bars + '</div><div class="wleg"><span><i style="background:#3A76E6"></i>Into the AI trade</span><span><i style="background:#5E7396"></i>Into safer stocks</span></div><p class="note3">' + R.groups.ai.length + ' themes (chips, power, nuclear, neoclouds, crypto, space…) move together as one “AI trade.” Health, biotech, fintech, defense and gold tend to move the other way. Last week money went ' + (last >= 0 ? 'into the AI trade' : 'into safer stocks') + '.</p></div>';
+    h += '<div class="sect" style="margin:16px 2px 8px"><span><i class="sq"></i>PATTERNS THAT HELD UP</span><b>' + R.stats.years + ' years tested</b></div>';
+    h += '<div class="pat ok"><b>Monthly leaders keep leading</b><p>The 3 hottest themes of the last month beat the average theme the next month <u>' + R.stats.lead.win + '%</u> of the time, by +' + R.stats.lead.avg + '% on average.</p></div>';
+    h += '<div class="pat ok"><b>Monthly laggards keep lagging</b><p>The 3 coldest themes trailed the average the next month <u>' + R.stats.lag.win + '%</u> of the time, by ' + R.stats.lag.avg + '%.</p></div>';
+    h += '<div class="pat no"><b>One week tells you nothing</b><p>Last week’s winners were a coin flip the next week (' + R.stats.week.win + '%). We don’t predict off one week.</p></div>';
+    h += '<div class="card"><div class="sect"><span><i class="sq"></i>NEXT MONTH LEAN</span><b>' + R.stats.lead.win + '–' + R.stats.lag.win + '% odds</b></div><div class="lean"><div><small>LIKELY TO KEEP LEADING</small>' + R.lead.map((n) => chip(n, R.r20[n])).join('') + '</div><div><small>LIKELY TO KEEP LAGGING</small>' + R.lag.map((n) => chip(n, R.r20[n])).join('') + '</div></div><p class="note3">A lean, not a sure thing. About 4 times in 10 it doesn’t work.</p></div>';
+    h += '<div class="sect" style="margin:16px 2px 8px"><span><i class="sq"></i>DIP CHECK · BUY OR WAIT?</span><b>Down 10%+</b></div>';
+    const VC = { wait: ['#F2C27A', 'Wait for the turn'], buy: ['#66C99A', 'Buy small'], watch: ['#9DBEFF', 'Watch'] };
+    h += R.dips.length ? R.dips.map((d) => { const c = VC[d.v]; const why = d.v === 'wait' ? (d.above10 ? 'Still lagging this month, but it just closed above its 10-day average. The turn may be starting.' : 'Still lagging this month. Buy when it closes back above its 10-day average.') : d.v === 'buy' ? 'Sold off but still a 3-month leader. Scale in, not all at once.' : 'Sold off with no clear trend either way.';
+      return '<button class="dc" data-thm="' + d.id + '" data-smode="themes"><div class="dch"><b>' + esc(d.name) + '</b><span class="dv" style="color:' + c[0] + ';border-color:' + c[0] + '66;background:' + c[0] + '14">' + c[1] + '</span></div><div class="dcs"><span><small>From 1-mo high</small><b style="color:' + dPal().dn + '">' + d.off + '%</b></span><span><small>Past 10% drops</small><b>' + (d.hn ? d.hwin + ' of ' + d.hn + ' up' : 'None') + '</b></span><span><small>Avg next month</small><b style="color:' + (d.havg >= 0 ? dPal().up : dPal().dn) + '">' + (d.havg == null ? '—' : (d.havg >= 0 ? '+' : '') + d.havg + '%') + '</b></span></div><p>' + why + '</p></button>'; }).join('') : '<p class="desc dim">No theme is down 10% from its high right now.</p>';
+    h += '<p class="note3" style="margin:6px 2px 14px">Honest note: across all themes, buying a 10% drop beat just holding by only about ' + R.stats.dipEdge + '% a month. The trend matters more than the drop. The ' + R.stats.years + ' years tested were mostly a rising market.</p>';
+    return h;
+  };
+})();

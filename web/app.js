@@ -618,8 +618,8 @@ function squarify(items, x, y, w, h) { // items: [{v}] sorted desc; returns rect
   return out;
 }
 function renderSectors() {
-  const MODE = '<div class="segs thMode"><button class="seg' + (S.secMode !== 'sectors' ? ' on' : '') + '" data-smode="themes">Themes</button><button class="seg' + (S.secMode === 'sectors' ? ' on' : '') + '" data-smode="sectors">Sectors</button></div>';
-  if (S.secMode !== 'sectors' && window.TH) { TH.load(); setHTML($('perChips'), MODE); $('sFresh').textContent = TH.t ? 'Updated ' + ago(TH.t) : 'Loading…'; const m = $('treemap'); m.style.height = 'auto'; setHTML(m, TH.mapHTML()); if ($('seesaw')) $('seesaw').innerHTML = ''; return; }
+  const SM = S.secMode || 'themes'; const MODE = '<div class="segs thMode">' + [['themes', 'Themes'], ['flow', 'Money flow'], ['sectors', 'Sectors']].map((m) => '<button class="seg' + (SM === m[0] ? ' on' : '') + '" data-smode="' + m[0] + '">' + m[1] + '</button>').join('') + '</div>';
+  if (SM !== 'sectors' && window.TH) { TH.load(); setHTML($('perChips'), MODE); $('sFresh').textContent = SM === 'flow' ? '' : TH.t ? 'Updated ' + ago(TH.t) : 'Loading…'; const m = $('treemap'); m.style.height = 'auto'; setHTML(m, SM === 'flow' && TH.flowHTML ? TH.flowHTML() : TH.mapHTML()); if ($('seesaw')) $('seesaw').innerHTML = ''; return; }
   if ($('treemap')) $('treemap').style.height = '';
   const P = S.sectorPeriod; const list = (S.sectors[P] || []).filter((s) => +s.market_value > 0);
   setHTML($('perChips'), MODE + [['D1', 'Today'], ['D5', '5 days'], ['MO1', '1 month'], ['MO3', '3 months']].map((p) => '<button class="seg' + (p[0] === P ? ' on' : '') + '" data-per="' + p[0] + '">' + p[1] + '</button>').join(''));
@@ -1845,4 +1845,4 @@ function addMean() {
   const h = '<b>What this means:</b> ' + (t === 'ratings' && S.ratTab && S.ratTab !== 'latest' && window.R3 && R3.mean ? R3.mean : txt); if (el.__h !== h) { el.innerHTML = h; el.__h = h; }
 }
 
-document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-smode]'); if (!b) return; S.secMode = b.dataset.smode; render(); });
+document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-smode]'); if (!b) return; S.secMode = b.dataset.smode; if (b.dataset.thm) S.thOpen = b.dataset.thm; render(); window.scrollTo(0, 0); });
