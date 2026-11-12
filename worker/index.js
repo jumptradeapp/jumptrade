@@ -983,13 +983,15 @@ async function aiRoutes(url, req, env) {
 // ---------- money flow: rebuild rotation.json from fresh daily prices after each close (served at /rotation.json) ----------
 const ROT_THEMES = [["photonics","Photonics",["COHR","LITE","FN","CIEN","MRVL","AVGO","CRDO","ALAB","MTSI","AAOI","POET","LWLG"]],["aichips","AI chips",["NVDA","AVGO","TSM","AMD","MRVL","ARM","MU","ALAB","QCOM"]],["memory","Memory",["MU","SNDK","WDC","STX","RMBS","SIMO"]],["semicap","Chip equipment",["ASML","AMAT","LRCX","KLAC","TER","ONTO","CAMT","NVMI","ACMR","AEHR"]],["aipower","AI power",["VST","CEG","GEV","VRT","ETN","TLN","NRG","PWR","BE","POWL"]],["nuclear","Nuclear",["CEG","CCJ","BWXT","LEU","OKLO","SMR","NNE","LTBR","ASPI"]],["uranium","Uranium",["CCJ","NXE","UEC","DNN","UUUU","LEU","EU"]],["neocloud","Neoclouds",["CRWV","NBIS","IREN","CIFR","WULF","APLD","CORZ"]],["quantum","Quantum",["IBM","GOOGL","IONQ","RGTI","QBTS","QUBT"]],["robotics","Robotics",["TSLA","ISRG","ROK","TER","SYM","NVDA","SERV","RR"]],["space","Space",["RKLB","ASTS","PL","IRDM","LUNR","RDW","FLY","VSAT"]],["defense","Defense",["LMT","RTX","NOC","GD","LHX","HII"]],["drones","Drones",["AVAV","KTOS","ONDS","RCAT","UMAC","DPRO","PDYN"]],["cyber","Cybersecurity",["CRWD","PANW","ZS","NET","FTNT","OKTA","RBRK","S"]],["aisoftware","AI software",["MSFT","PLTR","NOW","APP","SNOW","DDOG","MDB","CRM","SOUN","AI"]],["crypto","Crypto",["COIN","HOOD","MSTR","CRCL","GLXY","MARA","RIOT","CLSK"]],["fintech","Fintech",["HOOD","NU","SOFI","AFRM","PYPL","XYZ","TOST","UPST"]],["glp1","Weight loss",["LLY","NVO","AMGN","HIMS","VKTX","ALT","GPCR"]],["biotech","Biotech",["VRTX","REGN","CRSP","NTLA","BEAM","RXRX"]],["rareearth","Rare earths",["MP","ALB","USAR","UAMY","NB","TMC","LAC"]],["gold","Gold",["NEM","AEM","WPM","FNV","KGC","AU"]],["grid","Grid",["ETN","PWR","GEV","HUBB","VRT","MYRG","POWL"]],["storage","Batteries",["TSLA","FLNC","EOSE","ENVX","QS","RIVN"]],["solar","Solar",["FSLR","NXT","ENPH","ARRY","RUN","SEDG"]],["cooling","Data centers",["EQIX","DLR","VRT","JCI","MOD","AAON"]],["healthai","Health tech",["ISRG","DXCM","PODD","TEM","HIMS","RXRX"]]];
 async function rotationJob(env, ctx) {
-  const all = [...new Set(ROT_THEMES.flatMap((t) => t[2]))]; const C = {};
+  const all = [...new Set(ROT_THEMES.flatMap((t) => t[2]))]; const C = {}; const diag = [];
   for (let i = 0; i < all.length; i += 20) {
-    const p = await freshTool('get_stock_bars', { symbols: all.slice(i, i + 20), category: 'US_STOCK', timespan: 'D', count: 90, real_time_required: false, trading_sessions: 'RTH' }, ctx, env).catch(() => null);
+    const inp = { symbols: all.slice(i, i + 20), category: 'US_STOCK', timespan: 'D', count: 90 };
+    let p = null; try { const w = await wbCall(env, 'get_stock_bars', inp); p = w && w.payload; if (!p) diag.push('wb' + i + ':' + JSON.stringify(WBLAST || {}).slice(0, 160)); } catch (e) { diag.push('wbx' + i + ':' + String(e.message || e).slice(0, 100)); }
+    if (!p || !(p.result || []).length) { p = await freshTool('get_stock_bars', inp, ctx, env).catch((e) => { diag.push('ft' + i + ':' + String(e.message || e).slice(0, 80)); return null; }); if (!p || !(p.result || []).length) diag.push('empty' + i + ':' + JSON.stringify(p || null).slice(0, 120)); }
     ((p && p.result) || []).forEach((r) => { const m = {}; (r.result || []).forEach((b) => { const d = String(b.time || '').slice(0, 10); if (d && +b.close > 0) m[d] = +b.close; }); if (Object.keys(m).length > 30) C[r.symbol] = m; });
   }
   const days = [...new Set(Object.values(C).flatMap((m) => Object.keys(m)))].sort().filter((d) => Object.values(C).filter((m) => m[d]).length > Object.keys(C).length * 0.6);
-  if (days.length < 65 || Object.keys(C).length < all.length * 0.6) return { ok: false, n: Object.keys(C).length, days: days.length };
+  if (days.length < 65 || Object.keys(C).length < all.length * 0.6) return { ok: false, n: Object.keys(C).length, days: days.length, diag: diag.slice(0, 6) };
   const TI = {};
   ROT_THEMES.forEach((t) => { const idx = [1]; for (let k = 1; k < days.length; k++) { const v = t[2].map((s) => C[s] && C[s][days[k]] && C[s][days[k - 1]] ? C[s][days[k]] / C[s][days[k - 1]] - 1 : null).filter((x) => x != null && Math.abs(x) < 0.6); idx.push(idx[k - 1] * (1 + (v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0))); } TI[t[1]] = idx; });
   const N = days.length - 1, r = (n, k) => Math.round((TI[n][N] / TI[n][N - k] - 1) * 1000) / 10;
@@ -1004,7 +1006,7 @@ async function rotationJob(env, ctx) {
     const v = r63 >= 0.10 ? 'buy' : r20[t[1]] < med ? 'wait' : 'watch'; const h = oldD[t[0]] || {};
     return { id: t[0], name: t[1], off, v, hn: h.hn || 0, hwin: h.hwin || 0, havg: h.havg || 0, above10: x[N] > sma10 }; }).filter(Boolean).sort((a, b) => a.off - b.off).slice(0, 12);
   const out = Object.assign({}, old, { asOf: days[N], r5, r20, wk, lead: byR20.slice(0, 3), lag: byR20.slice(-3).reverse(), dips, built: Date.now() });
-  await vput(env, 'rotation', out); return { ok: true, asOf: days[N], n: Object.keys(C).length };
+  await vput(env, 'rotation', out); return { ok: true, asOf: days[N], n: Object.keys(C).length, diag: diag.slice(0, 3) };
 }
 async function freshTool(tool, input, ctx, env) { const r = await runTool(tool, input, ctx, env, true); const j = await r.json().catch(() => ({})); return j.payload; }
 async function cachedTool(tool, input, ctx, env) { const r = await runTool(tool, input, ctx, env); const j = await r.json().catch(() => ({})); return j.payload; }
@@ -1141,6 +1143,7 @@ export default {
       if (hit) { hit.n = (hit.n || 1) + 1; hit.t = Date.now(); hit.name = who ? who.u.name : hit.name; } else L.unshift({ k, t: Date.now(), n: 1, msg, src: String(b.src || '').slice(0, 160), page: String(b.page || '').slice(0, 40), name: who ? who.u.name : '', ua: String(req.headers.get('user-agent') || '').slice(0, 140) });
       L.sort((x, y) => y.t - x.t); await vput(env, 'cerr', L.slice(0, 60)); return json({ ok: true });
     }
+    if (url.pathname === '/x/rotnow') { const last = await vget(env, 'rotrun').catch(() => null); if (last && Date.now() - last.t < 600000) return json({ wait: true, last }); const r = await rotationJob(env, ctx).catch((e) => ({ error: String(e && e.message || e) })); await vput(env, 'rotrun', Object.assign({ t: Date.now() }, r)); return json(r); }
     if (url.pathname === '/rotation.json') { const R = await vget(env, 'rotation').catch(() => null); if (R && R.asOf) return json(R, 200, { 'cache-control': 'public, max-age=600' }); return env.ASSETS.fetch(req); }
     if (url.pathname === '/api/ideas') { // members' ideas from Live Analysis: signed-in members post, everyone signed in reads
       const L = (await vget(env, 'ideas')) || [];
