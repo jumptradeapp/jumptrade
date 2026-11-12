@@ -36,7 +36,7 @@
   BN.card = function (a, small) {
     if (small) return '<div class="bnA ' + a.k + ' sm" data-open="' + esc(a.sym) + '"><div class="bnH">' + ICON[a.k] + '<b>' + BN.label(a.k) + (a.strong ? ' · MAJOR NEWS' : '') + '</b><span>' + ago(a.t) + '</span></div><p>' + esc(a.n.title || '') + '</p></div>';
     const img = window.JT_WEB && a.n.url ? '<img class="bnTh" loading="lazy" alt="" src="/api/nimg?u=' + encodeURIComponent(a.n.url) + '" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'bnTh bnLg\',innerHTML:logoHTML(\'' + a.sym + '\',40)}))">' : '<span class="bnTh bnLg">' + logoHTML(a.sym, 40) + '</span>';
-    return '<div class="bnA bnC ' + a.k + '" data-open="' + esc(a.sym) + '">' + img + '<div class="bnBody"><div class="bnH">' + ICON[a.k] + '<b>' + BN.label(a.k) + (a.strong ? ' · MAJOR' : '') + '</b><span>' + ago(a.t) + '</span></div><p class="bnT">' + esc(a.n.title || '') + '</p><small class="bnS"><b>' + esc(a.sym) + '</b> · ' + esc(cleanName(symName(a.sym) || '')) + '</small></div></div>';
+    return '<div class="bnA bnC ' + a.k + '" data-open="' + esc(a.sym) + '">' + img + '<div class="bnBody"><div class="bnH">' + ICON[a.k] + '<b>' + BN.label(a.k) + (a.strong ? ' · MAJOR' : '') + '</b><span>' + ago(a.t) + '</span></div><p class="bnT">' + esc(a.n.title || '') + '</p><small class="bnS">' + logoHTML(a.sym, 18) + '<b>' + esc(a.sym) + '</b> · ' + esc(cleanName(symName(a.sym) || '')) + '</small></div></div>';
   };
   BN.homeCard = function () { BN.load(); const seen = {}; const L = BN.list().filter((a) => !seen[a.sym] && (seen[a.sym] = 1)).slice(0, 3); return L.length ? '<div class="bnWrap">' + L.map((a) => BN.card(a)).join('') + '</div>' : ''; };
 })();
