@@ -11,16 +11,22 @@
 })();
 /* Day progress bar for the Market card: pre-market (amber) · regular hours (blue) · after hours (purple), with time left. */
 (function () {
-  const S0 = 240, O = 570, C = 960, E = 1200;
+  const S0 = 240, O = 570;
   const hm = (m) => (m >= 60 ? Math.floor(m / 60) + 'h ' : '') + (m % 60) + 'm';
+  const HOL = { '2026-01-01': 'New Year’s Day', '2026-01-19': 'MLK Day', '2026-02-16': 'Presidents’ Day', '2026-04-03': 'Good Friday', '2026-05-25': 'Memorial Day', '2026-06-19': 'Juneteenth', '2026-07-03': 'Independence Day', '2026-09-07': 'Labor Day', '2026-11-26': 'Thanksgiving', '2026-12-25': 'Christmas',
+    '2027-01-01': 'New Year’s Day', '2027-01-18': 'MLK Day', '2027-02-15': 'Presidents’ Day', '2027-03-26': 'Good Friday', '2027-05-31': 'Memorial Day', '2027-06-18': 'Juneteenth', '2027-07-05': 'Independence Day', '2027-09-06': 'Labor Day', '2027-11-25': 'Thanksgiving', '2027-12-24': 'Christmas' };
+  const HALF = { '2026-11-27': 1, '2026-12-24': 1, '2027-11-26': 1 }; // closes at 1:00 PM
   window.dayBar = function () {
     const et = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })); const wd = et.getDay(), m = et.getHours() * 60 + et.getMinutes();
+    const ds = et.getFullYear() + '-' + String(et.getMonth() + 1).padStart(2, '0') + '-' + String(et.getDate()).padStart(2, '0');
+    if (HOL[ds]) return '<div class="dpBar"><div class="dpH"><span><b>Market closed</b> · ' + HOL[ds] + '</span><span class="dpL">Opens next trading day</span></div></div>';
+    const C = HALF[ds] ? 780 : 960, E = HALF[ds] ? 1020 : 1200;
     const wk = wd === 0 || wd === 6;
     const phase = wk ? 'Closed for the weekend' : m < S0 ? 'Overnight' : m < O ? 'Pre-market' : m < C ? 'Regular hours' : m < E ? 'After hours' : 'Overnight';
     const left = wk ? 'Opens Monday 9:30' : m < S0 ? 'Pre-market in ' + hm(S0 - m) : m < O ? 'Opens in ' + hm(O - m) : m < C ? hm(C - m) + ' to close' : m < E ? hm(E - m) + ' left' : 'Pre-market at 4:00 AM';
     const seg = (a, b, col, lab) => { const f = wk ? 0 : Math.max(0, Math.min(1, (m - a) / (b - a))); return '<div class="dpS" style="flex:' + (b - a) + '"><div class="dpT"><i style="width:' + (f * 100).toFixed(1) + '%;background:' + col + '"></i></div><small>' + lab + '</small></div>'; };
     return '<div class="dpBar"><div class="dpH"><span><b>' + phase + '</b> · ' + et.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' ET</span><span class="dpL">' + left + '</span></div><div class="dpR">' +
-      seg(S0, O, 'rgba(242,194,122,.9)', 'Pre 4:00') + seg(O, C, '#3B7BFF', 'Open 9:30') + seg(C, E, '#9B7BFF', 'After 4:00') + '</div></div>';
+      seg(S0, O, 'rgba(242,194,122,.9)', 'Pre 4:00') + seg(O, C, '#3B7BFF', 'Open 9:30') + seg(C, E, '#9B7BFF', HALF[ds] ? 'After 1:00' : 'After 4:00') + '</div></div>';
   };
   setInterval(() => { if (typeof S !== 'undefined' && S.tab === 'home' && !document.hidden) { const el = document.querySelector('.mkStrip .dpBar'); if (el) el.outerHTML = window.dayBar(); } }, 30000);
 })();
