@@ -1,6 +1,6 @@
 /* jumptrade extras: options flow, congress trades, short squeeze */
 (function () {
-  const XF = { options: [['all', 'All'], ['call', 'Calls'], ['put', 'Puts'], ['bullish', 'Bullish'], ['bearish', 'Bearish'], ['unusual', 'Vol > OI']],
+  const XF = { options: [['all', 'All'], ['call', 'Calls'], ['put', 'Puts'], ['bullish', 'Bullish'], ['bearish', 'Bearish'], ['unusual', 'New big bets']],
     congress: [['all', 'All'], ['buy', 'Buys'], ['sell', 'Sells'], ['Senate', 'Senate'], ['House', 'House']],
     shorts: [['score', 'Squeeze score'], ['si', 'Most shorted'], ['up', 'Rising today'], ['big', 'Over $1B']] };
   const TITLES = { options: ['Big-money<br>options bets', 'options.json'], congress: ['Stock trades<br>by Congress', 'congress.json'], shorts: ['Most shorted<br>squeeze watch', 'shorts.json'] };
