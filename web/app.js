@@ -544,6 +544,7 @@ function renderDetail() {
       const call = an ? (() => { const sb = +ra.strong_buy || 0, b = +ra.buy || 0, hd = +ra.hold || 0, sl = (+ra.sell || 0) + (+ra.under_perform || 0); const sc = (sb * 2 + b - sl * 2) / an; return sc >= 1.3 ? ['Strong buy', P.up] : sc >= 0.5 ? ['Buy', P.up] : sc > -0.5 ? ['Hold', P.am] : ['Sell', P.dn]; })() : null;
       const tgm = tg && +tg.mean ? +tg.mean : null;
       const bx = (lab, val, sub, cls, attr) => '<div class="bnB' + (cls ? ' ' + cls : '') + '"' + (attr || '') + '><span>' + lab + '</span><b>' + val + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</div>';
+      if (window.R3) h += R3.card(sym, d, cp);
       h += '<div class="bento">' +
         (an || tgm ? '<button class="bnB bnAn" data-dtab="analysis"><span>Analysts' + (an ? ' · ' + an : '') + ' ›</span><b style="color:' + (call ? call[1] : P.txt) + '">' + (call ? call[0] : '—') + '</b>' + (tgm ? '<small>Avg target <b>$' + px(tgm) + '</b>' + (cp ? ' <em style="color:' + (tgm >= cp ? P.up : P.dn) + '">' + (tgm >= cp ? '$' + px(tgm - cp) + ' above today' : '$' + px(cp - tgm) + ' below today') + ' (' + pctS((tgm / cp - 1) * 100) + ')</em>' : '') + '</small>' : '') + '</button>' : '') +
         bx('Market cap', mc ? money(mc) : '—') + bx('P/E', sn && +sn.pe_ratio > 0 ? (+sn.pe_ratio).toFixed(1) : '—', sn && +sn.pe_ratio > 0 ? 'Price ÷ yearly profit' : 'No profit yet') +
@@ -564,6 +565,7 @@ function renderDetail() {
   } else {
     let A = '';
     if (window.VERD) A += VERD.card(sym, main);
+  if (window.R3) A += R3.breakdown(sym, d, main ? main.price : 0);
   // analysts
   const t = d.tgt, ra = d.rat;
   if ((t && t.high) || (ra && +ra.number)) {
@@ -917,6 +919,7 @@ const RF = [['all', 'All'], ['up', 'Upgrades'], ['down', 'Downgrades'], ['init',
 function renderRatings() {
   setHTML($('ratSeg'), intelSeg('ratings'));
   const R = file('ratings.json'); const box = $('ratList');
+  if (window.R3) { let tb = $('r3tabs'); if (!tb) { tb = document.createElement('div'); tb.id = 'r3tabs'; $('ratF').parentNode.insertBefore(tb, $('ratF')); } setHTML(tb, R3.tabs()); const rt = S.ratTab || 'latest'; $('ratF').style.display = rt === 'latest' ? '' : 'none'; if ($('rWeek')) $('rWeek').style.visibility = rt === 'latest' ? '' : 'hidden'; if (rt !== 'latest') { box.innerHTML = R3.list(rt); return; } }
   $('ratF').innerHTML = RF.map((x) => '<button class="chip' + (S.ratF === x[0] ? ' on' : '') + '" data-ratf="' + x[0] + '">' + x[1] + '</button>').join('');
   if (!ready(R)) { box.innerHTML = '<div class="empty"><b>Loading ratings…</b></div>'; return; }
   $('rWeek').textContent = R.ratings.length + ' calls · ' + R.week;
@@ -1839,7 +1842,7 @@ function addMean() {
   const sc = v.querySelector('.scroller') || v; let el = v.querySelector('.meanL');
   if (!el) { el = document.createElement('div'); el.className = 'meanL'; }
   const ref = sc.querySelector(':scope > .head'); if (ref) { if (el.previousSibling !== ref) ref.parentNode.insertBefore(el, ref.nextSibling); } else if (!el.parentNode) { const ptr = sc.querySelector(':scope > .ptr'); sc.insertBefore(el, ptr ? ptr.nextSibling : sc.firstChild); }
-  const h = '<b>What this means:</b> ' + txt; if (el.__h !== h) { el.innerHTML = h; el.__h = h; }
+  const h = '<b>What this means:</b> ' + (t === 'ratings' && S.ratTab && S.ratTab !== 'latest' && window.R3 && R3.mean ? R3.mean : txt); if (el.__h !== h) { el.innerHTML = h; el.__h = h; }
 }
 
 document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-smode]'); if (!b) return; S.secMode = b.dataset.smode; render(); });
