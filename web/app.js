@@ -594,7 +594,7 @@ function loadSectors() {
 }
 function heatColor(p) { // p in %: solid fills dark enough for white labels in both themes
   const a = Math.pow(Math.min(1, Math.abs(p) / 3), 0.8), L = window.JT_THEME === 'light';
-  const n = L ? [107, 118, 133] : [43, 56, 71], t = p >= 0 ? (L ? [15, 122, 73] : [19, 138, 85]) : (L ? [197, 48, 48] : [192, 57, 50]);
+  const n = L ? [96, 118, 160] : [34, 52, 84], t = p >= 0 ? (L ? [37, 99, 235] : [46, 104, 230]) : (L ? [30, 41, 74] : [12, 18, 36]); // blues: brighter = up more, deeper = down more; green/red stays on the numbers
   return 'rgb(' + n.map((v, i) => Math.round(v + (t[i] - v) * a)).join(',') + ')';
 }
 function squarify(items, x, y, w, h) { // items: [{v}] sorted desc; returns rects
@@ -625,7 +625,7 @@ function renderSectors() {
   const items = list.map((s) => ({ id: s.id, name: s.name, p: +s.change_ratio * 100, v: Math.sqrt(+s.market_value), adv: +s.advanced, dec: +s.declined })).sort((a, b) => b.v - a.v);
   const rects = squarify(items, 0, 0, W, H);
   map.style.height = H + 'px';
-  map.innerHTML = rects.map((r) => { const small = r.w < 70 || r.h < 44; return '<button class="cell" data-sector="' + r.id + '" style="left:' + r.x.toFixed(1) + 'px;top:' + r.y.toFixed(1) + 'px;width:' + (r.w - 3).toFixed(1) + 'px;height:' + (r.h - 3).toFixed(1) + 'px;background:' + heatColor(r.p) + '" aria-label="' + esc(r.name) + ' ' + pctS(r.p) + '">' + (r.w > 46 && r.h > 30 ? '<b' + (small ? ' class="s"' : '') + '>' + esc(shortName(r.name)) + '</b><span>' + pctS(r.p) + '</span>' : '') + '</button>'; }).join('');
+  map.innerHTML = rects.map((r) => { const small = r.w < 70 || r.h < 44; return '<button class="cell" data-sector="' + r.id + '" style="left:' + r.x.toFixed(1) + 'px;top:' + r.y.toFixed(1) + 'px;width:' + (r.w - 3).toFixed(1) + 'px;height:' + (r.h - 3).toFixed(1) + 'px;background:' + heatColor(r.p) + '" aria-label="' + esc(r.name) + ' ' + pctS(r.p) + '">' + (r.w > 46 && r.h > 30 ? '<b' + (small ? ' class="s"' : '') + '>' + esc(shortName(r.name)) + '</b><span style="color:' + (r.p >= 0 ? dPal().up : dPal().dn) + ';font-weight:650">' + pctS(r.p) + '</span>' : '') + '</button>'; }).join('');
   // seesaw: biggest winners vs losers this period
   const sorted = items.slice().sort((a, b) => b.p - a.p); const win = sorted.slice(0, 6), lose = sorted.slice(-6).reverse();
   const mx = Math.max.apply(null, sorted.map((s) => Math.abs(s.p)).concat([0.5]));
