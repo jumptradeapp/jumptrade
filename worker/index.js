@@ -50,6 +50,19 @@ async function yget(path, { crumb = false, base = Y2 } = {}) {
   }
 }
 
+// Article photo for a story whose own page has none: the same headline on Yahoo Finance (word match), else that stock's newest Yahoo story photo from the last day
+async function yThumb(title, sym) {
+  sym = String(sym || '').toUpperCase().replace(/[^A-Z.\-]/g, '').slice(0, 6); if (!sym) return null;
+  let d; try { d = await yget('/v1/finance/search?q=' + encodeURIComponent(sym) + '&quotesCount=0&newsCount=20', { base: Y1 }); } catch (e) { return null; }
+  const pic = (n) => { const rs = (n && n.thumbnail && n.thumbnail.resolutions) || []; const ok = rs.filter((r) => r.url && r.width >= 120).sort((a, b) => a.width - b.width); const m = ok.find((r) => r.width >= 280) || ok[ok.length - 1]; return m ? m.url : null; };
+  const W = (t) => new Set(String(t || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length > 3));
+  const tw = W(title); const news = (d && d.news) || []; let best = null, bs = 0;
+  news.forEach((n) => { if (!pic(n)) return; const nw = W(n.title); let k = 0; tw.forEach((w) => { if (nw.has(w)) k++; }); const sc = tw.size ? k / Math.min(tw.size, nw.size || 1) : 0; if (sc > bs) { bs = sc; best = n; } });
+  if (best && bs >= 0.45) return pic(best);
+  const now = Date.now() / 1000; const own = news.find((n) => pic(n) && (n.relatedTickers || []).indexOf(sym) >= 0 && now - (n.providerPublishTime || 0) < 86400);
+  return own ? pic(own) : null;
+}
+
 // ---------- shape converters (Yahoo -> the app's format) ----------
 function snapOf(q) {
   const pre = q.marketState === 'PRE' || q.marketState === 'PREPRE';
@@ -1121,15 +1134,16 @@ export default {
     if (url.pathname === '/api/health') return json({ ok: true, provider: 'yahoo', time: new Date().toISOString() });
     if (url.pathname === '/api/nimg') { // small article thumbnail: the story's own preview image (og:image), proxied and cached
       const rf = req.headers.get('referer') || ''; if (rf && !/^https:\/\/(www\.)?jumptrade\.app\//.test(rf)) return new Response('', { status: 403 }); const u = url.searchParams.get('u') || ''; if (!/^https:\/\/[^\s]{8,600}$/.test(u)) return new Response('', { status: 400 });
-      const ck = new Request('https://cache.jumptrade/nimg/' + encodeURIComponent(u)); const hit = await caches.default.match(ck); if (hit) return hit;
+      const ck = new Request('https://cache.jumptrade/nimg/' + encodeURIComponent(u)); const hit = url.searchParams.get('j') ? null : await caches.default.match(ck); if (hit) return hit;
       const miss = () => { const m = new Response('', { status: 404, headers: { 'cache-control': 'public, max-age=21600' } }); ctx.waitUntil(caches.default.put(ck, m.clone())); return m; };
       try {
-        const pg = await fetch(u, { headers: { 'user-agent': NUA, accept: 'text/html' }, redirect: 'follow', cf: { cacheTtl: 3600 } }); if (!pg.ok) return miss();
-        const html = (await pg.text()).slice(0, 300000);
-        if (url.searchParams.get('dbg')) return json({ st: pg.status, len: html.length, imgs: [...html.matchAll(/<img[^>]{0,400}/gi)].map((m) => m[0].slice(0, 300)).slice(0, 8), urls: [...html.matchAll(/https?:[^"'\s)]+\.(?:jpe?g|png|webp)[^"'\s)]*/gi)].map((m) => m[0]).slice(0, 8), head: html.slice(0, 600) });
+        const pg = await fetch(u, { headers: { 'user-agent': NUA, accept: 'text/html' }, redirect: 'follow', cf: { cacheTtl: 3600 } });
+        const html = pg.ok ? (await pg.text()).slice(0, 300000) : '';
         let im = (html.match(/<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)(?::src)?["'][^>]*content=["']([^"']+)["']/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["'](?:og:image|twitter:image)["']/i) || [])[1];
         if (!im) { const imgs = [...html.matchAll(/<img[^>]+src=["']([^"']+\.(?:jpe?g|png|webp)[^"']*)["']/gi)].map((m) => m[1]).filter((x) => !/logo|icon|avatar|sprite|pixel|badge/i.test(x)); im = imgs[0]; }
+        if (!im) im = await yThumb(url.searchParams.get('t') || '', url.searchParams.get('s') || ''); // the story page has no photo (Webull/Benzinga): find the same story on Yahoo Finance and use its photo
         if (!im) return miss(); im = new URL(im.replace(/&amp;/g, '&'), pg.url || u).href;
+        if (url.searchParams.get('j')) return json({ im }); // check which photo a story gets
         const r = await fetch(im, { headers: { 'user-agent': NUA, referer: u }, cf: { cacheTtl: 86400 } }); const ct = r.headers.get('content-type') || '';
         if (!r.ok || !/image/.test(ct)) return miss(); const buf = await r.arrayBuffer(); if (buf.byteLength < 2000 || buf.byteLength > 3000000) return miss();
         const res = new Response(buf, { headers: { 'content-type': ct, 'cache-control': 'public, max-age=86400' } }); ctx.waitUntil(caches.default.put(ck, res.clone())); return res;
