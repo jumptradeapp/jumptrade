@@ -1622,7 +1622,7 @@ if (quickResume) { const sp = $('splash'); if (sp) { sp.dataset.gone = '1'; sp.s
 const markSeen = () => { try { localStorage.setItem('jt.seen', String(Date.now())); localStorage.setItem('jt.vis', document.visibilityState === 'hidden' ? 'hidden' : 'visible'); } catch (e) {} };
 markSeen(); setInterval(() => { if (document.visibilityState !== 'hidden') markSeen(); }, 4000);
 document.addEventListener('visibilitychange', markSeen);
-let splashMin = quickResume; setTimeout(() => { splashMin = true; render(); }, 1100);
+let splashMin = quickResume; setTimeout(() => { splashMin = true; render(); }, 1500);
 /* resume: a reload within 15 min puts you back where you were (open portfolio, strategy or stock included); a fresh launch starts on Top Gainers */
 function saveView() {
   const f = S.fund; const fv = !f ? null : f.strat ? { k: 'strat', id: f.strat } : f.mine ? { k: 'mine', id: f.mine } : f.model ? { k: 'model', id: (f.key || '').slice(6) } : f.plan ? { k: 'plan' } : f.journal ? { k: 'journal' } : f.slug ? { k: 'fund', id: f.slug } : null;
