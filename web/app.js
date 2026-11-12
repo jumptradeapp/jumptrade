@@ -917,10 +917,10 @@ function renderRatings() {
 }
 
 /* ---------- catalysts ---------- */
-const CF = [['all', 'All'], ['earnings', 'Earnings'], ['fda', 'FDA'], ['macro', 'Economy'], ['ipo', 'IPOs'], ['other', 'Other']];
+const CF = [['all', 'All'], ['earnings', 'Earnings'], ['fda', 'FDA'], ['ipo', 'IPOs'], ['other', 'Other']];
 function renderCatalysts() {
   setHTML($('catSeg'), intelSeg('catalysts'));
-  if (window.TODAY && $('calTop')) $('calTop').innerHTML = TODAY.renderCalendarTop();
+  if ($('calTop')) $('calTop').innerHTML = (S.catF === 'all' || S.catF === 'earnings') && window.ERN ? ERN.top() : ''; // new earnings page; the economic calendar is gone
   const C = file('catalysts.json'); const box = $('catList');
   $('catF').innerHTML = CF.map((x) => '<button class="chip' + (S.catF === x[0] ? ' on' : '') + '" data-catf="' + x[0] + '">' + x[1] + '</button>').join('');
   if (!ready(C)) { box.innerHTML = '<div class="empty"><b>Loading catalysts…</b></div>'; return; }
@@ -928,7 +928,7 @@ function renderCatalysts() {
   const items = [];
   (C.earnings.upcoming || []).forEach((e) => items.push({ date: e.date, kind: 'earnings', ticker: e.ticker, title: e.company + ' earnings', detail: (e.timing === 'BMO' ? 'Before open · ' : e.timing === 'AMC' ? 'After close · ' : e.timing ? e.timing + ' · ' : '') + (e.eps_est != null ? 'Expected profit/share $' + e.eps_est : '') + (e.rev_est_usd ? ' · Expected sales ' + money(e.rev_est_usd) : ''), impact: 'medium', url: e.source_url }));
   (C.catalysts || []).forEach((c) => { if (c.status === 'done') return; const t = (c.type || '').toLowerCase(); items.push({ date: c.date, kind: /fda|pdufa|adcom/.test(t) ? 'fda' : /macro|econ|fed|cpi|jobs/.test(t) ? 'macro' : /ipo/.test(t) ? 'ipo' : /earn/.test(t) ? 'earnings' : 'other', ticker: c.ticker, title: c.title, detail: c.detail, impact: c.impact, url: c.source_url, company: c.company }); });
-  const list = items.filter((x) => x.date >= today && (S.catF === 'all' || x.kind === S.catF)).sort((a, b) => a.date.localeCompare(b.date) || ((a.impact === 'high') ? -1 : 1));
+  const list = items.filter((x) => x.date >= today && x.kind !== 'macro' && (S.catF === 'all' ? x.kind !== 'earnings' : x.kind === S.catF && S.catF !== 'earnings')).sort((a, b) => a.date.localeCompare(b.date) || ((a.impact === 'high') ? -1 : 1));
   const K = { earnings: ['Earnings', '#8CB8E0'], fda: ['FDA', '#5EE0A0'], macro: ['Economy', '#F2C27A'], ipo: ['IPO', '#C3A8FF'], other: ['Event', '#C9D2E0'] };
   let h = '', last = '';
   list.slice(0, 120).forEach((x) => {
