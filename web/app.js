@@ -616,8 +616,11 @@ function squarify(items, x, y, w, h) { // items: [{v}] sorted desc; returns rect
   return out;
 }
 function renderSectors() {
+  const MODE = '<div class="segs thMode"><button class="seg' + (S.secMode !== 'sectors' ? ' on' : '') + '" data-smode="themes">Themes</button><button class="seg' + (S.secMode === 'sectors' ? ' on' : '') + '" data-smode="sectors">Sectors</button></div>';
+  if (S.secMode !== 'sectors' && window.TH) { TH.load(); setHTML($('perChips'), MODE); $('sFresh').textContent = TH.t ? 'Updated ' + ago(TH.t) : 'Loading…'; const m = $('treemap'); m.style.height = 'auto'; setHTML(m, TH.mapHTML()); if ($('seesaw')) $('seesaw').innerHTML = ''; return; }
+  if ($('treemap')) $('treemap').style.height = '';
   const P = S.sectorPeriod; const list = (S.sectors[P] || []).filter((s) => +s.market_value > 0);
-  setHTML($('perChips'), [['D1', 'Today'], ['D5', '5 days'], ['MO1', '1 month'], ['MO3', '3 months']].map((p) => '<button class="seg' + (p[0] === P ? ' on' : '') + '" data-per="' + p[0] + '">' + p[1] + '</button>').join(''));
+  setHTML($('perChips'), MODE + [['D1', 'Today'], ['D5', '5 days'], ['MO1', '1 month'], ['MO3', '3 months']].map((p) => '<button class="seg' + (p[0] === P ? ' on' : '') + '" data-per="' + p[0] + '">' + p[1] + '</button>').join(''));
   const newest = Math.max.apply(null, Object.keys(S.stamp).filter((k) => k.indexOf('s:') === 0).map((k) => S.stamp[k]).concat([0]));
   $('sFresh').textContent = newest ? 'Updated ' + ago(newest) : (mcp ? 'Loading…' : '');
   const map = $('treemap');
@@ -1822,7 +1825,7 @@ const MEAN = {
   insiders: 'executives buying or selling their own company’s stock. Buying with their own money is one of the strongest signs there is.',
   news: 'the stories moving stocks today, newest first. Each one shows the stock’s price and move.',
   catalysts: 'what’s coming up: earnings, FDA decisions and IPOs. Big moves often happen on these days.',
-  sectors: 'bigger box = bigger industry, brighter = up more. Tap a box to see the stocks in it.',
+  sectors: 'each box is a group of stocks, like Photonics or Drones. Brighter blue = up more today. Tap one to see its stocks.',
   ipos: 'companies about to go public, and the stocks that move with them.',
   ratings: 'what analysts are saying: upgrades, downgrades and price targets.',
   research: 'deep dives on themes and companies, in plain English.',
@@ -1838,3 +1841,5 @@ function addMean() {
   const ref = sc.querySelector(':scope > .head'); if (ref) { if (el.previousSibling !== ref) ref.parentNode.insertBefore(el, ref.nextSibling); } else if (!el.parentNode) { const ptr = sc.querySelector(':scope > .ptr'); sc.insertBefore(el, ptr ? ptr.nextSibling : sc.firstChild); }
   const h = '<b>What this means:</b> ' + txt; if (el.__h !== h) { el.innerHTML = h; el.__h = h; }
 }
+
+document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-smode]'); if (!b) return; S.secMode = b.dataset.smode; render(); });
