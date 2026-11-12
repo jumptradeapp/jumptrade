@@ -558,6 +558,9 @@ async function wbCall(env, tool, input) {
   if (WBCFG && WBCFG.need && !token) return null; // not approved yet -> fall back
   const { method, path, args } = wbArgs(tool, input || {});
   const r = method === 'GET' ? await wb.raw('GET', path, args, null, token) : await wb.raw('POST', path, {}, args, token);
+  if (r.status === 403 && tool === 'get_stock_snapshot' && args.overnight_required) { // this key isn't entitled to 24-hour quotes: retry without them, and don't take Webull offline for everyone
+    const a2 = Object.assign({}, args); delete a2.overnight_required; const r2 = await wb.raw('GET', path, a2, null, token);
+    if (r2.status === 200) { WBLAST = { tool, status: 403, note: 'overnight not entitled', t: Date.now() }; return { payload: wbShape(tool, r2.data, input || {}) }; } }
   if (r.status !== 200) { WBFAIL = Date.now() + 120000; WBLAST = { tool, status: r.status, data: typeof r.data === 'string' ? r.data.slice(0, 300) : r.data, t: Date.now() }; return null; }
   return { payload: wbShape(tool, r.data, input || {}) };
 }
@@ -1111,7 +1114,8 @@ export default {
       const r = await wbCall(env, 'get_stock_snapshot', { symbols: 'POAS,PLCE,NVDA,SMCI', category: 'US_STOCK', extend_hour_required: true, overnight_required: true }).catch((e) => ({ err: String(e) }));
       const a = r && r.payload ? (Array.isArray(r.payload) ? r.payload : r.payload.data || []) : null;
       const g = await wbCall(env, 'get_gainers_losers', { category: 'US_STOCK', rank_type: 'AFTER_MARKET', sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '100', page_index: '1' }).catch(() => null);
-      return json({ webull: !!r && !r.err, err: r && r.err, last: WBLAST && { tool: WBLAST.tool, status: WBLAST.status }, ah_count: g && g.payload && g.payload.data ? g.payload.data.length : null,
+      const r0 = await wbCall(env, 'get_stock_snapshot', { symbols: 'NVDA', category: 'US_STOCK', extend_hour_required: true }).catch(() => null);
+      return json({ webull_basic: !!r0, webull: !!r && !r.err, err: r && r.err, last: WBLAST && { tool: WBLAST.tool, status: WBLAST.status }, ah_count: g && g.payload && g.payload.data ? g.payload.data.length : null,
         rows: a ? a.map((x) => ({ s: x.symbol, ovn: x.ovn_price, ovnPct: x.ovn_change_ratio, ovnVol: x.ovn_volume, ovnT: x.ovn_last_trade_time, ext: x.extend_hour_last_price, keys: Object.keys(x).filter((k) => /ovn|overnight/i.test(k)) })) : null }); }
     if (url.pathname === '/api/health') return json({ ok: true, provider: 'yahoo', time: new Date().toISOString() });
     if (url.pathname.indexOf('/api/logo/') === 0) { // backup logos for tickers missing from the built-in set
