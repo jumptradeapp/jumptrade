@@ -1126,6 +1126,7 @@ export default {
       try {
         const pg = await fetch(u, { headers: { 'user-agent': NUA, accept: 'text/html' }, redirect: 'follow', cf: { cacheTtl: 3600 } }); if (!pg.ok) return miss();
         const html = (await pg.text()).slice(0, 300000);
+        if (url.searchParams.get('dbg')) return json({ st: pg.status, len: html.length, imgs: [...html.matchAll(/<img[^>]{0,400}/gi)].map((m) => m[0].slice(0, 300)).slice(0, 8), urls: [...html.matchAll(/https?:[^"'\s)]+\.(?:jpe?g|png|webp)[^"'\s)]*/gi)].map((m) => m[0]).slice(0, 8), head: html.slice(0, 600) });
         let im = (html.match(/<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)(?::src)?["'][^>]*content=["']([^"']+)["']/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["'](?:og:image|twitter:image)["']/i) || [])[1];
         if (!im) { const imgs = [...html.matchAll(/<img[^>]+src=["']([^"']+\.(?:jpe?g|png|webp)[^"']*)["']/gi)].map((m) => m[1]).filter((x) => !/logo|icon|avatar|sprite|pixel|badge/i.test(x)); im = imgs[0]; }
         if (!im) return miss(); im = new URL(im.replace(/&amp;/g, '&'), pg.url || u).href;
