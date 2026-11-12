@@ -86,6 +86,24 @@
     return h + '<p class="foot">% short = share of tradable stock sold short. Squeeze score (0–99) blends short interest as % of float, company size and today’s move: a heavily shorted stock that starts rising forces short sellers to buy back. High scores are high risk both ways. Short interest is reported twice a month; data as of ' + esc(md(D.updated)) + '. Not advice.</p>';
   }
 
+  // bar summary at the top of each Money page, with a plain-English "what this means"
+  window.mBars = function (cap, items, note) {
+    const mx = Math.max(1e-9, ...items.map((x) => Math.abs(x[1])));
+    return '<div class="mbx"><div class="mbCap">' + cap + '</div>' + items.map((x) => '<div class="mbR"' + (x[4] ? ' data-open="' + esc(x[4]) + '"' : '') + '><span class="mbL">' + (x[4] ? logoHTML(x[4], 20) : '') + x[0] + '</span><span class="mbT"><i style="width:' + Math.max(3, Math.round(Math.abs(x[1]) / mx * 100)) + '%;background:' + x[2] + '"></i></span><b>' + x[3] + '</b></div>').join('') + (note ? '<p class="mbN"><b>What this means:</b> ' + note + '</p>' : '') + '</div>';
+  };
+  function summary(tab, D) {
+    const P = dPal(); const M = (v) => v >= 1e6 ? '$' + (v / 1e6).toFixed(1) + 'M' : '$' + Math.round(v / 1e3) + 'K';
+    if (tab === 'options') { const R = D.rows || []; const bu = R.filter((r) => r.sentiment === 'bullish').reduce((a, r) => a + (+r.premium || 0), 0), be = R.filter((r) => r.sentiment === 'bearish').reduce((a, r) => a + (+r.premium || 0), 0);
+      const by = {}; R.forEach((r) => { by[r.ticker] = by[r.ticker] || { p: 0, b: 0 }; by[r.ticker].p += +r.premium || 0; by[r.ticker].b += (r.sentiment === 'bullish' ? 1 : r.sentiment === 'bearish' ? -1 : 0) * (+r.premium || 0); });
+      const top = Object.keys(by).sort((a, b) => by[b].p - by[a].p).slice(0, 5);
+      return mBars('BETS UP VS DOWN', [['Betting up', bu, P.up, M(bu)], ['Betting down', be, P.dn, M(be)]].concat(top.map((t) => [esc(t), by[t].p, by[t].b >= 0 ? P.up : P.dn, M(by[t].p), t])), bu > be * 1.2 ? 'Big traders put more money on stocks going up than down.' : be > bu * 1.2 ? 'Big traders put more money on stocks going down. Be careful chasing.' : 'Big money is split. No strong lean either way.'); }
+    if (tab === 'congress') { const T = D.trades || []; const b = T.filter((t) => t.action === 'buy').length, sl = T.length - b; const by = {}; T.filter((t) => t.action === 'buy').forEach((t) => { by[t.ticker] = (by[t.ticker] || 0) + 1; });
+      const top = Object.keys(by).sort((a, c) => by[c] - by[a]).slice(0, 5);
+      return mBars('CONGRESS: BOUGHT VS SOLD', [['Bought', b, P.up, b + ' trades'], ['Sold', sl, P.dn, sl + ' trades']], b > sl ? 'Members of Congress have been buying more than selling lately.' : 'Members of Congress have been selling more than buying lately.') + '<p class="mbN" style="margin:-4px 2px 12px">Trades are filed up to 45 days late, so treat this as a clue, not a signal.</p>'; }
+    if (tab === 'shorts') { const R = (D.rows || []).slice().sort((a, c) => c.si - a.si).slice(0, 6);
+      return mBars('MOST SHORTED', R.map((r) => [esc(r.ticker), r.si, r.si >= 40 ? '#F2C27A' : '#9DBEFF', r.si.toFixed(0) + '%', r.ticker]), 'These are the stocks most people are betting against. Good news can make them jump fast (a squeeze), but they often keep falling.'); }
+    return '';
+  }
   function render(tab) {
     setHTML($('xSeg'), intelSeg(tab));
     const t = TITLES[tab]; $('xSub').innerHTML = t[0];
@@ -93,7 +111,7 @@
     $('xF').innerHTML = XF[tab].map((x) => '<button class="chip' + (f === x[0] ? ' on' : '') + '" data-xf="' + x[0] + '">' + x[1] + '</button>').join('');
     const D = file(t[1]); const box = $('xList');
     if (!ready(D)) { box.innerHTML = '<div class="empty"><b>Loading…</b></div>'; return; }
-    box.innerHTML = tab === 'options' ? rOptions(D, f) : tab === 'congress' ? rCongress(D, f) : rShorts(D, f);
+    box.innerHTML = summary(tab, D) + (tab === 'options' ? rOptions(D, f) : tab === 'congress' ? rCongress(D, f) : rShorts(D, f));
   }
   document.addEventListener('click', (e) => {
     const c = e.target.closest && e.target.closest('[data-xf],[data-xmore]'); if (!c) return;
