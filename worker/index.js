@@ -486,7 +486,7 @@ const TTL = { get_pick_record: 600, get_playbook: 60, get_stock_unusual_activiti
 // deliberately NOT here: the owner's portfolio is never served to the public site.
 const WBMAP = {
   get_stock_snapshot: ['GET', '/market-data/stocks/snapshots/list', ['symbols', 'category', 'extend_hour_required', 'overnight_required']],
-  get_gainers_losers: ['GET', '/market-data/screeners/gainers-losers/list', ['category', 'rank_type', 'sort_by', 'direction']],
+  get_gainers_losers: ['GET', '/market-data/screeners/gainers-losers/list', ['category', 'rank_type', 'sort_by', 'direction', 'page_size', 'page_index']],
   get_most_active: ['GET', '/market-data/screeners/top-actives/list', ['category', 'rank_type', 'sort_by', 'direction']],
   get_stock_bars: ['POST', '/market-data/stocks/bars/list', ['symbols', 'category', 'timespan', 'count', 'real_time_required', 'trading_sessions', 'start_time', 'end_time']],
   get_stock_bars_single: ['GET', '/market-data/stocks/bars/get', ['symbol', 'category', 'timespan', 'count', 'real_time_required', 'trading_sessions', 'start_time', 'end_time']],
@@ -1060,7 +1060,7 @@ export default {
     if (Date.now() - UPK > 600000) { UPK = Date.now(); ctx.waitUntil(wbUpkeep(env).catch(() => {})); }
     if (req.method === 'OPTIONS') return new Response(null, { status: 204 }); // the app only calls its own server (same origin), so no cross-site access is granted
     // Private beta: while the site is locked, every data endpoint needs a signed-in account (cookie or bearer token).
-    if (url.pathname.startsWith('/api/') && !/^\/api\/(auth\/|admin\/|health$|logo\/|alertstate$|wbstate$|wb\/)/.test(url.pathname) && !(url.pathname === '/api/feedback' && req.method === 'GET')) {
+    if (url.pathname.startsWith('/api/') && !/^\/api\/(auth\/|admin\/|health$|ovncheck$|logo\/|alertstate$|wbstate$|wb\/)/.test(url.pathname) && !(url.pathname === '/api/feedback' && req.method === 'GET')) {
       // remembered per server for a minute so the 1-second price polling doesn't add storage lookups to every request
       if (!GATE_C || Date.now() - GATE_C.t > 60000) GATE_C = { t: Date.now(), g: (await vget(env, 'gate')) || { locked: true } };
       if (GATE_C.g.locked) {
@@ -1107,6 +1107,12 @@ export default {
     if (url.pathname === '/api/wbstate') { const s = (await vget(env, 'tokstate')) || {}; const cr = (await vget(env, 'cron')) || {}; const ck = (await vget(env, 'tokcheck')) || {}; const tk = (await vget(env, 'token')) || {}; return json({ token_status: tk.status || null, check_http: ck.http || null, check_msg: ck.body && (ck.body.msg || ck.body.message || ck.body.error_code || ck.body.status) || null, upkeep: cr.t ? new Date(cr.t).toISOString() : null, keys: cr.ready == null ? null : cr.ready, status: s.status || 'none', http: s.http || null, code: s.code || null, created: s.created ? new Date(s.created).toISOString() : null, checked: s.checked ? new Date(s.checked).toISOString() : null }); }
     if (url.pathname.startsWith('/api/wb/')) { const r = await wbRoutes(url, env); if (r) return r; }
     if (url.pathname === '/api/selftest') return json(await selftest());
+    if (url.pathname === '/api/ovncheck') { // public, no account data: does the price feed return 24-hour-market fields?
+      const r = await wbCall(env, 'get_stock_snapshot', { symbols: 'POAS,PLCE,NVDA,SMCI', category: 'US_STOCK', extend_hour_required: true, overnight_required: true }).catch((e) => ({ err: String(e) }));
+      const a = r && r.payload ? (Array.isArray(r.payload) ? r.payload : r.payload.data || []) : null;
+      const g = await wbCall(env, 'get_gainers_losers', { category: 'US_STOCK', rank_type: 'AFTER_MARKET', sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '100', page_index: '1' }).catch(() => null);
+      return json({ webull: !!r && !r.err, err: r && r.err, last: WBLAST && { tool: WBLAST.tool, status: WBLAST.status }, ah_count: g && g.payload && g.payload.data ? g.payload.data.length : null,
+        rows: a ? a.map((x) => ({ s: x.symbol, ovn: x.ovn_price, ovnPct: x.ovn_change_ratio, ovnVol: x.ovn_volume, ovnT: x.ovn_last_trade_time, ext: x.extend_hour_last_price, keys: Object.keys(x).filter((k) => /ovn|overnight/i.test(k)) })) : null }); }
     if (url.pathname === '/api/health') return json({ ok: true, provider: 'yahoo', time: new Date().toISOString() });
     if (url.pathname.indexOf('/api/logo/') === 0) { // backup logos for tickers missing from the built-in set
       const sym = decodeURIComponent(url.pathname.slice(10)).toUpperCase().replace(/[^A-Z.\-]/g, '').slice(0, 6);
