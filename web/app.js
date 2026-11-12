@@ -521,7 +521,7 @@ function renderDetail() {
   if (window.BN) { const A = BN.forSym(sym)[0]; if (A) h += BN.card(A, true); }
   if (window.BAS && main) h += BAS.sheet(sym, main, sn);
   // 3. the chart, right away
-  h += '<div class="chart2 c3">' + '<button class="fsBtn" data-fsopen><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Setup</button>' + chartSVG(d.bars, sn ? +sn.pre_close : null, window.ENR && S.chartTf !== 'D' ? ENR.levels(sym) : null) + '<div class="cfoot"><div class="tfs2">' + ['1m', '5m', 'D'].map((t) => '<button class="' + (t === S.chartTf ? 'on' : '') + '" data-tf="' + t + '">' + (t === 'D' ? '6M' : t === '5m' ? '2D' : '1D') + '</button>').join('') + '</div>' +
+  h += '<div class="chart2 c3">' + '<button class="laBtn" data-laanalyze="' + esc(sym) + '">✦ Analyze this chart</button>' + '<button class="fsBtn" data-fsopen><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Setup</button>' + chartSVG(d.bars, sn ? +sn.pre_close : null, window.ENR && S.chartTf !== 'D' ? ENR.levels(sym) : null) + '<div class="cfoot"><div class="tfs2">' + ['1m', '5m', 'D'].map((t) => '<button class="' + (t === S.chartTf ? 'on' : '') + '" data-tf="' + t + '">' + (t === 'D' ? '6M' : t === '5m' ? '2D' : '1D') + '</button>').join('') + '</div>' +
     '<div class="legend2">' + (S.chartTf !== 'D' ? '<span><i style="background:#C3A8FF;height:2px"></i>VWAP</span><span><b class="npin">N</b>News</span>' : '') + '<span><i style="background:#F2C27A"></i>Pre</span><span><i style="background:#8CB8E0"></i>After</span></div></div></div></div>';
   // 4. three actions
   h += '<div class="dActs"><button class="dAct pri' + (window.JC && JC.open[sym] ? ' on' : '') + '" data-jc="' + esc(sym) + '">✦ Before you jump</button><button class="dAct' + (wln ? ' on' : '') + '" data-pick="' + esc(sym) + '">' + (wln ? '★ Watching' : '☆ Watchlist') + '</button><button class="dAct" data-share="' + esc(sym) + '">↗ Share</button></div>';
@@ -565,6 +565,7 @@ function renderDetail() {
   } else {
     let A = '';
     if (window.VERD) A += VERD.card(sym, main);
+    if (window.LA) A += LA.forSym(sym);
   if (window.R3) A += R3.breakdown(sym, d, main ? main.price : 0);
   // analysts
   const t = d.tgt, ra = d.rat;
@@ -1427,12 +1428,12 @@ function delayedOverlay() {
 function goTab(t) {
   setTimeout(() => document.querySelectorAll('.view .intelseg .seg.on').forEach((el) => { const p = el.parentNode; p.scrollLeft = el.offsetLeft - p.clientWidth / 2 + el.offsetWidth / 2; }), 80);
   S.tab = t; if (isIntel(t)) S.lastIntel = t; if (isIdeas(t)) S.lastIdeas = t; try { history.replaceState(null, '', '#' + t); } catch (e) {}
-  ({ home: () => window.HOME && HOME.load(), research: () => window.RES && RES.load(), sectors: loadSectors, setups: () => { loadSyms(); loadDips(); }, dips: () => { loadSyms(); loadDips(); }, value: () => { loadSyms(); loadValue(); }, buzz: () => { loadSyms(); loadBuzz(); }, ipos: loadIpos, news: loadNews, ratings: () => file('ratings.json'), record: () => window.REC && REC.run(), compare: () => {}, patterns: () => {}, options: () => EXT.load('options'), congress: () => EXT.load('congress'), shorts: () => EXT.load('shorts'), watch: loadWatch, catalysts: () => file('catalysts.json'), portfolios: () => { loadModels(); file('funds.json'); } }[t] || (() => {}))();
-  const sc = document.querySelector('#v' + ({ home: 'Home', movers: 'Movers', dips: 'Dips', value: 'Value', buzz: 'Buzz', watch: 'Watch', news: 'News', ratings: 'Ratings', catalysts: 'Catalysts', ipos: 'Ipos', sectors: 'Sectors', portfolios: 'Port', leaders: 'Leaders', runners: 'Runners', build: 'Build', setups: 'Setups', insiders: 'Insiders', flow: 'Flow', research: 'Research', record: 'Record', compare: 'Compare', patterns: 'Patterns', options: 'Extra', congress: 'Extra', shorts: 'Extra' }[t]) + ' .scroller'); if (sc) sc.scrollTop = 0;
+  ({ home: () => window.HOME && HOME.load(), research: () => window.RES && RES.load(), sectors: loadSectors, setups: () => { loadSyms(); loadDips(); }, dips: () => { loadSyms(); loadDips(); }, value: () => { loadSyms(); loadValue(); }, buzz: () => { loadSyms(); loadBuzz(); }, ipos: loadIpos, news: loadNews, ratings: () => file('ratings.json'), record: () => window.REC && REC.run(), live: () => {}, compare: () => {}, patterns: () => {}, options: () => EXT.load('options'), congress: () => EXT.load('congress'), shorts: () => EXT.load('shorts'), watch: loadWatch, catalysts: () => file('catalysts.json'), portfolios: () => { loadModels(); file('funds.json'); } }[t] || (() => {}))();
+  const sc = document.querySelector('#v' + ({ home: 'Home', movers: 'Movers', dips: 'Dips', value: 'Value', buzz: 'Buzz', watch: 'Watch', news: 'News', ratings: 'Ratings', catalysts: 'Catalysts', ipos: 'Ipos', sectors: 'Sectors', portfolios: 'Port', leaders: 'Leaders', runners: 'Runners', build: 'Build', setups: 'Setups', insiders: 'Insiders', flow: 'Flow', research: 'Research', record: 'Record', live: 'Live', compare: 'Compare', patterns: 'Patterns', options: 'Extra', congress: 'Extra', shorts: 'Extra' }[t]) + ' .scroller'); if (sc) sc.scrollTop = 0;
 }
 
 /* ---------- ideas: value + buzz ---------- */
-const IDEAS = [['setups', 'All ideas'], ['leaders', 'Leaders'], ['buzz', 'Buzz'], ['insiders', 'Insiders'], ['record', 'Record']];
+const IDEAS = [['setups', 'All ideas'], ['live', 'Live analysis'], ['leaders', 'Leaders'], ['buzz', 'Buzz'], ['insiders', 'Insiders'], ['record', 'Record']];
 const isIdeas = (t) => IDEAS.some((x) => x[0] === t);
 function ideasSeg(active) { return IDEAS.map((x) => '<button class="seg' + (x[0] === active ? ' on' : '') + '" data-tab="' + x[0] + '">' + x[1] + '</button>').join(''); }
 const VQ = []; let vBusy = 0; const VMAX = 4;
@@ -1592,7 +1593,7 @@ function doRender() {
   document.body.dataset.tab = S.tab;
   const navOf = isIntel(S.tab) ? 'intel' : isIdeas(S.tab) ? 'dips' : S.tab; [['navHome', 'home'], ['navMovers', 'movers'], ['navDips', 'dips'], ['navWatch', 'watch'], ['navIntel', 'intel'], ['navPort', 'portfolios']].forEach((x) => { if (!$(x[0])) return; $(x[0]).classList.toggle('on', navOf === x[1]); $(x[0]).setAttribute('aria-current', navOf === x[1] ? 'page' : 'false'); });
   document.body.classList.toggle('collapsed', S.collapsed);
-  ({ home: () => window.HOME && HOME.render(), research: () => window.RES && RES.render(), setups: () => window.ENR && ENR.renderSetups(), leaders: () => TODAY.renderLeaders(), runners: () => window.RUN && RUN.render(), build: () => window.BLD && BLD.render(), insiders: () => TODAY.renderInsiders(), flow: () => TODAY.renderFlow(), movers: renderMovers, dips: renderDips, value: renderValue, buzz: renderBuzz, watch: renderWatch, news: renderNews, ratings: renderRatings, record: () => window.REC && REC.render(), compare: () => window.CMP && CMP.render(), patterns: () => window.PAT && PAT.render(), options: () => EXT.render('options'), congress: () => EXT.render('congress'), shorts: () => EXT.render('shorts'), catalysts: renderCatalysts, ipos: renderIpos, sectors: renderSectors, portfolios: renderPortfolios }[S.tab] || renderMovers)();
+  ({ home: () => window.HOME && HOME.render(), research: () => window.RES && RES.render(), setups: () => window.ENR && ENR.renderSetups(), leaders: () => TODAY.renderLeaders(), runners: () => window.RUN && RUN.render(), build: () => window.BLD && BLD.render(), insiders: () => TODAY.renderInsiders(), flow: () => TODAY.renderFlow(), movers: renderMovers, dips: renderDips, value: renderValue, buzz: renderBuzz, watch: renderWatch, news: renderNews, ratings: renderRatings, record: () => window.REC && REC.render(), live: () => { if ($('laSeg')) setHTML($('laSeg'), ideasSeg('live')); if (window.LA) LA.render(); }, compare: () => window.CMP && CMP.render(), patterns: () => window.PAT && PAT.render(), options: () => EXT.render('options'), congress: () => EXT.render('congress'), shorts: () => EXT.render('shorts'), catalysts: renderCatalysts, ipos: renderIpos, sectors: renderSectors, portfolios: renderPortfolios }[S.tab] || renderMovers)();
   if ($('dipSeg')) setHTML($('dipSeg'), ideasSeg('dips')); if ($('ipoSeg')) setHTML($('ipoSeg'), intelSeg('ipos')); if ($('secSeg')) setHTML($('secSeg'), intelSeg('sectors'));
   delayedOverlay();
   if (S.fund && !S.fund.creator) renderFund();
@@ -1728,7 +1729,7 @@ document.addEventListener('click', async (e) => {
 document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('#retryData')) { try { location.reload(); } catch (x) {} } });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { if (S.searchOpen) closeSearch(); else if (S.detail) closeDetail(); else if (S.fund) { S.fund = null; document.body.classList.remove('fund-open'); render(); } else if (S.sector) { S.sector = null; document.body.classList.remove('sector-open'); render(); } } });
 window.addEventListener('resize', render);
-window.addEventListener('hashchange', () => { const t = location.hash.slice(1); if (['home','movers','research','setups','runners','build','dips','leaders','value','buzz','insiders','watch','news','flow','record','compare','patterns','options','congress','shorts','ratings','catalysts','ipos','sectors','portfolios'].indexOf(t) >= 0 && t !== S.tab) { goTab(t); render(); } });
+window.addEventListener('hashchange', () => { const t = location.hash.slice(1); if (['home','movers','research','live','setups','runners','build','dips','leaders','value','buzz','insiders','watch','news','flow','record','compare','patterns','options','congress','shorts','ratings','catalysts','ipos','sectors','portfolios'].indexOf(t) >= 0 && t !== S.tab) { goTab(t); render(); } });
 
 /* ---------- boot ---------- */
 try { const l = localStorage.getItem('jt.layout2'); if (l === 'list' || l === 'tiles') S.layout = l; } catch (e) {}
@@ -1835,9 +1836,10 @@ const MEAN = {
   research: 'deep dives on themes and companies, in plain English.',
   compare: 'put stocks side by side to see which one looks better.',
   record: 'how our past signals actually did, in dollars per $1,000.',
+  live: 'snap any chart and we redraw it from real prices, with the buy, stop and target — and track how it plays out.',
   portfolios: 'ready-made portfolios and how $10,000 would have done.'
 };
-const MEANV = { movers: 'vMovers', setups: 'vSetups', runners: 'vRunners', dips: 'vDips', leaders: 'vLeaders', value: 'vValue', buzz: 'vBuzz', insiders: 'vInsiders', news: 'vNews', catalysts: 'vCatalysts', sectors: 'vSectors', ipos: 'vIpos', ratings: 'vRatings', research: 'vResearch', compare: 'vCompare', record: 'vRecord', portfolios: 'vPort' };
+const MEANV = { movers: 'vMovers', setups: 'vSetups', runners: 'vRunners', dips: 'vDips', leaders: 'vLeaders', value: 'vValue', buzz: 'vBuzz', insiders: 'vInsiders', news: 'vNews', catalysts: 'vCatalysts', sectors: 'vSectors', ipos: 'vIpos', ratings: 'vRatings', research: 'vResearch', compare: 'vCompare', record: 'vRecord', live: 'vLive', portfolios: 'vPort' };
 function addMean() {
   const t = S.tab, txt = MEAN[t], v = MEANV[t] && document.getElementById(MEANV[t]); if (!txt || !v) return;
   const sc = v.querySelector('.scroller') || v; let el = v.querySelector('.meanL');

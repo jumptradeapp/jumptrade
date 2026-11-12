@@ -964,6 +964,14 @@ async function aiRoutes(url, req, env) {
       const names = (Array.isArray(out.names) ? out.names : []).filter((n) => Array.isArray(n) && /^[A-Z.]{1,6}$/.test(String(n[0] || ''))).slice(0, 12).map((n) => [String(n[0]), /^(core|pick|spec)$/.test(n[1]) ? n[1] : 'pick', String(n[2] || '').slice(0, 90)]);
       return json({ payload: { name: String(out.name || q).slice(0, 60), blurb: String(out.blurb || '').slice(0, 200), names, etf: (Array.isArray(out.etf) ? out.etf : []).filter((x) => /^[A-Z]{2,5}$/.test(String(x))).slice(0, 2) } });
     }
+    if (body.kind === 'chart') { // Live Analysis: read a chart screenshot (ticker, timeframe, what's drawn). Numbers come from real prices afterwards, not from the picture.
+      const img = String(body.image || ''); const mt = /^image\/(png|jpeg|webp|gif)$/.test(body.mt) ? body.mt : 'image/jpeg';
+      if (img.length < 1000 || img.length > 2800000 || !/^[A-Za-z0-9+/=]+$/.test(img.slice(0, 200))) return json({ error: { code: 'bad_request', message: 'Bad image' } }, 400);
+      const out = await aiCall(env, 'You read stock chart screenshots for a trading app. Report only what is visible. Never guess a ticker you cannot read. Return JSON only.',
+        [{ type: 'image', source: { type: 'base64', media_type: mt, data: img } }, { type: 'text', text: 'Read this chart. Return {"ticker": the US stock ticker shown, or null if not readable, "tf": the bar timeframe, one of "1m","5m","15m","30m","1h","D","W", or null, "seen": up to 5 short plain notes on what is drawn (patterns, trendlines, indicators, labels), "levels": up to 6 prices that are drawn or labelled on the chart}.' }], 500);
+      const tf = ['1m', '5m', '15m', '30m', '1h', 'D', 'W'].indexOf(out.tf) >= 0 ? out.tf : null;
+      return json({ payload: { ticker: /^[A-Z.]{1,6}$/.test(String(out.ticker || '').toUpperCase()) ? String(out.ticker).toUpperCase() : null, tf, seen: (Array.isArray(out.seen) ? out.seen : []).map((x) => String(x).slice(0, 120)).slice(0, 5), levels: (Array.isArray(out.levels) ? out.levels : []).map(Number).filter((x) => x > 0 && isFinite(x)).slice(0, 6) } });
+    }
     if (body.kind === 'ask') {
       const prompt = String(body.prompt || '').slice(0, 30000); if (prompt.length < 10) return json({ error: { code: 'bad_request' } }, 400);
       const out = await aiCall(env, 'You are the stock scanner inside the jumptrade app. Only answer stock-market questions, using only the data in the message. Never give personal financial advice. Return JSON only.', prompt, 900);
@@ -1106,6 +1114,20 @@ export default {
       const k = msg.slice(0, 120); const hit = L.find((x) => x.k === k);
       if (hit) { hit.n = (hit.n || 1) + 1; hit.t = Date.now(); hit.name = who ? who.u.name : hit.name; } else L.unshift({ k, t: Date.now(), n: 1, msg, src: String(b.src || '').slice(0, 160), page: String(b.page || '').slice(0, 40), name: who ? who.u.name : '', ua: String(req.headers.get('user-agent') || '').slice(0, 140) });
       L.sort((x, y) => y.t - x.t); await vput(env, 'cerr', L.slice(0, 60)); return json({ ok: true });
+    }
+    if (url.pathname === '/api/ideas') { // members' ideas from Live Analysis: signed-in members post, everyone signed in reads
+      const L = (await vget(env, 'ideas')) || [];
+      if (req.method === 'GET') { const sym = (url.searchParams.get('sym') || '').toUpperCase(); return json({ payload: (sym ? L.filter((x) => x.sym === sym) : L).slice(0, 60) }, 200, { 'cache-control': 'no-store' }); }
+      const who = await sessionFrom(req, env, vget).catch(() => null); if (!who) return json({ error: { code: 'signin_required', message: 'Sign in to post ideas.' } }, 401);
+      const uid = String(who.u.id || who.u.email || who.u.name || '?'); const uh = (await crypto.subtle.digest('SHA-256', new TextEncoder().encode('jt' + uid))); const me = [...new Uint8Array(uh)].slice(0, 6).map((x) => x.toString(16).padStart(2, '0')).join('');
+      if (req.method === 'DELETE') { const id = url.searchParams.get('id') || ''; await vput(env, 'ideas', L.filter((x) => !(x.id === id && x.me === me))); return json({ ok: true }); }
+      if (req.method !== 'POST') return json({ error: { code: 'bad_request' } }, 400);
+      let b; try { b = JSON.parse((await req.text()).slice(0, 4000)); } catch (e) { return json({ error: { code: 'bad_request' } }, 400); }
+      const sym = String(b.sym || '').toUpperCase(); if (!/^[A-Z.]{1,6}$/.test(sym)) return json({ error: { code: 'bad_request' } }, 400);
+      const day = new Date().toISOString().slice(0, 10); if (L.filter((x) => x.me === me && new Date(x.t).toISOString().slice(0, 10) === day).length >= 20) return json({ error: { code: 'limit', message: '20 ideas a day max.' } }, 429);
+      const num = (v) => { v = +v; return v > 0 && isFinite(v) ? Math.round(v * 10000) / 10000 : null; };
+      const it = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), t: Date.now(), sym, tf: ['1m', '5m', '15m', '30m', '1h', 'D', 'W'].indexOf(b.tf) >= 0 ? b.tf : 'D', kind: ['buy', 'watch', 'avoid'].indexOf(b.kind) >= 0 ? b.kind : 'watch', e: num(b.e), st: num(b.st), tg: num(b.tg), price: num(b.price), note: String(b.note || '').replace(/\s+/g, ' ').trim().slice(0, 280), by: String(who.u.name || 'Member').split(' ')[0].slice(0, 24), me };
+      L.unshift(it); await vput(env, 'ideas', L.slice(0, 400)); return json({ payload: it });
     }
     if (url.pathname === '/api/feedback') { // beta feedback: testers POST, owner reads with the diagnostics key
       if (req.method === 'POST') { let b; try { b = JSON.parse((await req.text()).slice(0, 6000)); } catch (e) { return json({ error: { code: 'bad_request' } }, 400); }
