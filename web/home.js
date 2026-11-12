@@ -34,7 +34,7 @@
   };
   const CAPGO = { WATCHLIST: ' data-tab="watch"', 'YOUR POSITIONS': ' data-tab="watch"', 'TOP NEWS': ' data-tab="news"', 'TOP MOVERS': ' data-tab="movers"', 'TOP SETUPS': ' data-tab="dips"', DIPS: ' data-tab="dips"', TODAY: ' data-tab="catalysts"', 'THIS WEEK': ' data-tab="catalysts"' };
   const card = (cap, col, body, right, extra) => { const m = right && /<button class="hmr"([^>]*)>/.exec(right); const go = m ? m[1] : (CAPGO[cap] || ''); // tapping a card's title opens the same page as its "All ›" link
-    return '<div class="glass sec hm"' + (extra || '') + ' style="--c:' + col + '">' + '<div class="hmcap">' + (go ? '<button class="hmTitle"' + go + '>' + secCap(cap, col) + '</button>' : secCap(cap, col)) + (right || '') + '</div>' + body + '</div>'; };
+    return '<div class="glass sec hm' + (/^(TOP MOVERS|WATCHLIST|YOUR POSITIONS)$/.test(cap) ? ' hmFlat' : '') + '"' + (extra || '') + ' style="--c:' + col + '">' + '<div class="hmcap">' + (go ? '<button class="hmTitle"' + go + '>' + secCap(cap, col) + '</button>' : secCap(cap, col)) + (right || '') + '</div>' + body + '</div>'; };
   const li = (col, html) => '<div class="hmli"><i style="background:' + col + '"></i><span>' + html + '</span></div>';
   const ago2 = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 60 ? m + 'm' : m < 1440 ? Math.round(m / 60) + 'h' : Math.round(m / 1440) + 'd'; };
 
@@ -51,7 +51,13 @@
     const Hh = X.health(); const I = (TODAY && TODAY.idx) || {}; const hv = Hh ? X.HV[Hh.v] : null;
     const pre = /pre|over|after|closed/i.test(typeof view === 'function' ? view() : '');
     const ix = (s, lab) => { const r = I[s]; const up = r && r.pct != null ? r.pct >= 0 : null; return '<div class="mkI" data-open="' + s + '"><small>' + lab + '</small><b style="color:' + (up == null ? P.txt : up ? P.up : P.dn) + '">' + (r && r.pct != null ? pctS(r.pct) : '—') + '</b><em>' + (r && r.chg != null ? (r.chg >= 0 ? '+' : '−') + '$' + px(Math.abs(r.chg)) : '') + '</em></div>'; };
-    W[cur] = '<div class="glass sec hm mkStrip"' + (hv ? ' style="--c:' + hv[1] + '"' : '') + '><div class="hmcap">' + secCap(pre ? 'MARKET · ' + (typeof view === 'function' ? String(view()).toUpperCase() : '') : 'MARKET', hv ? hv[1] : P.mute) + (Hh && window.BAS && BAS.mood(Hh.fg) ? '<span class="mkMood" data-gl="mood" style="color:' + BAS.mood(Hh.fg)[1] + '">' + BAS.mood(Hh.fg)[0] + '</span>' : '') + (hv ? '<button class="mkReg" data-plan="1" style="color:' + hv[1] + ';border-color:' + hv[1] + '66;background:' + hv[1] + '14">' + hv[0] + ' ›</button>' : '') + '</div><div class="mkRow">' + ix('SPY', 'S&amp;P 500') + ix('QQQ', 'Nasdaq') + ix('IWM', 'Small caps') + '</div>' + (window.dayBar ? dayBar() : '') + '</div>';
+    { const pc = (s2) => (I[s2] && I[s2].pct != null ? I[s2].pct : null); const col = (v) => (v == null ? P.txt : v >= 0 ? P.up : P.dn); const sp = pc('SPY'), nq = pc('QQQ'), rt = pc('IWM');
+      const ic = (d2) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d2 + '</svg>';
+      W[cur] = '<div class="glass sec hm mkStrip"><div class="hxTop"><span class="hxL">S&amp;P 500 ' + (pre ? '· ' + ({ pre: 'Pre-market', after: 'After hours', overnight: '24-hour', closed: 'Closed' }[String(view())] || String(view())) : 'today') + '</span>' + (hv ? '<button class="mkReg hxReg" data-plan="1">' + hv[0] + ' ›</button>' : '') + '</div>' +
+        '<button class="hxN" data-open="SPY" style="color:' + col(sp) + '">' + (sp != null ? pctS(sp) : '—') + '</button>' +
+        '<div class="hxC"><button data-open="QQQ">Nasdaq <b style="color:' + col(nq) + '">' + (nq != null ? pctS(nq) : '—') + '</b></button><button data-open="IWM">Russell <b style="color:' + col(rt) + '">' + (rt != null ? pctS(rt) : '—') + '</b></button></div>' +
+        '<div class="nxBtns"><button data-orcopen="1">' + ic('<path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2"/>') + 'Ask Jump</button><button data-tab="live">' + ic('<path d="M4 17l5-5 4 4 7-8"/><path d="M14 8h6v6"/>') + 'Analyze</button><button data-tab="watch">' + ic('<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>') + 'Watchlist</button></div>' +
+        (window.dayBar ? dayBar() : '') + '</div>'; }
     // Jump check: any ticker, plus today's biggest movers
     if (window.JC) W.jc = JC.homeCard();
     // 2. top news

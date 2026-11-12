@@ -457,7 +457,7 @@ function chartSVG(bars, prev, lv) {
 function dPal() {
   const L = window.JT_THEME === 'light';
   return L ? { up: '#15965A', dn: '#D63B3B', am: '#B7791F', acc: '#2457E6', cy: '#0E9AAE', vi: '#6D5BD8', txt: '#14171C', mute: '#6B7280', trk: 'rgba(17,24,39,.09)', hub: '#14171C' }
-           : { up: '#66C99A', dn: '#EC9191', am: '#F2C27A', acc: '#4C8DFF', cy: '#3CC8DA', vi: '#A08CFF', txt: '#ECEBE8', mute: '#9AA2AB', trk: 'rgba(255,255,255,.08)', hub: '#ECEBE8' };
+           : { up: '#4ADE9B', dn: '#FF6B6B', am: '#F2C27A', acc: '#84B0E3', cy: '#3CC8DA', vi: '#95C7F0', txt: '#ECEBE8', mute: '#9AA2AB', trk: 'rgba(255,255,255,.08)', hub: '#ECEBE8' };
 }
 function secCap(label, c) { return '<div class="cap ci" style="--c:' + c + '">' + label + '</div>'; }
 function rangeBar(lab, lo, hi, cur) {
