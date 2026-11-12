@@ -1111,6 +1111,8 @@ export default {
     const url = new URL(req.url);
     CUR_ENV = env;
     if (Date.now() - UPK > 600000) { UPK = Date.now(); ctx.waitUntil(wbUpkeep(env).catch(() => {})); }
+    if (url.pathname === '/x/rotnow') { const last = await vget(env, 'rotrun').catch(() => null); if (last && Date.now() - last.t < 600000) return json({ wait: true, last }); const r = await rotationJob(env, ctx).catch((e) => ({ error: String(e && e.message || e) })); await vput(env, 'rotrun', Object.assign({ t: Date.now() }, r)); return json(r); }
+    if (url.pathname === '/rotation.json') { const R = await vget(env, 'rotation').catch(() => null); if (R && R.asOf) return json(R, 200, { 'cache-control': 'public, max-age=600' }); return env.ASSETS.fetch(req); }
     if (req.method === 'OPTIONS') return new Response(null, { status: 204 }); // the app only calls its own server (same origin), so no cross-site access is granted
     // Private beta: while the site is locked, every data endpoint needs a signed-in account (cookie or bearer token).
     if (url.pathname.startsWith('/api/') && !/^\/api\/(auth\/|admin\/|health$|ovncheck$|nimg$|logo\/|alertstate$|wbstate$|wb\/)/.test(url.pathname) && !(url.pathname === '/api/feedback' && req.method === 'GET')) {
@@ -1143,8 +1145,6 @@ export default {
       if (hit) { hit.n = (hit.n || 1) + 1; hit.t = Date.now(); hit.name = who ? who.u.name : hit.name; } else L.unshift({ k, t: Date.now(), n: 1, msg, src: String(b.src || '').slice(0, 160), page: String(b.page || '').slice(0, 40), name: who ? who.u.name : '', ua: String(req.headers.get('user-agent') || '').slice(0, 140) });
       L.sort((x, y) => y.t - x.t); await vput(env, 'cerr', L.slice(0, 60)); return json({ ok: true });
     }
-    if (url.pathname === '/x/rotnow') { const last = await vget(env, 'rotrun').catch(() => null); if (last && Date.now() - last.t < 600000) return json({ wait: true, last }); const r = await rotationJob(env, ctx).catch((e) => ({ error: String(e && e.message || e) })); await vput(env, 'rotrun', Object.assign({ t: Date.now() }, r)); return json(r); }
-    if (url.pathname === '/rotation.json') { const R = await vget(env, 'rotation').catch(() => null); if (R && R.asOf) return json(R, 200, { 'cache-control': 'public, max-age=600' }); return env.ASSETS.fetch(req); }
     if (url.pathname === '/api/ideas') { // members' ideas from Live Analysis: signed-in members post, everyone signed in reads
       const L = (await vget(env, 'ideas')) || [];
       if (req.method === 'GET') { const sym = (url.searchParams.get('sym') || '').toUpperCase(); return json({ payload: (sym ? L.filter((x) => x.sym === sym) : L).slice(0, 60) }, 200, { 'cache-control': 'no-store' }); }
