@@ -213,8 +213,11 @@ function loadMovers() {
   const v = view();
   unwatch('m:');
   if (v === 'overnight') {
-    watch('m:day', 'get_gainers_losers', { category: 'US_STOCK', rank_type: 'DAY_1', sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '60', page_index: '1' }, (p) => { S.lists.day = normRank(p && p.data); ovnSnap(); });
-    watch('m:ah', 'get_gainers_losers', { category: 'US_STOCK', rank_type: 'AFTER_MARKET', sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '40', page_index: '1' }, (p) => { S.lists.ah = normRank(p && p.data); ovnSnap(); });
+    /* there is no overnight ranking: gather every name likely to be moving overnight (today's gainers and losers, after-hours gainers and losers), then rank them by their real 24-hour-market quote */
+    watch('m:day', 'get_gainers_losers', { category: 'US_STOCK', rank_type: 'DAY_1', sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '100', page_index: '1' }, (p) => { S.lists.day = normRank(p && p.data); ovnSnap(); });
+    watch('m:dayl', 'get_gainers_losers', { category: 'US_STOCK', rank_type: 'DAY_1', sort_by: 'CHANGE_RATIO', direction: 'ASC', page_size: '50', page_index: '1' }, (p) => { S.lists.dayl = normRank(p && p.data); ovnSnap(); });
+    watch('m:ah', 'get_gainers_losers', { category: 'US_STOCK', rank_type: 'AFTER_MARKET', sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '100', page_index: '1' }, (p) => { S.lists.ah = normRank(p && p.data); ovnSnap(); });
+    watch('m:ahl', 'get_gainers_losers', { category: 'US_STOCK', rank_type: 'AFTER_MARKET', sort_by: 'CHANGE_RATIO', direction: 'ASC', page_size: '50', page_index: '1' }, (p) => { S.lists.ahl = normRank(p && p.data); ovnSnap(); });
   } else {
     const rt = SESS[v].rank;
     [1, 2].forEach((pg) => watch('m:p' + pg, 'get_gainers_losers', { category: 'US_STOCK', rank_type: rt, sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '100', page_index: String(pg) }, (p) => { S.lists['p' + pg] = normRank(p && p.data); }));
@@ -248,16 +251,20 @@ let ovnTimer = null;
 function ovnSnap() { // overnight: re-price today's movers with their 24-hour quotes
   clearTimeout(ovnTimer);
   ovnTimer = setTimeout(() => {
-    const syms = Array.from(new Set([].concat(S.lists.day || [], S.lists.ah || []).map((r) => r.sym).filter((s) => /^[A-Z.]{1,6}$/.test(s)))).slice(0, 100);
+    const syms = Array.from(new Set([].concat(S.lists.ah || [], S.lists.day || [], S.lists.ahl || [], S.lists.dayl || []).map((r) => r.sym).filter((s) => /^[A-Z.]{1,6}$/.test(s)))).slice(0, 300);
     if (!syms.length) return;
-    watch('m:ovn', 'get_stock_snapshot', { symbols: syms.join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: true }, (p) => { S.ovnSnap = (Array.isArray(p) ? p : []).map((x) => snapRow(x, 'overnight')); });
+    const parts = {}; for (let i = 0; i < syms.length; i += 100) { const k = 'm:ovn' + (i / 100);
+      watch(k, 'get_stock_snapshot', { symbols: syms.slice(i, i + 100).join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: true }, (p) => {
+        parts[k] = (Array.isArray(p) ? p : []).filter((x) => +x.ovn_price).map((x) => Object.assign(snapRow(x, 'overnight'), { ovnV: +x.ovn_volume || 0 }));
+        S.ovnSnap = [].concat.apply([], Object.keys(parts).map((j) => parts[j])); }); }
   }, 300);
 }
 function moverRows() {
   const v = view(); let rows;
   if (v === 'overnight') {
     const start = Date.now() - 9 * 3600000;
-    rows = (S.ovnSnap || []).filter((r) => r.ovnT > start && r.pct > -100);
+    rows = (S.ovnSnap || []).filter((r) => r.ovnT > start && r.pct > -100 && r.ovnV >= 1000 && r.ovnV * r.price >= 5000); // real overnight trading only: at least 1,000 shares and $5k traded
+    S.ovnFb = 0; if (!rows.length && S.ovnSnap && (S.lists.ah || []).length) { rows = S.lists.ah; S.ovnFb = 1; } // no 24-hour quotes available: show the after-hours board rather than an empty page
   } else { rows = [].concat(S.lists.p1 || [], S.lists.p2 || []); if (!rows.length) return []; } // no gainers list yet: show loading, never a stand-in list of big caps
   const seen = {}; const out = [];
   const big = v === 'overnight' ? (S.large || []).filter((r) => r.ovnT > Date.now() - 9 * 3600000) : (S.large || []); // overnight: only real 24-hour quotes, never regular-session prices
@@ -288,6 +295,7 @@ function rankedRows() {
   S.held = false; S.order = ids; return rows;
 }
 function renderMovers() {
+  const XI = ['pre', 'after', 'overnight'].indexOf(view()) >= 0 ? view() : ''; // sun / moon on every price that isn't a regular-session price
   loadSyms(); // names for tiles and rows
   if (window.TODAY) TODAY.loadMoverSig(moverRows());
   const v = view(), s = SESS[S.auto], vs = SESS[v];
@@ -301,7 +309,7 @@ function renderMovers() {
     (S.manual ? '<button class="chip ghost" data-sess="auto">Auto</button>' : '');
   setHTML($('caps'), CAPS.map((c) => '<button role="tab" aria-selected="' + (c[0] === S.cap) + '" class="seg' + (c[0] === S.cap ? ' on' : '') + '" data-cap="' + c[0] + '">' + c[1] + '</button>').join(''));
   const rows = rankedRows(); rowsCache = rows; haltCheck(rows); loadMoverWhy();
-  $('note').textContent = S.held ? '❚❚ ORDER PAUSED WHILE YOU SCROLL' : (rows.length + ' MOVERS · ' + (v === 'overnight' ? 'TODAY’S MOVERS IN 24H TRADING' : vs.name.toUpperCase() + ((v === 'pre' || v === 'after') ? ' · FROM TOP GAINERS + LARGE CAPS' : '')));
+  $('note').textContent = S.held ? '❚❚ ORDER PAUSED WHILE YOU SCROLL' : (rows.length + ' MOVERS · ' + (v === 'overnight' ? (S.ovnFb ? 'AFTER-HOURS PRICES · 24H QUOTES NOT IN YET' : 'RANKED BY 24-HOUR MARKET MOVE SINCE THE 4PM CLOSE') : vs.name.toUpperCase() + ((v === 'pre' || v === 'after') ? ' · FROM TOP GAINERS + LARGE CAPS' : '')));
   $('layTiles').classList.toggle('on', S.layout === 'tiles'); $('layList').classList.toggle('on', S.layout === 'list');
   const box = $('grid');
   if (window.TODAY && $('mvTop')) $('mvTop').innerHTML = TODAY.healthBar();
@@ -346,7 +354,7 @@ function renderMovers() {
     } else {
       el.className = 'card row' + (i === 0 ? ' rfirst' : '') + (i === rows.length - 1 ? ' rlast' : '') + (el.classList.contains('fadein') ? ' fadein' : ''); el.style.width = W + 'px'; el.style.height = rowH + 'px'; el.style.left = '0px'; el.style.top = i * rowH + 'px';
       el.innerHTML = logoHTML(r.sym, 34) + '<span class="rn"><b>' + esc(r.sym) + ' ' + (isHalted(r.sym) ? HALT_CHIP : (isFresh(r.sym) ? FRESH_CHIP : '') + (window.TODAY ? TODAY.chip(r) : '')) + '</b><small>' + whyLine(r.sym, cleanName(symName(r.sym) || r.name || '')) + '</small></span>' +
-        '<span class="rp tvp"><b style="' + (flash ? 'background:' + flash : '') + '">$' + px(r.price) + '</b><small style="color:' + col + '">' + (dS(r.chg, r.pct, r.price) || '') + ' <i>' + pctS(r.pct) + '</i></small></span>';
+        '<span class="rp tvp"><b style="' + (flash ? 'background:' + flash : '') + '">' + (XI ? sessIcon(XI, 13) + ' ' : '') + '$' + px(r.price) + '</b><small style="color:' + col + '">' + (dS(r.chg, r.pct, r.price) || '') + ' <i>' + pctS(r.pct) + '</i></small></span>';
     }
     el.setAttribute('aria-label', r.sym + ' ' + px(r.price) + ' ' + pctS(r.pct));
     if (flash) setTimeout(() => { const t = el.querySelector('.tp,.rp b'); if (t) t.style.background = ''; }, 700);

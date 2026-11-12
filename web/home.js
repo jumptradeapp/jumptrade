@@ -32,7 +32,9 @@
     if (typeof loadDips === 'function' && !Object.keys(S.dips || {}).length && !H.dk) { H.dk = 1; setTimeout(loadDips, 300); }
     if (window.REC && !REC.res && !H.rk) { H.rk = 1; setTimeout(() => REC.run(), 12000); }
   };
-  const card = (cap, col, body, right, extra) => '<div class="glass sec hm"' + (extra || '') + ' style="--c:' + col + '">' + '<div class="hmcap">' + secCap(cap, col) + (right || '') + '</div>' + body + '</div>';
+  const CAPGO = { WATCHLIST: ' data-tab="watch"', 'YOUR POSITIONS': ' data-tab="watch"', 'TOP NEWS': ' data-tab="news"', 'TOP MOVERS': ' data-tab="movers"', 'TOP SETUPS': ' data-tab="dips"', DIPS: ' data-tab="dips"', TODAY: ' data-tab="catalysts"', 'THIS WEEK': ' data-tab="catalysts"' };
+  const card = (cap, col, body, right, extra) => { const m = right && /<button class="hmr"([^>]*)>/.exec(right); const go = m ? m[1] : (CAPGO[cap] || ''); // tapping a card's title opens the same page as its "All ›" link
+    return '<div class="glass sec hm"' + (extra || '') + ' style="--c:' + col + '">' + '<div class="hmcap">' + (go ? '<button class="hmTitle"' + go + '>' + secCap(cap, col) + '</button>' : secCap(cap, col)) + (right || '') + '</div>' + body + '</div>'; };
   const li = (col, html) => '<div class="hmli"><i style="background:' + col + '"></i><span>' + html + '</span></div>';
   const ago2 = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 60 ? m + 'm' : m < 1440 ? Math.round(m / 60) + 'h' : Math.round(m / 1440) + 'd'; };
 
