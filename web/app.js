@@ -310,7 +310,7 @@ function renderMovers() {
   setHTML($('caps'), CAPS.map((c) => '<button role="tab" aria-selected="' + (c[0] === S.cap) + '" class="seg' + (c[0] === S.cap ? ' on' : '') + '" data-cap="' + c[0] + '">' + c[1] + '</button>').join(''));
   const rows = rankedRows(); rowsCache = rows; haltCheck(rows); loadMoverWhy();
   if ($('mvTop3')) { const P3 = dPal(); const t3 = S.layout === 'tiles' ? [] : rows.slice(0, 3); setHTML($('mvTop3'), t3.map((r, i) => '<button class="t3" data-open="' + esc(r.sym) + '"><em>#' + (i + 1) + '</em>' + logoHTML(r.sym, 30) + '<b class="s">' + esc(r.sym) + '</b><small class="n">' + esc(cleanName(symName(r.sym) || r.name || '')) + '</small><b class="p">$' + px(r.price) + '</b><small class="c" style="color:' + (r.pct >= 0 ? P3.up : P3.dn) + '">' + mvS(r.pct, r.price, r.chg) + '</small></button>').join('')); }
-  $('note').textContent = S.held ? '❚❚ ORDER PAUSED WHILE YOU SCROLL' : (rows.length + ' MOVERS · ' + (v === 'overnight' ? (S.ovnFb ? 'SHOWING AFTER-HOURS PRICES FOR NOW' : 'RANKED BY 24-HOUR MARKET MOVE SINCE THE 4PM CLOSE') : vs.name.toUpperCase() + ((v === 'pre' || v === 'after') ? ' · FROM TOP GAINERS + LARGE CAPS' : '')));
+  $('note').textContent = S.held ? 'Order paused while you scroll' : (rows.length + ' stocks, ' + (v === 'overnight' ? (S.ovnFb ? 'showing after-hours prices until 24-hour quotes come in' : 'ranked by their move since the 4 PM close') : 'ranked by ' + String(vs.name).toLowerCase() + ' gain'));
   $('layTiles').classList.toggle('on', S.layout === 'tiles'); $('layList').classList.toggle('on', S.layout === 'list');
   const box = $('grid');
   if (window.TODAY && $('mvTop')) $('mvTop').innerHTML = TODAY.healthBar();

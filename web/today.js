@@ -80,7 +80,7 @@
     const v = sc >= 1.5 ? 'on' : sc <= -1 ? 'off' : 'caution';
     return { v: v, spx: spx, s200: s200, s50: s50, d200: (spx / s200 - 1) * 100, br: br, fg: fg, grade: grade };
   }
-  const HV = { on: ['RISK-ON', '#66C99A', 'Trend and breadth are with you. Normal position sizes, and breakouts tend to work.'], caution: ['CAUTION', '#F2C27A', 'Mixed signals. Trade smaller, take profits quicker, favor only the best setups.'], off: ['RISK-OFF', '#E07B7B', 'The tide is going out. Size down, avoid chasing breakouts, cash is a position. Dip buys need tight stops.'] };
+  const HV = { on: ['Risk-on', '#66C99A', 'Trend and breadth are with you. Normal position sizes, and breakouts tend to work.'], caution: ['Caution', '#F2C27A', 'Mixed signals. Trade smaller, take profits quicker, favor only the best setups.'], off: ['Risk-off', '#E07B7B', 'The tide is going out. Size down, avoid chasing breakouts, cash is a position. Dip buys need tight stops.'] };
   T.healthBar = function () {
     loadHealth(); const H = health();
     if (!H) return live() ? '<button class="health" data-plan="1"><span class="hdot" style="background:#5B6676"></span><b>MARKET</b><span class="hbits">Reading the market…</span><span class="hgo">Game plan ›</span></button>' : '';

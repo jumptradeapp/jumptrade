@@ -325,7 +325,7 @@
   const ENR = window.ENR;
   const EX = ['Small caps up 20% on heavy volume with news', 'Breakouts near 52-week highs', 'Which movers are fading?', 'Dips with the best reward-to-risk', 'Biggest movers on my watchlist'];
   ENR.askUI = function () {
-    return '<div class="askc"><div class="cap ci" style="--c:#3B7BFF">ASK JUMP</div><p class="small" style="margin:4px 0 10px">Type a question in plain English, or try one:</p>' +
+    return '<div class="askc"><div class="cap ci" style="--c:#3B7BFF">Ask Jump</div><p class="small" style="margin:4px 0 10px">Type a question in plain English, or try one:</p>' +
       EX.map((x) => '<button class="askx" data-ask="' + esc(x) + '">' + esc(x) + ' <span>›</span></button>').join('') + '</div>';
   };
   ENR.askRow = function (q) { return '<button class="askrow" data-ask="' + esc(q) + '"><span class="aki">✦</span><span><b>Ask Jump</b><small>“' + esc(q) + '”</small></span><span>›</span></button>'; };
@@ -340,7 +340,7 @@
     return { session: S.sess || '', movers: mv, dip_radar: dips, my_watchlists: wl };
   }
   ENR.ask = async function (q) {
-    const box = $('results'); ENR.askRes = { q: q, html: '<div class="askc"><div class="cap ci" style="--c:#3B7BFF">ASK JUMP</div><p class="small" style="margin-top:6px">Reading today’s data for “' + esc(q) + '”…</p><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>' };
+    const box = $('results'); ENR.askRes = { q: q, html: '<div class="askc"><div class="cap ci" style="--c:#3B7BFF">Ask Jump</div><p class="small" style="margin-top:6px">Reading today’s data for “' + esc(q) + '”…</p><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>' };
     box.innerHTML = ENR.askRes.html;
     let sample = null; try { sample = await claude.use('sample'); } catch (e) {}
     if (!sample) { ENR.askRes.html = '<div class="askc"><p class="small">Ask isn’t available in the web version yet.</p></div>'; box.innerHTML = ENR.askRes.html; return; }
@@ -351,7 +351,7 @@
       const r = await sample.json(prompt, { modelTier: 'quick' });
       const picks = (r && r.picks || []).filter((p) => p && p.s).slice(0, 8);
       const find = (s) => (typeof rowsCache !== 'undefined' ? rowsCache : []).find((x) => x.sym === s);
-      let h = '<div class="askc"><div class="cap ci" style="--c:#3B7BFF">ASK JUMP</div><div class="askt">' + esc((r && r.title) || q) + '</div><p class="small" style="margin:2px 0 8px">' + esc((r && r.summary) || '') + '</p>';
+      let h = '<div class="askc"><div class="cap ci" style="--c:#3B7BFF">Ask Jump</div><div class="askt">' + esc((r && r.title) || q) + '</div><p class="small" style="margin:2px 0 8px">' + esc((r && r.summary) || '') + '</p>';
       h += picks.length ? picks.map((p) => { const m = find(p.s); return '<button class="srow" data-search="' + esc(p.s) + '">' + logoHTML(p.s, 32) + '<span class="rn"><b>' + esc(p.s) + '</b><small>' + esc(p.why || '') + '</small></span><span class="rp">' + (m ? '<b>$' + px(m.price) + '</b><small style="color:' + (m.pct >= 0 ? dPal().up : dPal().dn) + '">' + mvS(m.pct, m.price, m.chg) + '</small>' : '') + '</span></button>'; }).join('') : '<p class="small dim">No stocks in today’s data match that.</p>';
       h += '<p class="foot" style="text-align:left">Answers use only the app’s live data: movers, Dip Radar and your watchlists. Not advice.</p></div>';
       ENR.askRes.html = h;
