@@ -2,6 +2,7 @@
 (function () {
   const WARN = /\b(resign(s|ed|ation)?|ousted|ouster|steps? down|fired|probe|investigat\w*|subpoena|sec (charges|sues|probe)|fraud|lawsuit|sued|class action|recall(s|ed)?|downgrades?|downgraded|cuts? (its |full[- ]year )?(guidance|outlook|forecast)|lowers? (its )?(guidance|outlook|forecast)|miss(es|ed)? (on )?(estimates|expectations|revenue|earnings)|bankrupt\w*|chapter 11|delist\w*|going concern|short[- ]seller|short report|scandal|affair|data breach|hacked|cyberattack|dilut\w*|public offering|guidance cut)\b/i;
   const GOOD = /\b(beats? and raises?|raises? (its |full[- ]year )?(guidance|outlook|forecast)|upgrades?|upgraded|fda (approv\w*|clear\w*)|wins? (a |an |\$[\d.]+\w* )?(contract|deal|award)|awarded|record (revenue|quarter|sales)|buyback|repurchase|to be acquired|acquired by|takeover offer|beats? (estimates|expectations))\b/i;
+  const MORE_W = /\b(halts?|halted|offering|dilut\w*|short report|warns?|warning|miss(es|ed)?|layoffs?|delay(s|ed)?|default|restat\w*|guidance cut)\b/i, MORE_G = /\b(beats?|tops? estimates|partnership|approval|approved|launch(es|ed)?|record high|all-time high|added to (the )?s&p|deal with|contract)\b/i;
   const STRONG = /resign|ousted|ouster|steps? down|fraud|bankrupt|chapter 11|delist|going concern|sec |subpoena|scandal|fda approv|to be acquired|acquired by/i;
   const BN = window.BN = { seen: {} };
   BN.classify = function (n) {
@@ -10,7 +11,7 @@
     const ti = (n && n.title) || '';
     const fell = /\b(sinks?|sank|plunges?|plunged|tumbles?|tumbled|slides?|slid|falls?|fell|drops?|dropped|crash(es|ed)?|tanks?|tanked|slumps?|slumped|craters?|sell-?off|down \d)/i.test(ti);
     const rose = /\b(soars?|soared|surges?|surged|jumps?|jumped|rall(y|ies|ied)|climbs?|climbed|spikes?|spiked|rockets?|pops?|popped|up \d)/i.test(ti);
-    const w = WARN.test(ti), g = (GOOD.test(ti) || rose) && !fell;
+    const w = WARN.test(ti) || MORE_W.test(ti), g = (GOOD.test(ti) || MORE_G.test(ti) || rose) && !fell;
     if (w && !g) return { k: 'warn', strong: STRONG.test(t) };
     if (g && !w) return { k: 'good', strong: STRONG.test(t) };
     if (w && g) return /raises?|beat/i.test(ti) && !fell ? { k: 'good' } : { k: 'warn' };
@@ -29,7 +30,7 @@
   };
   BN.forSym = function (sym) { return BN.list().filter((a) => a.sym === sym); };
   // keep news flowing for watchlist names so their alerts show up first
-  BN.load = function () { if (typeof newsFor !== 'function') return; Object.keys(S.allWl || {}).slice(0, 12).forEach((s) => newsFor(s, 600000)); };
+  BN.load = function () { if (typeof newsFor !== 'function') return; Object.keys(S.allWl || {}).slice(0, 12).forEach((s) => newsFor(s, 600000)); try { const mv = (typeof rowsCache !== 'undefined' ? rowsCache : []).slice().sort((a, b) => Math.abs(b.pct || 0) - Math.abs(a.pct || 0)).slice(0, 10); mv.forEach((r) => r && r.sym && newsFor(r.sym, 900000)); } catch (e) {} };
   const ICON = { warn: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F2C27A" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01" stroke-linecap="round"/></svg>', good: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#66C99A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16l6-6 4 4 6-7"/><path d="M15 7h5v5"/></svg>' };
   BN.icon = (k) => ICON[k];
   BN.label = (k) => (k === 'warn' ? 'WARNING' : 'GOOD NEWS');
@@ -41,5 +42,5 @@
     const img = window.JT_WEB && a.n.url ? '<img class="bnTh" loading="lazy" alt="" src="/api/nimg?v=2&u=' + encodeURIComponent(a.n.url) + '&s=' + encodeURIComponent(a.sym || '') + '&t=' + encodeURIComponent((a.n.title || '').slice(0, 140)) + '" onerror="this.remove()">' : '';
     return '<div class="bnA bnC ' + a.k + '" data-open="' + esc(a.sym) + '">' + img + '<div class="bnBody"><div class="bnH">' + ICON[a.k] + '<b>' + BN.label(a.k) + (a.strong ? ' · MAJOR' : '') + '</b><span>' + ago(a.t) + '</span></div><p class="bnT">' + esc(a.n.title || '') + '</p><small class="bnS">' + logoHTML(a.sym, 18) + '<b>' + esc(a.sym) + '</b> · ' + esc(cleanName(symName(a.sym) || '')) + '</small></div></div>';
   };
-  BN.homeCard = function () { BN.load(); const seen = {}; const L = BN.list().filter((a) => !seen[a.sym] && (seen[a.sym] = 1)).slice(0, 3); return L.length ? '<div class="bnWrap">' + L.map((a) => BN.card(a)).join('') + '</div>' : ''; };
+  BN.homeCard = function () { BN.load(); const seen = {}; const L = BN.list().filter((a) => !seen[a.sym] && (seen[a.sym] = 1)).slice(0, 5); return L.length ? '<div class="bnWrap">' + L.map((a) => BN.card(a)).join('') + '<button class="bnAll" data-tab="news">See all big news ›</button></div>' : ''; };
 })();
