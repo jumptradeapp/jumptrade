@@ -53,11 +53,12 @@
     const ix = (s, lab) => { const r = I[s]; const up = r && r.pct != null ? r.pct >= 0 : null; return '<div class="mkI" data-open="' + s + '"><small>' + lab + '</small><b style="color:' + (up == null ? P.txt : up ? P.up : P.dn) + '">' + (r && r.pct != null ? pctS(r.pct) : '—') + '</b><em>' + (r && r.chg != null ? (r.chg >= 0 ? '+' : '−') + '$' + px(Math.abs(r.chg)) : '') + '</em></div>'; };
     { const pc = (s2) => (I[s2] && I[s2].pct != null ? I[s2].pct : null); const col = (v) => (v == null ? P.txt : v >= 0 ? P.up : P.dn); const sp = pc('SPY'), nq = pc('QQQ'), rt = pc('IWM');
       const ic = (d2) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d2 + '</svg>';
+      const why = (function () { const L = (window.NR && NR.list) || []; const a = L.find((x) => x && x.kind === 'brief' && Date.now() - x.t < 8 * 3600000) || L.find((x) => x && Date.now() - x.t < 3 * 3600000); return a ? (a.dek || a.title || '') : ''; })();
       W[cur] = '<div class="glass sec hm mkStrip"><div class="hxTop"><span class="hxL">S&amp;P 500 ' + (pre ? '· ' + ({ pre: 'Pre-market', after: 'After hours', overnight: '24-hour', closed: 'Closed' }[String(view())] || String(view())) : 'today') + '</span>' + (hv ? '<button class="mkReg hxReg" data-plan="1">' + hv[0] + ' ›</button>' : '') + '</div>' +
         '<button class="hxN" data-open="SPY" style="color:' + col(sp) + '">' + (sp != null ? pctS(sp) : '—') + '</button>' +
-        '<div class="hxC"><button data-open="QQQ">Nasdaq <b style="color:' + col(nq) + '">' + (nq != null ? pctS(nq) : '—') + '</b></button><button data-open="IWM">Russell <b style="color:' + col(rt) + '">' + (rt != null ? pctS(rt) : '—') + '</b></button></div>' +
-        '<div class="nxBtns"><button data-orcopen="1">' + ic('<path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2"/>') + 'Ask Jump</button><button data-tab="live">' + ic('<path d="M4 17l5-5 4 4 7-8"/><path d="M14 8h6v6"/>') + 'Analyze</button><button data-tab="watch">' + ic('<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>') + 'Watchlist</button></div>' +
-        (window.dayBar ? dayBar() : '') + '</div>'; }
+        '<div class="hxM"><button data-open="QQQ">Nasdaq <b style="color:' + col(nq) + '">' + (nq != null ? pctS(nq) : '—') + '</b></button><i></i><button data-open="IWM">Russell <b style="color:' + col(rt) + '">' + (rt != null ? pctS(rt) : '—') + '</b></button></div>' +
+        (why ? '<p class="hxWhy">' + esc(why) + '</p>' : '') + (window.dayBar ? dayBar() : '') + '</div>' +
+        '<div class="nxRow"><button data-orcopen="1">' + ic('<path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2"/>') + 'Ask Jump</button><button data-tab="live">' + ic('<path d="M4 17l5-5 4 4 7-8"/><path d="M14 8h6v6"/>') + 'Analyze</button><button data-tab="watch">' + ic('<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>') + 'Watchlist</button></div>'; }
     // Jump check: any ticker, plus today's biggest movers
     if (window.JC) W.jc = JC.homeCard();
     // 2. top news
