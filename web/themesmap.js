@@ -46,18 +46,17 @@
     return hot ? 'A few names are doing the lifting.' : 'A few names are dragging it down.'; };
   const dol = (r) => { const c = r.chg != null && isFinite(r.chg) ? r.chg : (r.price && r.pct != null ? r.price - r.price / (1 + r.pct / 100) : 0); return (c >= 0 ? '+$' : '−$') + Math.abs(c).toFixed(2); };
   TH.bento = function () {
-    TH.load(); const L = TH.calc().filter((t) => t.n >= 3); if (L.length < 4) return ''; const P = dPal();
-    const pick = L.slice(0, 2).map((t) => [t, true]).concat(L.slice(-2).reverse().map((t) => [t, false]));
-    const mx = Math.max(0.5, ...pick.map((x) => Math.abs(x[0].pct)));
-    const row = (t, hot) => { const r = hot ? t.best : t.worst; newsWhy(r.sym); const why = TH.why[r.sym] || plain(t, hot);
-      const tops = (hot ? t.rows.slice(0, 3) : t.rows.slice(-3).reverse()); const w = Math.max(3, Math.abs(t.pct) / mx * 50);
-      const cl = (v) => v >= 0 ? P.up : P.dn;
-      return '<button class="thX" data-thgo="' + t.id + '"><span class="thXa"><b>' + (t.pct >= 0 ? '↑ ' : '↓ ') + esc(t.name) + '</b><em style="color:' + cl(t.pct) + '">' + pctS(t.pct) + '</em></span>' +
-        '<span class="thXt"><i class="' + (t.pct >= 0 ? 'r' : 'l') + '" style="width:' + w.toFixed(1) + '%"></i></span>' +
-        '<span class="thXw">' + esc(why) + '</span>' +
-        '<span class="thXm"><span class="thXl">' + tops.map((x) => logoHTML(x.sym, 20)).join('') + '</span><span>' + t.up + ' of ' + t.n + ' up · ' + esc(cleanName(symName(r.sym) || '') || r.sym) + ' <b style="color:' + cl(r.pct) + '">' + dol(r) + '</b></span></span></button>'; };
-    return '<p class="thXs">Where money is moving today</p>' + pick.map((x) => row(x[0], x[1])).join('');
+    TH.load(); const L = TH.calc().filter((t) => t.n >= 3); if (L.length < 8) return ''; const P = dPal();
+    const pick = L.slice(0, 4).concat(L.slice(-4)); const mx = Math.max(0.5, ...pick.map((t) => Math.abs(t.pct)));
+    const cl = (v) => v >= 0 ? P.up : P.dn;
+    const row = (t, i) => { const open = S.thHome === t.id; const hot = t.pct >= 0; const w = Math.max(3, Math.abs(t.pct) / mx * 50);
+      let det = '';
+      if (open) { const r = hot ? t.best : t.worst; newsWhy(r.sym); const why = TH.why[r.sym] || plain(t, hot); const tops = hot ? t.rows.slice(0, 3) : t.rows.slice(-3).reverse();
+        det = '<div class="thDx"><p>' + esc(why) + '</p><div class="thXm"><span class="thXl">' + tops.map((x) => logoHTML(x.sym, 20)).join('') + '</span><span>' + t.up + ' of ' + t.n + ' up · ' + esc(cleanName(symName(r.sym) || '') || r.sym) + ' <b style="color:' + cl(r.pct) + '">' + dol(r) + '</b></span></div><button class="thDgo" data-thgo="' + t.id + '">See all ' + t.n + ' stocks ›</button></div>'; }
+      return (i === 4 ? '<i class="thDsep"></i>' : '') + '<button class="thD' + (open ? ' on' : '') + '" data-thhome="' + t.id + '"><span>' + esc(t.name) + '</span><span class="thXt"><i class="' + (hot ? 'r' : 'l') + '" style="width:' + w.toFixed(1) + '%"></i></span><em style="color:' + cl(t.pct) + '">' + pctS(t.pct) + '</em></button>' + det; };
+    return pick.map(row).join('');
   };
+  document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-thhome]'); if (!b) return; S.thHome = S.thHome === b.dataset.thhome ? null : b.dataset.thhome; render(); });
   document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-thgo]'); if (!b) return; S.thOpen = b.dataset.thgo; if (typeof goTab === 'function') goTab('sectors'); });
   document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-thm]'); if (!b) return; S.thOpen = S.thOpen === b.dataset.thm ? null : b.dataset.thm; render(); });
 })();
