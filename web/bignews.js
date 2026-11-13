@@ -7,10 +7,13 @@
   BN.classify = function (n) {
     const t = ((n && n.title) || '') + ' ' + ((n && n.summary) || '');
     if (/maintains|reiterates|price target/i.test(n.title || '') && !/downgrad|upgrad/i.test(n.title || '')) return null;
-    const w = WARN.test(t), g = GOOD.test(t);
+    const ti = (n && n.title) || '';
+    const fell = /\b(sinks?|sank|plunges?|plunged|tumbles?|tumbled|slides?|slid|falls?|fell|drops?|dropped|crash(es|ed)?|tanks?|tanked|slumps?|slumped|craters?|sell-?off|down \d)/i.test(ti);
+    const rose = /\b(soars?|soared|surges?|surged|jumps?|jumped|rall(y|ies|ied)|climbs?|climbed|spikes?|spiked|rockets?|pops?|popped|up \d)/i.test(ti);
+    const w = WARN.test(t) || fell, g = (GOOD.test(t) || rose) && !fell;
     if (w && !g) return { k: 'warn', strong: STRONG.test(t) };
     if (g && !w) return { k: 'good', strong: STRONG.test(t) };
-    if (w && g) return /raises?|beat/i.test(n.title || '') ? { k: 'good' } : { k: 'warn' };
+    if (w && g) return /raises?|beat/i.test(ti) && !fell ? { k: 'good' } : { k: 'warn' };
     return null;
   };
   const okSym = (s) => /^[A-Z]{1,5}$/.test(s) && !/^(ES|NQ|YM|RTY|ZN|UB|EMD)/.test(s);
