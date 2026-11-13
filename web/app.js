@@ -1584,7 +1584,11 @@ let rq = false;
 let pDown = 0, rPend = false;
 const DISC = 'For information only, not investment advice. Data can be delayed or wrong. Trading involves risk.';
 function ensureDisc() { return; document.querySelectorAll('.scroller').forEach((sc) => { const l = sc.lastElementChild; if (l && l.classList.contains('disc')) return; const d = document.createElement('p'); d.className = 'disc'; d.textContent = DISC; sc.appendChild(d); }); }
-function render() { if (pDown && Date.now() - pDown < 2500) { rPend = true; return; } if (window.__stT && Date.now() - window.__stT < 900) { if (!window.__stQ) { window.__stQ = 1; setTimeout(() => { window.__stQ = 0; render(); }, 950); } return; } if (rq) return; rq = true; setTimeout(() => { rq = false; try { doRender(); } catch (e) { console.error(e); } try { ensureDisc(); } catch (e) {} try { addMean(); } catch (e) {} }, 0); }
+
+// keep the page still when live prices change a card's height (iPhone Safari has no scroll anchoring)
+function anchorGet() { try { const sc = [...document.querySelectorAll('.view .scroller, #sheet')].find((el) => el.offsetParent !== null && el.scrollTop > 0 && (el.id === 'sheet' ? document.body.classList.contains('sheet-open') : true)); if (!sc) return null; const top = sc.getBoundingClientRect().top; const kids = sc.querySelectorAll('[data-hw] > *, .inner > *, .card.row'); for (const k of kids) { const r = k.getBoundingClientRect(); if (r.height > 0 && r.bottom > top + 4) return { sc, k, y: r.top }; } return null; } catch (e) { return null; } }
+function anchorSet(a) { try { if (!a || !a.k.isConnected) return; const d = a.k.getBoundingClientRect().top - a.y; if (Math.abs(d) >= 1) a.sc.scrollTop += d; } catch (e) {} }
+function render() { if (pDown && Date.now() - pDown < 2500) { rPend = true; return; } if (window.__stT && Date.now() - window.__stT < 900) { if (!window.__stQ) { window.__stQ = 1; setTimeout(() => { window.__stQ = 0; render(); }, 950); } return; } if (rq) return; rq = true; setTimeout(() => { rq = false; const ak = anchorGet(); try { doRender(); } catch (e) { console.error(e); } anchorSet(ak); try { ensureDisc(); } catch (e) {} try { addMean(); } catch (e) {} }, 0); }
 (() => { const up = () => { setTimeout(() => { pDown = 0; if (rPend) { rPend = false; render(); } }, 80); };
   document.addEventListener('pointerdown', () => { pDown = Date.now(); }, true);
   document.addEventListener('pointerup', up, true); document.addEventListener('pointercancel', up, true);
