@@ -1612,8 +1612,9 @@ function ptr(scroller, ind, refresh) {
   if (!scroller || !ind || scroller.dataset.ptr) return; scroller.dataset.ptr = '1';
   let y0 = 0, pull = 0, active = false, busy = false;
   const set = (h, anim) => { ind.style.transition = anim ? 'height 300ms cubic-bezier(.2,.8,.2,1)' : 'none'; ind.style.height = h + 'px'; ind.style.opacity = Math.min(1, h / 40); ind.querySelector('.ico').style.transform = 'rotate(' + Math.round(h * 4) + 'deg)'; ind.querySelector('.lbl').textContent = busy ? 'Refreshing…' : h >= 58 ? 'Release to refresh' : 'Pull to refresh'; };
-  const start = (y) => { touching = true; if (scroller.scrollTop <= 0 && !busy) { active = true; y0 = y; pull = 0; } };
-  const move = (y, e) => { if (!active) return; const d = y - y0; pull = d > 0 ? Math.min(96, Math.pow(d, 0.82)) : 0; if (pull > 0 && e && e.cancelable) e.preventDefault(); set(pull); };
+  const HS = '.stScroll,.mvF,.chips,.segs,.hscroll,.intelseg,.tfs2,.pchips,.secrow,.idxrow,.subtabs';
+  let x0 = 0; const start = (y, x, t) => { touching = true; x0 = x || 0; if (t && t.closest && t.closest(HS)) return; if (scroller.scrollTop <= 0 && !busy) { active = true; y0 = y; pull = 0; } };
+  const move = (y, e, x) => { if (!active) return; const d = y - y0; if (x != null && Math.abs(x - x0) > Math.abs(d) && Math.abs(x - x0) > 6) { active = false; pull = 0; set(0, true); return; } pull = d > 0 ? Math.min(96, Math.pow(d, 0.82)) : 0; if (pull > 0 && e && e.cancelable) e.preventDefault(); set(pull); };
   const end = async () => {
     touching = false; lastScroll = Date.now(); if (!active) return; active = false;
     if (pull >= 58) {
@@ -1626,8 +1627,8 @@ function ptr(scroller, ind, refresh) {
     } else if (pull > 0) set(0, true);
     setTimeout(render, 900);
   };
-  scroller.addEventListener('touchstart', (e) => start(e.touches[0].clientY), { passive: true });
-  scroller.addEventListener('touchmove', (e) => move(e.touches[0].clientY, e), { passive: false });
+  scroller.addEventListener('touchstart', (e) => start(e.touches[0].clientY, e.touches[0].clientX, e.target), { passive: true });
+  scroller.addEventListener('touchmove', (e) => move(e.touches[0].clientY, e, e.touches[0].clientX), { passive: false });
   scroller.addEventListener('touchend', end); scroller.addEventListener('touchcancel', end);
   scroller.addEventListener('mousedown', (e) => start(e.clientY));
   scroller.addEventListener('mousemove', (e) => { if (e.buttons) move(e.clientY); });

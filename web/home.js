@@ -275,7 +275,7 @@
   setInterval(() => { if (S.tab === 'home' && !document.hidden) render(); }, 60000);
   window.HOME = H;
 })();
-document.addEventListener('scroll', (e) => { const el = e.target; if (!el.classList || !el.classList.contains('stScroll')) return; window.__stX = el.scrollLeft; window.__stT = Date.now(); const i = Math.round(el.scrollLeft / Math.max(1, el.firstElementChild ? el.firstElementChild.offsetWidth + 10 : el.clientWidth)); const d = el.parentNode.querySelectorAll('.stDots i'); d.forEach((x, k) => x.classList.toggle('on', k === i)); }, true);
+document.addEventListener('scroll', (e) => { const el = e.target; if (!el.classList || !el.classList.contains('stScroll')) return; try { lastScroll = Date.now(); } catch (x) {} window.__stX = el.scrollLeft; window.__stT = Date.now(); const i = Math.round(el.scrollLeft / Math.max(1, el.firstElementChild ? el.firstElementChild.offsetWidth + 10 : el.clientWidth)); const d = el.parentNode.querySelectorAll('.stDots i'); d.forEach((x, k) => x.classList.toggle('on', k === i)); }, true);
 
 // keep the story cards where the user left them when Home re-renders with fresh prices
 (function () {
