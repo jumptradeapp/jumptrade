@@ -71,7 +71,7 @@
       const gname = (function () { try { const n = (localStorage.getItem('jt.name') || '').trim().split(/\s+/)[0].slice(0, 12); return n ? ', ' + esc(n) : ''; } catch (e) { return ''; } })();
       const gw = gr.g.toLowerCase();
       const cell = (s2, lab, v) => '<button data-open="' + s2 + '"><small>' + lab + '</small><b style="color:' + col(v) + '">' + (v != null ? pctS(v) : '—') + '</b></button>';
-      W[cur] = '<div class="hxG"><div class="hxGt"><small>Good ' + gw + gname + '</small>' + (hv ? '<button class="mkReg hxReg" data-plan="1">' + hv[0] + ' ›</button>' : '') + '</div><h2>' + head + '</h2></div>' +
+      W[cur] = '<div class="hxG"><div class="hxGt"><small>' + (sess === 'regular' ? 'The market today' : 'The market') + '</small>' + (hv ? '<button class="mkReg hxReg" data-plan="1">' + hv[0] + ' ›</button>' : '') + '</div><h2>' + head + '</h2></div>' +
         '<div class="glass sec hm mkStrip hxA"><div class="hx3">' + cell('SPY', 'S&amp;P 500', sp) + cell('QQQ', 'Nasdaq', nq) + cell('IWM', 'Russell', rt) + '</div>' +
         (why ? '<p class="hxWhy">' + esc(why) + '</p>' : '') + (window.dayBar ? dayBar() : '') + '</div>' +
         '<div class="nxRow"><button data-orcopen="1">' + ic('<path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2"/>') + 'Ask Jump</button><button data-tab="live">' + ic('<path d="M4 17l5-5 4 4 7-8"/><path d="M14 8h6v6"/>') + 'Analyze</button><button data-tab="watch">' + ic('<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>') + 'Watchlist</button></div>'; }
