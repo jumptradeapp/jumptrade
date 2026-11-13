@@ -2662,24 +2662,24 @@ body.mode-simple .seg:is([data-tab="options"],[data-tab="congress"],[data-tab="s
 .dpT i{display:block;height:100%;border-radius:4px}
 .dpS small{display:block;font-size:10.5px;color:var(--muted-5);margin-top:5px;white-space:nowrap}
 :is(#_,html):is(#_,html) body{font-feature-settings:"tnum" 1,"ss01" 1}
-:is(#_,html):is(#_,html) body .hmcap{font-family:'Inter Display',Inter,sans-serif!important;text-transform:none!important;letter-spacing:-.2px!important;font-size:19px!important;font-weight:800!important;color:#F4F6FA!important}
+:is(#_,html):is(#_,html) body .hmcap{font-family:'Inter Tight',system-ui,sans-serif!important;text-transform:none!important;letter-spacing:-.2px!important;font-size:19px!important;font-weight:800!important;color:#F4F6FA!important}
 :is(#_,html):is(#_,html) body .hmcap i,:is(#_,html):is(#_,html) body .hmcap .sq,:is(#_,html):is(#_,html) body .hmcap>span:first-child:empty{display:none!important}
-:is(#_,html):is(#_,html) body .stCap{text-transform:none!important;letter-spacing:-.1px!important;font-size:15px!important;font-weight:800!important;color:#F4F6FA!important;font-family:'Inter Display',Inter!important}
-:is(#_,html):is(#_,html) body .hmrow .rn b,:is(#_,html):is(#_,html) body .stCard .rn b{font-family:'Inter Display';font-size:17px!important;font-weight:800!important;letter-spacing:-.2px}
-:is(#_,html):is(#_,html) body .hmrow .rp b,:is(#_,html):is(#_,html) body .stCard .rp b{font-family:'Inter Display';font-size:17px!important;font-weight:700!important}
-:is(#_,html):is(#_,html) body .title h1{font-family:'Inter Display'!important;letter-spacing:-1.5px!important}
-:is(#_,html):is(#_,html) body .title h1 b{font-weight:900!important}
+:is(#_,html):is(#_,html) body .stCap{text-transform:none!important;letter-spacing:-.1px!important;font-size:15px!important;font-weight:800!important;color:#F4F6FA!important;font-family:'Inter Tight',system-ui!important}
+:is(#_,html):is(#_,html) body .hmrow .rn b,:is(#_,html):is(#_,html) body .stCard .rn b{font-family:'Inter Tight';font-size:17px!important;font-weight:800!important;letter-spacing:-.2px}
+:is(#_,html):is(#_,html) body .hmrow .rp b,:is(#_,html):is(#_,html) body .stCard .rp b{font-family:'Inter Tight';font-size:17px!important;font-weight:700!important}
+
+
 :is(#_,html):is(#_,html) body .hw>.glass,:is(#_,html):is(#_,html) body .hw .sec{border-radius:24px!important;padding:16px!important}
-:is(#_,html):is(#_,html):is(#_,html) body .cap.ci{font-family:'Inter Display',Inter,sans-serif!important;text-transform:none!important;letter-spacing:-.2px!important;font-size:18px!important;font-weight:800!important;color:#F4F6FA!important}
+:is(#_,html):is(#_,html):is(#_,html) body .cap.ci{font-family:'Inter Tight',system-ui,sans-serif!important;text-transform:none!important;letter-spacing:-.2px!important;font-size:18px!important;font-weight:800!important;color:#F4F6FA!important}
 :is(#_,html):is(#_,html):is(#_,html) body .cap.ci::before{display:none!important;content:none!important}
 :is(#_,html):is(#_,html):is(#_,html) body .stCap{font-size:14px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-:is(#_,html):is(#_,html) body :is(.card.row,.ixRow,.srow,.laRow,.tsrow) .rn b{font-family:'Inter Display',Inter;font-weight:800!important;letter-spacing:-.2px}
-:is(#_,html):is(#_,html) body :is(.card.row,.ixRow,.srow,.laRow) .rp b{font-family:'Inter Display',Inter;font-weight:700!important}
-:is(#_,html):is(#_,html) body #sheet .dPrice{font-family:'Inter Display',Inter!important;font-size:46px!important;font-weight:900!important;letter-spacing:-2px!important;line-height:1.05!important}
-:is(#_,html):is(#_,html) body #sheet .dHead2 h2{font-family:'Inter Display',Inter!important;font-weight:900!important;letter-spacing:-.5px}
-:is(#_,html):is(#_,html) body .t3 b{font-family:'Inter Display',Inter}
-:is(#_,html):is(#_,html) body .r3h b,:is(#_,html):is(#_,html) body .laSec{font-family:'Inter Display',Inter}
-:is(#_,html):is(#_,html):is(#_,html) body,:is(#_,html):is(#_,html):is(#_,html) body *:not(code):not(pre):not(.mono2){font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Inter Tight",Inter,system-ui,sans-serif!important}
+:is(#_,html):is(#_,html) body :is(.card.row,.ixRow,.srow,.laRow,.tsrow) .rn b{font-family:'Inter Tight',system-ui;font-weight:800!important;letter-spacing:-.2px}
+:is(#_,html):is(#_,html) body :is(.card.row,.ixRow,.srow,.laRow) .rp b{font-family:'Inter Tight',system-ui;font-weight:700!important}
+:is(#_,html):is(#_,html) body #sheet .dPrice{font-family:'Inter Tight',system-ui!important;font-size:46px!important;font-weight:900!important;letter-spacing:-2px!important;line-height:1.05!important}
+:is(#_,html):is(#_,html) body #sheet .dHead2 h2{font-family:'Inter Tight',system-ui!important;font-weight:900!important;letter-spacing:-.5px}
+:is(#_,html):is(#_,html) body .t3 b{font-family:'Inter Tight',system-ui}
+:is(#_,html):is(#_,html) body .r3h b,:is(#_,html):is(#_,html) body .laSec{font-family:'Inter Tight',system-ui}
+
 :is(#_,html):is(#_,html):is(#_,html) body #vHome .head{margin:0!important;min-height:0!important}
 :is(#_,html):is(#_,html):is(#_,html) body #vHome .searchBtn span{display:none!important}
 :is(#_,html):is(#_,html):is(#_,html) body #vHome .searchBtn{width:40px!important;min-width:40px!important;padding:0!important;justify-content:center!important;border-radius:50%!important}
