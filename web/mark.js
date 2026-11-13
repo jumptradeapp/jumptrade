@@ -5,7 +5,7 @@
   function g(id, a, b) { return '<linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + a + '"/><stop offset="1" stop-color="' + b + '"/></linearGradient>'; }
   function svg(k, w, h, cw) {
     return '<svg width="' + w + '" height="' + h + '" viewBox="' + VB + '" shape-rendering="geometricPrecision" aria-hidden="true"><defs>' +
-      g(k + 'u', '#9DBEFF', '#4C7FF0') + g(k + 'b', '#5B8CFF', '#2450C8') + g(k + 'd', '#2F5BD0', '#16307E') + '</defs>' +
+      g(k + 'u', '#BFEAFB', '#6EC3F5') + g(k + 'b', '#6EC3F5', '#2F6FD8') + g(k + 'd', '#2F6FD8', '#16307E') + '</defs>' +
       '<path d="' + C + '" fill="' + (cw || (window.JT_THEME === 'light' ? '#0F1B2D' : '#fff')) + '"/><path d="' + B0 + '" fill="url(#' + k + 'u)"/><path d="' + B1 + '" fill="url(#' + k + 'b)"/><path d="' + B2 + '" fill="url(#' + k + 'd)"/></svg>';
   }
   function mk(px) { var B = Math.round(px), k = 'jmk' + (uid++); return '<span class="jm3" style="width:' + B + 'px;height:' + B + 'px">' + svg(k, B, B) + '</span>'; }
