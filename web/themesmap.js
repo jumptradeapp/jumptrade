@@ -30,12 +30,35 @@
     const det = o ? '<div class="card thDet"><div class="sect"><span><i class="sq"></i>' + esc(o.name.toUpperCase()) + ' · ' + o.n + ' STOCKS</span><b style="color:' + (o.pct >= 0 ? P.up : P.dn) + '">' + pctS(o.pct) + '</b></div>' + o.rows.map((r) => '<button class="hmrow" data-open="' + esc(r.sym) + '">' + logoHTML(r.sym, 30) + '<span class="rn"><b>' + esc(r.sym) + '</b><small>' + esc(cleanName(symName(r.sym) || '')) + '</small></span><span class="rp tvp"><b>$' + px(r.price) + '</b><small style="color:' + (r.pct >= 0 ? P.up : P.dn) + '">' + mvS(r.pct, r.price, r.chg) + '</small></span></button>').join('') + '</div>' : '';
     return leg + grid + det;
   };
-  // Home bento: 3 hottest and 3 coldest themes, each with its leader or laggard
-  TH.bento = function () {
-    TH.load(); const L = TH.calc(); if (L.length < 6) return ''; const P = dPal();
-    const box = (t, hot) => { const r = hot ? t.best : t.worst; return '<button class="thB' + (hot ? ' hot' : '') + '" data-open="' + esc(r.sym) + '"><small>' + esc(t.name) + '</small><b style="color:' + (t.pct >= 0 ? P.up : P.dn) + '">' + pctS(t.pct) + '</b><span class="thBs">' + logoHTML(r.sym, 18) + '<em>' + esc(r.sym) + '</em></span><span class="thBp">$' + px(r.price) + '</span><span class="thBc" style="color:' + (r.pct >= 0 ? P.up : P.dn) + '">' + mvS(r.pct, r.price, r.chg) + '</span></button>'; };
-    return '<div class="thCap">🔥 Hottest</div><div class="thG">' + L.slice(0, 3).map((t) => box(t, true)).join('') + '</div><div class="thCap">❄ Coldest</div><div class="thG">' + L.slice(-3).reverse().map((t) => box(t, false)).join('') + '</div>';
+  // Home card: 2 hottest + 2 coldest themes. Each: bar (right = hot, left = cold), a one-line why (leader's fresh headline, else plain breadth), top 3 logos, "x of n up", leader with $ move
+  TH.why = {};
+  const newsWhy = (sym) => {
+    if (typeof watch !== 'function' || !mcp) return; watch('thn:' + sym, 'get_stock_news', { symbol: sym }, (p) => {
+      const items = (p && p.data) || []; const nm = cleanName(symName(sym) || '').split(' ')[0].toLowerCase();
+      const hit = items.find((n) => { const t = n.title || ''; return (t.indexOf(sym) >= 0 || (nm.length > 2 && t.toLowerCase().indexOf(nm) >= 0)) && Date.now() - Date.parse(n.publish_time) < 2 * 86400000; });
+      const w = hit ? hit.title.replace(/\s+/g, ' ').trim() : ''; if (TH.why[sym] !== w) { TH.why[sym] = w; if (S.tab === 'home') render(); }
+    }, 900000);
   };
+  const plain = (t, hot) => { const k = hot ? t.up : t.n - t.up;
+    if (k === t.n) return hot ? 'Every stock in the group is up.' : 'Every stock in the group is down.';
+    if (k / t.n >= 0.7) return hot ? 'Most of the group is moving up together.' : 'Most of the group is sliding together.';
+    if (k / t.n >= 0.5) return hot ? 'More than half the group is up.' : 'More than half the group is down.';
+    return hot ? 'A few names are doing the lifting.' : 'A few names are dragging it down.'; };
+  const dol = (r) => { const c = r.chg != null && isFinite(r.chg) ? r.chg : (r.price && r.pct != null ? r.price - r.price / (1 + r.pct / 100) : 0); return (c >= 0 ? '+$' : '−$') + Math.abs(c).toFixed(2); };
+  TH.bento = function () {
+    TH.load(); const L = TH.calc().filter((t) => t.n >= 3); if (L.length < 4) return ''; const P = dPal();
+    const pick = L.slice(0, 2).map((t) => [t, true]).concat(L.slice(-2).reverse().map((t) => [t, false]));
+    const mx = Math.max(0.5, ...pick.map((x) => Math.abs(x[0].pct)));
+    const row = (t, hot) => { const r = hot ? t.best : t.worst; newsWhy(r.sym); const why = TH.why[r.sym] || plain(t, hot);
+      const tops = (hot ? t.rows.slice(0, 3) : t.rows.slice(-3).reverse()); const w = Math.max(3, Math.abs(t.pct) / mx * 50);
+      const cl = (v) => v >= 0 ? P.up : P.dn;
+      return '<button class="thX" data-thgo="' + t.id + '"><span class="thXa"><b>' + (t.pct >= 0 ? '↑ ' : '↓ ') + esc(t.name) + '</b><em style="color:' + cl(t.pct) + '">' + pctS(t.pct) + '</em></span>' +
+        '<span class="thXt"><i class="' + (t.pct >= 0 ? 'r' : 'l') + '" style="width:' + w.toFixed(1) + '%"></i></span>' +
+        '<span class="thXw">' + esc(why) + '</span>' +
+        '<span class="thXm"><span class="thXl">' + tops.map((x) => logoHTML(x.sym, 20)).join('') + '</span><span>' + t.up + ' of ' + t.n + ' up · ' + esc(cleanName(symName(r.sym) || '') || r.sym) + ' <b style="color:' + cl(r.pct) + '">' + dol(r) + '</b></span></span></button>'; };
+    return '<p class="thXs">Where money is moving today</p>' + pick.map((x) => row(x[0], x[1])).join('');
+  };
+  document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-thgo]'); if (!b) return; S.thOpen = b.dataset.thgo; if (typeof goTab === 'function') goTab('sectors'); });
   document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-thm]'); if (!b) return; S.thOpen = S.thOpen === b.dataset.thm ? null : b.dataset.thm; render(); });
 })();
 /* Money flow, patterns and dip check, built from rotation.json (3 years of theme prices, refreshed after the close) */
