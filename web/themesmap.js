@@ -54,7 +54,7 @@
       if (open) { const r = hot ? t.best : t.worst; newsWhy(r.sym); const why = TH.why[r.sym] || plain(t, hot); const tops = hot ? t.rows.slice(0, 3) : t.rows.slice(-3).reverse();
         det = '<div class="thDx"><p>' + esc(why) + '</p><div class="thXm"><span class="thXl">' + tops.map((x) => logoHTML(x.sym, 20)).join('') + '</span><span>' + t.up + ' of ' + t.n + ' up · ' + esc(cleanName(symName(r.sym) || '') || r.sym) + ' <b style="color:' + cl(r.pct) + '">' + dol(r) + '</b></span></div><button class="thDgo" data-thgo="' + t.id + '">See all ' + t.n + ' stocks ›</button></div>'; }
       return (i === 4 ? '<i class="thDsep"></i>' : '') + '<button class="thD' + (open ? ' on' : '') + '" data-thhome="' + t.id + '"><span>' + esc(t.name) + '</span><span class="thXt"><i class="' + (hot ? 'r' : 'l') + '" style="width:' + w.toFixed(1) + '%"></i></span><em style="color:' + cl(t.pct) + '">' + pctS(t.pct) + '</em></button>' + det; };
-    return pick.map(row).join('');
+    return pick.map(row).join('') + (window.asOf ? asOf(TH.t) : '');
   };
   document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-thhome]'); if (!b) return; S.thHome = S.thHome === b.dataset.thhome ? null : b.dataset.thhome; render(); });
   document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-thgo]'); if (!b) return; S.thOpen = b.dataset.thgo; if (typeof goTab === 'function') goTab('sectors'); });

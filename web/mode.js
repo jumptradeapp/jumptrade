@@ -30,3 +30,6 @@
   };
   setInterval(() => { if (typeof S !== 'undefined' && S.tab === 'home' && !document.hidden) { const el = document.querySelector('.mkStrip .dpBar'); if (el) el.outerHTML = window.dayBar(); } }, 30000);
 })();
+
+/* "As of 9:41 PM ET" under live numbers, so nobody mistakes old prices for live ones */
+window.asOf = function (t) { if (!t) return ''; try { const s = new Date(t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' }); return '<p class="asof">As of ' + s + ' ET</p>'; } catch (e) { return ''; } };

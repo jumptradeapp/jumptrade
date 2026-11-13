@@ -42,7 +42,7 @@
   window.wlDay = function (rows) { const R = (rows || []).filter((r) => r && r.pct != null && isFinite(r.pct)); if (R.length < 2) return '';
     const P = dPal(); const tot = R.reduce((a, r) => a + r.pct * 10, 0); const up = R.filter((r) => r.pct > 0).length, dn = R.filter((r) => r.pct < 0).length;
     const flat = Math.abs(tot) < 0.5 * R.length; const m = '$' + Math.abs(Math.round(tot)).toLocaleString('en-US');
-    return '<div class="wlDay"><b>Your watchlist is ' + (flat ? 'flat' : (tot > 0 ? 'up ' : 'down ') + '<em style="color:' + (tot > 0 ? P.up : P.dn) + '">' + (tot > 0 ? '+' : '−') + m + '</em>') + ' today</b><small>If you had $1,000 in each of ' + R.length + ' stocks · ' + up + ' up, ' + dn + ' down</small></div>'; };
+    return '<div class="wlDay"><b>Your watchlist is ' + (flat ? 'flat' : (tot > 0 ? 'up ' : 'down ') + '<em style="color:' + (tot > 0 ? P.up : P.dn) + '">' + (tot > 0 ? '+' : '−') + m + '</em>') + ' today</b><small>If you had $1,000 in each of ' + R.length + ' stocks · ' + up + ' up, ' + dn + ' down</small>' + (window.asOf ? asOf(S.stamp && S.stamp['wl:q']) : '') + '</div>'; };
   H.render = function () {
     const gr = greet(); if ($('hmTitle')) { const nm = (function () { try { return (localStorage.getItem('jt.name') || '').trim().split(/\s+/)[0].slice(0, 12); } catch (e) { return ''; } })(); $('hmTitle').classList.toggle('named', false); $('hmTitle').innerHTML = false ? '<span>GOOD ' + gr.g + ',</span><br><b>' + esc(nm.toUpperCase()) + '<em class="dot sq">.</em></b>' : '<span>GOOD</span><br><b>' + gr.g + '<em class="dot sq">.</em></b>'; $('hmSub').innerHTML = gr.sub; }
     if (!window.TODAY || !TODAY.home) { setHTML($('hmList'), '<div class="glass sec hm"><div class="skel"></div><div class="skel" style="width:70%"></div></div><div class="glass sec hm"><div class="skel"></div><div class="skel" style="width:55%"></div></div>'); setTimeout(render, 300); return; }
@@ -73,7 +73,7 @@
       const cell = (s2, lab, v) => '<button data-open="' + s2 + '"><small>' + lab + '</small><b style="color:' + col(v) + '">' + (v != null ? pctS(v) : '—') + '</b></button>';
       W[cur] = '<div class="hxG"><div class="hxGt"><small>' + (sess === 'regular' ? 'The market today' : 'The market') + '</small>' + (hv ? '<button class="mkReg hxReg" data-plan="1">' + hv[0] + ' ›</button>' : '') + '</div><h2>' + head + '</h2></div>' +
         '<div class="glass sec hm mkStrip hxA"><div class="hx3">' + cell('SPY', 'S&amp;P 500', sp) + cell('QQQ', 'Nasdaq', nq) + cell('IWM', 'Russell', rt) + '</div>' +
-        (why ? '<p class="hxWhy">' + esc(why) + '</p>' : '') + (window.dayBar ? dayBar() : '') + '</div>' +
+        (why ? '<p class="hxWhy">' + esc(why) + '</p>' : '') + (window.dayBar ? dayBar() : '') + (window.asOf ? asOf(S.stamp && S.stamp['h:idx']) : '') + '</div>' +
         '<div class="nxRow"><button data-orcopen="1">' + ic('<path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2"/>') + 'Ask Jump</button><button data-tab="live">' + ic('<path d="M4 17l5-5 4 4 7-8"/><path d="M14 8h6v6"/>') + 'Analyze</button><button data-tab="watch">' + ic('<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>') + 'Watchlist</button></div>'; }
     // Jump check: any ticker, plus today's biggest movers
     if (window.JC) W.jc = JC.homeCard();
