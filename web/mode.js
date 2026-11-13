@@ -33,3 +33,6 @@
 
 /* "As of 9:41 PM ET" under live numbers, so nobody mistakes old prices for live ones */
 window.asOf = function (t) { if (!t) return ''; try { const s = new Date(t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' }); return '<p class="asof">As of ' + s + ' ET</p>'; } catch (e) { return ''; } };
+
+/* top bar: clear over the glow at the top, solid navy once content scrolls under it */
+(function(){function bind(){document.querySelectorAll(".view").forEach(function(v){var t=v.querySelector(".top"),s=v.querySelector(".scroller");if(!t||!s||s._tb)return;s._tb=1;var f=function(){t.classList.toggle("tbS",s.scrollTop>6)};s.addEventListener("scroll",f,{passive:true});f()})}if(document.readyState!=="loading")bind();else document.addEventListener("DOMContentLoaded",bind);setTimeout(bind,1500)})();
