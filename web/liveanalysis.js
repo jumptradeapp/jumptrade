@@ -165,7 +165,7 @@
   LA.full = function (a) {
     const P = dPal(); const w = KW(a.kind); const col = P[w[1]];
     let h = '<div class="laCard" id="laCur"><div class="laHead">' + logoHTML(a.sym, 36) + '<span class="rn"><b>' + esc(a.sym) + ' <i class="laTf">' + a.tf + '</i></b><small>' + esc(cleanName(symName(a.sym) || '')) + '</small></span><span class="rp tvp"><b>$' + px(a.price) + '</b><small>' + new Date(a.t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' }) + ' ET</small></span></div>';
-    if (a.img) h += '<div class="laSnap"><img src="' + a.img + '" alt=""><span>Your chart · redrawn below from real prices</span></div>';
+    if (a.img) h += '<div class="laSnap"><img loading="lazy" src="' + a.img + '" alt=""><span>Your chart · redrawn below from real prices</span></div>';
     if (a.seen && a.seen.length) h += '<p class="laSeen"><b>On your chart:</b> ' + a.seen.map(esc).join(' · ') + '</p>';
     h += a._B ? LA.svg(a) : '<button class="laRedo" data-laanalyze="' + esc(a.sym) + '" data-tf="' + a.tf + '">↻ Redraw ' + esc(a.sym) + ' with live prices</button>';
     h += '<div class="srcCall"><span class="w" style="color:' + col + ';background:' + col + '1f">' + w[0] + '</span><p>' + (a.kind === 'avoid' ? 'Stay out. Back on the table above <b>' + $$(a.e) + '</b>.' : a.kind === 'buy' ? 'Buy near <b>' + $$(a.e) + '</b>' : 'Turns into a buy above <b>' + $$(a.e) + '</b>') + '</p></div>';
@@ -180,7 +180,7 @@
     const P = dPal(); const w = KW(x.kind); const o = x.out ? OUT[x.out.r] : null; const open = !x.out;
     const st = o ? '<i class="laOut" style="--c:' + o[1] + '">' + o[0] + '</i>' : '<i class="laOut" style="--c:#9DBEFF">' + (x.kind === 'avoid' ? 'Watching' : x.filled ? 'In the trade' : 'Waiting') + '</i>';
     const mv = x.last && x.kind !== 'avoid' ? Math.round(1000 * (x.last - x.e) / x.e) : null;
-    return '<button class="laRow" data-laopen="' + esc(x.id) + '">' + (x.img ? '<img src="' + x.img + '" alt="">' : logoHTML(x.sym, 34)) + '<span class="rn"><b>' + esc(x.sym) + ' <i class="laTf">' + x.tf + '</i> <i class="laK" style="color:' + P[w[1]] + '">' + w[0] + '</i></b><small>' + new Date(x.t).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' · Buy ' + $$(x.e) + ' · Stop ' + $$(x.st) + ' · Target ' + $$(x.tg) + '</small></span><span class="laR">' + st + (open && mv != null && x.filled ? '<small style="color:' + (mv >= 0 ? P.up : P.dn) + '">' + (mv >= 0 ? '+$' : '−$') + Math.abs(mv) + ' on $1k</small>' : '') + '</span></button>';
+    return '<button class="laRow" data-laopen="' + esc(x.id) + '">' + (x.img ? '<img loading="lazy" src="' + x.img + '" alt="">' : logoHTML(x.sym, 34)) + '<span class="rn"><b>' + esc(x.sym) + ' <i class="laTf">' + x.tf + '</i> <i class="laK" style="color:' + P[w[1]] + '">' + w[0] + '</i></b><small>' + new Date(x.t).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' · Buy ' + $$(x.e) + ' · Stop ' + $$(x.st) + ' · Target ' + $$(x.tg) + '</small></span><span class="laR">' + st + (open && mv != null && x.filled ? '<small style="color:' + (mv >= 0 ? P.up : P.dn) + '">' + (mv >= 0 ? '+$' : '−$') + Math.abs(mv) + ' on $1k</small>' : '') + '</span></button>';
   };
   LA.forSym = function (sym) {
     const L = LA.lib.filter((x) => x.sym === sym).slice(0, 5); LA.track();

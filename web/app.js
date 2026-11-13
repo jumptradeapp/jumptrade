@@ -84,7 +84,7 @@ function logoHTML(sym, size) {
   let h = 0; for (const ch of sym) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   const c = HUES[h % HUES.length];
   const sh = (/^[A-Z]/.test(sym) ? sym[0] : '_') + (!sym.charAt(1) || sym.charAt(1) < 'H' ? '1' : sym.charAt(1) < 'P' ? '2' : '3');
-  const fb = window.JT_WEB && LGS[sh] === 2 && /^[A-Z.\-]{1,6}$/.test(sym) && !LGBAD[sym] ? '<img alt="" src="/api/logo/' + encodeURIComponent(sym) + '" onerror="LGBAD[\'' + sym + '\']=1;this.remove()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;padding:' + Math.round(size * 0.17) + 'px;box-sizing:border-box;border-radius:inherit">' : '';
+  const fb = window.JT_WEB && LGS[sh] === 2 && /^[A-Z.\-]{1,6}$/.test(sym) && !LGBAD[sym] ? '<img alt="" loading="lazy" decoding="async" src="/api/logo/' + encodeURIComponent(sym) + '" onerror="LGBAD[\'' + sym + '\']=1;this.remove()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;padding:' + Math.round(size * 0.17) + 'px;box-sizing:border-box;border-radius:inherit">' : '';
   return '<span class="logo mono" style="position:relative;overflow:hidden;width:' + size + 'px;height:' + size + 'px;border-radius:' + r + 'px;font-size:' + Math.round(size * (sym.length > 3 ? 0.3 : 0.36)) + 'px;background:linear-gradient(160deg,rgb(' + c.join(',') + '),rgb(' + c.map((x) => Math.round(x * 0.55)).join(',') + '))">' + esc(sym.slice(0, 4)) + fb + '</span>';
 }
 

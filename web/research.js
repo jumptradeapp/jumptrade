@@ -125,7 +125,7 @@
     syms.forEach((x, i) => { const s = SLOTS[i], tag = c.tags && c.tags[x];
       if (mono[x]) { h += '<span class="rlg" style="left:' + s[0] + '%;top:' + s[1] + '%;height:' + s[2] + '%;transform:rotate(' + s[3] + 'deg);background:#fff"><b style="color:' + mono[x] + ';font-weight:800;font-size:max(10px,9cqh);letter-spacing:-.02em">' + E(x) + '</b>' + (tag ? '<em style="background:' + (c.tagc || '#2457E6') + '">' + E(tag) + '</em>' : '') + '</span>'; return; }
       const v = L[x], dark = v.charAt(0) === '!', src = 'data:image/webp;base64,' + (dark ? v.slice(1) : v);
-      h += '<span class="rlg" style="left:' + s[0] + '%;top:' + s[1] + '%;height:' + s[2] + '%;transform:rotate(' + s[3] + 'deg);background:' + (dark ? '#1E2530' : '#fff') + '"><img alt="" src="' + src + '">' + (tag ? '<em style="background:' + (c.tagc || '#2457E6') + '">' + E(tag) + '</em>' : '') + '</span>'; });
+      h += '<span class="rlg" style="left:' + s[0] + '%;top:' + s[1] + '%;height:' + s[2] + '%;transform:rotate(' + s[3] + 'deg);background:' + (dark ? '#1E2530' : '#fff') + '"><img alt="" loading="lazy" decoding="async" src="' + src + '">' + (tag ? '<em style="background:' + (c.tagc || '#2457E6') + '">' + E(tag) + '</em>' : '') + '</span>'; });
     return h + '</div>';
   };
 
