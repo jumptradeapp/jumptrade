@@ -1,7 +1,7 @@
 /* jumptrade. mark: hexagon C with three stepped bars (flipped, bars climb toward the C). Pure vector. jmMark(px) flat, jmMark3d(px) extruded. */
 (function () {
   var uid = 0, VB = '0.8 2 90.85 90.85';
-  var C = 'M57.00 13.50L83.53 27.42L83.53 26.33L69.93 33.45L57.00 26.67ZM83.53 28.52L83.53 67.42L48.17 85.98L48.17 72.81L70.98 60.84L70.98 35.10Z', B0 = 'M44.17 8.87L33.78 14.32L33.78 80.53L44.17 85.98Z', B1 = 'M31.69 17.42L21.30 22.87L21.30 75.97L31.69 81.43Z', B2 = 'M19.21 25.97L8.82 31.42L8.82 71.42L19.21 76.88Z';
+  var C = 'M57.00 13.50L83.53 27.42L69.93 33.45L57.00 26.67ZM83.53 28.52L83.53 67.42L48.17 85.98L48.17 72.81L70.98 60.84L70.98 35.10Z', B0 = 'M44.17 8.87L33.78 14.32L33.78 80.53L44.17 85.98Z', B1 = 'M31.69 17.42L21.30 22.87L21.30 75.97L31.69 81.43Z', B2 = 'M19.21 25.97L8.82 31.42L8.82 71.42L19.21 76.88Z';
   function g(id, a, b) { return '<linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + a + '"/><stop offset="1" stop-color="' + b + '"/></linearGradient>'; }
   function svg(k, w, h, cw) {
     return '<svg width="' + w + '" height="' + h + '" viewBox="' + VB + '" shape-rendering="geometricPrecision" aria-hidden="true"><defs>' +
