@@ -22,7 +22,7 @@
   }
   window.NTH = function (n, size) {
     const s = size || 52, sym = tk(n);
-    const ph = window.JT_WEB && n.url ? '<img class="nthImg" loading="lazy" alt="" src="/api/nimg?u=' + encodeURIComponent(n.url) + '&s=' + encodeURIComponent(sym || '') + '&t=' + encodeURIComponent((n.title || '').slice(0, 140)) + '" onload="this.parentNode.classList.add(\'hasImg\')" onerror="this.remove()">' : '';
+    const ph = window.JT_WEB && n.url ? '<img class="nthImg" loading="lazy" alt="" src="/api/nimg?v=2&u=' + encodeURIComponent(n.url) + '&s=' + encodeURIComponent(sym || '') + '&t=' + encodeURIComponent((n.title || '').slice(0, 140)) + '" onload="this.parentNode.classList.add(\'hasImg\')" onerror="this.remove()">' : '';
     if (sym && typeof logoHTML === 'function') return '<span class="nth lg" style="width:' + s + 'px;height:' + s + 'px">' + logoHTML(sym, Math.round(s * 0.62)) + ph + '</span>';
     const c = IC[topic((n.title || '') + ' ' + (n.summary || ''))];
     return '<span class="nth ic" style="width:' + s + 'px;height:' + s + 'px;--c:' + c[0] + '"><svg viewBox="0 0 24 24" width="' + Math.round(s * 0.46) + '" height="' + Math.round(s * 0.46) + '" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + c[1] + '</svg>' + ph + '</span>';

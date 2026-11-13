@@ -1186,8 +1186,8 @@ export default {
     if (url.pathname === '/api/health') return json({ ok: true, provider: 'yahoo', time: new Date().toISOString() });
     if (url.pathname === '/api/nimg') { // small article thumbnail: the story's own preview image (og:image), proxied and cached
       const rf = req.headers.get('referer') || ''; if (rf && !/^https:\/\/(www\.)?jumptrade\.app\//.test(rf)) return new Response('', { status: 403 }); const u = url.searchParams.get('u') || ''; if (!/^https:\/\/[^\s]{8,600}$/.test(u)) return new Response('', { status: 400 });
-      const ck = new Request('https://cache.jumptrade/nimg/' + encodeURIComponent(u)); const hit = url.searchParams.get('j') ? null : await caches.default.match(ck); if (hit) return hit;
-      const miss = () => { const m = new Response('', { status: 404, headers: { 'cache-control': 'public, max-age=21600' } }); ctx.waitUntil(caches.default.put(ck, m.clone())); return m; };
+      const ck = new Request('https://cache.jumptrade/nimg2/' + encodeURIComponent(u) + '/' + encodeURIComponent((url.searchParams.get('s') || '').toUpperCase())); const hit = url.searchParams.get('j') ? null : await caches.default.match(ck); if (hit) return hit;
+      const miss = () => { const m = new Response('', { status: 404, headers: { 'cache-control': 'public, max-age=1800' } }); ctx.waitUntil(caches.default.put(ck, m.clone())); return m; };
       try {
         const pg = await fetch(u, { headers: { 'user-agent': NUA, accept: 'text/html' }, redirect: 'follow', cf: { cacheTtl: 3600 } });
         const html = pg.ok ? (await pg.text()).slice(0, 300000) : '';
