@@ -16,7 +16,7 @@ jobs:
       - run: python research/gainers/fetch.py
       - name: publish data to data-out branch
         run: |
-          mkdir /tmp/out && mv bars.json.gz /tmp/out/
+          mkdir /tmp/out && mv bars.json.gz exch.json /tmp/out/
           cd /tmp/out && git init -q -b data-out && git config user.email bot@jumptrade.app && git config user.name jt-bot
           git add . && git commit -qm "bars $(date -u +%F)"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" data-out

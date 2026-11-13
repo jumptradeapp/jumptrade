@@ -1,5 +1,14 @@
 import json, time, gzip, concurrent.futures as cf, requests, random, sys
 syms=[s[0] for s in json.load(open('web/symbols.json'))]+['SPY','QQQ','IWM']
+EXCH={s[0]:s[2] for s in json.load(open('web/symbols.json'))}
+try:  # add OTC and any listed names missing above, so penny stocks down to $0.01 are included
+    sec=requests.get('https://www.sec.gov/files/company_tickers_exchange.json',headers={'User-Agent':'jumptrade research bot@jumptrade.app'},timeout=30).json()
+    f=sec['fields']; it=f.index('ticker'); ie=f.index('exchange')
+    for row in sec['data']:
+        t=str(row[it]).upper()
+        if t and t not in EXCH: EXCH[t]=row[ie] or 'OTC'; syms.append(t)
+    print('sec added', sum(1 for r in sec['data']), flush=True)
+except Exception as e: print('sec list failed', e, flush=True)
 syms=sorted(set(syms))
 H={'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36'}
 S=requests.Session(); S.headers.update(H)
@@ -24,4 +33,4 @@ with cf.ThreadPoolExecutor(12) as ex:
         if d and d['t']: out[s]=d
         if i%500==0: print(i,st,flush=True)
 print('final',st,len(out))
-json.dump(out,gzip.open('bars.json.gz','wt'))
+json.dump(out,gzip.open('bars.json.gz','wt')); json.dump(EXCH,open('exch.json','w'))
