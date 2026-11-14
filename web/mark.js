@@ -1,12 +1,15 @@
-/* jumptrade. mark: hexagon C with three stepped bars (flipped, bars climb toward the C). Pure vector. jmMark(px) flat, jmMark3d(px) extruded. */
+/* jumptrade. mark: tile grid with a J, top-right tile jumping out. Pure vector. jmMark(px) flat, jmMark3d(px) extruded. */
 (function () {
-  var uid = 0, VB = '0.8 2 90.85 90.85';
-  var C = 'M57.00 13.50L83.53 27.42L69.93 33.45L57.00 26.67ZM83.53 28.52L83.53 67.42L48.17 85.98L48.17 72.81L70.98 60.84L70.98 35.10Z', B0 = 'M44.17 8.87L33.78 14.32L33.78 80.53L44.17 85.98Z', B1 = 'M31.69 17.42L21.30 22.87L21.30 75.97L31.69 81.43Z', B2 = 'M19.21 25.97L8.82 31.42L8.82 71.42L19.21 76.88Z';
+  var uid = 0, VB = '-4 -10 104 106';
   function g(id, a, b) { return '<linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + a + '"/><stop offset="1" stop-color="' + b + '"/></linearGradient>'; }
-  function svg(k, w, h, cw) {
+  var R = function (x, y) { return '<rect x="' + x + '" y="' + y + '" width="26" height="26" rx="5"/>'; };
+  var J = 'M73 34H89A5 5 0 0 1 94 39V64A30 30 0 0 1 64 94H39A5 5 0 0 1 34 89V73A5 5 0 0 1 39 68H63A5 5 0 0 0 68 63V39A5 5 0 0 1 73 34Z';
+  function svg(k, w, h) {
     return '<svg width="' + w + '" height="' + h + '" viewBox="' + VB + '" shape-rendering="geometricPrecision" aria-hidden="true"><defs>' +
-      g(k + 'u', '#9DBEFF', '#4C7FF0') + g(k + 'b', '#5B8CFF', '#2450C8') + g(k + 'd', '#2F5BD0', '#16307E') + '</defs>' +
-      '<path d="' + C + '" fill="' + (cw || (window.JT_THEME === 'light' ? '#0F1B2D' : '#fff')) + '"/><path d="' + B0 + '" fill="url(#' + k + 'u)"/><path d="' + B1 + '" fill="url(#' + k + 'b)"/><path d="' + B2 + '" fill="url(#' + k + 'd)"/></svg>';
+      g(k + 't', '#5B8CFF', '#2450C8') + g(k + 'j', '#9DBEFF', '#4C7FF0') + g(k + 'p', '#E6FFFF', '#5FDCF2') + '</defs>' +
+      '<g fill="url(#' + k + 't)">' + R(0, 0) + R(34, 0) + R(0, 34) + R(34, 34) + R(0, 68) + '</g>' +
+      '<path d="' + J + '" fill="url(#' + k + 'j)"/>' +
+      '<rect x="72" y="-8" width="26" height="26" rx="5" transform="rotate(14 85 5)" fill="url(#' + k + 'p)"/></svg>';
   }
   function mk(px) { var B = Math.round(px), k = 'jmk' + (uid++); return '<span class="jm3" style="width:' + B + 'px;height:' + B + 'px">' + svg(k, B, B) + '</span>'; }
   var URI = null;
