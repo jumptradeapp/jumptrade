@@ -19,7 +19,7 @@
       return { id: t.id, name: t.name, pct: avg, n: rs.length, up: rs.filter((r) => r.pct > 0).length, best: srt[0], worst: srt[srt.length - 1], rows: srt };
     }).filter(Boolean).sort((a, b) => b.pct - a.pct);
   };
-  const SH = ['#0A1326', '#10203F', '#172C52', '#1F3B6A', '#28508F', '#3065BF', '#3B78E0'];
+  const SH = ['#070D1C', '#091726', '#0C2433', '#103645', '#154D5B', '#1B6977', '#238C9E'];
   TH.shade = (rank, n) => SH[Math.min(6, Math.floor(rank / Math.max(1, n) * 7))];
   TH.mapHTML = function () {
     const L = TH.calc(); if (!L.length) return '<div class="empty"><b>Loading themes…</b><span>26 groups like Photonics, Neoclouds and Drones.</span></div>';

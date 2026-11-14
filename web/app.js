@@ -855,12 +855,15 @@ const INTEL = [['research', 'Research'], ['news', 'News'], ['catalysts', 'Calend
 const isIntel = (t) => INTEL.some((x) => x[0] === t);
 const IGROUPS = [['What’s happening', ['news', 'catalysts', 'sectors', 'ipos']], ['Where money’s going', ['flow', 'options', 'congress', 'shorts', 'ratings']], ['Dig deeper', ['research', 'compare']]];
 const iName = (t) => (INTEL.find((x) => x[0] === t) || [t, t])[1];
+/* one swipeable row for every Markets page (was three stacked rows) */
+const IFLAT = [['sectors', 'Themes', 'themes'], ['sectors', 'Money flow', 'flow'], ['sectors', 'Sectors', 'sectors'], ['news', 'News'], ['catalysts', 'Calendar'], ['ipos', 'IPOs'], ['flow', 'Big trades'], ['options', 'Options bets'], ['congress', 'Congress'], ['shorts', 'Bet against'], ['ratings', 'Ratings'], ['research', 'Research'], ['compare', 'Compare']];
 function intelSeg(active) {
-  S.iLast = S.iLast || {}; const g = IGROUPS.find((x) => x[1].indexOf(active) >= 0) || IGROUPS[0]; if (active === S.tab) S.iLast[g[0]] = active;
   setTimeout(intelSub, 0);
-  return IGROUPS.map((x) => '<button class="seg grp' + (x === g ? ' on' : '') + '" data-tab="' + ((S.iLast[x[0]]) || x[1][0]) + '">' + x[0] + '</button>').join('');
+  const sm = S.secMode || 'themes';
+  return IFLAT.map((x) => { const on = x[0] === active && (!x[2] || x[2] === sm); return '<button class="seg ich' + (on ? ' on' : '') + '" data-tab="' + x[0] + '"' + (x[2] ? ' data-smode="' + x[2] + '"' : '') + '>' + x[1] + '</button>'; }).join('');
 }
 function intelSub() {
+  document.querySelectorAll('.intelseg + .subtabs').forEach((el) => { el.style.display = 'none'; }); return;
   const g = IGROUPS.find((x) => x[1].indexOf(S.tab) >= 0); if (!g) return;
   document.querySelectorAll('.intelseg').forEach((el) => {
     if (!el.closest('.view') || getComputedStyle(el.closest('.view')).display === 'none') return;
@@ -1836,7 +1839,7 @@ const MEAN = {
   insiders: 'executives buying or selling their own company’s stock. Buying with their own money is one of the strongest signs there is.',
   news: 'the stories moving stocks today, newest first. Each one shows the stock’s price and move.',
   catalysts: 'what’s coming up: earnings, FDA decisions and IPOs. Big moves often happen on these days.',
-  sectors: 'each box is a group of stocks, like Photonics or Drones. Brighter blue = up more today. Tap one to see its stocks.',
+  sectors: 'each box is a group of stocks, like Photonics or Drones. Brighter cyan = up more today. Tap one to see its stocks.',
   ipos: 'companies about to go public, and the stocks that move with them.',
   ratings: 'what analysts are saying: upgrades, downgrades and price targets.',
   research: 'deep dives on themes and companies, in plain English.',
