@@ -11,7 +11,7 @@
       '<g><path d="' + J + '" fill="url(#' + k + 'j)"/></g>' +
       '<rect x="72" y="-8" width="26" height="26" rx="5" transform="rotate(14 85 5)" fill="url(#' + k + 'p)"/></svg>';
   }
-  function mk(px) { var B = Math.round(px), k = 'jmk' + (uid++); return '<span class="jm3" style="width:' + B + 'px;height:' + B + 'px">' + svg(k, B, B) + '</span>'; }
+  function mk(px) { var B = Math.round(px); return '<span class="jm3 jmimg" style="width:' + B + 'px;height:' + B + 'px"><img class="jmD" alt="" src="img/jump-mark.png"><img class="jmL" alt="" src="img/jump-mark-light.png"></span>'; }
   var URI = null;
   function uri() { if (!URI) URI = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg('u', 300, 300).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ')); return URI; }
   function mk3(px) {

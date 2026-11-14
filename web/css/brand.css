@@ -1,0 +1,29 @@
+/* jumptrade. brand layer — JUMP mark, navy grain background, navy glass tiles, Outfit headings, no square periods */
+@font-face{font-family:"Outfit";src:url(../fonts/Outfit-Regular.ttf) format("truetype");font-weight:300 500;font-display:swap}
+@font-face{font-family:"Outfit";src:url(../fonts/Outfit-Bold.ttf) format("truetype");font-weight:600 900;font-display:swap}
+.jmimg{display:inline-flex!important;align-items:center;justify-content:center}
+.jmimg img{width:100%;height:100%;object-fit:contain;display:block}
+.jmimg .jmL{display:none}:is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-light .jmimg .jmD{display:none}:is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-light .jmimg .jmL{display:block}
+/* header lockup: JUMP + trade. */
+:is(#_,html):is(#_,html):is(#_,html):is(#_,html) .brand .jm,:is(#_,html):is(#_,html):is(#_,html):is(#_,html) .brand .wm{display:none!important}
+:is(#_,html):is(#_,html):is(#_,html):is(#_,html) .brand::before{content:"";display:block;width:122px;height:40px;background:url(../img/jump-trade.png) left center/contain no-repeat;flex-shrink:0}
+:is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-light .brand::before{background-image:url(../img/jump-trade-light.png)}
+:is(#_,html):is(#_,html):is(#_,html):is(#_,html) #splash .m{display:none!important}
+:is(#_,html):is(#_,html):is(#_,html):is(#_,html) #splash .wm{display:block!important;margin:0 auto 22px!important;position:static!important;font-size:0!important;width:240px;height:80px;background:url(../img/jump-trade.png) center/contain no-repeat;color:transparent!important}
+:is(#_,html):is(#_,html):is(#_,html):is(#_,html) #splash .wm *{display:none!important}
+:is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-light #splash .wm{background-image:url(../img/jump-trade-light.png)}
+/* no square periods anywhere */
+:is(#_,html):is(#_,html):is(#_,html):is(#_,html) body .sq{display:none!important}
+/* background: navy grain + faint cyan glow at the top */
+:is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-dark .bg{background:#030716 url(../img/bg-navy.jpg) center top/cover no-repeat!important}
+:is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-dark .bg>*{display:none!important}
+:is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-dark .bg::after{content:"";position:absolute;left:-90px;top:-130px;width:440px;height:340px;background:radial-gradient(closest-side,rgba(95,211,245,.20),rgba(95,211,245,0));pointer-events:none}
+/* navy glass tiles */
+:is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-dark .glass,:is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-dark .stCard,:is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-dark .orcCard{background:rgba(4,7,26,.70)!important;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+:is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-dark nav.main{background:rgba(3,6,22,.78)!important}
+/* Outfit for headings; numbers stay in Inter Tight */
+:is(#_,html):is(#_,html):is(#_,html):is(#_,html) :is(h1,h2,h3,.hxS,.orcTt b,.hmcap){font-family:"Outfit","Inter Tight",system-ui,sans-serif!important}
+
+/* navy glass tiles (beats the app's own card rule) */
+:root:root{--jt-card:rgba(4,7,26,.70);--jt-card2:rgba(4,7,26,.74)}
+html.th-dark:is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html) body :is(.glass,.card,.sec,.hm,.stCard,.hxA,.mkStrip,.orcCard){background:rgba(4,7,26,.70)!important;-webkit-backdrop-filter:blur(16px)!important;backdrop-filter:blur(16px)!important}
