@@ -201,7 +201,7 @@
     const F = [['all', 'All'], ['open', 'Open'], ['hit', 'Hit target'], ['stopped', 'Stopped'], ['done', 'Expired']];
     const lib = LA.lib.filter((x) => LA.f === 'all' || (LA.f === 'open' ? !x.out : LA.f === 'done' ? x.out && /expired|nofill/.test(x.out.r) : x.out && x.out.r === LA.f));
     const hits = LA.lib.filter((x) => x.out && x.out.r === 'hit').length, stops = LA.lib.filter((x) => x.out && x.out.r === 'stopped').length;
-    h += '<div class="glass sec"><div class="hmcap">YOUR ANALYSIS LIBRARY</div>' + (hits + stops ? '<p class="laScore">Hit target <b style="color:#66C99A">' + hits + '</b> · stopped <b style="color:#EC9191">' + stops + '</b>' + ' · ' + Math.round(hits / (hits + stops) * 100) + '% win rate</p>' : '') +
+    h += '<div class="glass sec"><div class="hmcap">YOUR ANALYSIS LIBRARY</div>' + (hits + stops ? '<p class="laScore">Hit target <b style="color:#66C99A">' + hits + '</b> · stopped <b style="color:#EC9191">' + stops + '</b>' + ' · hit target in ' + Math.round(hits / (hits + stops) * 100) + '% of ' + (hits + stops) + ' finished plans</p>' : '') +
       '<div class="ixChips">' + F.map((x) => '<button class="chip' + (LA.f === x[0] ? ' on' : '') + '" data-laf="' + x[0] + '">' + x[1] + '</button>').join('') + '</div>' +
       (lib.length ? lib.slice(0, 40).map(LA.row).join('') : '<p class="small dim">Your analyses show up here, with how each one played out.</p>') + '</div>';
     if (window.JT_WEB) { LA.loadIdeas(); h += '<div class="glass sec"><div class="hmcap">MEMBERS’ IDEAS</div>' + (LA.ideas == null ? '<p class="small dim">Loading…</p>' : LA.ideas.length ? LA.ideas.slice(0, 20).map(LA.ideaRow).join('') : '<p class="small dim">No ideas posted yet. Run an analysis and tap “Post as an idea”.</p>') + '</div>'; }

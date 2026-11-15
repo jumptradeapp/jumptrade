@@ -792,7 +792,8 @@ async function pushRoutes(url, req, env, ctx) {
     const old = all[id] || {};
     all[id] = { sub: { endpoint: b.sub.endpoint, keys: { p256dh: String(b.sub.keys.p256dh), auth: String(b.sub.keys.auth) } }, prefs: Object.assign({}, PDEF, old.prefs || {}, b.prefs || {}),
       syms: (Array.isArray(b.syms) ? b.syms : []).map((s) => String(s).toUpperCase()).filter((s) => /^[A-Z.\-]{1,6}$/.test(s)).slice(0, 80), state: old.state || {}, t: Date.now() };
-    if (Object.keys(all).length > 200) return json({ error: 'full' }, 429);
+    { const cut = Date.now() - 45 * 864e5; Object.keys(all).forEach((k) => { if (k !== id && (all[k].t || 0) < cut) delete all[k]; }); } // drop subscriptions not refreshed in 45 days
+    if (Object.keys(all).length > 400) return json({ error: 'full' }, 429);
     await vput(env, 'subs', all); return json({ ok: true, id, prefs: all[id].prefs });
   }
   if (url.pathname === '/api/push/unsub' && req.method === 'POST') { const b = await req.json().catch(() => ({})); const id = await subId(b.endpoint || ''); const all = (await vget(env, 'subs')) || {}; delete all[id]; await vput(env, 'subs', all); return json({ ok: true }); }
@@ -967,9 +968,10 @@ async function aiRoutes(url, req, env) {
   if (!env.ANTHROPIC_API_KEY) return json({ error: { code: 'not_granted', message: 'AI is not turned on.' } }, 503);
   const body = await req.json().catch(() => ({}));
   // limits: 25 questions a day per visitor, 1,500 a day for the whole site
-  const day = etNow().day; const ip = req.headers.get('cf-connecting-ip') || 'x'; const ipk = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ip + day)))).slice(0, 6).map((b) => b.toString(16).padStart(2, '0')).join('');
+  const who = await sessionFrom(req, env, vget).catch(() => null); // signed-in users are counted by account, so changing networks doesn't reset the limit
+  const day = etNow().day; const ip = who ? 'u:' + who.u.uid : (req.headers.get('cf-connecting-ip') || 'x'); const ipk = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ip + day)))).slice(0, 6).map((b) => b.toString(16).padStart(2, '0')).join('');
   const use = (await vget(env, 'ai_' + day)) || { n: 0, ip: {} };
-  if (use.n >= 1500 || (use.ip[ipk] || 0) >= 25) return json({ error: { code: 'rate_limited', message: 'Daily limit reached. Try again tomorrow.' } }, 429);
+  if (use.n >= 1500 || (use.ip[ipk] || 0) >= (who && who.u.owner ? 200 : 25)) return json({ error: { code: 'rate_limited', message: 'Daily limit reached. Try again tomorrow.' } }, 429);
   use.n++; use.ip[ipk] = (use.ip[ipk] || 0) + 1; await vput(env, 'ai_' + day, use);
   try {
     if (body.kind === 'theme') {
@@ -1107,8 +1109,7 @@ async function runAlerts(env, ctx) {
       if (code && code < 300) { st.n = (st.n || 0) + 1; sent++; }
     }
   }
-  dead.forEach((id) => delete all[id]);
-  await vput(env, 'subs', all);
+  { const F = (await vget(env, 'subs')) || {}; ids.forEach((id) => { if (F[id] && all[id]) F[id].state = all[id].state; }); dead.forEach((id) => delete F[id]); await vput(env, 'subs', F); } // merge into a fresh copy: a subscribe/unsubscribe made while alerts were sending isn't lost
   return { sent, subs: ids.length - dead.length };
 }
 

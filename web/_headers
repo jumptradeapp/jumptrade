@@ -8,5 +8,5 @@
 /fonts/*
   Cache-Control: public, max-age=31536000, immutable
 
-/lg2/*
+/lg/*
   Cache-Control: public, max-age=604800

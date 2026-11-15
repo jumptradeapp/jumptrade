@@ -59,7 +59,10 @@ const cleanName = (n) => { let s = String(n || '').replace(/\s+Class [A-Z]\b.*$/
 let LOGOS = null;
 LOGOS = {}; const LGS = {}; let lgT = 0;
 const LGBAD = window.LGBAD = {};
-function lgNeed(sym) { const b = sym.charAt(1); const c = (/^[A-Z]/.test(sym) ? sym[0] : '_') + (!b || b < 'H' ? '1' : b < 'P' ? '2' : '3'); if (LGS[c]) return; LGS[c] = 1; fetch('lg2/' + c + '.json').then((r) => r.json()).then((j) => { Object.assign(LOGOS, j); LGS[c] = 2; clearTimeout(lgT); lgT = setTimeout(render, 60); }).catch(() => {}); }
+/* web version: one small list of which tickers have a logo, then one tiny image per logo (was ~9 MB of bundled shards) */
+let LGIX = null, LGIXT = 0;
+function lgIndex() { if (LGIX || LGIXT) return; LGIXT = 1; fetch('lg/index.json').then((r) => r.json()).then((j) => { LGIX = j; clearTimeout(lgT); lgT = setTimeout(render, 60); }).catch(() => { LGIXT = 0; }); }
+function lgNeed(sym) { if (window.JT_WEB) return lgIndex(); const b = sym.charAt(1); const c = (/^[A-Z]/.test(sym) ? sym[0] : '_') + (!b || b < 'H' ? '1' : b < 'P' ? '2' : '3'); if (LGS[c]) return; LGS[c] = 1; fetch('lg2/' + c + '.json').then((r) => r.json()).then((j) => { Object.assign(LOGOS, j); LGS[c] = 2; clearTimeout(lgT); lgT = setTimeout(render, 60); }).catch(() => {}); }
 const HUES = [[139, 108, 255], [255, 140, 70], [32, 201, 151], [59, 160, 219], [240, 101, 149], [92, 124, 250], [255, 196, 60], [81, 207, 102], [21, 170, 191], [255, 110, 90]];
 /* every stock move shows dollars AND percent: "+$7.67 +65.72%" (dollar move is derived from price and % when a feed omits it) */
 function dS(chg, pct, price) { const c = chg != null && isFinite(chg) && chg !== '' ? +chg : (price > 0 && pct != null && isFinite(pct) && pct > -100 ? price - price / (1 + pct / 100) : null); if (c == null) return ''; const a = Math.abs(c); return (c >= 0 ? '+$' : '−$') + (price > 0 && price < 1 && a < 0.1 ? a.toFixed(4) : a.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })); }
@@ -78,13 +81,15 @@ function LVB(buy, st, tg, now, buyTxt, lab) {
 function mvS(pct, price, chg) { const d = dS(chg, pct, price); return (d ? d + ' ' : '') + pctS(pct); }
 function logoHTML(sym, size) {
   const r = Math.round(size / 2); // circles everywhere
-  let b64 = LOGOS && LOGOS[sym]; if (!b64 && sym) lgNeed(sym);
+  if (window.JT_WEB && sym) { if (!LGIX) lgIndex(); else if (sym in LGIX) { const dark = LGIX[sym] === 1;
+    return '<span class="logo" style="width:' + size + 'px;height:' + size + 'px;border-radius:' + r + 'px;background:' + (dark ? '#1E2530;border:1px solid rgba(255,255,255,.18)' : '#fff') + '"><img alt="" loading="lazy" decoding="async" src="lg/' + encodeURIComponent(sym) + '.webp" style="width:' + Math.round(size * 0.66) + 'px;height:' + Math.round(size * 0.66) + 'px"></span>'; } }
+  let b64 = LOGOS && LOGOS[sym]; if (!b64 && sym && !window.JT_WEB) lgNeed(sym);
   if (b64) { const dark = b64.charAt(0) === '!'; if (dark) b64 = b64.slice(1);
     return '<span class="logo" style="width:' + size + 'px;height:' + size + 'px;border-radius:' + r + 'px;background:' + (dark ? '#1E2530;border:1px solid rgba(255,255,255,.18)' : '#fff') + '"><img alt="" src="data:image/webp;base64,' + b64 + '" style="width:' + Math.round(size * 0.66) + 'px;height:' + Math.round(size * 0.66) + 'px"></span>'; }
   let h = 0; for (const ch of sym) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   const c = HUES[h % HUES.length];
   const sh = (/^[A-Z]/.test(sym) ? sym[0] : '_') + (!sym.charAt(1) || sym.charAt(1) < 'H' ? '1' : sym.charAt(1) < 'P' ? '2' : '3');
-  const fb = window.JT_WEB && LGS[sh] === 2 && /^[A-Z.\-]{1,6}$/.test(sym) && !LGBAD[sym] ? '<img alt="" src="/api/logo/' + encodeURIComponent(sym) + '" onerror="LGBAD[\'' + sym + '\']=1;this.remove()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;padding:' + Math.round(size * 0.17) + 'px;box-sizing:border-box;border-radius:inherit">' : '';
+  const fb = window.JT_WEB && LGIX && /^[A-Z.\-]{1,6}$/.test(sym) && !LGBAD[sym] ? '<img alt="" src="/api/logo/' + encodeURIComponent(sym) + '" onerror="LGBAD[\'' + sym + '\']=1;this.remove()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;padding:' + Math.round(size * 0.17) + 'px;box-sizing:border-box;border-radius:inherit">' : '';
   return '<span class="logo mono" style="position:relative;overflow:hidden;width:' + size + 'px;height:' + size + 'px;border-radius:' + r + 'px;font-size:' + Math.round(size * (sym.length > 3 ? 0.3 : 0.36)) + 'px;background:linear-gradient(160deg,rgb(' + c.join(',') + '),rgb(' + c.map((x) => Math.round(x * 0.55)).join(',') + '))">' + esc(sym.slice(0, 4)) + fb + '</span>';
 }
 
@@ -206,6 +211,7 @@ function snapRow(x, sess) {
   if ((x.extend_hour_last_price || x.ovn_price) && +x.pre_close && nN(x.change) != null) price = +x.pre_close + +x.change; /* after the close, Webull's price is the last extended-hours trade; the regular-session close is pre_close + change */
   if ((sess === 'pre' || sess === 'after') && x.extend_hour_last_price) { const regClose = +x.pre_close && nN(x.change) != null ? +x.pre_close + +x.change : null; price = +x.extend_hour_last_price; chg = nN(x.extend_hour_change); pct = nN(x.extend_hour_change_ratio) == null ? null : +x.extend_hour_change_ratio * 100;
     if (chg == null) { const ref = sess === 'after' ? regClose : (+x.close || +x.pre_close || null); if (ref) { chg = price - ref; pct = chg / ref * 100; } } } // missing change fields: work them out from the reference close instead of showing $0.00
+  else if (sess === 'pre') { chg = null; pct = null; } // before any pre-market trade, yesterday's move isn't today's: show a dash
   if (sess === 'overnight' && x.ovn_price) { price = +x.ovn_price; chg = nN(x.ovn_change); pct = nN(x.ovn_change_ratio) == null ? null : +x.ovn_change_ratio * 100; }
   const ext = (sess === 'pre' || sess === 'after') && x.extend_hour_last_price;
   return { o: ext ? +x.close : +x.open, h: ext ? +x.extend_hour_high || price : +x.high, l: ext ? +x.extend_hour_low || price : +x.low, pc: chg == null ? null : price - chg, to: +x.out_standing_shares ? (+(ext ? x.extend_hour_volume : x.volume) || 0) / +x.out_standing_shares : (+x.turnover || 0), hi52: +x.fifty_two_wk_high || 0, lo52: +x.fifty_two_wk_low || 0, sym: x.symbol, name: x.name || '', price: price, chg: chg, pct: pct, mcap: +x.market_value || 0, vol: +(sess === 'overnight' ? x.ovn_volume : (sess === 'pre' || sess === 'after') ? x.extend_hour_volume : x.volume) || 0, ovnT: +x.ovn_last_trade_time || 0, halt: x.trade_status === 'HLT' };
@@ -799,7 +805,7 @@ function renderSearch() {
     for (const r of SYMS) {
       const s = r[0], n = r[1].toUpperCase(); let sc = -1;
       if (s === Q) sc = 0; else if (s.indexOf(Q) === 0) sc = 1 + s.length / 10; else if (n.indexOf(Q) === 0) sc = 1.6 + n.length / 200; else if ((' ' + n).indexOf(' ' + Q) >= 0) sc = 3; else if (Q.length >= 3 && n.indexOf(Q) >= 0) sc = 4;
-      if (sc >= 0) { let boost = 0; if (LARGESET[s]) boost += 1.3; if (LOGOS && LOGOS[s]) boost += 0.7; if (rec[s]) boost += 1.6; if (S.wlSyms && S.wlSyms.indexOf(s) >= 0) boost += 0.8; hits.push([sc - boost + (r[2] === 'PINL' || /^OTC/.test(r[2]) ? 2 : 0), s]); }
+      if (sc >= 0) { let boost = 0; if (LARGESET[s]) boost += 1.3; if ((LOGOS && LOGOS[s]) || (LGIX && s in LGIX)) boost += 0.7; if (rec[s]) boost += 1.6; if (S.wlSyms && S.wlSyms.indexOf(s) >= 0) boost += 0.8; hits.push([sc - boost + (r[2] === 'PINL' || /^OTC/.test(r[2]) ? 2 : 0), s]); }
     }
   }
   hits.sort((a, b) => a[0] - b[0]);
@@ -1210,7 +1216,7 @@ function symHits(q, n, skip) {
   const Q = q.trim().toUpperCase(); if (!Q) return []; const hits = [];
   (SYMS || []).forEach((r) => { const s = r[0]; if (skip[s]) return; const nm = r[1].toUpperCase(); let sc = -1;
     if (s === Q) sc = 0; else if (s.indexOf(Q) === 0) sc = 1 + s.length / 10; else if (nm.indexOf(Q) === 0) sc = 1.6 + nm.length / 200; else if ((' ' + nm).indexOf(' ' + Q) >= 0) sc = 3; else if (Q.length >= 3 && nm.indexOf(Q) >= 0) sc = 4;
-    if (sc >= 0) { let b = 0; if (LARGESET[s]) b += 1.3; if (LOGOS && LOGOS[s]) b += 0.7; hits.push([sc - b + (r[2] === 'PINL' || /^OTC/.test(r[2]) ? 2 : 0), s]); } });
+    if (sc >= 0) { let b = 0; if (LARGESET[s]) b += 1.3; if ((LOGOS && LOGOS[s]) || (LGIX && s in LGIX)) b += 0.7; hits.push([sc - b + (r[2] === 'PINL' || /^OTC/.test(r[2]) ? 2 : 0), s]); } });
   hits.sort((a, b) => a[0] - b[0]); const out = hits.slice(0, n).map((x) => x[1]);
   if (!out.length && /^[A-Z.]{1,6}$/.test(Q) && !skip[Q]) out.push(Q);
   return out;

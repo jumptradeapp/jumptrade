@@ -16,7 +16,8 @@
   const of = window.fetch; window.fetch = function (u, o) {
     const href = String(u && u.url || u), isApi = /^\/api\/|jumptrade\.app\/api\//.test(href) && typeof u === 'string';
     if (isApi && get(TK)) { o = Object.assign({}, o || {}); const hd = new Headers(o.headers || {}); if (!hd.has('authorization')) hd.set('authorization', 'Bearer ' + get(TK)); o.headers = hd; }
-    return of.call(this, u, o).then((r) => { if (r.status === 401 && /\/api\/(tool|ai|sync|push|feedback)/.test(href) && !D.getElementById('jtGate') && !inv) { set(TK, null); if (D.body) lockScreen(); } return r; }); };
+    return of.call(this, u, o).then((r) => { if (r.status === 401 && /\/api\/(tool|ai|sync|push|feedback)/.test(href) && !D.getElementById('jtGate') && !inv && !A.rechk) { // one failed request isn't proof you're signed out: ask the server first
+        A.rechk = 1; of.call(window, '/api/auth/me', { headers: get(TK) ? { authorization: 'Bearer ' + get(TK) } : {}, credentials: 'same-origin' }).then((x) => x.json()).then((j) => { if (!j || !j.user) { set(TK, null); if (D.body) lockScreen(); } }).catch(() => {}).finally(() => { setTimeout(() => { A.rechk = 0; }, 5000); }); } return r; }); };
   D.documentElement.classList.add('jt-auth-wait');
 
   // ---------- full-screen gate (lock screen or invite screen) ----------

@@ -84,16 +84,20 @@ export async function authRoutes(url, req, env, ctx, H) {
     const w = await who(); const g = await gate(); if (!w) return json({ user: null, locked: !!g.locked }, 200);
     const { u, U } = w; const now = Date.now();
     if (now - (u.last || 0) > VISIT_GAP) { u.visits = (u.visits || 0) + 1; const d = day(now); u.days = u.days || {}; u.days[d] = (u.days[d] || 0) + 1; const ks = Object.keys(u.days).sort(); while (ks.length > 90) delete u.days[ks.shift()]; if (!u.owner) ctx.waitUntil(logAct({ t: now, uid: u.uid, name: u.name, type: 'visit', dev: dev(req.headers.get('user-agent')) })); }
-    u.last = now; const d0 = dev(req.headers.get('user-agent')); u.devs = u.devs || []; if (u.devs.indexOf(d0) < 0) u.devs.push(d0);
-    await vput(env, 'users', U);
+    const counted = now - (u.last || 0) > VISIT_GAP; const d0 = dev(req.headers.get('user-agent')); const newDev = (u.devs || []).indexOf(d0) < 0;
+    if (counted || newDev || now - (u.last || 0) > 300000) { // write only when something changed, and merge into a fresh copy so an owner change (like turning access off) isn't overwritten
+      const F = (await vget(env, 'users')) || {}; const f = F[u.uid];
+      if (f) { f.last = now; f.visits = u.visits; f.days = u.days; f.devs = f.devs || []; if (f.devs.indexOf(d0) < 0) f.devs.push(d0); await vput(env, 'users', F); if (f.off) return json({ user: null, locked: !!g.locked }, 200); }
+    }
     return json({ user: pub(u), locked: !!g.locked }, 200, w.tok && !/jt_s=/.test(req.headers.get('cookie') || '') ? { 'set-cookie': cookieFor(w.tok) } : {});
   }
 
   if (p === '/api/auth/devlink' && req.method === 'POST') {
     const w = await who(); if (!w) return json({ error: 'auth' }, 401);
-    const AL = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', rb = crypto.getRandomValues(new Uint8Array(8)); const code = [...rb].map((b) => AL[b % AL.length]).join('');
+    const AL = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; let code = ''; while (code.length < 8) { const b = crypto.getRandomValues(new Uint8Array(16)); for (const x of b) if (x < 248 && code.length < 8) code += AL[x % AL.length]; } // even odds for every character
     const I = (await vget(env, 'invites')) || {}; const now = Date.now();
     Object.keys(I).forEach((k) => { if (I[k].exp && I[k].exp < now) delete I[k]; });
+    if (Object.values(I).filter((x) => x.dev === w.u.uid && !x.used && !x.off).length >= 3) return json({ error: 'too_many', message: 'You already have 3 unused device links. Use one first.' }, 429);
     I[(await sha(code)).slice(0, 16)] = { label: w.u.name + ' · new device', created: now, dev: w.u.uid, exp: now + 2 * 864e5 }; await vput(env, 'invites', I);
     return json({ code: code.slice(0, 4) + '-' + code.slice(4), link: 'https://jumptrade.app/#invite=' + code });
   }
@@ -115,11 +119,11 @@ export async function authRoutes(url, req, env, ctx, H) {
   if (p === '/api/admin/seen' && req.method === 'POST') { await vput(env, 'adminSeen', Date.now()); return json({ ok: true }); }
   if (p === '/api/admin/invite' && req.method === 'POST') {
     const b = await body(); const label = String(b.label || '').trim().slice(0, 40); const code = rnd(18).replace(/[^A-Za-z0-9]/g, 'z');
-    const I = (await vget(env, 'invites')) || {}; I[(await sha(code)).slice(0, 16)] = { label, created: Date.now() }; await vput(env, 'invites', I);
+    const I = (await vget(env, 'invites')) || {}; I[(await sha(code)).slice(0, 16)] = { label, created: Date.now(), exp: Date.now() + 14 * 864e5 }; await vput(env, 'invites', I); // invite links expire after 2 weeks
     return json({ code, link: 'https://jumptrade.app/#invite=' + code });
   }
   if (p === '/api/admin/invite/off' && req.method === 'POST') { const b = await body(); const I = (await vget(env, 'invites')) || {}; if (I[b.id]) { I[b.id].off = true; await vput(env, 'invites', I); } return json({ ok: true }); }
-  if (p === '/api/admin/user' && req.method === 'POST') { const b = await body(); const u = U[b.uid]; if (!u || u.owner) return json({ error: 'bad' }, 400); u.off = !!b.off; await vput(env, 'users', U); return json({ ok: true }); }
+  if (p === '/api/admin/user' && req.method === 'POST') { const b = await body(); const U2 = (await vget(env, 'users')) || {}; const u = U2[b.uid]; if (!u || u.owner) return json({ error: 'bad' }, 400); u.off = !!b.off; await vput(env, 'users', U2); return json({ ok: true }); }
   if (p === '/api/admin/lock' && req.method === 'POST') { const b = await body(); await vput(env, 'gate', { locked: !!b.locked }); return json({ ok: true, locked: !!b.locked }); }
   return json({ error: 'not_found' }, 404);
 }
