@@ -149,7 +149,7 @@ function watch(key, tool, input, onData, every) {
   const run = () => {
     if (dead || busy) return; busy = true;
     RQ.add(low, () => mcp.callTool(SERVER, tool, input, { cache: { staleTime: Math.max(0, iv - 5000), gcTime: 600000 } }).then((res) => {
-      busy = false; if (dead) return; S.err = null; S.stamp[key] = (res && res.cache && res.cache.storedAt) || Date.now(); onData(payloadOf(res)); render();
+      busy = false; if (dead) return; S.err = null; if (res && /snapshot|gainers/.test(tool)) S.backupAt = res.src === 'backup' ? Date.now() : (S.backupAt && Date.now() - S.backupAt < 120000 ? S.backupAt : 0); S.stamp[key] = (res && res.cache && res.cache.storedAt) || Date.now(); onData(payloadOf(res)); render();
     }).catch((e) => { busy = false; if (!dead) handleErr(e, key); }));
   };
   run();
@@ -311,7 +311,7 @@ function renderMovers() {
   setHTML($('caps'), CAPS.map((c) => '<button role="tab" aria-selected="' + (c[0] === S.cap) + '" class="seg' + (c[0] === S.cap ? ' on' : '') + '" data-cap="' + c[0] + '">' + c[1] + '</button>').join(''));
   const rows = rankedRows(); rowsCache = rows; haltCheck(rows); loadMoverWhy();
   if ($('mvTop3')) { const P3 = dPal(); const t3 = S.layout === 'tiles' ? [] : rows.slice(0, 3); setHTML($('mvTop3'), t3.map((r, i) => '<button class="t3" data-open="' + esc(r.sym) + '"><em>#' + (i + 1) + '</em>' + logoHTML(r.sym, 30) + '<b class="s">' + esc(r.sym) + '</b><small class="n">' + esc(cleanName(symName(r.sym) || r.name || '')) + '</small><b class="p">$' + px(r.price) + '</b><small class="c" style="color:' + (r.pct >= 0 ? P3.up : P3.dn) + '">' + mvS(r.pct, r.price, r.chg) + '</small></button>').join('')); }
-  $('note').textContent = S.held ? 'Order paused while you scroll' : (rows.length + ' stocks, ' + (v === 'overnight' ? (S.ovnFb ? 'showing after-hours prices until 24-hour quotes come in' : 'ranked by their move since the 4 PM close') : 'ranked by ' + String(vs.name).toLowerCase() + ' gain') + (window.JT_WEB ? ' · priced over 10¢ with real volume' : ''));
+  $('note').textContent = S.held ? 'Order paused while you scroll' : (rows.length + ' stocks, ' + (v === 'overnight' ? (S.ovnFb ? 'showing after-hours prices until 24-hour quotes come in' : 'ranked by their move since the 4 PM close') : 'ranked by ' + String(vs.name).toLowerCase() + ' gain') + (window.JT_WEB ? ' · priced over 10¢ with real volume' : '') + (S.backupAt && Date.now() - S.backupAt < 120000 ? ' · backup prices, halts won’t show' : ''));
   $('layTiles').classList.toggle('on', S.layout === 'tiles'); $('layList').classList.toggle('on', S.layout === 'list');
   const box = $('grid');
   if (window.TODAY && $('mvTop')) $('mvTop').innerHTML = TODAY.healthBar();
@@ -516,7 +516,12 @@ function renderDetail() {
     if ((sn && sn.trade_status === 'HLT') || isHalted(sym)) h += '<div class="dHalt">❚❚ TRADING HALTED</div>';
     // quote time strip: which session, what the change is measured against, and when the quote was taken
     { const st = S.stamp && (S.stamp['d:snap'] || S.stamp['d:snap:' + sym]); const age = st ? Date.now() - st : null; const tm = new Date(st || Date.now()).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', timeZone: 'America/New_York' });
-      h += '<div class="dQt">' + (SESS[S.auto] ? SESS[S.auto].label : 'Market closed') + ' · vs yesterday’s close · ' + (st ? tm + ' ET' : 'loading…') + (age > 90000 ? ' <b style="color:#F2C27A">· delayed</b>' : '') + '</div>'; }
+      // prefer the quote's own last-trade time over when we fetched it
+      const ltRaw = sn && (S.auto !== 'regular' && sn.extend_hour_last_trade_time || sn.last_trade_time || sn.trade_time); const ltN = ltRaw == null ? NaN : (/^\d+$/.test(String(ltRaw)) ? (+ltRaw < 1e12 ? +ltRaw * 1000 : +ltRaw) : Date.parse(ltRaw));
+      const lt = isFinite(ltN) && ltN > 0 ? ltN : null; const ltAge = lt ? Date.now() - lt : null;
+      const ltTxt = lt ? 'last trade ' + new Date(lt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' }) + ' ET' : (st ? 'as of ' + tm + ' ET' : 'loading…');
+      const stale = (S.auto === 'regular' && ltAge != null && ltAge > 15 * 60000) || age > 15 * 60000, late = !stale && ((S.auto === 'regular' && ltAge != null && ltAge > 90000) || age > 90000);
+      h += '<div class="dQt">' + (SESS[S.auto] ? SESS[S.auto].label : 'Market closed') + ' · vs yesterday’s close · ' + ltTxt + (stale ? ' <b style="color:#F2C27A">· stale</b>' : late ? ' <b style="color:#F2C27A">· delayed</b>' : '') + (S.backupAt && Date.now() - S.backupAt < 120000 ? '<br><b style="color:#F2C27A">Backup prices · trading halts won’t show</b>' : '') + '</div>'; }
   }
   h += '</div>';
   if (window.BN) { const A = BN.forSym(sym)[0]; if (A) h += BN.card(A, true); }

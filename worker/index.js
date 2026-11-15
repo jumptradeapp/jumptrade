@@ -680,7 +680,7 @@ async function runTool(tool, input, ctx, env, fresh) {
   const produce = async () => {
     const w = env && !/news/.test(tool) ? await wbCall(env, tool, input || {}).catch((e) => { WBLAST = { tool, error: String(e.message || e), t: Date.now() }; return null; }) : null;
     const payload = w ? w.payload : await fn(input || {});
-    const res = json({ payload }, 200, { 'cache-control': 'public, max-age=' + (TTL[tool] || 30) });
+    const res = json(w || !WBMAP[tool] ? { payload } : { payload, src: 'backup' }, 200, { 'cache-control': 'public, max-age=' + (TTL[tool] || 30) }); // src: 'backup' = the free feed (no halt flags), so the app can say so
     try { await cache.put(key, res.clone()); if (SLOW) await cache.put(skey, json({ payload }, 200, { 'cache-control': 'public, max-age=86400', 'x-jt-t': String(Date.now()) })); } catch (e) {} // the cron has no cache; the Vault copy covers it
     return res;
   };

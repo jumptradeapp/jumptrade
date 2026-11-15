@@ -25,7 +25,7 @@ window.JT_HASH0 = location.hash; // the link the app was opened with, before the
     }
     const body = await r.json().catch(() => ({}));
     if (!r.ok || body.error) { const e = body.error || {}; throw { code: e.code || 'upstream_error', message: e.message || ('HTTP ' + r.status), retryable: !!e.retryable, server: server }; }
-    return { content: [{ type: 'text', text: JSON.stringify(body.payload) }], payload: body.payload, cache: body.asOf ? { storedAt: body.asOf } : undefined }; // asOf = when the server's copy was made (older than now when served from storage)
+    return { content: [{ type: 'text', text: JSON.stringify(body.payload) }], payload: body.payload, src: body.src, cache: body.asOf ? { storedAt: body.asOf } : undefined }; // asOf = when the server's copy was made (older than now when served from storage)
   }
   const mcp = Object.freeze({
     callTool: callTool,
