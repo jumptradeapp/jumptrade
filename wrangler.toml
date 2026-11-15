@@ -9,7 +9,7 @@ keep_vars = true
 directory = "./web"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
-run_worker_first = ["/api/*", "/rotation.json", "/x/*"]
+run_worker_first = ["/api/*", "/rotation.json", "/x/*", "/catalysts.json", "/congress.json", "/funds.json", "/ipos.json", "/models.json", "/models_now.json", "/options.json", "/ratings.json", "/research.json", "/shorts.json", "/symbols.json", "/themes.json", "/delayed.json", "/news_web.json"]  # data files go through the sign-in check too
 
 # Small persistent store for the Webull session token.
 [[durable_objects.bindings]]

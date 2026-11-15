@@ -209,9 +209,9 @@ async function rss(url, source, sym) {
     let src = tag(it, 'source') || source; let title = tag(it, 'title');
     if (/news\.google/.test(url)) { const k = title.lastIndexOf(' - '); if (k > 20) { src = title.slice(k + 3); title = title.slice(0, k); } }
     const when = tag(it, 'pubDate') || tag(it, 'updated') || tag(it, 'published');
-    const t = Date.parse(when) || Date.now();
+    const t = Date.parse(when); if (!t || !/^https?:\/\//i.test(link || '')) return null;
     return { title, url: link, publish_time: new Date(t).toISOString(), source: src, source_name: src, related_symbols: sym ? [sym] : [] };
-  }).filter((n) => n.title && n.url);
+  }).filter((n) => n && n.title && n.url);
 }
 async function ySearchNews(q, sym) {
   const d = await yget('/v1/finance/search?q=' + encodeURIComponent(q) + '&quotesCount=0&newsCount=15', { base: Y1 });
@@ -308,17 +308,22 @@ T.get_runners = async (i) => {
   const pools = await Promise.all([pool(false), screen(SCREENS.active, 250).catch(() => []), screen(SCREENS.small, 100).catch(() => []), screen(SCREENS.aggressive, 100).catch(() => [])]);
   const seen = {}; const raw = [];
   pools.flat().forEach((q) => { if (q && q.symbol && !seen[q.symbol]) { seen[q.symbol] = 1; raw.push(q); } });
-  const m = etMinutes(); const pre = m < 570, post = m >= 960;
-  const frac = pre ? 0.06 : post ? 1 : Math.min(1, Math.max(0.08, (m - 570) / 390)); // share of a normal day's volume expected by now
+  const m = etMinutes(); const today = etNow(); const closeM = today.early ? 780 : 960; const pre = m < 570, post = m >= closeM;
+  const tradingDay = !/Sat|Sun|Hol/.test(today.wd);
+  if (!tradingDay || m < 240 || m >= 1200) { // market closed: show the last regular session instead of scoring stale numbers
+    const last = CUR_ENV ? await vget(CUR_ENV, 'run_last').catch(() => null) : null;
+    return last && last.data ? { session: last.session, from: last.t, updated: new Date(last.t).toISOString(), data: last.data } : { session: 'closed', updated: new Date().toISOString(), data: [] };
+  }
+  const frac = pre ? 0.02 : post ? 1 : Math.min(1, Math.max(0.08, (m - 570) / (closeM - 570))); // share of a normal day's volume expected by now (pre-market: ~2% of a day)
   const rows = [];
   for (const q of raw) {
     const s = q.symbol || ''; if (/[.\-]/.test(s) || (s.length === 5 && /[WRU]$/.test(s))) continue;
     const price = num(pre && q.preMarketPrice ? q.preMarketPrice : q.regularMarketPrice); if (!price || price < 0.5 || price > 60) continue;
     const pct = (pre && q.preMarketChangePercent != null ? q.preMarketChangePercent : q.regularMarketChangePercent) || 0;
-    const vol = (q.regularMarketVolume || 0) + (pre ? (q.preMarketVolume || 0) : 0);
-    const avg = q.averageDailyVolume10Day || q.averageDailyVolume3Month || 0; if (!avg || vol < 100000) continue;
+    const vol = pre ? (q.preMarketVolume || 0) : (q.regularMarketVolume || 0); // before 9:30 Yahoo's regular volume is still yesterday's
+    const avg = q.averageDailyVolume10Day || q.averageDailyVolume3Month || 0; if (!avg || vol < (pre ? 20000 : 100000)) continue;
     const rvol = vol / (avg * frac);
-    const cap = q.marketCap || 0, hi = q.regularMarketDayHigh || price, hi52 = q.fiftyTwoWeekHigh || 0;
+    const cap = q.marketCap || 0, hi = pre ? 0 : (q.regularMarketDayHigh || price), hi52 = q.fiftyTwoWeekHigh || 0; // pre-market: yesterday's high isn't today's
     const nearHi = hi ? price / hi : 0;
     let sc = 0; const why = [];
     const rv = Math.min(35, Math.log2(Math.max(1, rvol)) * 11); sc += rv; if (rvol >= 2) why.push('volume ' + (rvol >= 10 ? Math.round(rvol) : rvol.toFixed(1)) + '× normal');
@@ -340,7 +345,7 @@ T.get_runners = async (i) => {
   }));
   top.forEach((r) => { r.score = Math.max(0, Math.min(100, r.score)); });
   top.sort((a, b) => b.score - a.score);
-  if (top.length >= 5) { if (CUR_ENV) await vput(CUR_ENV, 'run_last', { t: Date.now(), session: pre ? 'pre' : post ? 'after' : 'day', data: top }).catch(() => {}); }
+  if (top.length >= 5 && !pre && !post) { if (CUR_ENV) await vput(CUR_ENV, 'run_last', { t: Date.now(), session: pre ? 'pre' : post ? 'after' : 'day', data: top }).catch(() => {}); }
   else if (CUR_ENV) { const last = await vget(CUR_ENV, 'run_last').catch(() => null); if (last && last.data && Date.now() - last.t < 4 * 864e5) return { session: last.session, from: last.t, updated: new Date(last.t).toISOString(), data: last.data }; }
   return { session: pre ? 'pre' : post ? 'after' : 'day', updated: new Date().toISOString(), data: top };
 };
@@ -355,7 +360,7 @@ T.get_community_hot_stocks = async () => {
   const score = {};
   lists.forEach((l) => l.forEach((s, k) => { s = String(s || '').toUpperCase(); if (!/^[A-Z]{1,5}$/.test(s)) return; score[s] = (score[s] || 0) + (30 - Math.min(29, k)); }));
   const syms = Object.keys(score).sort((a, b) => score[b] - score[a]).slice(0, 50);
-  const q = await quotes(syms).catch(() => []); const ok = {}; q.forEach((x) => { if (x.quoteType === 'EQUITY' || !x.quoteType) ok[x.symbol] = 1; });
+  const q = await quotes(syms).catch(() => []); const ok = {}; q.forEach((x) => { if (x.quote_type === 'EQUITY' || !x.quote_type) ok[x.symbol] = 1; });
   return syms.filter((s) => ok[s]).map((s, k) => ({ symbol: s, rank: k + 1, category: 'US_STOCK', heat: score[s] }));
 };
 
@@ -383,7 +388,12 @@ T.get_stock_unusual_activities = async (i) => {
 
 // ---------- "Your move today": stocks where several independent signals agree, with plain levels ----------
 let CUR_ENV = null;
+// image proxy safety: raster types only (never SVG), and the response can never run as a page on this site
+const IMG_OK = /^\s*image\/(jpeg|jpg|png|webp|gif|avif)\s*(;|$)/i;
+const IMG_SAFE = { 'content-security-policy': "default-src 'none'; sandbox", 'x-content-type-options': 'nosniff', 'content-disposition': 'inline; filename="img"' };
+function safeHost(u) { try { const h = new URL(u).hostname.toLowerCase(); return !(h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h.endsWith('.internal') || /^[\d.]+$/.test(h) || h.indexOf(':') >= 0 || h.indexOf('.') < 0); } catch (e) { return false; } }
 T.get_playbook = async () => {
+  { const n = etNow(); const closeM = n.early ? 780 : 960; if (/Sat|Sun|Hol/.test(n.wd) || n.hm < 570 || n.hm >= closeM) { const last = CUR_ENV ? await vget(CUR_ENV, 'play_last').catch(() => null) : null; return last && last.data ? { updated: new Date(last.t).toISOString(), from: last.t, data: last.data } : { updated: new Date().toISOString(), data: [] }; } }
   const [run, flow, buzz] = await Promise.all([
     T.get_runners({ limit: 40 }).catch(() => ({ data: [] })),
     T.get_stock_unusual_activities({ count: 60 }).catch(() => []),
@@ -398,7 +408,7 @@ T.get_playbook = async () => {
     if (r.score >= 60 || r.rvol >= 2) { add(r.symbol, 'radar', 'Jump radar score ' + r.score, 1.3); const o = S[r.symbol]; if (o) { if (r.rvol >= 2) o.why.push('Volume ' + (r.rvol >= 10 ? Math.round(r.rvol) : r.rvol) + '× normal'); if (r.news) o.why.push('Fresh news: ' + r.news.title.slice(0, 80)); } }
   });
   const fb = {}; (Array.isArray(flow) ? flow : []).forEach((x) => { const o = fb[x.symbol] || (fb[x.symbol] = { b: 0, s: 0, amt: 0 }); if (x.alert_type === 'MAJOR_BUY') { o.b++; o.amt += x.amount || 0; } else o.s++; });
-  Object.keys(fb).forEach((s) => { const o = fb[s]; if (o.b > o.s) add(s, 'money', 'Big buying: $' + (o.amt / 1e6).toFixed(1) + 'M in bursts today', 1.1); });
+  Object.keys(fb).forEach((s) => { const o = fb[s]; if (o.b > o.s) add(s, 'money', 'Heavy volume, price rising (est. $' + (o.amt / 1e6).toFixed(1) + 'M)', 1.1); });
   (Array.isArray(buzz) ? buzz : []).slice(0, 25).forEach((b) => add(b.symbol, 'crowd', 'Trending with traders (#' + b.rank + ')', 0.6));
   ratings.filter((r) => r.date >= wk && (r.action === 'upgrade' || r.action === 'target_raise' || r.action === 'initiate' && /buy|outperform|overweight/i.test(r.to_rating || ''))).forEach((r) => {
     const d = r.old_target && r.new_target ? r.new_target - r.old_target : null;
@@ -682,8 +692,8 @@ async function runTool(tool, input, ctx, env, fresh) {
     const newest = Math.max(ot, vt), age = Date.now() - newest;
     if (newest && age < 6 * 3600000) {
       if (age > (isPre ? 300 : (TTL[tool] || 60)) * 1000) ctx.waitUntil(produce().catch(() => {})); // the cron keeps PRE tools fresh; this is the fallback
-      if (vt >= ot) return json({ payload: v.p }, 200, { 'cache-control': 'public, max-age=20' });
-      return old;
+      if (vt >= ot) return json({ payload: v.p, asOf: vt }, 200, { 'cache-control': 'public, max-age=20' }); // asOf: when this copy was made, so the app can show its real age
+      const ob = await old.json().catch(() => null); return ob ? json({ payload: ob.payload, asOf: ot }, 200, { 'cache-control': 'public, max-age=20' }) : old;
     } }
   try {
     return await produce();
@@ -760,7 +770,10 @@ async function wbUpkeepRun(env) {
 const PDEF = { fresh: true, newsMovers: true, newsGeneral: true, news: true, newsMarket: true, runners: true, runnerMin: 80, move: true, movePct: 5, flow: true, ratings: true, earnings: true, open: false, close: true, quiet: true, cap: 12, prices: [] };
 async function vapidKeys(env) { let v = await vget(env, 'vapid'); if (!v) { v = await makeVapid(); await vput(env, 'vapid', v); } return v; }
 const subId = async (ep) => { const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ep)); return [...new Uint8Array(d)].slice(0, 12).map((b) => b.toString(16).padStart(2, '0')).join(''); };
-function etNow() { const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', weekday: 'short', hourCycle: 'h23' }).formatToParts(new Date()); const g = (t) => (p.find((x) => x.type === t) || {}).value; return { day: g('year') + '-' + g('month') + '-' + g('day'), hm: +g('hour') * 60 + +g('minute'), wd: g('weekday') }; }
+function etNow() { const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', weekday: 'short', hourCycle: 'h23' }).formatToParts(new Date()); const g = (t) => (p.find((x) => x.type === t) || {}).value; const day = g('year') + '-' + g('month') + '-' + g('day'); return { day, hm: +g('hour') * 60 + +g('minute'), wd: MKT_HOLIDAYS.has(day) ? 'Hol' : g('weekday'), early: MKT_EARLY.has(day) }; }
+// US market holidays and 1pm early closes (keep in step with web/app.js)
+const MKT_HOLIDAYS = new Set(['2026-11-26', '2026-12-25', '2027-01-01', '2027-01-18', '2027-02-15', '2027-03-26', '2027-05-31', '2027-06-18', '2027-07-05', '2027-09-06', '2027-11-25', '2027-12-24', '2028-01-17', '2028-02-21', '2028-04-14', '2028-05-29', '2028-06-19', '2028-07-04', '2028-09-04', '2028-11-23', '2028-12-25']);
+const MKT_EARLY = new Set(['2026-11-27', '2026-12-24', '2027-11-26', '2028-07-03', '2028-11-24']);
 // push to the owner's devices (new tester, feedback)
 // Every notification leads with a short subject line; the specific headline moves to the first line of the body.
 const SUBJ = { fr: 'Fresh mover', tm: 'Top mover news', ng: 'Market news', run: 'Runner alert', mv: 'Big move', px: 'Price alert', nw: 'Stock news', nm: 'Market news', fl: 'Big money', rt: 'Analyst call', er: 'Earnings', open: 'Market open', close: 'Closing recap', 'jt-admin': 'Beta admin', test: 'Alerts on' };
@@ -801,7 +814,7 @@ async function precompute(env, ctx) {
 }
 // ---------- pick log: every "Your move today" pick is recorded, then scored against what the stock did next ----------
 async function logPicks(env, rows) {
-  const now = etNow(); if (/Sat|Sun/.test(now.wd) || now.hm < 570 || now.hm >= 960) return 0; // regular hours only, so the logged price is a real traded price
+  const now = etNow(); if (/Sat|Sun|Hol/.test(now.wd) || now.hm < 570 || now.hm >= 960) return 0; // regular hours only, so the logged price is a real traded price
   const picks = (rows || []).filter((r) => r.signals >= 3 && r.price > 0); if (!picks.length) return 0;
   const log = (await vget(env, 'picklog')) || [];
   const have = new Set(log.filter((x) => x.d === now.day).map((x) => x.s)); let added = 0;
@@ -854,7 +867,7 @@ async function ndWrite(env, kind, tag, data, extra) {
 async function newsdesk(env, ctx) {
   if (!env.ANTHROPIC_API_KEY) { const k = Object.keys(env).find((x) => x.trim().toUpperCase() === 'ANTHROPIC_API_KEY'); if (k) env.ANTHROPIC_API_KEY = String(env[k]).trim(); }
   if (!env.ANTHROPIC_API_KEY) return;
-  const now = etNow(); if (/Sat|Sun/.test(now.wd) || now.hm < 240 || now.hm > 1200) return;
+  const now = etNow(); if (/Sat|Sun|Hol/.test(now.wd) || now.hm < 240 || now.hm > 1200) return;
   const L = await vlease(env, 'newsdesk', 170000); if (!L.ok) return;
   try {
     let st = (await vget(env, 'nd_state')) || {}; if (st.day !== now.day) st = { day: now.day, n: 0, seen: Object.fromEntries(Object.entries(st.seen || {}).filter((e) => Date.now() - e[1] < 6 * 3600000)), briefs: {} };
@@ -917,7 +930,7 @@ const MW_KIND = [[/\b(offering|private placement|registered direct|warrants?|at-
   [/\bfda\b|clinical|trial|phase [123]|topline|data readout/i, 'Trial / drug news', 'news'], [/\b(upgrade|outperform|overweight|buy rating|raises? (price )?target)/i, 'Analyst upgrade', 'news'],
   [/\b(miss(es)?|falls short|cuts? (guidance|outlook))/i, 'Earnings miss', 'warn'], [/\b(halt|halted)\b/i, 'Trading halt', 'news'], [/\b(short squeeze|meme|retail traders)\b/i, 'Squeeze / retail', 'news'], [/\b(crypto|bitcoin|treasury strategy)\b/i, 'Crypto pivot', 'news']];
 async function moverScan(env, ctx) {
-  const now = etNow(); if (/Sat|Sun/.test(now.wd) || now.hm < 240 || now.hm > 1200) return;
+  const now = etNow(); if (/Sat|Sun|Hol/.test(now.wd) || now.hm < 240 || now.hm > 1200) return;
   const pre = now.hm < 570, post = now.hm >= 960; const rank = pre ? 'PRE_MARKET' : post ? 'AFTER_MARKET' : 'DAY_1';
   const gl = await cachedTool('get_gainers_losers', { category: 'US_STOCK', rank_type: rank, sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '40', page_index: '1' }, ctx, env).catch(() => null);
   const G = ((((gl || {}).data) || []).filter((x) => x && x.symbol && /^[A-Z.]{1,6}$/.test(x.symbol))).slice(0, 30); if (!G.length) return;
@@ -1014,7 +1027,7 @@ async function freshTool(tool, input, ctx, env) { const r = await runTool(tool, 
 async function cachedTool(tool, input, ctx, env) { const r = await runTool(tool, input, ctx, env); const j = await r.json().catch(() => ({})); return j.payload; }
 async function runAlerts(env, ctx) {
   const all = (await vget(env, 'subs')) || {}; const ids = Object.keys(all); if (!ids.length) return { subs: 0 };
-  const now = etNow(); const weekday = !/Sat|Sun/.test(now.wd); if (!weekday) return { weekend: true };
+  const now = etNow(); const weekday = !/Sat|Sun|Hol/.test(now.wd); if (!weekday) return { weekend: true };
   const pre = now.hm >= 240 && now.hm < 570, reg = now.hm >= 570 && now.hm < 960, post = now.hm >= 960 && now.hm < 1200;
   if (!pre && !reg && !post) return { closed: true };
   const vapid = await vapidKeys(env);
@@ -1063,10 +1076,10 @@ async function runAlerts(env, ctx) {
     const once = (k) => { if (st.seen[k]) return false; st.seen[k] = 1; return true; };
     const f$ = (v) => '$' + (v >= 100 ? v.toFixed(2) : v >= 1 ? v.toFixed(2) : v.toFixed(4));
     if (P.runners && run && run.data && !run.from) run.data.filter((r) => r.score >= (P.runnerMin || 80)).slice(0, 3).forEach((r) => { if (once('run:' + r.symbol)) out.push({ title: r.symbol + ' ' + (r.change_ratio >= 0 ? '+' : '') + (r.change_ratio * 100).toFixed(1) + '% · runner score ' + r.score, body: (r.why || []).slice(0, 2).join(' · ') + ' · ' + f$(r.price), url: '/#runners', tag: 'run-' + r.symbol }); });
-    if (P.move) mine.forEach((sym) => { const x = Q[sym]; if (!x || x.change_ratio == null) return; const pct = x.change_ratio * 100; const lv = Math.abs(pct) >= (P.movePct || 5) * 2 ? 2 : Math.abs(pct) >= (P.movePct || 5) ? 1 : 0; if (!lv) return;
+    if (P.move && !pre) mine.forEach((sym) => { const x = Q[sym]; if (!x || x.change_ratio == null) return; const pct = x.change_ratio * 100; const lv = Math.abs(pct) >= (P.movePct || 5) * 2 ? 2 : Math.abs(pct) >= (P.movePct || 5) ? 1 : 0; if (!lv) return;
       if (once('mv:' + sym + ':' + lv + ':' + (pct > 0 ? 'u' : 'd'))) out.push({ title: sym + ' ' + (pct > 0 ? 'up ' : 'down ') + Math.abs(pct).toFixed(1) + '% today', body: 'Now ' + f$(x.price) + ' (' + (x.change >= 0 ? '+' : '−') + f$(Math.abs(x.change || 0)).slice(1) + ') · on your watchlist', url: '/#s=' + sym, tag: 'mv-' + sym }); });
-    (P.prices || []).forEach((p) => { const x = Q[p.sym]; if (!x || !x.price || !p.price) return; const hit = p.dir === 'below' ? x.price <= p.price : x.price >= p.price;
-      if (hit && once('px:' + p.sym + ':' + p.dir + ':' + p.price)) out.push({ title: p.sym + ' hit ' + f$(p.price), body: 'Now ' + f$(x.price) + ' · your ' + (p.dir === 'below' ? 'below' : 'above') + ' alert', url: '/#s=' + p.sym, tag: 'px-' + p.sym }); });
+    (P.prices || []).forEach((p) => { const x = Q[p.sym]; if (!x || !x.price || !p.price) return; const hit = p.dir === 'below' ? x.price <= p.price : x.price >= p.price; const sk = p.sym + ':' + p.dir + ':' + p.price; const sd = st.side || (st.side = {}); const was = sd[sk]; sd[sk] = hit ? 'h' : 'n';
+      if (hit && was !== 'h' && once('px:' + p.sym + ':' + p.dir + ':' + p.price)) out.push({ title: p.sym + ' hit ' + f$(p.price), body: 'Now ' + f$(x.price) + ' · your ' + (p.dir === 'below' ? 'below' : 'above') + ' alert', url: '/#s=' + p.sym, tag: 'px-' + p.sym }); });
     if (P.news) { const seenT = new Set(); mine.forEach((sym) => {
         const hits = (symNews[sym] || []).concat(mkt.filter((n) => fresh(n) && ((n.related_symbols || []).indexOf(sym) >= 0 || (sym.length >= 3 && new RegExp('(^|[^A-Za-z])\\$?' + sym.replace('.', '\\.') + '([^A-Za-z]|$)').test(n.title)))));
         hits.slice(0, 1).forEach((n) => { const k = n.title.toLowerCase().slice(0, 60); if (seenT.has(k)) return; seenT.add(k); const x = Q[sym];
@@ -1108,16 +1121,17 @@ async function feedWatch(env) {
 }
 let UPK = 0;
 export default {
-  async scheduled(ev, env, ctx) { CUR_ENV = env; const m = new Date().getUTCMinutes(); ctx.waitUntil(vput(env, 'cronbeat', { t: Date.now(), build: 'b2' }).catch(() => {})); /* proof the every-minute job is running */ { const n = etNow(); const live = !/Sat|Sun/.test(n.wd) && n.hm >= 230 && n.hm < 1210; if (live || m % 10 === 0) ctx.waitUntil(precompute(env, ctx).then((r) => vput(env, 'prerun', { t: Date.now(), r })).catch(() => {})); } if (m % 10 === 0) ctx.waitUntil(wbUpkeep(env).catch(() => {})); { const n3 = etNow(); if (!/Sat|Sun/.test(n3.wd) && (n3.hm === 1000 || n3.hm === 1030)) ctx.waitUntil(fetch('https://jumptrade.app/x/rotnow?cron=1').catch(() => {})); /* its own run, so it has its own request budget */ } if (m % 5 === 2) ctx.waitUntil(feedWatch(env).catch(() => {})); if (m % 3 === 1) ctx.waitUntil(newsdesk(env, ctx).catch(() => {})); if (m % 3 === 0) ctx.waitUntil(moverScan(env, ctx).catch(() => {})); { const n2 = etNow(); if (n2.hm === 247) ctx.waitUntil(vault(env).then((v) => v && v.fetch('https://v/sweep')).catch(() => {})); } ctx.waitUntil(runAlerts(env, ctx).then((r) => vput(env, 'alertrun', Object.assign({ t: Date.now() }, r))).catch((e) => vput(env, 'alertrun', { t: Date.now(), error: String(e && e.message || e) }))); },
+  async scheduled(ev, env, ctx) { CUR_ENV = env; const m = new Date().getUTCMinutes(); ctx.waitUntil(vput(env, 'cronbeat', { t: Date.now(), build: 'b2' }).catch(() => {})); /* proof the every-minute job is running */ { const n = etNow(); const live = !/Sat|Sun|Hol/.test(n.wd) && n.hm >= 230 && n.hm < 1210; if (live || m % 10 === 0) ctx.waitUntil(precompute(env, ctx).then((r) => vput(env, 'prerun', { t: Date.now(), r })).catch(() => {})); } if (m % 10 === 0) ctx.waitUntil(wbUpkeep(env).catch(() => {})); { const n3 = etNow(); if (!/Sat|Sun|Hol/.test(n3.wd) && (n3.hm === 1000 || n3.hm === 1030)) ctx.waitUntil((async () => { let k = await vget(env, 'cronkey').catch(() => null); if (!k) { k = [...crypto.getRandomValues(new Uint8Array(24))].map((b) => b.toString(16).padStart(2, '0')).join(''); await vput(env, 'cronkey', k); } await fetch('https://jumptrade.app/x/rotnow?cron=1&k=' + k); })().catch(() => {})); /* its own run, so it has its own request budget */ } if (m % 5 === 2) ctx.waitUntil(feedWatch(env).catch(() => {})); if (m % 3 === 1) ctx.waitUntil(newsdesk(env, ctx).catch(() => {})); if (m % 3 === 0) ctx.waitUntil(moverScan(env, ctx).catch(() => {})); { const n2 = etNow(); if (n2.hm === 247) ctx.waitUntil(vault(env).then((v) => v && v.fetch('https://v/sweep')).catch(() => {})); } ctx.waitUntil(runAlerts(env, ctx).then((r) => vput(env, 'alertrun', Object.assign({ t: Date.now() }, r))).catch((e) => vput(env, 'alertrun', { t: Date.now(), error: String(e && e.message || e) }))); },
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     CUR_ENV = env;
     if (Date.now() - UPK > 600000) { UPK = Date.now(); ctx.waitUntil(wbUpkeep(env).catch(() => {})); }
-    if (url.pathname === '/x/rotnow') { const last = await vget(env, 'rotrun').catch(() => null); if (last && last.ok && Date.now() - last.t < 600000) return json({ wait: true, last }); const r = await rotationJob(env, ctx).catch((e) => ({ error: String(e && e.message || e) })); await vput(env, 'rotrun', Object.assign({ t: Date.now() }, r)); return json(r); }
+    if (url.pathname === '/x/rotnow') { const ck0 = await vget(env, 'cronkey').catch(() => null); if (!ck0 || url.searchParams.get('k') !== ck0) return new Response('Not found', { status: 404 }); const last = await vget(env, 'rotrun').catch(() => null); if (last && last.ok && Date.now() - last.t < 600000) return json({ wait: true, last }); const r = await rotationJob(env, ctx).catch((e) => ({ error: String(e && e.message || e) })); await vput(env, 'rotrun', Object.assign({ t: Date.now() }, r)); return json(r); }
     if (url.pathname === '/rotation.json') { const R = await vget(env, 'rotation').catch(() => null); if (R && R.asOf) return json(R, 200, { 'cache-control': 'public, max-age=600' }); return env.ASSETS.fetch(req); }
     if (req.method === 'OPTIONS') return new Response(null, { status: 204 }); // the app only calls its own server (same origin), so no cross-site access is granted
     // Private beta: while the site is locked, every data endpoint needs a signed-in account (cookie or bearer token).
-    if (url.pathname.startsWith('/api/') && !/^\/api\/(auth\/|admin\/|health$|ovncheck$|nimg$|logo\/|alertstate$|wbstate$|wb\/)/.test(url.pathname) && !(url.pathname === '/api/feedback' && req.method === 'GET')) {
+    const dataFile = /^\/[a-z_]+\.json$/.test(url.pathname);
+    if ((dataFile || url.pathname.startsWith('/api/')) && !/^\/api\/(auth\/|admin\/|health$|nimg$|logo\/|wb\/)/.test(url.pathname) && !(url.pathname === '/api/feedback' && req.method === 'GET')) {
       // remembered per server for a minute so the 1-second price polling doesn't add storage lookups to every request
       if (!GATE_C || Date.now() - GATE_C.t > 60000) GATE_C = { t: Date.now(), g: (await vget(env, 'gate')) || { locked: true } };
       if (GATE_C.g.locked) {
@@ -1129,6 +1143,7 @@ export default {
         }
       }
     }
+    if (dataFile) { const r = await env.ASSETS.fetch(req); if (!r.ok || /text\/html/.test(r.headers.get('content-type') || '')) return json({ error: { code: 'not_found' } }, 404); return r; } // signed in (or site unlocked): serve the data file; a missing one is a real 404, not the app page
     if (url.pathname === '/api/sync') { // device sync: a long random code is the only key; whoever has the link shares one saved copy
       const c = url.searchParams.get('c') || ''; if (!/^[A-Za-z0-9]{24,64}$/.test(c)) return json({ error: { code: 'bad_request' } }, 400);
       const k = 'sy_' + Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(c)))).slice(0, 16).map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -1151,7 +1166,7 @@ export default {
       const L = (await vget(env, 'ideas')) || [];
       if (req.method === 'GET') { const sym = (url.searchParams.get('sym') || '').toUpperCase(); return json({ payload: (sym ? L.filter((x) => x.sym === sym) : L).slice(0, 60) }, 200, { 'cache-control': 'no-store' }); }
       const who = await sessionFrom(req, env, vget).catch(() => null); if (!who) return json({ error: { code: 'signin_required', message: 'Sign in to post ideas.' } }, 401);
-      const uid = String(who.u.id || who.u.email || who.u.name || '?'); const uh = (await crypto.subtle.digest('SHA-256', new TextEncoder().encode('jt' + uid))); const me = [...new Uint8Array(uh)].slice(0, 6).map((x) => x.toString(16).padStart(2, '0')).join('');
+      const uid = String(who.u.uid || '?'); const uh = (await crypto.subtle.digest('SHA-256', new TextEncoder().encode('jt' + uid))); const me = [...new Uint8Array(uh)].slice(0, 6).map((x) => x.toString(16).padStart(2, '0')).join('');
       if (req.method === 'DELETE') { const id = url.searchParams.get('id') || ''; await vput(env, 'ideas', L.filter((x) => !(x.id === id && x.me === me))); return json({ ok: true }); }
       if (req.method !== 'POST') return json({ error: { code: 'bad_request' } }, 400);
       let b; try { b = JSON.parse((await req.text()).slice(0, 4000)); } catch (e) { return json({ error: { code: 'bad_request' } }, 400); }
@@ -1173,6 +1188,7 @@ export default {
       return new Response('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>jumptrade feedback</title><body style="font:15px -apple-system,system-ui;background:#0A0E15;color:#ECEBE8;margin:0;padding:16px"><h2 style="margin:0 0 12px">Beta feedback · ' + L.length + '</h2>' + L.map((x) => '<div style="padding:12px 14px;margin-bottom:10px;border-radius:12px;background:#141C2B"><div style="font-size:12px;color:#9AA6B6;margin-bottom:6px"><b style="color:' + (x.kind === 'bug' ? '#FF8A8A' : x.kind === 'idea' ? '#5EE0A0' : '#9CC0FF') + '">' + E(String(x.kind).toUpperCase()) + '</b> · ' + new Date(x.t).toLocaleString('en-US', { timeZone: 'America/New_York' }) + (x.name ? ' · ' + E(x.name) : '') + (x.page ? ' · on ' + E(x.page) : '') + '</div><div style="white-space:pre-wrap;line-height:1.45">' + E(x.text) + '</div></div>').join('') + '</body>', { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } }); }
     if (url.pathname.indexOf('/api/ai') === 0) { const r = await aiRoutes(url, req, env); if (r) return r; }
     if (url.pathname.indexOf('/api/push/') === 0) { const r = await pushRoutes(url, req, env, ctx); if (r) return r; }
+    if (/^\/api\/(alertstate|wbstate|ovncheck|selftest|newsdiag|session|scan)$/.test(url.pathname)) { const w0 = await sessionFrom(req, env, vget).catch(() => null); if (!w0 || !w0.u.owner) return json({ error: { code: 'not_found' } }, 404, { 'cache-control': 'no-store' }); }
     if (url.pathname === '/api/alertstate') { const a = (await vget(env, 'alertrun')) || {}; const s = (await vget(env, 'subs')) || {}; const pr = (await vget(env, 'prerun')) || {}; const cb = (await vget(env, 'cronbeat')) || {}; const pl = (await vget(env, 'pushlast')) || {}; return json({ push: pl.t ? { at: new Date(pl.t).toISOString(), status: pl.status, reason: pl.reason, via: pl.via, host: pl.host } : null, cron: cb.t ? new Date(cb.t).toISOString() : null, cronBuild: cb.build, now: new Date().toISOString(), last: a.t ? new Date(a.t).toISOString() : null, sent: a.sent, error: a.error, closed: a.closed, subs: Object.keys(s).length, precompute: { t: pr.t ? new Date(pr.t).toISOString() : null, r: pr.r } }); }
     if (url.pathname === '/api/newsdiag') { const out = await Promise.all(FEEDS.map(async (f) => { const t0 = Date.now(); try { const r = await fetch(f[1], { headers: { 'user-agent': NUA, accept: 'application/rss+xml, text/xml' } }); const x = await r.text(); const a = await rss(f[1], f[0]); return f[0] + ': http ' + r.status + ', ' + x.length + ' bytes, ' + a.length + ' items, newest ' + (a[0] ? a.map((n) => n.publish_time).sort().pop() : '-') + ', ' + (Date.now() - t0) + 'ms'; } catch (e) { return f[0] + ': error ' + e.message; } })); return new Response('build news2\n' + out.join('\n'), { headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } }); }
     if (url.pathname === '/api/wbstate') { const s = (await vget(env, 'tokstate')) || {}; const cr = (await vget(env, 'cron')) || {}; const ck = (await vget(env, 'tokcheck')) || {}; const tk = (await vget(env, 'token')) || {}; return json({ token_status: tk.status || null, check_http: ck.http || null, check_msg: ck.body && (ck.body.msg || ck.body.message || ck.body.error_code || ck.body.status) || null, upkeep: cr.t ? new Date(cr.t).toISOString() : null, keys: cr.ready == null ? null : cr.ready, status: s.status || 'none', http: s.http || null, code: s.code || null, created: s.created ? new Date(s.created).toISOString() : null, checked: s.checked ? new Date(s.checked).toISOString() : null }); }
@@ -1187,7 +1203,7 @@ export default {
         rows: a ? a.map((x) => ({ s: x.symbol, ovn: x.ovn_price, ovnPct: x.ovn_change_ratio, ovnVol: x.ovn_volume, ovnT: x.ovn_last_trade_time, ext: x.extend_hour_last_price, keys: Object.keys(x).filter((k) => /ovn|overnight/i.test(k)) })) : null }); }
     if (url.pathname === '/api/health') return json({ ok: true, provider: 'yahoo', time: new Date().toISOString() });
     if (url.pathname === '/api/nimg') { // small article thumbnail: the story's own preview image (og:image), proxied and cached
-      const rf = req.headers.get('referer') || ''; if (rf && !/^https:\/\/(www\.)?jumptrade\.app\//.test(rf)) return new Response('', { status: 403 }); const u = url.searchParams.get('u') || ''; if (!/^https:\/\/[^\s]{8,600}$/.test(u)) return new Response('', { status: 400 });
+      const rf = req.headers.get('referer') || ''; if (!/^https:\/\/(www\.)?jumptrade\.app\//.test(rf) && !(url.searchParams.get('j') && await sessionFrom(req, env, vget).catch(() => null))) return new Response('', { status: 403 }); const u = url.searchParams.get('u') || ''; if (!/^https:\/\/[^\s]{8,600}$/.test(u) || !safeHost(u)) return new Response('', { status: 400 });
       const ck = new Request('https://cache.jumptrade/nimg2/' + encodeURIComponent(u) + '/' + encodeURIComponent((url.searchParams.get('s') || '').toUpperCase())); const hit = url.searchParams.get('j') ? null : await caches.default.match(ck); if (hit) return hit;
       const miss = () => { const m = new Response('', { status: 404, headers: { 'cache-control': 'public, max-age=1800' } }); ctx.waitUntil(caches.default.put(ck, m.clone())); return m; };
       try {
@@ -1196,11 +1212,11 @@ export default {
         let im = (html.match(/<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)(?::src)?["'][^>]*content=["']([^"']+)["']/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["'](?:og:image|twitter:image)["']/i) || [])[1];
         if (!im) { const imgs = [...html.matchAll(/<img[^>]+src=["']([^"']+\.(?:jpe?g|png|webp)[^"']*)["']/gi)].map((m) => m[1]).filter((x) => !/logo|icon|avatar|sprite|pixel|badge/i.test(x)); im = imgs[0]; }
         if (!im) im = await yThumb(url.searchParams.get('t') || '', url.searchParams.get('s') || ''); // the story page has no photo (Webull/Benzinga): find the same story on Yahoo Finance and use its photo
-        if (!im) return miss(); im = new URL(im.replace(/&amp;/g, '&'), pg.url || u).href;
+        if (!im) return miss(); im = new URL(im.replace(/&amp;/g, '&'), pg.url || u).href; if (!/^https:/i.test(im) || !safeHost(im)) return miss();
         if (url.searchParams.get('j')) return json({ im }); // check which photo a story gets
         const r = await fetch(im, { headers: { 'user-agent': NUA, referer: u }, cf: { cacheTtl: 86400 } }); const ct = r.headers.get('content-type') || '';
-        if (!r.ok || !/image/.test(ct)) return miss(); const buf = await r.arrayBuffer(); if (buf.byteLength < 2000 || buf.byteLength > 3000000) return miss();
-        const res = new Response(buf, { headers: { 'content-type': ct, 'cache-control': 'public, max-age=86400' } }); ctx.waitUntil(caches.default.put(ck, res.clone())); return res;
+        if (!r.ok || !IMG_OK.test(ct)) return miss(); const buf = await r.arrayBuffer(); if (buf.byteLength < 2000 || buf.byteLength > 3000000) return miss();
+        const res = new Response(buf, { headers: Object.assign({ 'content-type': ct.split(';')[0].trim().toLowerCase(), 'cache-control': 'public, max-age=86400' }, IMG_SAFE) }); ctx.waitUntil(caches.default.put(ck, res.clone())); return res;
       } catch (e) { return miss(); }
     }
     if (url.pathname.indexOf('/api/logo/') === 0) { // backup logos for tickers missing from the built-in set
@@ -1208,14 +1224,14 @@ export default {
       const ck = new Request('https://cache.jumptrade/logo/' + sym); const hit = await caches.default.match(ck); if (hit) return hit;
       for (const src of ['https://assets.parqet.com/logos/symbol/' + sym + '?format=png&size=128', 'https://financialmodelingprep.com/image-stock/' + sym + '.png']) {
         try { const r = await fetch(src, { headers: { 'user-agent': NUA }, cf: { cacheTtl: 604800 } }); const ct = r.headers.get('content-type') || '';
-          if (r.ok && /image/.test(ct)) { const buf = await r.arrayBuffer(); if (buf.byteLength > 300) { const res = new Response(buf, { headers: { 'content-type': ct, 'cache-control': 'public, max-age=604800' } }); ctx.waitUntil(caches.default.put(ck, res.clone())); return res; } } } catch (e) {}
+          if (r.ok && IMG_OK.test(ct)) { const buf = await r.arrayBuffer(); if (buf.byteLength > 300) { const res = new Response(buf, { headers: Object.assign({ 'content-type': ct.split(';')[0].trim().toLowerCase(), 'cache-control': 'public, max-age=604800' }, IMG_SAFE) }); ctx.waitUntil(caches.default.put(ck, res.clone())); return res; } } } catch (e) {}
       }
       const miss = new Response('', { status: 404, headers: { 'cache-control': 'public, max-age=86400' } }); ctx.waitUntil(caches.default.put(ck, miss.clone())); return miss;
     }
     if (url.pathname === '/api/tool' && req.method === 'GET') { const raw = url.searchParams.get('input') || '{}'; if (raw.length > 16000) return json({ error: { code: 'too_big' } }, 413); let inp = {}; try { inp = JSON.parse(raw); } catch (e) {} return runTool(url.searchParams.get('tool'), inp, ctx, env); }
     if (url.pathname === '/api/scan') { try { const f = await scanAll(false); return json({ ok: true, count: f.length, top: f.slice(0, 8).map((q) => q.symbol + ' ' + (q.regularMarketChangePercent || 0).toFixed(1) + '%') }); } catch (e) { return json({ ok: false, error: String(e.message || e) }); } }
     if (url.pathname === '/api/session') { const s2 = await session(true); return json({ cookie: !!s2.cookie, crumb: !!s2.crumb }); }
-    if (url.pathname === '/api/tool' && req.method === 'POST') { if (+(req.headers.get('content-length') || 0) > 65536) return json({ error: { code: 'too_big' } }, 413); const b = await req.json().catch(() => ({})); return runTool(b.tool, b.input, ctx, env); }
+    if (url.pathname === '/api/tool' && req.method === 'POST') { const tx = await req.text().catch(() => ''); if (tx.length > 65536) return json({ error: { code: 'too_big' } }, 413); let b = {}; try { b = JSON.parse(tx); } catch (e) {} return runTool(b.tool, b.input, ctx, env); }
     if (url.pathname.startsWith('/api/')) return json({ error: { code: 'bad_request', message: 'Unknown endpoint' } }, 404);
     return env.ASSETS.fetch(req);
   },
