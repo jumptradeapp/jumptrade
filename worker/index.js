@@ -552,7 +552,7 @@ function wbShape(tool, data, input) {
   const list = Array.isArray(data) ? data : (data && (data.data || data.list || data.items || data.result)) || null;
   if (tool === 'get_gainers_losers' || tool === 'get_most_active') {
     const size = +input.page_size || 100, page = Math.max(1, +input.page_index || 1);
-    return { data: (list || []).slice((page - 1) * size, page * size) };
+    const L = list || []; return { data: L.length > size ? L.slice((page - 1) * size, page * size) : L.slice(0, size) }; // Webull already sent just this page; only slice when it returned the whole list
   }
   if (tool === 'get_stock_bars') {
     if (data && Array.isArray(data.result)) return data;
@@ -1137,7 +1137,7 @@ export default {
       if (GATE_C.g.locked) {
         const ck = (req.headers.get('authorization') || '') + '|' + ((/(?:^|;\s*)jt_s=([A-Za-z0-9]+)/.exec(req.headers.get('cookie') || '') || [])[1] || '');
         const hit = SESS_C.get(ck);
-        if (!(hit && Date.now() - hit < 60000)) {
+        if (!(hit && Date.now() - hit < 10000)) {
           if (!(await sessionFrom(req, env, vget))) return json({ error: { code: 'signin_required', message: 'jumptrade is invite-only. Sign in to continue.' } }, 401, { 'cache-control': 'no-store' });
           if (SESS_C.size > 500) SESS_C.clear(); SESS_C.set(ck, Date.now());
         }

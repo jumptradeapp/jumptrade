@@ -66,8 +66,8 @@ function dS(chg, pct, price) { const c = chg != null && isFinite(chg) && chg !==
 // one plan format everywhere: Buy / Stop / Target
 function planStrip(lab, e, st, tg, now) { return LVB(Array.isArray(e) ? (e[0] + e[1]) / 2 : e, st, tg, now, Array.isArray(e) ? '$' + px(e[0]) + '–' + px(e[1]) : null, lab); }
 /* BUY NOW / WAIT label for Trade Ideas rows */
-function GOP(now, buy, wait) { const go = !wait && now > 0 && buy > 0 && now >= buy * 0.995; return ' <span class="gop ' + (go ? 'go' : 'wt') + '">' + (go ? 'BUY NOW' : 'WAIT') + '</span>'; }
-const GOLEG = '<div class="goleg"><span class="gop go">BUY NOW</span>at or above the buy price<span class="gop wt">WAIT</span>not there yet</div>';
+function GOP(now, buy, wait) { const ok = !wait && now > 0 && buy > 0; const ex = ok && now > buy * 1.03, go = ok && !ex && now >= buy * 0.995; return ' <span class="gop ' + (go ? 'go' : 'wt') + '">' + (go ? 'BUY NOW' : ex ? 'TOO LATE' : 'WAIT') + '</span>'; } // more than 3% past the buy price: the entry has passed, don't chase
+const GOLEG = '<div class="goleg"><span class="gop go">BUY NOW</span>at the buy price (up to 3% above)<span class="gop wt">WAIT</span>not there yet<span class="gop wt">TOO LATE</span>already 3%+ past it</div>';
 /* the level bar: stop (red) → buy → target (green) on one line, with today's price as a white tick */
 function LVB(buy, st, tg, now, buyTxt, lab) {
   const f = (x) => '$' + px(x); if (!(buy > 0)) return '';
@@ -204,10 +204,11 @@ function normRank(arr) {
 function snapRow(x, sess) {
   let price = +x.price, chg = nN(x.change), pct = nN(x.change_ratio) == null ? null : +x.change_ratio * 100;
   if ((x.extend_hour_last_price || x.ovn_price) && +x.pre_close && nN(x.change) != null) price = +x.pre_close + +x.change; /* after the close, Webull's price is the last extended-hours trade; the regular-session close is pre_close + change */
-  if ((sess === 'pre' || sess === 'after') && x.extend_hour_last_price) { price = +x.extend_hour_last_price; chg = +x.extend_hour_change; pct = +x.extend_hour_change_ratio * 100; }
-  if (sess === 'overnight' && x.ovn_price) { price = +x.ovn_price; chg = +x.ovn_change; pct = +x.ovn_change_ratio * 100; }
+  if ((sess === 'pre' || sess === 'after') && x.extend_hour_last_price) { const regClose = +x.pre_close && nN(x.change) != null ? +x.pre_close + +x.change : null; price = +x.extend_hour_last_price; chg = nN(x.extend_hour_change); pct = nN(x.extend_hour_change_ratio) == null ? null : +x.extend_hour_change_ratio * 100;
+    if (chg == null) { const ref = sess === 'after' ? regClose : (+x.close || +x.pre_close || null); if (ref) { chg = price - ref; pct = chg / ref * 100; } } } // missing change fields: work them out from the reference close instead of showing $0.00
+  if (sess === 'overnight' && x.ovn_price) { price = +x.ovn_price; chg = nN(x.ovn_change); pct = nN(x.ovn_change_ratio) == null ? null : +x.ovn_change_ratio * 100; }
   const ext = (sess === 'pre' || sess === 'after') && x.extend_hour_last_price;
-  return { o: ext ? +x.close : +x.open, h: ext ? +x.extend_hour_high || price : +x.high, l: ext ? +x.extend_hour_low || price : +x.low, pc: price - chg, to: +x.out_standing_shares ? (+(ext ? x.extend_hour_volume : x.volume) || 0) / +x.out_standing_shares : (+x.turnover || 0), hi52: +x.fifty_two_wk_high || 0, lo52: +x.fifty_two_wk_low || 0, sym: x.symbol, name: x.name || '', price: price, chg: chg, pct: pct, mcap: +x.market_value || 0, vol: +(sess === 'overnight' ? x.ovn_volume : (sess === 'pre' || sess === 'after') ? x.extend_hour_volume : x.volume) || 0, ovnT: +x.ovn_last_trade_time || 0, halt: x.trade_status === 'HLT' };
+  return { o: ext ? +x.close : +x.open, h: ext ? +x.extend_hour_high || price : +x.high, l: ext ? +x.extend_hour_low || price : +x.low, pc: chg == null ? null : price - chg, to: +x.out_standing_shares ? (+(ext ? x.extend_hour_volume : x.volume) || 0) / +x.out_standing_shares : (+x.turnover || 0), hi52: +x.fifty_two_wk_high || 0, lo52: +x.fifty_two_wk_low || 0, sym: x.symbol, name: x.name || '', price: price, chg: chg, pct: pct, mcap: +x.market_value || 0, vol: +(sess === 'overnight' ? x.ovn_volume : (sess === 'pre' || sess === 'after') ? x.extend_hour_volume : x.volume) || 0, ovnT: +x.ovn_last_trade_time || 0, halt: x.trade_status === 'HLT' };
 }
 function loadMovers() {
   const v = view();
@@ -1599,6 +1600,7 @@ function render() { if (pDown && Date.now() - pDown < 2500) { rPend = true; retu
   document.addEventListener('touchend', up, true); document.addEventListener('touchcancel', up, true); })();
 function doRender() {
   document.body.dataset.tab = S.tab;
+  { const XT = { options: ['OPTIONS', 'BETS'], congress: ['CONGRESS', 'TRADES'], shorts: ['BET', 'AGAINST'] }[S.tab]; const xh = XT && document.querySelector('#vExtra h1'); if (xh && xh.dataset.t !== S.tab) { xh.dataset.t = S.tab; xh.innerHTML = '<span>' + XT[0] + '</span><br><b>' + XT[1] + '<em class="dot sq">.</em></b>'; } } // each Markets page says what it is
   const navOf = isIntel(S.tab) ? 'intel' : isIdeas(S.tab) ? 'dips' : S.tab; [['navHome', 'home'], ['navMovers', 'movers'], ['navDips', 'dips'], ['navWatch', 'watch'], ['navIntel', 'intel'], ['navPort', 'portfolios']].forEach((x) => { if (!$(x[0])) return; $(x[0]).classList.toggle('on', navOf === x[1]); $(x[0]).setAttribute('aria-current', navOf === x[1] ? 'page' : 'false'); });
   document.body.classList.toggle('collapsed', S.collapsed);
   ({ home: () => window.HOME && HOME.render(), research: () => window.RES && RES.render(), setups: () => window.ENR && ENR.renderSetups(), leaders: () => TODAY.renderLeaders(), runners: () => window.RUN && RUN.render(), build: () => window.BLD && BLD.render(), insiders: () => TODAY.renderInsiders(), flow: () => TODAY.renderFlow(), movers: renderMovers, dips: renderDips, value: renderValue, buzz: renderBuzz, watch: renderWatch, news: renderNews, ratings: renderRatings, record: () => window.REC && REC.render(), live: () => { if ($('laSeg')) setHTML($('laSeg'), ideasSeg('live')); if (window.LA) LA.render(); }, compare: () => window.CMP && CMP.render(), patterns: () => window.PAT && PAT.render(), options: () => EXT.render('options'), congress: () => EXT.render('congress'), shorts: () => EXT.render('shorts'), catalysts: renderCatalysts, ipos: renderIpos, sectors: renderSectors, portfolios: renderPortfolios }[S.tab] || renderMovers)();
