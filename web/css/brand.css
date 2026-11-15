@@ -22,7 +22,7 @@
 :is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-dark .glass,:is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-dark .stCard,:is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-dark .orcCard{background:rgba(4,7,26,.70)!important;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
 :is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-dark nav.main{background:rgba(3,6,22,.78)!important}
 /* Outfit for headings; numbers stay in Inter Tight */
-:is(#_,html):is(#_,html):is(#_,html):is(#_,html) :is(h1,h2,h3,.hxS,.orcTt b,.hmcap){font-family:"Outfit","Inter Tight",system-ui,sans-serif!important}
+:is(#_,html):is(#_,html):is(#_,html):is(#_,html) :is(h1,h2,h3,.hxS,.orcTt b,.hmcap){font-family:"Outfit","Inter",system-ui,sans-serif!important}
 
 /* navy glass tiles (beats the app's own card rule) */
 :root:root{--jt-card:rgba(4,7,26,.70);--jt-card2:rgba(4,7,26,.74)}
