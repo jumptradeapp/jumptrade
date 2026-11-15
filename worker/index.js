@@ -284,8 +284,8 @@ T.get_fund_rating = async () => [];
 // Personal / brokerage tools: the public version has no brokerage. Return empty so screens show their in-app versions.
 ['get_watchlists', 'get_watchlist_instruments', 'get_account_list', 'get_account_positions', 'get_account_balance'].forEach((k) => { T[k] = async () => []; });
 // Not available from this provider yet: answer empty, the app hides those sections.
-['get_stock_capital_flow', 'get_insider_transactions', 'get_income_statement',
-  'get_market_sentiment', 'get_macroeconomic_calendar', 'get_financial_indicators'].forEach((k) => { T[k] = async () => []; });
+['get_stock_capital_flow', 'get_income_statement', 'get_financial_indicators'].forEach((k) => { T[k] = async () => []; });
+// insider filings, market sentiment and the economic calendar have no backup source: when Webull is down they report 'unavailable' (never a fake 'none')
 
 
 

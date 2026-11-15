@@ -104,3 +104,10 @@
   }, true);
   const css = document.createElement('style'); css.textContent = '#vHome .hm:not(.hmreg) .hmcap{cursor:pointer}'; document.head.appendChild(css);
 })();
+
+/* offline: say so plainly, so cached screens aren't mistaken for live prices */
+(function () {
+  const D = document;
+  function upd() { let b = D.getElementById('jtOff'); if (navigator.onLine) { if (b) b.remove(); return; } if (b) return; b = D.createElement('div'); b.id = 'jtOff'; b.setAttribute('role', 'status'); b.textContent = 'You’re offline · prices aren’t updating'; D.body.appendChild(b); }
+  addEventListener('online', upd); addEventListener('offline', upd); if (D.readyState !== 'loading') upd(); else D.addEventListener('DOMContentLoaded', upd);
+})();
