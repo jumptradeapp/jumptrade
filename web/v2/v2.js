@@ -168,15 +168,28 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const ago = (t) => { const ms = typeof t === 'number' ? (t < 1e12 ? t * 1000 : t) : Date.parse(t); if (!isFinite(ms)) return ''; const m = Math.max(1, Math.round((Date.now() - ms) / 60000)); return m < 60 ? m + 'm ago' : m < 1440 ? Math.round(m / 60) + 'h ago' : Math.round(m / 1440) + 'd ago'; };
 
   // ---------- Today ----------
-  function portCard() {
-    const { a, c } = allCalc();
-    if (!c.ready) return card('<div style="position:relative">' + kick('Portfolio') + (S.loaded && S.err.q ? '<div class="err">Prices aren’t loading right now, so balances can’t be worked out. Retrying every 30 seconds.</div>' : skel(4)) + '</div>', 'padding:16px 20px 12px;margin-top:16px');
+  // Today: swipe through All accounts and each account, one full card at a time (no neighbour peeking in), dots underneath
+  let hcI = 0;
+  function portOne(a, c, i, n) {
     const strip = [['TODAY', c.dayPct], ['1W', c.w1], ['1M', c.m1]].map((x) => '<div><span>' + x[0] + '</span><b class="' + (x[1] == null ? '' : cls(x[1])) + '">' + (x[1] == null ? '—' : pct(x[1])) + '</b></div>').join('');
-    return card('<div style="position:relative"><div style="display:flex;align-items:center">' + kick('Portfolio') + '<span class="mini" style="margin-left:10px;color:var(--fg2)">' + a.sub + (REAL ? '' : ' · demo') + '</span><a href="#portfolio" aria-label="Open portfolio" style="margin-left:auto">' + ic('chev', 22, 2.2) + '</a></div>' +
+    const label = i === 0 ? 'Portfolio' : a.name;
+    return card('<div style="position:relative"><div style="display:flex;align-items:center;min-width:0">' + kick(E(label), 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%') + '<span class="mini" style="margin-left:10px;color:var(--fg2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + E(a.sub) + (REAL ? '' : ' · demo') + '</span><a href="#portfolio' + (i ? '/' + i : '') + '" aria-label="Open portfolio" style="margin-left:auto;flex:none">' + ic('chev', 22, 2.2) + '</a></div>' +
       '<div style="display:flex;align-items:center;gap:14px;margin-top:8px"><div style="flex:none"><div style="font-size:31px;line-height:40px;font-weight:600">' + money(c.val) + '</div><div class="' + cls(c.day) + '" style="font-size:16px;font-weight:500;margin-top:2px">' + chg(c.day) + '<span style="margin-left:10px">' + pct(c.dayPct) + '</span></div></div>' +
       '<div class="pchart" style="flex:1;min-width:0;height:58px;display:flex;justify-content:flex-end">' + mtn(c.series, 120, 58, c.val - c.day, c.day >= 0) + '</div></div>' +
-      '<div class="kick" style="font-size:11px;letter-spacing:.2em;margin:16px 0 0;color:#C9D6E2">Top performers today</div><div class="rows" style="padding:0!important">' + perf(c.top, 3, 60) + '</div>' +
-      '<div class="strip" style="margin-top:6px">' + strip + '</div></div>', 'padding:16px 20px 12px;margin-top:16px', '', 'div', ' data-go="#portfolio"');
+      '<div class="kick" style="font-size:11px;letter-spacing:.2em;margin:16px 0 0;color:#C9D6E2">Top performers today</div><div class="rows" style="padding:0!important">' + (c.top.length ? perf(c.top, 3, 60) : '<div class="err">No stock holdings in this account.</div>') + '</div>' +
+      '<div class="strip" style="margin-top:6px">' + strip + '</div></div>', 'padding:16px 20px 12px', '', 'div', ' data-go="#portfolio' + (i ? '/' + i : '') + '"');
+  }
+  function portCard() {
+    const all = allCalc(); const c0 = all.c;
+    if (!c0.ready) return card('<div style="position:relative">' + kick('Portfolio') + (S.loaded && S.err.q ? '<div class="err">Prices aren’t loading right now, so balances can’t be worked out. Retrying every 30 seconds.</div>' : skel(4)) + '</div>', 'padding:16px 20px 12px;margin-top:16px');
+    const cards = [{ a: all.a, c: c0 }].concat(ACCTS.length > 1 ? ACCTS.map((a) => ({ a, c: acctCalc(a) })) : []);
+    if (cards.length === 1) return '<div style="margin-top:16px">' + portOne(all.a, c0, 0, 1) + '</div>';
+    return '<div class="hcar" id="hcar">' + cards.map((x, i) => portOne(x.a, x.c, i, cards.length)).join('') + '</div><div class="dots" id="hdots">' + cards.map((_, i) => '<i class="' + (i === hcI ? 'on' : '') + '"></i>').join('') + '</div>';
+  }
+  function wireHome(keep) {
+    const car = D.getElementById('hcar'), dots = D.getElementById('hdots'); if (!car) return;
+    const w = () => car.clientWidth + 12; car.scrollLeft = keep != null ? keep : hcI * w();
+    let raf = 0; car.addEventListener('scroll', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { const i = Math.round(car.scrollLeft / w()); if (i !== hcI) { hcI = i; dots.querySelectorAll('i').forEach((d, k) => d.classList.toggle('on', k === i)); } }); }, { passive: true });
   }
   function pulseText() {
     const p = (s) => (S.q[s] ? S.q[s].pct : null); const sp5 = p('SPY'), nq = p('QQQ'), rt = p('IWM'), dj = p('DIA');
@@ -742,6 +755,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     if (lastV !== r.v) { if (r.v === 'movers') loadMovers().then(render); }
     if (window.V2X) Object.assign(VIEW, V2X.views(r));
     const tsc = render.h === location.hash ? Array.from(app.querySelectorAll('.mvt')).map((t) => [t.scrollTop, t.scrollLeft]) : [];
+    const hk = D.getElementById('hcar'); const hKeep = hk && lastV === r.v ? hk.scrollLeft : null;
     app.innerHTML = (VIEW[r.v] || today)();
     app.querySelectorAll('.mvt').forEach((t, i) => { if (tsc[i]) { t.scrollTop = tsc[i][0]; t.scrollLeft = tsc[i][1]; } }); render.h = location.hash;
     let navOn = { today: 0, movers: 1, radar: 1, stock: 1, markets: 2, mtheme: 2, earnings: 2, portfolio: 4, funds: 4, fund: 4 }[r.v]; if (navOn == null && window.V2X) navOn = V2X.nav[r.v];
@@ -750,6 +764,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     if (!D.querySelector('.scrim')) { const s = D.createElement('div'); s.className = 'scrim'; D.body.insertBefore(s, nav); }
     D.querySelector('.scrim').style.display = r.v === 'connect' ? 'none' : '';
     if (r.v === 'portfolio') wireCarousel(keepScroll, lastV !== 'portfolio');
+    if (r.v === 'today') wireHome(hKeep);
     if (lastV !== r.v) window.scrollTo(0, 0);
     lastV = r.v;
   }
