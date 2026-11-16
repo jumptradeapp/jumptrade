@@ -241,8 +241,19 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const when = days === 0 ? 'today' : days === 1 ? 'tomorrow' : days < 7 ? d.toLocaleDateString('en-US', { weekday: 'long' }) : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     return act('cal', E(up.symbol) + ' earnings ' + when, (up.eps_estimate != null ? 'EPS estimate $' + (+up.eps_estimate).toFixed(2) : 'Date confirmed') + ' · ' + E(nameOf(up.symbol) || up.symbol) + (HOLD_SYMS.indexOf(up.symbol) >= 0 && (wl() || []).indexOf(up.symbol) < 0 ? ' · demo holding' : ''), V2_STAGE >= 2 ? '#earnings' : '#calendar');
   }
+  // Today's header: a greeting with your first name, a small "Market brief" label, and one line on how the market's doing
+  function greetHead() {
+    const d = etNow(), h = d.getHours(); const g = h < 5 ? 'Good evening' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+    let nm = ''; try { nm = ((window.JT_AUTH && JT_AUTH.user && JT_AUTH.user.name) || localStorage.getItem('jt.name') || '').trim().split(/\s+/)[0].slice(0, 14); } catch (e) {}
+    const ses = session(); const x = S.q.SPY; const p = x && isFinite(x.pct) ? x.pct : null;
+    const dir = p == null ? '' : Math.abs(p) < 0.15 ? 'flat' : p > 0 ? 'higher' : 'lower';
+    const mk = !dir ? '' : /closed|After|Overnight/.test(ses) ? 'stocks closed ' + dir : ses === 'Pre-market' ? 'futures point ' + dir : dir === 'flat' ? 'stocks are flat' : 'stocks are ' + (p > 0 ? 'up' : 'down');
+    return '<div class="hkick">Market brief · ' + E(d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })) + '</div>' +
+      '<h1>' + g + (nm ? ',<br><em>' + E(nm.charAt(0).toUpperCase() + nm.slice(1)) + '.</em>' : '<em>.</em>') + '</h1>' +
+      '<p class="sub">' + ses + ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' ET' + (mk ? ' · ' + mk : '') + '</p>';
+  }
   function today() {
-    return RIB + '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<h1>Market<br><em>briefing.</em></h1><p class="sub">' + dateLine() + '</p>' + pxAge() +
+    return RIB + '<div class="wrap" style="position:relative;z-index:1">' + topbar() + greetHead() + pxAge() +
       portCard() + pulse() + (V2_STAGE >= 2 ? whatsHot() + lab('radar', 'Starting to run', 'See all', '#radar') + radarStrip() : '') + lab('news', 'Top news', 'All news', '#news') + newsRows() +
       lab('star', 'Watchlist', 'View all', '#watch') + watchRows() +
       lab('target', 'Your next moves') + moves() + earnCard() + act('target', 'Analyst calls', 'Upgrades, downgrades and price-target changes', '#analysts') + (V2_STAGE >= 2 ? act('cal', 'Earnings week', 'Who reports this week, beat or miss', '#earnings') : '') + (V2_STAGE >= 3 ? act('bank', 'Follow the money', 'Big options bets, Congress trades, short interest', '#money') : '') + '</div>';
