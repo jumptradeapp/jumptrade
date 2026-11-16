@@ -472,3 +472,5 @@ html body .pglass [style*="font-size:31px"],html body .pglass [style*="font-size
 .bdot{background:#F2B45A!important}
 .amb{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:0 6px;height:17px;vertical-align:2px;border-radius:999px;font:600 10.5px Inter,sans-serif;color:#F6C77E;background:rgba(242,180,90,.12);border:1px solid rgba(242,180,90,.35);white-space:nowrap}
 .amb i{width:5px;height:5px;border-radius:50%;background:#F2B45A}
+
+.top .brand img{height:46px!important}
