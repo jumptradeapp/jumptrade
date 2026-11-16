@@ -204,15 +204,15 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const best = sec[0], worst = sec[sec.length - 1];
     const SN = { Semiconductors: 'chipmakers' }; const sn = (x) => SN[x.name] || (/^[A-Z0-9&]{2,}\b/.test(x.name) ? x.name : x.name.charAt(0).toLowerCase() + x.name.slice(1));
     const lead = best ? (avg >= -0.25 ? ' as ' + sn(best) + ' lead' : ' as ' + sn(worst) + ' lag') : '';
-    const pf = (v) => (v >= 0 ? 'up ' : 'down ') + Math.abs(v).toFixed(1) + '%';
+    const pf = (v) => (v >= 0 ? 'up ' : 'down ') + '<b class="' + (v >= 0 ? 'up' : 'dn') + '">' + (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1) + '%</b>';
     let d = 'The S&P 500 is ' + pf(sp5) + (nq != null ? ', the Nasdaq 100 ' + pf(nq) : '') + '.'; void dj; void rt;
-    if (best && worst && best !== worst) d += ' ' + best.name + ' ' + (best.change_ratio >= 0 ? 'lead' : 'hold up best') + ', ' + sn(worst) + ' ' + (worst.change_ratio < 0 ? 'lag' : 'trail') + '.';
+    if (best && worst && best !== worst) d += ' ' + E(best.name) + ' ' + (best.change_ratio >= 0 ? 'lead' : 'hold up best') + ', ' + E(sn(worst)) + ' ' + (worst.change_ratio < 0 ? 'lag' : 'trail') + '.';
     return { title: verb + lead, desc: d };
   }
   function pulse() {
     const t = pulseText();
     return card('<div class="pane"></div><div style="position:relative;z-index:1;display:flex;align-items:flex-end;gap:10px"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:12px;color:#5B9BEA">' + ic('activity', 20, 2.2) + kick('Market pulse') + '</div>' +
-      (t ? '<div style="font-size:21px;line-height:28px;font-weight:600;margin-top:6px;max-width:262px">' + E(t.title) + '</div><div style="font-size:14px;line-height:21px;color:#D5DEE8;margin-top:6px;max-width:262px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">' + E(t.desc) + '</div>' : S.loaded && S.err.q ? '<div class="err" style="max-width:262px">Index prices aren’t loading right now. Retrying every 30 seconds.</div>' : skel(3)) +
+      (t ? '<div style="font-size:21px;line-height:28px;font-weight:600;margin-top:6px;max-width:262px">' + E(t.title) + '</div><div style="font-size:14px;line-height:21px;color:#D5DEE8;margin-top:6px;max-width:262px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">' + t.desc + '</div>' : S.loaded && S.err.q ? '<div class="err" style="max-width:262px">Index prices aren’t loading right now. Retrying every 30 seconds.</div>' : skel(3)) +
       '</div><span class="rbtn">' + ic('chev', 20, 2.6) + '</span></div>', 'padding:14px 16px 16px 20px;margin-top:12px', 'glass', 'a', ' href="' + (V2_STAGE >= 2 ? '#markets' : '#sectors') + '"');
   }
   function newsRows() {
