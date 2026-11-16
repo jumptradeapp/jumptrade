@@ -172,14 +172,15 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
 
   // ---------- Today ----------
   // Today: swipe through All accounts and each account, one full card at a time (no neighbour peeking in), dots underneath
-  let hcI = 0;
+  let hcI = 0; S.pOpen = (function () { try { return localStorage.getItem('jt.pOpen') === '1'; } catch (e) { return false; } })();
+  D.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-ptog]'); if (!b) return; e.preventDefault(); e.stopPropagation(); S.pOpen = !S.pOpen; try { localStorage.setItem('jt.pOpen', S.pOpen ? '1' : '0'); } catch (x) {} render(); }, true);
   function portOne(a, c, i, n) {
     const strip = [['Today', c.dayPct], ['1 week', c.w1], ['1 month', c.m1]].map((x) => '<div><span>' + x[0] + '</span><b class="' + (x[1] == null ? '' : cls(x[1])) + '">' + (x[1] == null ? '—' : pct(x[1])) + '</b></div>').join('');
     const label = i === 0 ? 'Portfolio' : a.name;
     return card('<div style="position:relative"><div style="display:flex;align-items:center;min-width:0">' + kick(E(label), 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%') + '<span class="mini" style="margin-left:10px;color:var(--fg2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + E(a.sub) + (REAL ? '' : ' · demo') + '</span><a href="#portfolio' + (i ? '/' + i : '') + '" aria-label="Open portfolio" style="margin-left:auto;flex:none">' + ic('chev', 22, 2.2) + '</a></div>' +
       '<div style="display:flex;align-items:center;gap:14px;margin-top:8px"><div style="flex:none"><div style="font-size:31px;line-height:40px;font-weight:600">' + money(c.val) + '</div><div class="' + cls(c.day) + '" style="font-size:16px;font-weight:500;margin-top:2px">' + chg(c.day) + '<span style="margin-left:10px">' + pct(c.dayPct) + '</span></div></div>' +
       '<div class="pchart" style="flex:1;min-width:0;height:58px;display:flex;justify-content:flex-end">' + mtn(c.series, 120, 58, c.val - c.day, c.day >= 0) + '</div></div>' +
-      '<div class="kick" style="font-size:11px;letter-spacing:.2em;margin:16px 0 0;color:#C9D6E2">Top performers today</div><div class="rows" style="padding:0!important">' + (c.top.length ? perf(c.top, 3, 60) : '<div class="err">No stock holdings in this account.</div>') + '</div>' +
+      '<button class="ptog' + (S.pOpen ? ' on' : '') + '" data-ptog="1" aria-expanded="' + !!S.pOpen + '"><span>Top performers today</span><i>' + ic('chev', 16, 2.4) + '</i></button>' + (S.pOpen ? '<div class="rows" style="padding:0!important">' + (c.top.length ? perf(c.top, 3, 60) : '<div class="err">No stock holdings in this account.</div>') + '</div>' : '') +
       '<div class="strip" style="margin-top:6px">' + strip + '</div></div>', 'padding:16px 20px 12px', 'pglass', 'div', ' data-go="#portfolio' + (i ? '/' + i : '') + '"');
   }
   function portCard() {
@@ -264,9 +265,17 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const mk = !dir ? '' : /closed|After|Overnight/.test(ses) ? 'stocks closed ' + dir : ses === 'Pre-market' ? 'futures point ' + dir : dir === 'flat' ? 'stocks are flat' : 'stocks are ' + (p > 0 ? 'up' : 'down');
     return '<div class="tday">' + '<p class="tline">' + E(d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })) + ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' ET</p>' + (mk ? '<p class="tmk">' + E(mk.charAt(0).toUpperCase() + mk.slice(1)) + '</p>' : '') + hoursBar() + '</div>'; void g; void nm;
   }
+  // top gainers on Today: the 5 biggest movers right now (pre-market, regular or after hours)
+  S.tg = null; S.tgT = 0;
+  function loadTG() { if (S.tgBusy || Date.now() - S.tgT < 20000) return; S.tgBusy = 1; S.tgT = Date.now(); const ss = curSess(); const rank = ss === 'pre' ? 'PRE_MARKET' : ss === 'after' ? 'AFTER_MARKET' : 'DAY_1';
+    call('get_gainers_losers', { category: 'US_STOCK', rank_type: rank, sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '20', page_index: '1' }).then((p) => { S.tg = ((p && p.data) || []).filter((x) => x && x.symbol && /^[A-Z.]{1,6}$/.test(x.symbol) && +x.price >= 0.5).slice(0, 5); const ns = S.tg.map((x) => x.symbol).filter((x) => !S.spark[x]); if (ns.length) sparks(ns).then(render).catch(() => {}); }).catch(() => { S.tg = S.tg || []; }).then(() => { S.tgBusy = 0; render(); }); }
+  function tgRows() {
+    loadTG(); if (!S.tg) return rowsBox(skel(4), 'padding:14px'); if (!S.tg.length) return rowsBox('<div class="err">No movers in the feed right now.</div>');
+    return rowsBox(S.tg.map((x) => { const p = +x.change_ratio * 100, pr = +x.price, c = isFinite(+x.change) ? +x.change : pr - pr / (1 + p / 100); return '<a class="row" href="#stock/' + encodeURIComponent(x.symbol) + '" style="min-height:62px">' + tl(x.symbol, 36) + '<span class="nm"><b>' + E(x.symbol) + '</b><small>' + E(x.name || nameOf(x.symbol)) + '</small></span><span style="flex:none">' + sp(x.symbol, p >= 0, 52, 24) + '</span><span class="q"><b>' + pxs(pr) + '</b><small class="' + cls(p) + '">' + (c >= 0 ? '+' : '−') + '$' + Math.abs(c).toFixed(Math.abs(c) < 1 ? 2 : 2) + '<i>' + pct(p) + '</i></small></span></a>'; }).join(''));
+  }
   function today() {
     return RIB + '<div class="wrap" style="position:relative;z-index:1">' + topbar() + greetHead() +
-      portCard() + pulse() + (V2_STAGE >= 2 ? whatsHot() + lab('radar', 'Starting to run', 'See all', '#radar') + radarStrip() : '') + lab('news', 'Top news', 'All news', '#news') + newsRows() +
+      portCard() + pulse() + lab('trend', 'Top gainers', 'See all', '#movers') + tgRows() + lab('news', 'Top news', 'All news', '#news') + newsRows() + (V2_STAGE >= 2 ? whatsHot() + lab('radar', 'Starting to run', 'See all', '#radar') + radarStrip() : '') +
       lab('star', 'Watchlist', 'View all', '#watch') + watchRows() +
       lab('target', 'Your next moves') + moves() + earnCard() + act('target', 'Analyst calls', 'Upgrades, downgrades and price-target changes', '#analysts') + (V2_STAGE >= 2 ? act('cal', 'Earnings week', 'Who reports this week, beat or miss', '#earnings') : '') + (V2_STAGE >= 3 ? act('bank', 'Follow the money', 'Big options bets, Congress trades, short interest', '#money') : '') + '</div>';
   }
@@ -768,6 +777,21 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   D.addEventListener('touchstart', (e) => { if (e.target.closest && e.target.closest('#car')) touching = 1; }, { passive: true });
   D.addEventListener('touchcancel', () => { touching = 0; if (pend) { pend = 0; render(); } }, { passive: true });
   D.addEventListener('touchend', () => { if (touching) setTimeout(() => { touching = 0; if (pend) { pend = 0; render(); } }, 700); }, { passive: true });
+  // update the page in place: only what changed is touched, so images, logos and charts don't flash on every refresh
+  function morph(el, html) { const t = D.createElement(el.tagName); t.innerHTML = html; patchKids(el, t); }
+  function patchKids(a, b) {
+    const A = Array.from(a.childNodes), B = Array.from(b.childNodes);
+    for (let i = 0; i < B.length; i++) { const n = B[i], o = A[i];
+      if (!o) { a.appendChild(n.cloneNode(true)); continue; }
+      if (o.nodeType !== n.nodeType || o.nodeName !== n.nodeName || (o.nodeType === 1 && o.tagName === 'IMG' && o.getAttribute('src') !== n.getAttribute('src'))) { a.replaceChild(n.cloneNode(true), o); continue; }
+      if (o.nodeType === 3 || o.nodeType === 8) { if (o.nodeValue !== n.nodeValue) o.nodeValue = n.nodeValue; continue; }
+      if (o.nodeType !== 1) continue;
+      for (const at of Array.from(o.attributes)) if (!n.hasAttribute(at.name)) o.removeAttribute(at.name);
+      for (const at of Array.from(n.attributes)) if (o.getAttribute(at.name) !== at.value) o.setAttribute(at.name, at.value);
+      if (o.tagName === 'INPUT' || o.tagName === 'TEXTAREA') continue;
+      patchKids(o, n); }
+    for (let i = A.length - 1; i >= B.length; i--) a.removeChild(A[i]);
+  }
   function render() {
     if (touching) { pend = 1; return; }
     { const ae = D.activeElement; if (ae && (ae.id === 'askq' || (ae.classList && ae.classList.contains('xin')))) return; } // don't wipe something being typed
@@ -779,10 +803,10 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     if (window.V2X) Object.assign(VIEW, V2X.views(r));
     const tsc = render.h === location.hash ? Array.from(app.querySelectorAll('.mvt')).map((t) => [t.scrollTop, t.scrollLeft]) : [];
     const hk = D.getElementById('hcar'); const hKeep = hk && lastV === r.v ? hk.scrollLeft : null;
-    app.innerHTML = (VIEW[r.v] || today)();
+    gid = 0; const html = (VIEW[r.v] || today)(); if (lastV !== r.v) app.innerHTML = html; else morph(app, html);
     app.querySelectorAll('.mvt').forEach((t, i) => { if (tsc[i]) { t.scrollTop = tsc[i][0]; t.scrollLeft = tsc[i][1]; } }); render.h = location.hash;
     let navOn = { today: 0, movers: 1, radar: 1, stock: 1, markets: 2, mtheme: 2, earnings: 2, portfolio: 4, funds: 4, fund: 4 }[r.v]; if (navOn == null && window.V2X) navOn = V2X.nav[r.v];
-    nav.innerHTML = NAVI.map((x, i) => '<a class="ni' + (i === navOn ? ' on' : '') + '" href="' + x[2] + '"' + (i === navOn ? ' aria-current="page"' : '') + '>' + ic(x[0], 21, 2.0) + '<span>' + x[1] + '</span></a>').join('');
+    morph(nav, NAVI.map((x, i) => '<a class="ni' + (i === navOn ? ' on' : '') + '" href="' + x[2] + '"' + (i === navOn ? ' aria-current="page"' : '') + '>' + ic(x[0], 21, 2.0) + '<span>' + x[1] + '</span></a>').join(''));
     nav.style.display = r.v === 'connect' ? 'none' : '';
     if (!D.querySelector('.scrim')) { const s = D.createElement('div'); s.className = 'scrim'; D.body.insertBefore(s, nav); }
     D.querySelector('.scrim').style.display = r.v === 'connect' ? 'none' : '';

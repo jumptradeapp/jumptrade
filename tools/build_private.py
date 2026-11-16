@@ -17,6 +17,7 @@ i=v.index('  function tl(sym, s) {'); j=v.index('\n',i)
 PATCH=r"""    if (window.privLogo) { if (sym === 'BULL') return '<span class="tl" style="width:' + s + 'px;height:' + s + 'px"><img src="v2/img/webull.png" alt="Webull" style="width:' + Math.round(s * 0.7) + 'px;height:' + Math.round(s * 0.7) + 'px"></span>'; const d = privLogo(sym); return '<span class="tl' + (d && !d.dark ? ' wt' : '') + '" data-s="' + E(sym) + '" style="width:' + s + 'px;height:' + s + 'px">' + (d ? '<img alt="" src="' + d.u + '" style="width:' + Math.round(s * 0.7) + 'px;height:' + Math.round(s * 0.7) + 'px">' : '<span class="mono2" style="font-size:' + Math.round(s * 0.34) + 'px">' + E(sym.slice(0, 2)) + '</span>') + '</span>'; }
 """
 v=v[:j+1]+PATCH+v[j+1:]
+v=v.replace('+ fb + ph +','+ fb +')
 assert 'privTool' in v and 'V2SETREAL' in v and 'privLogo' in v
 open(DST+'/v2/v2.js','w').write(v)
 open(DST+'/v2/v2x.js','w').write(fix(open(SRC+'/v2/v2x.js').read()))

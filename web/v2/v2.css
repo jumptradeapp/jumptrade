@@ -474,3 +474,21 @@ html body .pglass [style*="font-size:31px"],html body .pglass [style*="font-size
 .amb i{width:5px;height:5px;border-radius:50%;background:#F2B45A}
 
 .top .brand img{height:46px!important}
+
+/* less bubbly: tighter corners everywhere; no glow on the portfolio tile */
+.card{border-radius:12px!important}.inner{border-radius:10px!important}.nav{border-radius:20px!important}.ni{border-radius:12px!important}
+.seg{border-radius:10px!important}.seg span,.seg a{border-radius:7px!important}.chip{border-radius:8px!important}.btn,.gBox button{border-radius:10px!important}
+.tl{border-radius:8px!important}.nw .thumb{border-radius:8px!important}.hcard{border-radius:12px!important}.xin,.xbtn{border-radius:10px!important}
+html body .card.pglass{box-shadow:0 14px 30px rgba(0,0,0,.5),inset 0 1px 0 rgba(225,240,255,.22),inset 0 -14px 24px rgba(0,0,0,.4)!important;border-color:rgba(147,192,246,.35)!important;background:linear-gradient(180deg,#0E1F38 0%,#081428 55%,#040B17 100%)!important}
+html body .card.pglass::before{display:none}html body .card.pglass::after{opacity:.45}
+html body .pglass [style*="font-size:31px"],html body .pglass [style*="font-size:30px"]{text-shadow:none!important}
+.hbt em{box-shadow:none!important}
+
+/* portfolio tile: frosted glass (Today + Portfolio), top performers fold away */
+html body .card.pglass{background:linear-gradient(150deg,rgba(175,210,250,.17) 0%,rgba(90,140,210,.10) 35%,rgba(14,30,56,.45) 70%,rgba(6,14,28,.6) 100%)!important;
+ -webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%);border:1px solid rgba(210,230,255,.30)!important;
+ box-shadow:0 14px 34px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.30),inset 1px 0 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(255,255,255,.04)!important}
+html body .card.pglass::before{display:block!important;content:"";position:absolute;inset:0;background:linear-gradient(118deg,rgba(255,255,255,.10) 0%,rgba(255,255,255,.03) 22%,rgba(255,255,255,0) 40%);pointer-events:none}
+html body .card.pglass::after{opacity:.35}
+.ptog{display:flex;align-items:center;justify-content:space-between;width:100%;margin:14px 0 2px;padding:10px 0 4px;border-top:1px solid rgba(200,225,255,.12)!important;font-size:13px;font-weight:600;color:#C9D6E2}
+.ptog i{display:flex;transition:transform .2s;transform:rotate(90deg);opacity:.8}.ptog.on i{transform:rotate(-90deg)}
