@@ -586,8 +586,9 @@
   };
 
   // ---------- settings / account / feedback / app ----------
-  const THEMES = [['midnight', 'Midnight', 'The default deep navy'], ['black', 'Pure black', 'True black, easier on OLED batteries'], ['swoop', 'Swoop glow', 'Stronger blue glow behind pages']];
-  const applyTheme = () => { D.documentElement.dataset.x2t = lsGet('jt.v2theme', 'midnight'); };
+  const THEMES = [['midnight', 'Dark', 'The default deep navy'], ['light', 'Light', 'White pages, navy portfolio card'], ['auto', 'Auto', 'Follows your phone: light by day, dark at night'], ['black', 'Pure black', 'True black, easier on OLED batteries'], ['swoop', 'Swoop glow', 'Stronger blue glow behind pages']];
+  const applyTheme = () => { let t = lsGet('jt.v2theme', 'midnight'); if (t === 'auto') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'midnight'; D.documentElement.dataset.x2t = t; const m = D.querySelector('meta[name=theme-color]'); if (m) m.content = t === 'light' ? '#F5F8FC' : '#030A15'; };
+  try { matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => { if (lsGet('jt.v2theme', '') === 'auto') applyTheme(); }); } catch (e) {}
   function settingsScreen() {
     const th = lsGet('jt.v2theme', 'midnight'), md = lsGet('jt.v2mode', 'pro'), at = V().AT();
     const opt = (attr, on, L) => '<div class="card rows">' + L.map((x) => '<button class="row xopt' + (x[0] === on ? ' on' : '') + '" ' + attr + '="' + x[0] + '"><span class="nm"><b>' + x[1] + '</b><small>' + x[2] + '</small></span><span class="xrad"></span></button>').join('') + '</div>';
