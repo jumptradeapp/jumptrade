@@ -830,6 +830,33 @@ async function wbCall(env, tool, input) {
 }
 let WBLAST = null;
 
+// ---------- the owner's own Webull accounts (read-only), for the owner's signed-in session only ----------
+let MYPORT = null;
+async function myPortfolio(env) {
+  if (MYPORT && Date.now() - MYPORT.t < 20000) return MYPORT.v;
+  const wb = new Webull(env); if (!wb.ready) return { ok: false, why: 'Webull keys aren’t set' };
+  const token = await wbToken(env, wb).catch(() => null); const tried = [];
+  const arr = (d) => Array.isArray(d) ? d : (d && (d.data || d.items || d.list || d.accounts || d.holdings || d.positions)) || [];
+  const num = (...v) => { for (const x of v) { const n = +x; if (x != null && x !== '' && isFinite(n)) return n; } return null; };
+  let list = null, ver = 2;
+  for (const [path, v] of [['/openapi/account/list', 2], ['/app/subscriptions/list', 1], ['/account/list', 1]]) {
+    const r = await wb.raw('GET', path, {}, null, token).catch((e) => ({ status: 0, data: String(e) })); tried.push(path + ' ' + r.status);
+    if (r.status === 200 && arr(r.data).length) { list = arr(r.data); ver = v; break; }
+  }
+  if (!list) { const v = { ok: false, why: 'Webull didn’t share your accounts with this API key', tried }; MYPORT = { t: Date.now(), v }; return v; }
+  const accts = await Promise.all(list.filter((a) => !/crypto/i.test(a.account_class || a.account_type || '')).slice(0, 6).map(async (a) => {
+    const id = a.account_id || a.accountId || a.id; const out = { id: String(id).slice(-4), name: a.account_label || a.account_type_name || a.account_type || a.account_class || 'Account', cash: 0, pos: {} };
+    const pp = ver === 2 ? '/openapi/assets/positions' : '/account/positions', bp = ver === 2 ? '/openapi/assets/balance' : '/account/balance';
+    const [pr, br] = await Promise.all([wb.raw('GET', pp, { account_id: id, page_size: 100 }, null, token).catch(() => ({ status: 0 })), wb.raw('GET', bp, { account_id: id, total_asset_currency: 'USD' }, null, token).catch(() => ({ status: 0 }))]);
+    tried.push(pp + ' ' + pr.status, bp + ' ' + br.status);
+    arr(pr.data).forEach((x) => { const it = (x.items && x.items[0]) || x.instrument || x; const sym = String(it.symbol || x.symbol || x.ticker || '').toUpperCase(); const q = num(x.quantity, x.qty, x.position, x.total_quantity, it.quantity);
+      const c = num(x.cost_price, x.avg_cost, x.average_cost, x.unit_cost, x.cost_price_per_share); if (/^[A-Z.]{1,6}$/.test(sym) && q) out.pos[sym] = [(out.pos[sym] ? out.pos[sym][0] : 0) + q, c || 0]; });
+    const b = br.data || {}; const cur = (b.account_currency_assets || [])[0] || {};
+    out.cash = num(b.total_cash_balance, b.cash_balance, cur.cash_balance, b.cash, b.settled_cash) || 0;
+    return out; }));
+  const v = { ok: true, accounts: accts, at: Date.now(), tried }; MYPORT = { t: Date.now(), v }; return v;
+}
+
 export class Vault {
   constructor(state) { this.state = state; }
   async fetch(req) {
@@ -1435,6 +1462,7 @@ export default {
     if (/^\/api\/(alertstate|wbstate|ovncheck|selftest|newsdiag|session|scan)$/.test(url.pathname)) { const w0 = await sessionFrom(req, env, vget).catch(() => null); if (!w0 || !w0.u.owner) return json({ error: { code: 'not_found' } }, 404, { 'cache-control': 'no-store' }); }
     if (url.pathname === '/api/alertstate') { const a = (await vget(env, 'alertrun')) || {}; const s = (await vget(env, 'subs')) || {}; const pr = (await vget(env, 'prerun')) || {}; const cb = (await vget(env, 'cronbeat')) || {}; const pl = (await vget(env, 'pushlast')) || {}; return json({ push: pl.t ? { at: new Date(pl.t).toISOString(), status: pl.status, reason: pl.reason, via: pl.via, host: pl.host } : null, cron: cb.t ? new Date(cb.t).toISOString() : null, cronBuild: cb.build, now: new Date().toISOString(), last: a.t ? new Date(a.t).toISOString() : null, sent: a.sent, error: a.error, closed: a.closed, subs: Object.keys(s).length, precompute: { t: pr.t ? new Date(pr.t).toISOString() : null, r: pr.r } }); }
     if (url.pathname === '/api/newsdiag') { const out = await Promise.all(FEEDS.map(async (f) => { const t0 = Date.now(); try { const r = await fetch(f[1], { headers: { 'user-agent': NUA, accept: 'application/rss+xml, text/xml' } }); const x = await r.text(); const a = await rss(f[1], f[0]); return f[0] + ': http ' + r.status + ', ' + x.length + ' bytes, ' + a.length + ' items, newest ' + (a[0] ? a.map((n) => n.publish_time).sort().pop() : '-') + ', ' + (Date.now() - t0) + 'ms'; } catch (e) { return f[0] + ': error ' + e.message; } })); return new Response('build news2\n' + out.join('\n'), { headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } }); }
+    if (url.pathname === '/api/myport') { const w0 = await sessionFrom(req, env, vget).catch(() => null); if (!w0 || !w0.u.owner) return json({ error: { code: 'not_found' } }, 404, { 'cache-control': 'no-store' }); return json(await myPortfolio(env).catch((e) => ({ ok: false, why: String(e && e.message || e) })), 200, { 'cache-control': 'no-store, private' }); }
     if (url.pathname === '/api/wbon') return json({ on: !!new Webull(env).ready }); // public yes/no only: is the Webull feed configured
     if (url.pathname === '/api/wbstate') { const s = (await vget(env, 'tokstate')) || {}; const cr = (await vget(env, 'cron')) || {}; const ck = (await vget(env, 'tokcheck')) || {}; const tk = (await vget(env, 'token')) || {}; return json({ token_status: tk.status || null, check_http: ck.http || null, check_msg: ck.body && (ck.body.msg || ck.body.message || ck.body.error_code || ck.body.status) || null, upkeep: cr.t ? new Date(cr.t).toISOString() : null, keys: cr.ready == null ? null : cr.ready, status: s.status || 'none', http: s.http || null, code: s.code || null, created: s.created ? new Date(s.created).toISOString() : null, checked: s.checked ? new Date(s.checked).toISOString() : null }); }
     if (url.pathname.startsWith('/api/wb/')) { const r = await wbRoutes(url, env); if (r) return r; }

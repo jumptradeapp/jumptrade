@@ -72,6 +72,15 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     { name: 'Roth IRA', sub: 'Webull ···7730', cash: 820, pos: { HIMS: [60, 36.5], RKLB: [70, 31.2], AVGO: [10, 248.0], MSFT: [6, 402.5] } },
     { name: 'Traditional IRA', sub: 'Webull ···1195', cash: 410, pos: { NVDA: [8, 131.0], MSFT: [2, 415.0], WMT: [25, 88.3] } },
   ];
+  // the owner's real Webull accounts (owner session only; everyone else keeps the demo, labelled)
+  let REAL = false; window.V2REAL = () => REAL;
+  function loadMine() { fetch('/api/myport', { credentials: 'same-origin', cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((j) => {
+    if (!j || !j.ok || !j.accounts || !j.accounts.some((a) => Object.keys(a.pos).length)) return;
+    const n = j.accounts.length; ACCTS.splice(0, ACCTS.length, ...j.accounts.map((a) => ({ name: a.name, sub: 'Webull ···' + a.id, cash: a.cash || 0, pos: a.pos })));
+    REAL = true; HOLD_SYMS.splice(0, HOLD_SYMS.length, ...Array.from(new Set(ACCTS.reduce((x, a) => x.concat(Object.keys(a.pos)), [])))); void n;
+    fastSnap(HOLD_SYMS).then(() => sparks(HOLD_SYMS).catch(() => {})).then(() => bars(HOLD_SYMS).catch(() => {})).then(render).catch(render); render();
+  }).catch(() => {}); }
+  setInterval(() => { if (!document.hidden && REAL) loadMine(); }, 300000); // shares and new positions every 5 minutes; prices refresh every few seconds
   const HOLD_SYMS = Array.from(new Set(ACCTS.reduce((a, x) => a.concat(Object.keys(x.pos)), [])));
 
   // ---------- state + data ----------
@@ -128,13 +137,13 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     return { val, day, dayPct: prev ? day / prev * 100 : 0, gain: hold - cost, gainPct: cost ? (hold - cost) / cost * 100 : 0, cash: a.cash, rows, top: rows.slice().sort((x, y) => y.pct - x.pct), series: allSpark ? series : [], ready, w1: per(5), m1: per(21) };
   }
   function allCalc() {
-    const merged = { name: 'All accounts', sub: ACCTS.length + ' Webull accounts', cash: ACCTS.reduce((a, x) => a + x.cash, 0), pos: {} };
+    const merged = { name: 'All accounts', sub: ACCTS.length + ' Webull account' + (ACCTS.length === 1 ? '' : 's'), cash: ACCTS.reduce((a, x) => a + x.cash, 0), pos: {} };
     ACCTS.forEach((a) => Object.keys(a.pos).forEach((s) => { const m = merged.pos[s]; const [q, b] = a.pos[s]; merged.pos[s] = m ? [m[0] + q, (m[0] * m[1] + q * b) / (m[0] + q)] : [q, b]; }));
     return { a: merged, c: acctCalc(merged) };
   }
 
   // ---------- building blocks (same markup as the mock generator) ----------
-  const DEMO = '<span class="demo">Demo data</span>';
+  const DEMO_ = '<span class="demo">Demo data</span>'; let DEMO = DEMO_;
   const kick = (t, st) => '<div class="kick" style="' + (st || '') + '">' + t + '</div>';
   const card = (x, st, c, tag, attrs) => '<' + (tag || 'div') + ' class="card ' + (c || '') + '" style="' + (st || '') + '"' + (attrs || '') + '>' + x + '</' + (tag || 'div') + '>';
   const rowsBox = (x, st) => '<div class="card rows" style="padding:2px 14px;' + (st || '') + '">' + x + '</div>';
@@ -144,8 +153,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const srow = (s, minh) => { const x = S.q[s]; return '<a class="row" href="#stock/' + encodeURIComponent(s) + '" style="min-height:' + minh + 'px">' + tl(s, 38) + '<span class="nm"><b>' + E(s) + '</b><small>' + E(nameOf(s)) + '</small></span><span style="flex:none">' + sp(s, !x || x.chg >= 0) + '</span>' + q(s) + '</a>'; };
   const perf = (list, n, minh) => list.slice(0, n).map((r) => { const s = r.sym, x = S.q[s]; return '<a class="row perf" href="#stock/' + encodeURIComponent(s) + '" style="min-height:' + minh + 'px!important;gap:8px">' + tl(s, 30) + '<span class="nm"><b style="font-size:15px">' + E(s) + '</b><small style="font-size:11.5px;line-height:15px;white-space:normal">' + E(nameOf(s)) + '</small></span><span style="flex:none">' + sp(s, x.chg >= 0, 40, 24) + '</span><span class="q" style="width:96px;flex:none"><b style="font-size:15px">' + money(x.price) + '</b><small style="font-size:11.5px" class="' + cls(x.chg) + '">' + chg(x.chg) + '<i style="margin-left:5px">' + pct(x.pct) + '</i></small></span></a>'; }).join('');
   const skel = (n) => Array.from({ length: n || 3 }, (_, i) => '<div class="skel" style="width:' + (90 - i * 15) + '%"></div>').join('');
-  const topbar = () => '<div class="top"><span class="brand"><img src="/v2/img/jumptrade-logo.svg" alt="jumptrade." width="90" height="26"></span><div class="acts">' + DEMO + '<a class="ib" href="#ask" aria-label="Ask Jump">' + ic('spark', 21) + '</a>' + (V2_STAGE >= 3 ? '<a class="ib" href="#alerts" aria-label="Alerts">' + ic('bell') + (alertCount() ? '<em class="bdot"></em>' : '') + '</a>' : '<a class="ib" href="#calendar" aria-label="Alerts and events">' + ic('bell') + '<em class="bdot"></em></a>') + '<a class="ib" href="#search" aria-label="Search">' + ic('search2', 20) + '</a><a class="ib" href="#menu" aria-label="All pages">' + ic('menu') + '</a></div></div>';
-  const backbar = (title, href) => '<div class="top"><div style="display:flex;align-items:center;gap:6px;min-width:0"><a class="ib" style="margin-left:-10px" href="' + href + '" aria-label="Back">' + ic('back', 22) + '</a><b class="tbt">' + title + '</b></div><div class="acts">' + DEMO + '</div></div>';
+  const topbar = () => '<div class="top"><span class="brand"><img src="/v2/img/jumptrade-logo.svg" alt="jumptrade." width="90" height="26"></span><div class="acts">' + (REAL ? '' : DEMO) + '<a class="ib" href="#ask" aria-label="Ask Jump">' + ic('spark', 21) + '</a>' + (V2_STAGE >= 3 ? '<a class="ib" href="#alerts" aria-label="Alerts">' + ic('bell') + (alertCount() ? '<em class="bdot"></em>' : '') + '</a>' : '<a class="ib" href="#calendar" aria-label="Alerts and events">' + ic('bell') + '<em class="bdot"></em></a>') + '<a class="ib" href="#search" aria-label="Search">' + ic('search2', 20) + '</a><a class="ib" href="#menu" aria-label="All pages">' + ic('menu') + '</a></div></div>';
+  const backbar = (title, href) => '<div class="top"><div style="display:flex;align-items:center;gap:6px;min-width:0"><a class="ib" style="margin-left:-10px" href="' + href + '" aria-label="Back">' + ic('back', 22) + '</a><b class="tbt">' + title + '</b></div><div class="acts">' + (REAL ? '' : DEMO) + '</div></div>';
   const head = (t, sub) => { const p = t.lastIndexOf(' '); return '<h1>' + (p > 0 ? t.slice(0, p) + ' <em>' + t.slice(p + 1) + '</em>' : '<em>' + t + '</em>') + '</h1>' + (sub ? '<p class="sub">' + sub + '</p>' : ''); };
   const sh = (t, link, href, icon) => '<div class="sh"><h2><span class="shi">' + ic(icon || 'layers', 16) + '</span>' + t + '</h2>' + (link ? '<a href="' + href + '">' + link + ic('arrow', 14, 2.2) + '</a>' : '') + '</div>';
   const counter = (icn, label, n, sub) => '<div class="card ctr"><div class="ctrh"><span class="ctri">' + ic(icn, 15) + '</span>' + label + '</div><div class="ctrb"><b>' + n + '</b><span>' + sub + '</span></div></div>';
@@ -170,7 +179,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const { a, c } = allCalc();
     if (!c.ready) return card('<div style="position:relative">' + kick('Portfolio') + (S.loaded && S.err.q ? '<div class="err">Prices aren’t loading right now, so balances can’t be worked out. Retrying every 30 seconds.</div>' : skel(4)) + '</div>', 'padding:16px 20px 12px;margin-top:16px');
     const strip = [['TODAY', c.dayPct], ['1W', c.w1], ['1M', c.m1]].map((x) => '<div><span>' + x[0] + '</span><b class="' + (x[1] == null ? '' : cls(x[1])) + '">' + (x[1] == null ? '—' : pct(x[1])) + '</b></div>').join('');
-    return card('<div style="position:relative"><div style="display:flex;align-items:center">' + kick('Portfolio') + '<span class="mini" style="margin-left:10px;color:var(--fg2)">' + a.sub + ' · demo</span><a href="#portfolio" aria-label="Open portfolio" style="margin-left:auto">' + ic('chev', 22, 2.2) + '</a></div>' +
+    return card('<div style="position:relative"><div style="display:flex;align-items:center">' + kick('Portfolio') + '<span class="mini" style="margin-left:10px;color:var(--fg2)">' + a.sub + (REAL ? '' : ' · demo') + '</span><a href="#portfolio" aria-label="Open portfolio" style="margin-left:auto">' + ic('chev', 22, 2.2) + '</a></div>' +
       '<div style="display:flex;align-items:center;gap:14px;margin-top:8px"><div style="flex:none"><div style="font-size:31px;line-height:40px;font-weight:600">' + money(c.val) + '</div><div class="' + cls(c.day) + '" style="font-size:16px;font-weight:500;margin-top:2px">' + chg(c.day) + '<span style="margin-left:10px">' + pct(c.dayPct) + '</span></div></div>' +
       '<div class="pchart" style="flex:1;min-width:0;height:58px;display:flex;justify-content:flex-end">' + mtn(c.series, 120, 58, c.val - c.day, c.day >= 0) + '</div></div>' +
       '<div class="kick" style="font-size:11px;letter-spacing:.2em;margin:16px 0 0;color:#C9D6E2">Top performers today</div><div class="rows" style="padding:0!important">' + perf(c.top, 3, 60) + '</div>' +
@@ -255,7 +264,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   }
   function connect() {
     const all = allCalc();
-    const acc = rowsBox(ACCTS.map((a, i) => { const c = acctCalc(a); return '<a class="row" href="#portfolio/' + (i + 1) + '" style="min-height:74px!important">' + tl('BULL', 40) + '<span class="nm"><b>' + E(a.name) + '</b><small>' + E(a.sub) + ' · demo</small></span><span class="q"><b>' + (c.ready ? money(c.val) : '—') + '</b><small class="' + cls(c.day) + '">' + (c.ready ? chg(c.day) + '<i>' + pct(c.dayPct) + '</i>' : '') + '</small></span></a>'; }).join(''));
+    const acc = rowsBox(ACCTS.map((a, i) => { const c = acctCalc(a); return '<a class="row" href="#portfolio/' + (i + 1) + '" style="min-height:74px!important">' + tl('BULL', 40) + '<span class="nm"><b>' + E(a.name) + '</b><small>' + E(a.sub) + (REAL ? '' : ' · demo') + '</small></span><span class="q"><b>' + (c.ready ? money(c.val) : '—') + '</b><small class="' + cls(c.day) + '">' + (c.ready ? chg(c.day) + '<i>' + pct(c.dayPct) + '</i>' : '') + '</small></span></a>'; }).join(''));
     return '<div class="wrap">' + backbar('Webull accounts', '#portfolio') + head('Connect Webull accounts', 'Read-only. We see balances and holdings, never place trades.') +
       '<div class="card" style="padding:16px 18px;margin-top:16px;display:flex;align-items:center;gap:12px">' + tl('BULL', 44) + '<div style="flex:1"><div class="kick" style="font-size:11.5px;letter-spacing:.18em">All accounts</div><div style="font-size:26px;line-height:34px;font-weight:600">' + (all.c.ready ? money(all.c.val) : '—') + '</div><div class="' + cls(all.c.day) + '" style="font-size:14px">' + (all.c.ready ? chg(all.c.day) + '<span style="margin-left:8px">' + pct(all.c.dayPct) + '</span>' : '&nbsp;') + '</div></div>' + DEMO + '</div>' +
       sh('Linked accounts', 'Edit', '#edit', 'link') + acc +
@@ -794,5 +803,5 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   if (window.V2X && V2X.init) V2X.init();
   render();
   // data is behind the sign-in check; start loading once auth.js knows who this is (or right away if the site is open)
-  (function wait(n) { const A = window.JT_AUTH; if (A && A.ready) { if (A.user || !A.locked) load(); else setTimeout(() => wait(0), 1500); return; } setTimeout(() => wait((n || 0) + 1), n > 40 ? 500 : 100); })();
+  (function wait(n) { const A = window.JT_AUTH; if (A && A.ready) { if (A.user || !A.locked) { load(); loadMine(); } else setTimeout(() => wait(0), 1500); return; } setTimeout(() => wait((n || 0) + 1), n > 40 ? 500 : 100); })();
 })();
