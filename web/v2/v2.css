@@ -400,3 +400,6 @@ html[data-x2t="swoop"] .bgfx{background:radial-gradient(130% 55% at 100% 0%,rgba
 .hcar::-webkit-scrollbar{display:none}
 .hcar>.card{flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always}
 #hdots{margin-top:10px}
+
+/* header logo ~20% bigger */
+.top .brand img{height:31px!important;width:auto!important}
