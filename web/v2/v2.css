@@ -386,3 +386,5 @@ html[data-x2t="swoop"] .bgfx{background:radial-gradient(130% 55% at 100% 0%,rgba
 .mvl>b{font-size:14.5px;line-height:21px;font-weight:600}.mvl ul{margin:4px 0 0 16px;font-size:13px;line-height:19px;color:var(--fg2)}
 .mvx .mvgo{display:inline-block;margin-top:10px;color:#93C0F6;font-weight:600;font-size:14px}.mvx .stn{display:block;font-size:11px;color:var(--fg3);margin-top:6px}
 .sub .dot{margin-right:2px}
+
+.seg span,.seg a{padding:0 4px;letter-spacing:-.01em}.seg span[data-wsort]{font-size:11.5px}

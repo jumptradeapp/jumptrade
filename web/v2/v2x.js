@@ -73,7 +73,7 @@
     const vv = b.map((x) => x.v); return { avgV: sma(vv, 20), p: p, e9: e9[L], e21: e21[L], s50: sma(c, 50), s200: sma(c, 200), s50p: sma(c, 50, L - 1), s200p: sma(c, 200, L - 1), rsi: rsi[L], macd: m, sig: sig, hist: m != null && sig != null ? m - sig : null, cross: m != null && sig != null && mP != null && sigP != null ? (mP <= sigP && m > sig ? 'up' : mP >= sigP && m < sig ? 'dn' : null) : null, atr: atr, atrP: atr / p * 100, hi: hi, lo: lo, pos: hi > lo ? (p - lo) / (hi - lo) : null, chg5: (p / c[Math.max(0, L - 5)] - 1) * 100, chg20: (p / c[Math.max(0, L - 20)] - 1) * 100, off: off, n: b.length };
   }
   X.tech = tech;
-  // the preview server sometimes only gets Yahoo's minimal quote (no P/E, volume, 52-week range); fill what we can from real EPS history and daily bars
+  // our data feed sometimes only gets Yahoo's minimal quote (no P/E, volume, 52-week range); fill what we can from real EPS history and daily bars
   function fillSnap(sn, fc, t) { const o = Object.assign({}, sn || {}); const act = Array.isArray(fc) ? fc.filter((q) => q.reported && q.actual != null).slice(-4) : [];
     if (!(+o.eps_ttm) && act.length === 4) { o.eps_ttm = act.reduce((a, q) => a + +q.actual, 0); o.epsSrc = 'last 4 reported quarters'; }
     if (!(+o.pe_ratio) && +o.eps_ttm > 0 && +o.price) o.pe_ratio = +o.price / +o.eps_ttm;
@@ -118,7 +118,7 @@
     return wrap(V().backbar('All pages', '#today') + V().head('All pages', 'Everything in JumpTrade') +
       '<a class="xsrch" href="#search">' + ic('search2', 18) + '<span>Search stocks, ETFs and pages</span></a>' +
       MENU.map((g) => '<div class="lab xml">' + g[0] + '</div><div class="card rows xmenu">' + g[1].map((m) => '<a class="row" href="' + m[2] + '"><span class="aic">' + ic(m[0], 18, 2.1) + '</span><span class="nm"><b>' + m[1] + '</b><small>' + m[3] + '</small></span><span class="chv">' + ic('chev', 18, 2.4) + '</span></a>').join('') + '</div>').join('') +
-      note('Pages that need a connection we don’t have on the preview (Webull accounts, AI) still open and say so plainly.'));
+      note('Every page in one place.'));
   }
 
   // ---------- search ----------
@@ -196,7 +196,7 @@
       ['ad', 'Up / down', (r) => (r.advanced != null && !r.etfOnly ? '<span class="up">' + r.advanced + '</span> / <span class="dn">' + r.declined + '</span>' : '—'), (r) => (r.advanced || 0) / ((r.advanced || 0) + (r.declined || 0) || 1)],
       ['cap', 'Mkt cap', (r) => (r.market_value ? V().nfmt(+r.market_value) : '—'), (r) => +r.market_value || 0],
     ];
-    const body = !d ? V().rowsBox(V().skel(6), 'padding:14px') : !L || !L.length ? offB('Sector source down', 'Yahoo Finance didn’t return sector prices to the preview server just now (' + E(String((d && (d.msg || d.err)) || 'empty response')) + '). Retrying every 2 minutes; the Markets tab heat map uses the same feed.') : tbl('sect', cols, L, { def: { k: 'pct', d: 'desc' }, href: (r) => '#stock/' + (r.etf || ''), short: 1 }) + (L && L.length && L.every((r) => r.etfOnly) ? note('Each row is the group’s ETF move. Member breadth (up/down) and market caps need Yahoo’s full quote, which Yahoo is refusing to the preview server right now.') : '');
+    const body = !d ? V().rowsBox(V().skel(6), 'padding:14px') : !L || !L.length ? offB('Sector source down', 'Yahoo Finance didn’t return sector prices to our data feed just now (' + E(String((d && (d.msg || d.err)) || 'empty response')) + '). Retrying every 2 minutes; the Markets tab heat map uses the same feed.') : tbl('sect', cols, L, { def: { k: 'pct', d: 'desc' }, href: (r) => '#stock/' + (r.etf || ''), short: 1 }) + (L && L.length && L.every((r) => r.etfOnly) ? note('Each row is the group’s ETF move. Member breadth (up/down) and market caps need Yahoo’s full quote, which Yahoo is refusing to our data feed right now.') : '');
     return wrap(V().backbar('Sectors', '#markets') + V().head('Sectors', 'Sector and industry groups · tap one for its ETF') + '<div style="margin-top:12px">' + V().chipsHTML([['D1', 'Today'], ['D5', '5 days'], ['MO1', '1 month'], ['MO3', '3 months']], st.sp, 'data-xsp') + '</div><div style="margin-top:10px">' + body + '</div>');
   }
 
@@ -217,7 +217,7 @@
       (j && !j.err ? V().snapNote('Snapshot from ' + E(((j.earnings || {}).generated) || 'the last build') + '. Dates can move; check the company’s release.') : '') +
       '<div style="margin-top:10px">' + V().chipsHTML([['all', 'All'], ['earn', 'Earnings'], ['cat', 'Catalysts']], st.ck, 'data-xck') + '</div>' +
       V().act('cal', 'Earnings this week, live', 'Day-by-day from Nasdaq’s calendar', '#earnings') +
-      '<div style="margin-top:6px">' + body + '</div>' + offB('Live economic calendar not connected', 'The snapshot above includes the major macro dates. A live, always-current economic calendar comes from Webull, which isn’t connected on the preview.'));
+      '<div style="margin-top:6px">' + body + '</div>' + offB('Live economic calendar not connected', 'The snapshot above includes the major macro dates. A live, always-current economic calendar comes from Webull, which isn’t connected yet.'));
   }
 
   // ---------- IPOs ----------
@@ -273,7 +273,7 @@
     return wrap(V().topbar() + V().head('Build a portfolio', 'Pick a theme and an amount') + segP('#build') +
       '<div class="xadd" style="margin-top:12px"><span class="xpre">$</span><input id="xamt" class="xin" inputmode="decimal" value="' + E(String(st.amt)) + '" aria-label="Amount to invest"><button class="xbtn" data-xamt="1">Update</button></div>' +
       '<div class="xadd"><input id="xbq" class="xin" placeholder="Or describe it: “AI power and nuclear”" value="' + E(st.btq) + '"><button class="xbtn" data-xbq="1">Match</button></div>' +
-      (miss ? offB('No theme matched “' + E(miss) + '”', 'Building a custom portfolio from free text needs the AI connection (Anthropic key), which isn’t set up on the preview. Pick one of the themes below instead.') : '') + res +
+      (miss ? offB('No theme matched “' + E(miss) + '”', 'Building a custom portfolio from free text needs the AI connection (Anthropic key), which isn’t available right now. Pick one of the themes below instead.') : '') + res +
       '<div class="lab">Simple</div><div class="xchips">' + all.filter((t) => !t.theme).map((t) => '<button class="chip' + (pick && pick.id === t.id ? ' on' : '') + '" data-xbt="' + t.id + '">' + E(t.name) + '</button>').join('') + '</div>' +
       '<div class="lab">Themes</div><div class="xchips">' + all.filter((t) => t.theme).map((t) => '<button class="chip' + (pick && pick.id === t.id ? ' on' : '') + '" data-xbt="' + t.id + '">' + E(t.name) + '</button>').join('') + '</div>');
   }
@@ -282,7 +282,7 @@
   function recordScreen() {
     const d = once('record', 600, () => V().call('get_pick_record', {}));
     let body; if (!d) body = V().rowsBox(V().skel(4), 'padding:14px'); else if (d.err) body = V().rowsBox(errB('The track record didn’t load.'));
-    else if (!d.rows || !d.rows.length) body = offB('No picks recorded yet on the preview', 'The live app saves each day’s picks with a scheduled job and grades them after 1 and 5 days. The preview doesn’t run that job, so there is nothing to grade here yet.');
+    else if (!d.rows || !d.rows.length) body = offB('No picks recorded yet', 'Each day’s picks are saved after the close and graded after 1 and 5 days. Check back tomorrow.');
     else body = '<div class="xgrid3">' + [['Picks', d.total], ['1-day win rate', d.d1.win != null ? Math.round(d.d1.win) + '%' : '—'], ['5-day win rate', d.d5.win != null ? Math.round(d.d5.win) + '%' : '—'], ['Avg 1-day', sgnP(d.d1.avg)], ['Avg 5-day', sgnP(d.d5.avg)], ['Hit target / stop', d.targets + ' / ' + d.stops]].map((x) => '<div class="xk"><small>' + x[0] + '</small><b>' + x[1] + '</b></div>').join('') + '</div>' +
       tbl('rec', [['sym', 'Symbol', (r) => symCell(r.symbol || r.s), (r) => r.symbol || r.s], ['d', 'Date', (r) => E(r.date || r.d || ''), (r) => r.date || r.d], ['r1', '1-day', (r) => '<span class="' + cl(r.r1) + '">' + sgnP(r.r1) + '</span>', (r) => r.r1], ['r5', '5-day', (r) => '<span class="' + cl(r.r5) + '">' + sgnP(r.r5) + '</span>', (r) => r.r5]], d.rows, { href: (r) => '#stock/' + (r.symbol || r.s) });
     return wrap(V().backbar('Track record', '#menu') + V().head('Track record', 'How past picks did, graded honestly') + '<div style="margin-top:12px">' + body + '</div>');
@@ -321,7 +321,7 @@
       '<div class="xadd"><input id="xca" class="xin" value="' + E(a) + '" autocapitalize="characters" aria-label="First ticker"><span class="xvs">vs</span><input id="xcb" class="xin" value="' + E(b) + '" autocapitalize="characters" aria-label="Second ticker"><button class="xbtn" data-xcmp="1">Go</button></div>' +
       '<div class="xcmph"><a href="#stock/' + a + '">' + V().tl(a, 30) + '<b>' + E(a) + '</b><small>' + E(nm(a)) + '</small></a><a href="#stock/' + b + '">' + V().tl(b, 30) + '<b>' + E(b) + '</b><small>' + E(nm(b)) + '</small></a></div>' + ch +
       '<div class="card xcmpt">' + rows.map((r) => '<div class="xcr"><b>' + r[1](qa, a) + '</b><span>' + r[0] + '</span><b>' + r[1](qb, b) + '</b></div>').join('') + srow.map((r) => '<div class="xcr"><b>' + cell(sA, r[1]) + '</b><span>' + r[0] + '</span><b>' + cell(sB, r[1]) + '</b></div>').join('') + '</div>' +
-      (bm.err ? note('Price history didn’t load for one of these; returns show —.') : '') + (thin ? note('Market cap and P/E need Yahoo’s full quote, which Yahoo is refusing to the preview server right now; 52-week high and average volume are worked out from daily bars instead.') : '') + note('Returns from daily closes. Volatility is the yearly standard deviation of daily moves.'));
+      (bm.err ? note('Price history didn’t load for one of these; returns show —.') : '') + (thin ? note('Market cap and P/E need Yahoo’s full quote, which Yahoo is refusing to our data feed right now; 52-week high and average volume are worked out from daily bars instead.') : '') + note('Returns from daily closes. Volatility is the yearly standard deviation of daily moves.'));
   }
 
   // ---------- pattern guide (data ported from classic patterns.js) ----------
@@ -419,7 +419,7 @@
     U.forEach((s) => { const sn0 = qx(s); if (!sn0 || !sn0.price) return; const fc = perSym('get_stock_forecast_eps', s), tg = perSym('get_analyst_target_price', s); if (fc && fc.err) fcBad++; if (tg && tg.err) tgBad++; if (!fc && !(+sn0.eps_ttm)) return; const sn = fillSnap(sn0, fc && !fc.err ? fc : null, null); if (!(+sn.eps_ttm) && !(+sn.pe_ratio) && !(fc && !fc.err && fc.length)) { L.push({ s: s, v: { price: sn.price, verdict: 'nodata', score: -99 } }); return; } const v = window.VAL ? VAL.value(sn, fc && !fc.err ? fc : [], tg && !tg.err ? tg : null, null) : null; if (v) L.push({ s: s, v: v }); });
     const cols = [['sym', 'Symbol', (r) => symCell(r.s), (r) => r.s], ['px', 'Price', (r) => '<b>' + V().px(r.v.price) + '</b>', (r) => r.v.price], ['vd', 'Verdict', (r) => '<span class="xtag" style="color:' + (VCOL[r.v.verdict] || '#BBD7F9') + '">' + (VNAME[r.v.verdict] || '—') + '</span>', (r) => r.v.score], ['pe', 'P/E', (r) => (r.v.peTTM ? r.v.peTTM.toFixed(1) : '—'), (r) => r.v.peTTM], ['fpe', 'Fwd P/E', (r) => (r.v.fwdPE ? r.v.fwdPE.toFixed(1) : '—'), (r) => r.v.fwdPE], ['peg', 'PEG', (r) => (r.v.peg != null ? r.v.peg.toFixed(2) : '—'), (r) => r.v.peg], ['up', 'To target', (r) => (r.v.upside != null ? '<span class="' + cl(r.v.upside) + '">' + sgnP(r.v.upside * 100, 0) + '</span>' : '—'), (r) => r.v.upside], ['ps', 'P/S', (r) => (r.v.ps ? r.v.ps.toFixed(1) : '—'), (r) => r.v.ps]];
     return wrap(V().topbar() + V().head('Value', 'Cheap or expensive vs. earnings and targets') + '<div style="margin-top:12px">' + (L.length >= Math.min(8, U.length) || (L.length && !st.ld['get_stock_forecast_eps:' + U[0]]) ? tbl('val', cols, L, { href: (r) => '#stock/' + r.s, def: { k: 'vd', d: 'desc' } }) : V().rowsBox(V().skel(6), 'padding:14px')) + '</div>' +
-      (fcBad > 5 || tgBad > 5 ? note('Some forecast or target data was refused by Yahoo from the preview server (' + Math.max(fcBad, tgBad) + ' of ' + U.length + '); those rows fall back to trailing P/E.') : '') +
+      (fcBad > 5 || tgBad > 5 ? note('Some forecast or target data was refused by Yahoo from our data feed (' + Math.max(fcBad, tgBad) + ' of ' + U.length + '); those rows fall back to trailing P/E.') : '') +
       note('Same engine as the classic Value screen: forward P/E, growth, PEG, price/sales and analysts’ average target. Trailing EPS comes from the last four reported quarters when the quote feed doesn’t include it. A read on price, not advice.'));
   }
   // ideas: runners + dips + leaders together
@@ -443,7 +443,7 @@
     st.vis = R2.map((x) => x.s).slice(0, 40); quotes(st.vis);
     const cols = [['sym', 'Symbol', (r) => symCell(r.s), (r) => r.s], ['net', 'Net', (r) => '<b class="' + cl(r.net) + '">' + (r.net >= 0 ? '+' : '−') + '$' + V().nfmt(Math.abs(r.net)) + '</b>', (r) => r.net], ['buy', 'Big buys', (r) => '$' + V().nfmt(r.buy), (r) => r.buy], ['sell', 'Big sells', (r) => '$' + V().nfmt(r.sell), (r) => r.sell], ['n', 'Trades', (r) => r.n, (r) => r.n], ['t', 'Last', (r) => ago(r.last) + ' ago', (r) => Date.parse(r.last)]];
     return wrap(V().topbar() + V().head('Money flow', 'Big block trades in the last hour or so') + '<div style="margin-top:12px">' + (!d ? V().rowsBox(V().skel(6), 'padding:14px') : !L || !L.length ? V().rowsBox(errB('No big block trades in the feed right now.')) : tbl('flow', cols, R2, { href: (r) => '#stock/' + r.s, def: { k: 'net', d: 'desc' } })) + '</div>' +
-      note('Single-minute trades many times normal size, tagged buy or sell by price action. Glitch prints (over $1.5B in a minute) are dropped.') + offB('Full capital flow not connected', 'Institutional vs. retail flow by order size comes from Webull, which isn’t connected on the preview.'));
+      note('Single-minute trades many times normal size, tagged buy or sell by price action. Glitch prints (over $1.5B in a minute) are dropped.') + offB('Full capital flow not connected', 'Institutional vs. retail flow by order size comes from Webull, which isn’t connected yet.'));
   }
   const insT = (s) => once('ins:' + s, 3600, () => V().call('get_insider_transactions', { symbol: s, count: 12 }));
   const insCols = (sym) => [['d', 'Date', (r) => '<span class="sn"><b>' + E(r.date || r.filed || '') + '</b><small>' + E((r.name || '').slice(0, 22)) + '</small></span>', (r) => r.date || ''], ['ty', 'Type', (r) => '<span class="' + (r.code === 'P' ? 'up' : r.code === 'S' ? 'dn' : '') + '">' + E(r.type || r.code) + (r.plan && r.code === 'S' ? ' <small>10b5-1</small>' : '') + '</span>', (r) => r.type || ''], ['sh', 'Shares', (r) => (r.ad === 'D' ? '−' : '+') + V().nfmt(r.shares), (r) => r.shares], ['px', 'Price', (r) => (r.price ? V().px(r.price) : '—'), (r) => r.price], ['v', 'Value', (r) => (r.value ? '$' + V().nfmt(r.value) : '—'), (r) => r.value], ['ti', 'Role', (r) => E(r.title || ''), (r) => r.title || ''], ['f', 'Filing', (r) => '<a class="xlink" style="margin:0" href="' + E(r.url) + '" target="_blank" rel="noopener">SEC →</a>']];
@@ -459,7 +459,7 @@
       (!d ? V().rowsBox(V().skel(5), 'padding:14px') : d.err ? offB('SEC source down', 'SEC EDGAR didn’t answer just now (' + E(String(d.msg || d.err)) + '). Retrying shortly.') : !L.length ? V().rowsBox(errB('No Form 4 insider filings found for ' + E(sym) + ' recently.')) :
         '<div class="xgrid3"><div class="xk"><small>Open-market buys</small><b class="up">' + buys.length + (sum(buys) ? ' · $' + V().nfmt(sum(buys)) : '') + '</b></div><div class="xk"><small>Open-market sales</small><b class="dn">' + sells.length + (sum(sells) ? ' · $' + V().nfmt(sum(sells)) : '') + '</b></div><div class="xk"><small>Filings read</small><b>' + new Set(L.map((r) => r.url)).size + '</b></div></div>' +
         '<div style="margin-top:10px">' + tbl('ins', insCols(sym), L, {}) + '</div>') +
-      note('From SEC EDGAR Form 4 filings (the free public source; Webull’s insider feed isn’t connected on the preview). Buys and sales are open-market trades; awards, gifts, option exercises and tax withholding are listed but aren’t a signal. 10b5-1 = pre-planned sale.'));
+      note('From SEC EDGAR Form 4 filings (the official public record). Buys and sales are open-market trades; awards, gifts, option exercises and tax withholding are listed but aren’t a signal. 10b5-1 = pre-planned sale.'));
   }
   // ---------- buzz ----------
   function buzzScreen() {
@@ -476,9 +476,9 @@
       '<div class="xadd" style="margin-top:12px"><input id="xla" class="xin" placeholder="Ticker, e.g. TSLA" autocapitalize="characters"><button class="xbtn" data-xla="1">Analyze</button></div>' +
       note('Opens the stock page with chart, VWAP, EMAs, RSI, MACD, ATR, support and resistance, jump check and the three ratings.') +
       '<div class="xchips">' + ['NVDA', 'TSLA', 'AAPL', 'AMD', 'PLTR', 'SPY'].map((s) => '<a class="chip" href="#stock/' + s + '">' + s + '</a>').join('') + '</div>' +
-      '<div class="lab">Analyze a chart photo</div>' + (ai && ai.on ? card('<p class="xp">Upload is available in the classic app.</p><a class="xbtn" href="/classic.html#live">Open upload</a>') : offB('AI not connected', 'Reading a screenshot of a chart needs the AI connection (Anthropic key), which isn’t set up on the preview. Ticker analysis above works without it.')));
+      '<div class="lab">Analyze a chart photo</div>' + (ai && ai.on ? card('<p class="xp">Upload is available in the classic app.</p><a class="xbtn" href="/classic.html#live">Open upload</a>') : offB('AI not connected', 'Reading a screenshot of a chart needs the AI connection (Anthropic key), which isn’t available right now. Ticker analysis above works without it.')));
   }
-  function strategiesScreen() { return wrap(V().backbar('Strategies', '#menu') + V().head('Strategies', 'Systematic strategies, tested on real data') + '<div style="margin-top:12px"></div>' + offB('Webull not connected', 'The classic strategy lab runs on Webull’s financials and history (income statements, indicators, industry comparison), which aren’t connected on the preview.') + V().act('pie', 'Model portfolios', 'Rules-based models with backtests (snapshot)', '#models') + V().act('down', 'Dip buys', 'A rules-based scan that runs on public prices', '#dips')); }
+  function strategiesScreen() { return wrap(V().backbar('Strategies', '#menu') + V().head('Strategies', 'Systematic strategies, tested on real data') + '<div style="margin-top:12px"></div>' + offB('Webull not connected', 'The classic strategy lab runs on Webull’s financials and history (income statements, indicators, industry comparison), which aren’t connected yet.') + V().act('pie', 'Model portfolios', 'Rules-based models with backtests (snapshot)', '#models') + V().act('down', 'Dip buys', 'A rules-based scan that runs on public prices', '#dips')); }
   // ---------- portfolio analyzer (demo holdings) ----------
   function analyzerScreen() {
     const A = V().ACCTS; const pos = {}; A.forEach((a) => Object.keys(a.pos).forEach((s) => { const p = a.pos[s]; const o = pos[s] = pos[s] || { s: s, q: 0, cost: 0 }; o.q += p[0]; o.cost += p[0] * p[1]; })); const L = Object.values(pos); st.vis = L.map((x) => x.s); quotes(st.vis);
@@ -573,7 +573,7 @@
         c('Everyone', ev ? ev.call : '—', ev ? ev.src.map((s) => E(s[0])).join('<br>') : 'Not enough data', ev ? ev.score : null) +
         c('Jump score', js ? js.score + '/100' : '—', js ? js.parts.map((p) => p[0] + ' ' + grd(p[1])).join(' · ') : 'Loading', js ? js.score : null) + '</div>' +
         (js ? js.parts.map((p) => '<div class="xbr"><span>' + p[0] + '</span><i><em style="width:' + Math.round(p[1]) + '%"></em></i><b>' + grd(p[1]) + '</b></div><small class="xbrn">' + E(p[2]) + '</small>').join('') : '') +
-        '<small class="xcap">Wall Street: share of firms rating it a buy. Everyone: firms (counted double) plus last week’s calls' + (V().S.ratW && V().S.ratW.week ? ' (' + E(V().S.ratW.week) + ' snapshot)' : '') + '. Jump score: value, growth and trend from the numbers.' + ((rat && rat.err) || (fc && fc.err) ? ' Some data was refused by Yahoo from the preview server.' : '') + '</small></div>'; }
+        '<small class="xcap">Wall Street: share of firms rating it a buy. Everyone: firms (counted double) plus last week’s calls' + (V().S.ratW && V().S.ratW.week ? ' (' + E(V().S.ratW.week) + ' snapshot)' : '') + '. Jump score: value, growth and trend from the numbers.' + ((rat && rat.err) || (fc && fc.err) ? ' Some data was refused by Yahoo from our data feed.' : '') + '</small></div>'; }
     // insiders (SEC Form 4)
     { const d = insT(sym); const L = d && !d.err ? (d.data || []).filter((r) => r.code === 'P' || r.code === 'S').slice(0, 5) : null; h += V().lab('shield', 'Insider trades', 'All', '#insiders/' + encodeURIComponent(sym)) + (!d ? V().rowsBox(V().skel(2), 'padding:14px') : d.err ? V().rowsBox(errB('SEC EDGAR didn’t answer just now.')) : !L.length ? V().rowsBox(errB('No open-market insider buys or sales in the latest Form 4 filings.')) : tbl('sins', insCols(sym), L, { short: 1 })); }
     // about
@@ -596,21 +596,21 @@
       '<div class="lab">Mode</div>' + opt('data-xmode', md, [['simple', 'Simple', 'Price, chart, ratings and red flags only'], ['pro', 'Pro', 'Adds technicals, levels, plan and patterns']]) +
       '<div class="lab">In-app alerts</div><div class="card xc xform">' + num('move', 'Your stocks move at least', at.move, '%') + num('idx', 'S&amp;P / Nasdaq move at least', at.idx, '%') + num('flow', 'Big trades of at least', at.flow / 1e6, '$M') + num('run', 'Runner score at least', at.run, '') +
         '<label class="xf xchk"><input type="checkbox" data-xat="earn"' + (at.earn ? ' checked' : '') + '><span>Earnings within two days</span></label><button class="xbtn" data-xatsave="1">Save alert settings</button></div>' +
-      offB('Push notifications not available on the preview', 'Phone notifications need a signed-in account and the push service; the preview is open without sign-in. Alerts still show on the bell.') +
-      '<div class="lab">Sync &amp; devices</div>' + offB('Saved on this device only', 'Syncing your watchlist, journal and settings across devices needs a signed-in account. The preview is open without sign-in.') +
+      '<button class="btn pri" style="width:100%;margin-top:12px" onclick="window.ALERTS&&ALERTS.open()">Turn on phone alerts</button>' +
+      '<div class="lab">Sync &amp; devices</div>' + offB('Saved on this device only', 'Your watchlist, journal and settings follow your account on every device you sign in on.') +
       '<div class="lab">More</div>' + V().act('plus', 'Get the app', 'Add JumpTrade to your home screen', '#getapp') + V().act('msg', 'Send feedback', 'Report a bug or suggest an idea', '#feedback') + V().act('shield', 'Account & connections', 'Sign-in, Webull and AI status', '#account') + V().act('link', 'Classic app', 'The original JumpTrade', '/classic.html#home') +
-      '<div class="lab">About</div>' + card('<p class="xp">JumpTrade new design (preview). Market data from public feeds (Yahoo Finance, Nasdaq, NasdaqTrader). Snapshot files are dated where shown. Nothing here is financial advice; setups, ratings and checks are rules-based reads.</p>'));
+      '<div class="lab">About</div>' + card('<p class="xp">jumptrade. Market data from public feeds (Yahoo Finance, Nasdaq, NasdaqTrader). Snapshot files are dated where shown. Nothing here is financial advice; setups, ratings and checks are rules-based reads.</p>'));
   }
   function accountScreen() {
     const A = window.JT_AUTH || {}; const wb = once('wbst', 300, () => fetch('/api/wbon', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : { on: false }))); const ai = once('aist', 300, () => fetch('/api/ai/status', { credentials: 'same-origin' }).then((r) => r.json()));
     const row = (icn, t, s, ok) => '<div class="row"><span class="aic">' + ic(icn, 18, 2.1) + '</span><span class="nm"><b>' + t + '</b><small>' + s + '</small></span><span class="xtag ' + (ok ? 'bull' : '') + '">' + (ok ? 'On' : ok === false ? 'Off' : '…') + '</span></div>';
     return wrap(V().backbar('Account', '#menu') + V().head('Account', 'Sign-in and connections') +
-      '<div class="card rows xacc" style="margin-top:12px">' + (A.user && A.user.uid !== 'preview' ? row('shield', 'Signed in' + (A.user.name ? ' as ' + E(A.user.name) : ''), 'Your account', true) : row('shield', 'Open preview, no sign-in', 'This preview is open without sign-in; nothing is tied to an account.', false)) +
+      '<div class="card rows xacc" style="margin-top:12px">' + (A.user && A.user.uid !== 'preview' ? row('shield', 'Signed in' + (A.user.name ? ' as ' + E(A.user.name) : ''), 'Your account', true) : row('shield', 'Not signed in', 'Sign in to keep your list on every device.', false)) +
       row('link', 'Webull', wb ? (wb.on ? 'Connected' : 'Not connected — accounts, insiders, macro calendar and strategies need it')  : 'Checking…', wb ? !!wb.on : null) +
       row('spark', 'AI (Ask, chart photos, custom portfolios)', ai ? (ai.on ? 'Connected' : 'Not connected — needs an Anthropic key') : 'Checking…', ai ? !!ai.on : null) +
       row('activity', 'Live streaming quotes', 'Not connected — needs a Finnhub key. Prices refresh every 5 seconds instead.', false) + '</div>' +
       '<div class="lab">Data sources</div>' + card('<ul class="xul"><li>Prices, charts, movers, sectors: Yahoo Finance public endpoints</li><li>Earnings week, short interest: Nasdaq</li><li>Trading halts: NasdaqTrader</li><li>News: Yahoo Finance and other public RSS feeds</li><li>Ratings roundup, options, Congress, shorts, IPOs, models, research: dated snapshot files</li></ul>') +
-      '<div class="lab">Owner tools</div>' + offB('Admin is owner-only', 'User management and the sign-in gate need the owner to sign in on the live app. The preview has no accounts.'));
+      '<div class="lab">Owner tools</div>' + offB('Admin is owner-only', 'Open Admin from the classic app while signed in as the owner.'));
   }
   st.fb = { kind: 'idea', text: '' };
   function feedbackScreen() {
