@@ -425,3 +425,17 @@ html body .card.pglass::after{content:"";position:absolute;left:8%;right:8%;top:
 html body .card.pglass::before{content:"";position:absolute;inset:0 0 55% 0;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,0));pointer-events:none}
 html body .card.pglass>*{position:relative}
 .hcar{padding:4px 0 22px;margin-bottom:-14px}
+
+/* ===== quieter, more product-like (Nov 16) =====
+   glow only on the portfolio tiles; plain small labels; no decorative label icons */
+.card:not(.pglass){box-shadow:none!important}
+.ni.on,.seg span.on,.seg a.on,.chip.on,.btn.pri,.gBox button{box-shadow:none!important}
+.dot,.dot.cy,.bdot{box-shadow:none!important}
+.kick,.hkick,.strip span,.mvl>span,.hbs small{letter-spacing:0!important;text-transform:none!important}
+.kick{font-size:13px!important;font-weight:600!important;color:#C9D6E2!important}
+.hkick{font-size:13px!important;font-weight:500!important;color:#93C0F6!important}
+.strip span{font-size:12.5px!important}
+.mvl>span{font-size:12px!important;font-weight:600}
+.lab .lic,.lab .ic,.sh .shi,.lab>svg{display:none!important}
+.lab{gap:0!important}
+.tag,.demo,.gTag,.gBeta b{letter-spacing:.02em!important}
