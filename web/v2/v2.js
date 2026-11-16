@@ -249,9 +249,9 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const et = etNow(), wd = et.getDay(), m = et.getHours() * 60 + et.getMinutes(); const ds = et.getFullYear() + '-' + String(et.getMonth() + 1).padStart(2, '0') + '-' + String(et.getDate()).padStart(2, '0');
     const hm = (x) => (x >= 60 ? Math.floor(x / 60) + 'h ' : '') + (x % 60) + 'm'; const S0 = 240, O = 570, C = HALFD[ds] ? 780 : 960, EN = HALFD[ds] ? 1020 : 1200;
     const off = wd === 0 || wd === 6 || HOLS[ds];
-    const left = off ? (HOLS[ds] ? 'Closed for ' + HOLS[ds] : 'Opens Monday 9:30 AM') : m < S0 ? 'Pre-market in ' + hm(S0 - m) : m < O ? 'Opens in ' + hm(O - m) : m < C ? hm(C - m) + ' to the close' : m < EN ? hm(EN - m) + ' of after hours left' : 'Pre-market at 4:00 AM';
-    const seg = (a, b, col, lab, on) => { const f = off ? 0 : Math.max(0, Math.min(1, (m - a) / (b - a))); return '<div class="hbs" style="flex:' + (b - a) + '"><div class="hbt"><i style="width:' + (f * 100).toFixed(1) + '%;background:' + col + '"></i>' + (on ? '<em style="left:' + (f * 100).toFixed(1) + '%"></em>' : '') + '</div><small' + (on ? ' class="on"' : '') + '>' + lab + '</small></div>'; };
-    return '<div class="hbar"><div class="hbr">' + seg(S0, O, '#2E66B5', 'Pre-market', !off && m >= S0 && m < O) + seg(O, C, '#5B9BEA', 'Market open', !off && m >= O && m < C) + seg(C, EN, '#93C0F6', 'After hours', !off && m >= C && m < EN) + '</div><div class="hbl">' + left + '</div></div>';
+    const left = off ? (HOLS[ds] ? 'Closed for ' + HOLS[ds] : 'Opens Monday 9:30 AM') : m < S0 ? 'Pre-market in ' + hm(S0 - m) : m < O ? 'Opens in ' + hm(O - m) : m < C ? hm(C - m) + ' to the close' : m < EN ? hm(EN - m) + ' left' : 'Pre-market at 4:00 AM';
+    const seg = (a, b, col, lab, on) => { const f = off ? 0 : Math.max(0, Math.min(1, (m - a) / (b - a))); return '<div class="hbs" style="flex:' + (b - a) + '"><div class="hbt"><i style="width:' + (f * 100).toFixed(1) + '%;background:' + col + '"></i>' + (on ? '<em style="left:' + (f * 100).toFixed(1) + '%"></em>' : '') + '</div></div>'; };
+    return '<div class="hbar"><div class="hbr">' + seg(S0, O, '#2E66B5', 'Pre-market', !off && m >= S0 && m < O) + seg(O, C, '#5B9BEA', 'Market open', !off && m >= O && m < C) + seg(C, EN, '#93C0F6', 'After hours', !off && m >= C && m < EN) + '</div><div class="hbl"><span>' + (off ? 'Market closed' : m < S0 || m >= EN ? 'Overnight' : m < O ? 'Pre-market' : m < C ? 'Market open' : 'After hours') + '</span><span>' + left + '</span></div></div>';
   }
   function greetHead() {
     const d = etNow(), h = d.getHours(); const g = h < 5 ? 'Good evening' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
@@ -261,7 +261,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const mk = !dir ? '' : /closed|After|Overnight/.test(ses) ? 'stocks closed ' + dir : ses === 'Pre-market' ? 'futures point ' + dir : dir === 'flat' ? 'stocks are flat' : 'stocks are ' + (p > 0 ? 'up' : 'down');
     return '<div class="hkick">Market brief · ' + E(d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })) + '</div>' +
       '<h1>' + g + (nm ? ',<br><em>' + E(nm.charAt(0).toUpperCase() + nm.slice(1)) + '.</em>' : '<em>.</em>') + '</h1>' +
-      '<p class="sub">' + ses + ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' ET' + (mk ? ' · ' + mk : '') + '</p>' + hoursBar();
+      '<p class="sub">' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' ET' + (mk ? ' · ' + mk : '') + '</p>' + hoursBar();
   }
   function today() {
     return RIB + '<div class="wrap" style="position:relative;z-index:1">' + topbar() + greetHead() +

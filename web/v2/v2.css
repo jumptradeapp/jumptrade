@@ -439,3 +439,7 @@ html body .card.pglass>*{position:relative}
 .lab .lic,.lab .ic,.sh .shi,.lab>svg{display:none!important}
 .lab{gap:0!important}
 .tag,.demo,.gTag,.gBeta b{letter-spacing:.02em!important}
+
+/* compact header: one label row under the bar (phase left, time left right) */
+.hbl{display:flex;justify-content:space-between;font-size:12.5px;margin-top:6px}.hbl span:first-child{color:#BBD7F9;font-weight:600}.hbl span:last-child{color:#AEC0D8}
+.hbar{margin-top:10px}.hkick+h1{margin-top:2px!important}
