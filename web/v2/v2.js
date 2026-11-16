@@ -340,29 +340,25 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const WHYC = { real: BL.b3, news: BL.b2, warn: BL.b4, nonews: 'var(--fg3)', unknown: 'var(--fg3)' };
   const whyLine2 = (s) => { const w = S.why[s]; if (!w) return '<small class="why" style="color:var(--fg3)">Checking the news…</small>'; const c = WHYC[w.v] || BL.b2; return '<small class="why" style="color:' + c + '"><i style="background:' + c + '"></i>' + (w.v === 'warn' ? 'Careful · ' : '') + E(w.kind) + (w.h && w.h.title ? '<span> · ' + E(dec(w.h.title)) + '</span>' : '') + '</small>'; };
   // TradingView-style screener table: dense rows, sticky header + pinned symbol column, sortable, tap a row for the catalyst
-  S.mv.sort = null; S.mvOpen = {};
+  S.mv.sort = null; S.mvOpen = {}; S.mvSpk = {};
   const MVC = [['sym', 'Symbol'], ['price', 'Price'], ['pct', 'Chg %'], ['chg', 'Chg $'], ['vol', 'Volume'], ['rv', 'Rel Vol'], ['fl', 'Float / Cap'], ['tag', 'Setup']];
   const mvVal = (x, k) => { const f = (setupOf(x.symbol, S.mv.sess) || {}).facts || {};
     return k === 'sym' ? x.symbol : k === 'price' ? +x.price : k === 'pct' ? +x.change_ratio : k === 'chg' ? +x.change : k === 'vol' ? +x.volume || 0 : k === 'rv' ? (x.avg_volume ? x.volume / x.avg_volume : -1) : k === 'fl' ? (f.float || +x.market_value || 0) : k === 'tag' ? ((setupOf(x.symbol, S.mv.sess) || {}).tag || 'zz') : 0; };
+  // Movers: one easy line per stock (logo, ticker + company, today's chart, price with $ and % under it); tap for why, in plain words
+  const PLAIN = { sq: 'Could squeeze higher', cont: 'Still climbing', fade: 'Giving back gains', dump: 'Falling hard', stay: 'Too risky to chase' };
+  const cleanR = (r) => String(r || '').replace(/\s*\((?:Yahoo|Webull)[^)]*\)/gi, '').replace(/^Float, short interest and average volume didn.t load this time.*$/i, 'Based on price only today').replace(/\bVWAP\b/g, 'the day’s average price');
   function moversTable(rows) {
-    const ss = S.mv.sess; const rk = {}; rows.forEach((x, i) => { rk[x.symbol] = i + 1; });
-    let L = rows.slice(); const so = S.mv.sort;
-    if (so) L.sort((a, b) => { const va = mvVal(a, so.k), vb = mvVal(b, so.k); return (typeof va === 'string' ? va.localeCompare(vb) : va - vb) * (so.d === 'asc' ? 1 : -1); });
-    const th = MVC.map((c, i) => '<th class="' + (i ? 'n' : 'sy') + (so && so.k === c[0] ? ' on' : '') + '" data-mvsort="' + c[0] + '">' + c[1] + (so && so.k === c[0] ? (so.d === 'asc' ? ' ▲' : ' ▼') : '') + '</th>').join('');
-    const tr = L.map((x) => { const sym = x.symbol, f = S.mv.flash[sym]; const fl = f && Date.now() - f.t < 650 ? ' ' + f.c : ''; const p = x.change_ratio * 100, c = cls(p);
-      const st = setupOf(sym, ss); const fx = (st && st.facts) || {}; const rv = x.avg_volume ? x.volume / x.avg_volume : null; const open = S.mvOpen[ss + ':' + sym];
-      const flc = fx.float ? nfmt(fx.float) + '<small>float</small>' : x.market_value ? nfmt(+x.market_value) + '<small>cap</small>' : '—';
-      const chip = !st ? '<span class="stg ld">…</span>' : !st.tag ? '<span class="stg na">n/a</span>' : '<span class="stg ' + SETUP[st.tag][1] + '">' + SETUP[st.tag][0] + '</span>';
-      let h = '<tr class="mvtr' + fl + (open ? ' op' : '') + '" data-mvx="' + E(sym) + '"><td class="sy"><span class="rkn">' + rk[sym] + '</span>' + tl(sym, 24) + '<span class="sn"><b>' + E(sym) + '</b><small>' + E(x.name || nameOf(sym)) + '</small></span></td>' +
-        '<td class="n"><b>' + px(+x.price) + '</b></td><td class="n ' + c + '"><b>' + pct(p) + '</b></td><td class="n ' + c + '">' + (x.change != null ? (x.change >= 0 ? '+' : '−') + '$' + Math.abs(+x.change).toFixed(Math.abs(x.change) < 1 ? 4 : 2) : '—') + '</td>' +
-        '<td class="n">' + nfmt(+x.volume) + '</td><td class="n">' + (rv != null ? (rv >= 10 ? rv.toFixed(0) : rv.toFixed(1)) + '×' : '—') + '</td><td class="n fl2">' + flc + '</td><td class="n">' + chip + '</td></tr>';
-      if (open) { const w = whyText(sym);
-        h += '<tr class="mvxr"><td colspan="8"><div class="mvxi"><small class="why" style="white-space:normal;color:' + w.c + '"><i style="background:' + w.c + '"></i>' + E(w.t) + '</small>' + (w.h && w.h.url ? ' <a href="' + E(w.h.url) + '" target="_blank" rel="noopener" class="srcl">Article →</a>' : '') +
-          (st && st.tag ? '<div class="mvxs"><span class="stg ' + SETUP[st.tag][1] + '">' + SETUP[st.tag][0] + '</span><ul>' + (st.reasons || []).map((r) => '<li>' + E(r) + '</li>').join('') + '</ul></div>' : '') +
-          '<div class="mvxf">' + [fx.vwap ? 'VWAP ' + pxs(fx.vwap) : '', fx.gap != null && ss === 'day' ? 'Gap ' + sgn(fx.gap) : '', fx.si != null ? 'SI ' + fx.si.toFixed(1) + '%' : '', fx.dtc ? 'DTC ' + fx.dtc.toFixed(1) : '', fx.ssr ? 'SSR on' : '', fx.halt && fx.halt.n ? 'Halted ' + fx.halt.n + '×' : ''].filter(Boolean).join(' · ') + '</div>' +
-          '<a class="mvgo" href="#stock/' + encodeURIComponent(sym) + '">Open ' + E(sym) + ' →</a><small class="stn">Setup tags are a rules-based read, not advice.</small></div></td></tr>'; }
-      return h; }).join('');
-    return '<div class="mvt"><table><thead><tr>' + th + '</tr></thead><tbody>' + tr + '</tbody></table></div>';
+    const ss = S.mv.sess; const L = rows.slice(); const need = L.slice(0, 40).map((x) => x.symbol).filter((x) => !S.spark[x] && !S.mvSpk[x]); if (need.length) { need.forEach((x) => { S.mvSpk[x] = 1; }); sparks(need).then(render).catch(() => {}); }
+    return rowsBox(L.map((x, i) => { const sym = x.symbol, f = S.mv.flash[sym]; const fl = f && Date.now() - f.t < 650 ? ' ' + f.c : ''; const p = x.change_ratio * 100, up = p >= 0; const open = S.mvOpen[ss + ':' + sym];
+      const ch = x.change != null ? +x.change : null; const st = setupOf(sym, ss);
+      let h = '<div class="row mvrow' + fl + '" data-mvx="' + E(sym) + '" role="button" style="min-height:64px"><span class="rk">' + (i + 1) + '</span>' + tl(sym, 34) + '<span class="nm"><b>' + E(sym) + '</b><small>' + E(x.name || nameOf(sym)) + '</small></span><span style="flex:none">' + sp(sym, up, 48, 24) + '</span>' +
+        '<span class="q"><b>' + pxs(+x.price) + '</b><small class="' + (up ? 'up' : 'dn') + '">' + (ch != null ? (ch >= 0 ? '+' : '−') + '$' + Math.abs(ch).toFixed(Math.abs(ch) < 1 ? (Math.abs(ch) < 0.1 ? 4 : 2) : 2) : '') + '<i>' + pct(p) + '</i></small></span></div>';
+      if (open) { const w = whyText(sym); const fx = (st && st.facts) || {}; const rv = x.avg_volume ? x.volume / x.avg_volume : null;
+        h += '<div class="mvx"><div class="mvl"><span>Why it’s moving</span><b style="color:' + w.c + '">' + E(w.t) + '</b>' + (w.h && w.h.url ? ' <a href="' + E(w.h.url) + '" target="_blank" rel="noopener" class="srcl">Read →</a>' : '') + '</div>' +
+          (st && st.tag ? '<div class="mvl"><span>What it’s doing</span><b>' + (PLAIN[SETUP[st.tag][1]] || PLAIN[st.tag] || SETUP[st.tag][0]) + '</b><ul>' + (st.reasons || []).slice(0, 2).map((r) => '<li>' + E(cleanR(r)) + '</li>').join('') + '</ul></div>' : '') +
+          '<div class="mvl"><span>Trading</span><b style="font-weight:500">' + nfmt(+x.volume) + ' shares' + (rv ? ' · ' + (rv >= 10 ? rv.toFixed(0) : rv.toFixed(1)) + '× normal' : '') + (fx.halt && fx.halt.n ? ' · halted ' + fx.halt.n + '×' : '') + '</b></div>' +
+          '<a class="mvgo" href="#stock/' + encodeURIComponent(sym) + '">Open ' + E(sym) + ' →</a><small class="stn">A rules-based read, not advice.</small></div>'; }
+      return h; }).join(''), 'padding:2px 12px');
   }
   function movers() {
     if (!S.mv.sess) S.mv.sess = curSess();
@@ -372,11 +368,11 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     if (!d || (rows == null && !d.err)) body = rowsBox(skel(6), 'padding:14px');
     else if (!rows || !rows.length) body = rowsBox('<div class="err">' + (d.err ? 'Movers aren’t loading right now. Retrying every 10 seconds.' : 'No ' + lbl.toLowerCase() + ' movers in the feed right now.' + ({ pre: ' Pre-market trading runs 4:00–9:30 AM ET.', after: ' After-hours trading runs 4:00–8:00 PM ET.' }[S.mv.sess] || '')) + '</div>');
     else body = moversTable(rows);
-    return '<div class="wrap">' + topbar() + head('Top movers', 'By ' + lbl.toLowerCase() + ' % change' + (d && d.t ? ' · updated ' + ago2(d.t) : '') + ' · tap a row for why') +
+    return '<div class="wrap">' + topbar() + head('Top movers', '<span class="dot"></span>Live · ' + lbl + (d && d.t ? ' · ' + ago2(d.t) : '') + ' · tap for why') +
       '<div style="margin-top:12px">' + chipsHTML(MV_SESS, S.mv.sess, 'data-mvs') + '</div>' +
       '<div style="margin-top:10px"><div class="seg">' + [['up', 'Gainers'], ['dn', 'Losers']].map((x) => '<span class="' + (S.mv.dir === x[0] ? 'on' : '') + '" data-mvd="' + x[0] + '" role="button">' + x[1] + '</span>').join('') + '</div></div>' +
       '<div style="margin-top:10px">' + body + '</div>' +
-      '<p class="note">All US stocks, small caps included (no market-cap floor); quotes under $0.10 or 50K shares traded are left out. Why lines are real headlines from the last 36 hours with source and time; “No clear catalyst found” means we didn’t find one, not that there’s no reason. Setup tags (Squeeze setup, Continuation, Fade, Dump, Stay away) are a rules-based read of price vs VWAP, open and high, gap, relative volume, float/short interest when reported, and dilution or bad-news headlines. Tap a tag for its reasons. Not advice. Refreshes every 10 seconds.</p>' +
+      '<p class="note">All US stocks, small caps included. Why lines are real headlines from the last 36 hours; “No news found” means we didn’t find one. Refreshes every few seconds.</p>' +
       (V2_STAGE >= 2 ? lab('radar', 'Jump radar', 'Open', '#radar') + radarStrip(true) : '') + '</div>';
   }
 
@@ -626,7 +622,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   // the catalyst line: real headline with source and time, or "No clear catalyst found"
   const whyText = (s) => { const w = S.why[s]; if (!w) return { c: 'var(--fg3)', t: 'Checking the news…' };
     if (w.v === 'unknown') return { c: 'var(--fg3)', t: 'Couldn’t check the news' };
-    if (!w.h || w.v === 'nonews') return { c: 'var(--fg3)', t: 'No clear catalyst found' };
+    if (!w.h || w.v === 'nonews') return { c: 'var(--fg3)', t: 'No news found' };
     const lead = w.v === 'news' ? '' : (w.v === 'warn' ? 'Careful · ' : '') + w.kind + ': ';
     return { c: WHYC[w.v] || BL.b2, t: lead + dec(w.h.title) + ' — ' + (w.h.source || 'news') + (w.h.t ? ', ' + agoL(w.h.t) : ''), h: w.h }; };
   const agoL = (t) => { const s = Math.max(0, (Date.now() - t) / 1000); return s < 3600 ? Math.max(1, Math.round(s / 60)) + 'm ago' : s < 86400 ? Math.round(s / 3600) + 'h ago' : Math.round(s / 86400) + 'd ago'; };
