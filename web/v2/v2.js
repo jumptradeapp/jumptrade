@@ -74,13 +74,6 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   ];
   // the owner's real Webull accounts (owner session only; everyone else keeps the demo, labelled)
   let REAL = false; window.V2REAL = () => REAL;
-  function loadMine() { fetch('/api/myport', { credentials: 'same-origin', cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((j) => {
-    if (!j || !j.ok || !j.accounts || !j.accounts.some((a) => Object.keys(a.pos).length)) return;
-    const n = j.accounts.length; ACCTS.splice(0, ACCTS.length, ...j.accounts.map((a) => ({ name: a.name, sub: 'Webull ···' + a.id, cash: a.cash || 0, pos: a.pos })));
-    REAL = true; HOLD_SYMS.splice(0, HOLD_SYMS.length, ...Array.from(new Set(ACCTS.reduce((x, a) => x.concat(Object.keys(a.pos)), [])))); void n;
-    fastSnap(HOLD_SYMS).then(() => sparks(HOLD_SYMS).catch(() => {})).then(() => bars(HOLD_SYMS).catch(() => {})).then(render).catch(render); render();
-  }).catch(() => {}); }
-  setInterval(() => { if (!document.hidden && REAL) loadMine(); }, 300000); // shares and new positions every 5 minutes; prices refresh every few seconds
   const HOLD_SYMS = Array.from(new Set(ACCTS.reduce((a, x) => a.concat(Object.keys(x.pos)), [])));
 
   // ---------- state + data ----------
@@ -799,5 +792,5 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   if (window.V2X && V2X.init) V2X.init();
   render();
   // data is behind the sign-in check; start loading once auth.js knows who this is (or right away if the site is open)
-  (function wait(n) { const A = window.JT_AUTH; if (A && A.ready) { if (A.user || !A.locked) { load(); loadMine(); } else setTimeout(() => wait(0), 1500); return; } setTimeout(() => wait((n || 0) + 1), n > 40 ? 500 : 100); })();
+  (function wait(n) { const A = window.JT_AUTH; if (A && A.ready) { if (A.user || !A.locked) load(); else setTimeout(() => wait(0), 1500); return; } setTimeout(() => wait((n || 0) + 1), n > 40 ? 500 : 100); })();
 })();
