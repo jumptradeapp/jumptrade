@@ -117,7 +117,7 @@ const S = {
   auto: sessionAt(), manual: null, cap: 'all', layout: 'list', tab: 'home',
   lists: {}, large: null, ovnSnap: null, stamp: {}, err: null, ready: false,
   order: [], held: false, collapsed: false, news: {}, detail: null, d: {}, chartTf: '1m',
-  sectorPeriod: 'D1', sectors: {}, sector: null, sectorRows: null, sectorSort: 'CHANGE_RATIO', dips: {}, dipF: 'all', dipG: null, searchOpen: false, newsK: 'Market', newsItems: null, ratF: 'all', ratLim: 30, catF: 'all', wl: null, wSort: 'move', pTab: 'strats', fCat: 'all', fund: null, lastIntel: 'research', lastIdeas: 'setups', vRaw: {}, vSnap: {}, vRow: {}, val: {}, hot: {}, hotList: null, valF: 'all'
+  sectorPeriod: 'D1', sectors: {}, sector: null, sectorRows: null, sectorSort: 'CHANGE_RATIO', dips: {}, dipF: 'all', dipG: null, searchOpen: false, newsK: 'Market', newsItems: null, ratF: 'all', ratLim: 30, catF: 'all', wl: null, wSort: 'move', pTab: 'analyze', fCat: 'all', fund: null, lastIntel: 'research', lastIdeas: 'setups', vRaw: {}, vSnap: {}, vRow: {}, val: {}, hot: {}, hotList: null, valF: 'all'
 };
 let mcp = null, mcpTried = false, touching = false, lastScroll = 0, watches = {};
 const view = () => S.manual || (S.auto === 'closed' ? 'regular' : S.auto);
@@ -149,7 +149,7 @@ function watch(key, tool, input, onData, every) {
   if (watches[key]) { if (watches[key].sig === sig) return; watches[key].off(); }
   let iv = Math.max(30000, every || 30000); let dead = false, busy = false;
   // Web version: our own server can refresh prices every few seconds (Claude's runtime capped polling at ~30s).
-  if (window.JT_WEB) { if (/^(m:|d:snap|h:idx|wl:q|fl:q|pm:q|fd:q|jr:q|tp:wl|ip:snap)/.test(key)) iv = /^(d:snap|wl:q)/.test(key) ? 2000 : /^h:idx/.test(key) ? 3000 : 4000; else if (/^d:bars/.test(key)) iv = 15000; }
+  if (window.JT_WEB) { if (/^(m:|d:snap|h:idx|wl:q|fl:q|pm:q|fd:q|jr:q|tp:wl|ip:snap|hm:pos)/.test(key)) iv = /^(d:snap|wl:q|hm:pos)/.test(key) ? 2000 : /^h:idx/.test(key) ? 3000 : 4000; else if (/^d:bars/.test(key)) iv = 15000; }
   const low = /^(dp|s|dl):/.test(key); // watchlist data loads at full priority
   const run = () => {
     if (dead || busy) return; busy = true;
@@ -1096,7 +1096,7 @@ function pActions(seg, hid) {
     '<button class="pbtn' + (S.pEdit ? ' on' : '') + '" data-pedit="1">' + (S.pEdit ? 'Done' : 'Edit') + '</button></span></div>';
 }
 function renderPortfolios() {
-  setHTML($('pSeg'), [['strats', 'Models'], ['analyze', 'Analyze'], ['models', 'Mine'], ['funds', 'Funds'], ['dg', '13D/G']].map((x) => '<button class="seg' + (S.pTab === x[0] ? ' on' : '') + '" data-ptab="' + x[0] + '">' + x[1] + '</button>').join(''));
+  setHTML($('pSeg'), [['analyze', 'My account'], ['strats', 'Models'], ['models', 'Mine'], ['funds', 'Funds'], ['dg', '13D/G']].map((x) => '<button class="seg' + (S.pTab === x[0] ? ' on' : '') + '" data-ptab="' + x[0] + '">' + x[1] + '</button>').join(''));
   const box = $('pList'); const chips = $('pChips');
   if (S.pTab === 'analyze' && window.AZ) {
     if (document.activeElement && ['azPaste', 'azT', 'azA', 'azName'].indexOf(document.activeElement.id) >= 0) return; // don't wipe what you're typing
@@ -1730,7 +1730,7 @@ document.addEventListener('click', async (e) => {
   else if (t.dataset.more) { const el = $('desc'); if (el) { el.classList.add('open'); t.remove(); } return; }
   else if (t.id === 'allow') { try { await call('get_gainers_losers', { category: 'US_STOCK', rank_type: 'DAY_1', sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '5', page_index: '1' }, true); S.err = null; loadMovers(); } catch (err) { handleErr(err); } }
   else if (t.id === 'layTiles' || t.id === 'layList') { S.layout = t.id === 'layTiles' ? 'tiles' : 'list'; try { localStorage.setItem('jt.layout2', S.layout); } catch (err) {} $('grid').innerHTML = ''; }
-  else if (t.id && t.id.indexOf('nav') === 0) { goTab({ navHome: 'home', navMovers: 'movers', navDips: S.lastIdeas || 'setups', navWatch: 'watch', navIntel: S.lastIntel || 'news', navPort: 'portfolios' }[t.id]); }
+  else if (t.id && t.id.indexOf('nav') === 0) { if (t.id === 'navPort') S.pTab = 'analyze'; goTab({ navHome: 'home', navMovers: 'movers', navDips: S.lastIdeas || 'setups', navWatch: 'watch', navIntel: S.lastIntel || 'news', navPort: 'portfolios' }[t.id]); }
   else if (t.dataset.tab) { goTab(t.dataset.tab); }
   else if (t.dataset.valf) { S.valF = t.dataset.valf; }
   else if (t.dataset.newsk) { S.newsK = t.dataset.newsk; S.newsItems = null; loadNews(); }
@@ -1867,7 +1867,7 @@ function addMean() {
   const sc = v.querySelector('.scroller') || v; let el = v.querySelector('.meanL');
   if (!el) { el = document.createElement('div'); el.className = 'meanL'; }
   const ref = sc.querySelector(':scope > .head'); if (ref) { if (el.previousSibling !== ref) ref.parentNode.insertBefore(el, ref.nextSibling); } else if (!el.parentNode) { const ptr = sc.querySelector(':scope > .ptr'); sc.insertBefore(el, ptr ? ptr.nextSibling : sc.firstChild); }
-  const h = '<b>What this means:</b> ' + (t === 'ratings' && S.ratTab && S.ratTab !== 'latest' && window.R3 && R3.mean ? R3.mean : txt); if (el.__h !== h) { el.innerHTML = h; el.__h = h; }
+  const h = '<b>What this means:</b> ' + (t === 'portfolios' && S.pTab === 'analyze' ? 'your real accounts, read-only: what you own, how it’s doing and what to fix. We never place trades.' : t === 'ratings' && S.ratTab && S.ratTab !== 'latest' && window.R3 && R3.mean ? R3.mean : txt); if (el.__h !== h) { el.innerHTML = h; el.__h = h; }
 }
 
 document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-smode]'); if (!b) return; S.secMode = b.dataset.smode; if (b.dataset.thm) S.thOpen = b.dataset.thm; render(); window.scrollTo(0, 0); });

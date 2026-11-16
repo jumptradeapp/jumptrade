@@ -11,19 +11,19 @@
     const ses = typeof sessionAt === 'function' ? SL[sessionAt()] || 'Market closed' : (wd === 0 || wd === 6) ? 'Market closed' : mins < 240 ? 'Overnight' : mins < 570 ? 'Pre-market' : mins < 960 ? 'Market open' : mins < 1200 ? 'After hours' : 'Overnight';
     const date = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase().replace(',', ' ·');
     const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    void date; return { g: g, sub: ses + '<br>' + time + ' ET' }; // same two-line status as the other pages' titles
+    return { g: g, sub: d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + ' · ' + ses + ' · ' + time + ' ET' }; // same two-line status as the other pages' titles
   }
   function loadPositions() {
-    const X = TODAY.home; if (H.pos || H.posLoading || !X.live()) return; H.posLoading = 1;
+    const X = TODAY.home; if ((H.pos && Date.now() - (H.posAt || 0) < 300000) || H.posLoading || !X.live()) return; H.posLoading = 1; H.posAt = Date.now(); // shares and new positions: every 5 minutes; prices: every 2 seconds
     X.ctool('get_account_list', {}, 0.1).then((p) => {
       const acc = X.arr(p).filter((a) => a.account_class !== 'CRYPTO'); H.nAcc = acc.length;
       return Promise.all(acc.map((a) => X.ctool('get_account_positions', { account_id: a.account_id }, 0.02).then(X.arr).catch(() => [])));
     }).then((lists) => {
       const m = {}; (lists || []).forEach((L) => L.forEach((x) => { const s = x.symbol || (x.instrument && x.instrument.symbol); if (!s || !/^[A-Z.]{1,6}$/.test(s)) return; const mv = +(x.market_value || x.marketValue || 0), q = +(x.quantity || x.qty || 0), cost = +(x.cost_price || x.avg_cost || x.average_cost || 0);
         m[s] = m[s] || { sym: s, mv: 0, qty: 0, cost: cost }; m[s].mv += mv; m[s].qty += q; }));
-      H.pos = Object.values(m); const syms = H.pos.map((x) => x.sym);
+      H.pos = Object.values(m); if (watches['hm:pos'] && watches['hm:pos'].sig.indexOf(H.pos.map((x) => x.sym).slice(0, 100).join(',')) < 0) { watches['hm:pos'].off(); delete watches['hm:pos']; } const syms = H.pos.map((x) => x.sym);
       if (syms.length) watch('hm:pos', 'get_stock_snapshot', { symbols: syms.slice(0, 100).join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: false }, (p) => { X.arr(p).forEach((x) => { H.q = H.q || {}; H.q[x.symbol] = snapRow(x, view()); }); }, 60000);
-    }).catch(() => { H.pos = []; }).finally(() => { H.posLoading = 0; render(); });
+    }).catch(() => { if (!H.pos) H.pos = []; }).finally(() => { H.posLoading = 0; render(); });
   }
   H.load = function () {
     const X = window.TODAY && TODAY.home; if (!X) return;
@@ -66,18 +66,19 @@
   }
   // the chart style from the boards: thin blue line, soft fill, dotted line where the day started, a dot on the latest point
   function ptChart(vals, base, w, h, id) {
-    if (!vals || vals.length < 3) return ''; const lo = Math.min(base, ...vals), hi = Math.max(base, ...vals), rg = hi - lo || 1, pad = 6;
+    if (!vals || vals.length < 3) return ''; let lo = Math.min(...vals), hi = Math.max(...vals); if (base >= lo - (hi - lo) * 0.6 && base <= hi + (hi - lo) * 0.6) { lo = Math.min(lo, base); hi = Math.max(hi, base); } const rg = hi - lo || 1, pad = 8; // fill the box with the line; the start-of-day line only shows when it's near
     const X = (i) => (i / (vals.length - 1)) * (w - 6), Y = (v) => pad + ((hi - v) / rg) * (h - 2 * pad);
-    const d = vals.map((v, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(v).toFixed(1)).join(' '); const ex = X(vals.length - 1), ey = Y(vals[vals.length - 1]), by = Y(base);
+    const d = vals.map((v, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(v).toFixed(1)).join(' '); const ex = X(vals.length - 1), ey = Y(vals[vals.length - 1]), by = Math.max(2, Math.min(h - 2, Y(base)));
     return '<svg class="ptc" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5B9BEA" stop-opacity=".28"/><stop offset="1" stop-color="#5B9BEA" stop-opacity="0"/></linearGradient></defs>' +
       '<line x1="0" y1="' + by.toFixed(1) + '" x2="' + w + '" y2="' + by.toFixed(1) + '" stroke="#96A2AF" stroke-opacity=".5" stroke-width="1.2" stroke-dasharray="3 4" vector-effect="non-scaling-stroke"/>' +
       '<path d="' + d + ' L' + ex.toFixed(1) + ',' + h + ' L0,' + h + 'Z" fill="url(#' + id + ')"/><path d="' + d + '" fill="none" stroke="#6FA6F0" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/><circle cx="' + ex.toFixed(1) + '" cy="' + ey.toFixed(1) + '" r="3.6" fill="#6FA6F0"/></svg>';
   }
-  function miniSpark(sym, up) { const s = PT.spk[sym]; if (!s || !s.c || s.c.length < 3) return '<span class="ptmS"></span>'; const c = s.c, b = s.pc || c[0], lo = Math.min(b, ...c), hi = Math.max(b, ...c), rg = hi - lo || 1;
-    const P = dPal(), col = up ? P.up : P.dn; const pts = c.map((v, i) => ((i / (c.length - 1)) * 54).toFixed(1) + ',' + (22 - ((v - lo) / rg) * 20).toFixed(1)).join(' ');
-    return '<svg class="ptmS" viewBox="0 0 54 24" preserveAspectRatio="none" aria-hidden="true"><polyline points="' + pts + '" fill="none" stroke="' + col + '" stroke-width="1.6" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>'; }
+  function miniSpark(sym, up) { const s = PT.spk[sym]; if (!s || !s.c || s.c.length < 3) return '<span class="ptmS"></span>'; const c = s.c, lo = Math.min(...c), hi = Math.max(...c), rg = hi - lo || 1;
+    const P = dPal(), col = up ? P.up : P.dn, w = 64, h = 30; const pts = c.map((v, i) => ((i / (c.length - 1)) * w).toFixed(1) + ',' + (h - 3 - ((v - lo) / rg) * (h - 6)).toFixed(1)); const id = 'pm' + sym.replace(/[^A-Z0-9]/g, '');
+    return '<svg class="ptmS" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + col + '" stop-opacity=".25"/><stop offset="1" stop-color="' + col + '" stop-opacity="0"/></linearGradient></defs><path d="M' + pts.join(' L') + ' L' + w + ',' + h + ' L0,' + h + 'Z" fill="url(#' + id + ')"/><polyline points="' + pts.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>'; }
   const money = (v) => '$' + Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const sgn = (v) => (v >= 0 ? '+' : '−');
+  document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-myport]'); if (!b) return; e.preventDefault(); e.stopPropagation(); S.pTab = 'analyze'; goTab('portfolios'); }, true);
   H.portTile = function (P, mine) {
     const own = H.pos && H.pos.length; const Q = own ? (H.q || {}) : ((TODAY && TODAY.wlQ) || {});
     let rows = own ? H.pos.map((p) => ({ sym: p.sym, q: Q[p.sym], qty: p.qty })) : Object.keys(Q).map((s) => ({ sym: s, q: Q[s] })).filter((r) => r.q && r.q.price > 0 && r.q.pct != null);
@@ -100,7 +101,7 @@
     const big = own ? '<div class="ptBig">' + money(val) + '</div><div class="ptCh" style="color:' + col(dChg) + '">' + sgn(dChg) + money(dChg) + '&nbsp;&nbsp;' + pc(dPct) + '</div>'
       : '<div class="ptBig" style="color:' + col(dPct) + '">' + pc(dPct) + '</div><div class="ptCh"><span style="color:' + P.up + '">' + rows.filter((r) => r.q.pct > 0).length + ' up</span> · <span style="color:' + P.dn + '">' + rows.filter((r) => r.q.pct < 0).length + ' down</span></div>';
     return '<div class="glass sec hm ptCard" style="--c:' + P.acc + '"><button class="ptHead" data-tab="' + (own ? 'portfolios' : 'watch') + '"><small>' + lab + '</small><span>' + esc(sub) + '</span><i>›</i></button>' +
-      '<div class="ptTop"><div>' + big + '</div><div class="ptChart">' + ptChart(line, line ? (line.length > 30 ? base : line[0]) : 0, 150, 66, 'ptg' + (own ? 'o' : 'w')) + '</div></div>' +
+      '<div class="ptTop"><div>' + big + '</div><div class="ptChart">' + ptChart(line, line ? (line.length > 30 ? base : line[0]) : 0, 190, 84, 'ptg' + (own ? 'o' : 'w')) + '</div></div>' +
       '<div class="ptLbl">TOP PERFORMERS TODAY</div>' + top.map((r) => '<button class="ptRow" data-open="' + esc(r.sym) + '">' + logoHTML(r.sym, 32) + '<span class="rn"><b>' + esc(r.sym) + '</b><small>' + nm(r.sym) + '</small></span>' + miniSpark(r.sym, r.q.pct >= 0) + '<span class="rp"><b>$' + px(r.q.price) + '</b><small style="color:' + col(r.q.pct) + '">' + sgn(r.q.chg || 0) + '$' + px(Math.abs(r.q.chg || 0)) + '&nbsp; ' + pc(r.q.pct) + '</small></span></button>').join('') +
       '<div class="ptTri"><div><span>TODAY</span><b style="color:' + col(dPct) + '">' + pc(dPct) + '</b></div><div><span>1W</span><b style="color:' + col(wk) + '">' + pc(wk) + '</b></div><div><span>1M</span><b style="color:' + col(mo) + '">' + pc(mo) + '</b></div></div></div>';
   };
