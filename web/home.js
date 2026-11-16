@@ -16,7 +16,7 @@
   function loadPositions() {
     const X = TODAY.home; if (H.pos || H.posLoading || !X.live()) return; H.posLoading = 1;
     X.ctool('get_account_list', {}, 0.1).then((p) => {
-      const acc = X.arr(p).filter((a) => a.account_class !== 'CRYPTO');
+      const acc = X.arr(p).filter((a) => a.account_class !== 'CRYPTO'); H.nAcc = acc.length;
       return Promise.all(acc.map((a) => X.ctool('get_account_positions', { account_id: a.account_id }, 0.02).then(X.arr).catch(() => [])));
     }).then((lists) => {
       const m = {}; (lists || []).forEach((L) => L.forEach((x) => { const s = x.symbol || (x.instrument && x.instrument.symbol); if (!s || !/^[A-Z.]{1,6}$/.test(s)) return; const mv = +(x.market_value || x.marketValue || 0), q = +(x.quantity || x.qty || 0), cost = +(x.cost_price || x.avg_cost || x.average_cost || 0);
@@ -38,11 +38,105 @@
   const li = (col, html) => '<div class="hmli"><i style="background:' + col + '"></i><span>' + html + '</span></div>';
   const ago2 = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 60 ? m + 'm' : m < 1440 ? Math.round(m / 60) + 'h' : Math.round(m / 1440) + 'd'; };
 
+  // an analyst's price target: always the old one and the new one, so you can see which way it moved
+  window.tgtMove = function (r, plain) { if (!r || !r.new_target) return ''; const P = dPal(); const t$ = (v) => '$' + px(v);
+    if (!r.old_target || r.old_target === r.new_target) return (r.old_target ? 'target held at ' : 'target ') + t$(r.new_target);
+    const dd = r.new_target - r.old_target, pc = (dd / r.old_target) * 100, up = dd > 0;
+    const mv = (up ? '+' : '−') + '$' + px(Math.abs(dd)) + ' (' + (up ? '+' : '−') + Math.abs(pc).toFixed(1) + '%)';
+    return 'target ' + t$(r.old_target) + ' → ' + t$(r.new_target) + ' ' + (plain ? mv : '<em style="color:' + (up ? P.up : P.dn) + ';font-style:normal">' + mv + '</em>'); };
   // "Your watchlist is up $X today": as if $1,000 sat in each stock, so every stock counts the same
   window.wlDay = function (rows) { const R = (rows || []).filter((r) => r && r.pct != null && isFinite(r.pct)); if (R.length < 2) return '';
     const P = dPal(); const tot = R.reduce((a, r) => a + r.pct * 10, 0); const up = R.filter((r) => r.pct > 0).length, dn = R.filter((r) => r.pct < 0).length;
     const flat = Math.abs(tot) < 0.5 * R.length; const m = '$' + Math.abs(Math.round(tot)).toLocaleString('en-US');
     return '<div class="wlDay"><b>' + up + ' up, ' + dn + ' down today' + (flat ? '' : ' · <em style="color:' + (tot > 0 ? P.up : P.dn) + '">' + (tot > 0 ? '+' : '−') + m + '</em>') + '</b><small>' + (flat ? 'Your ' + R.length + ' stocks are flat overall' : 'What $1,000 in each of your ' + R.length + ' stocks would have made or lost — a guide, not your real money') + '</small>' + (window.asOf ? asOf(S.stamp && S.stamp['wl:q']) : '') + '</div>'; };
+  // ---------- v2 Today tiles: portfolio (or your list), market pulse, your next moves ----------
+  // One chart for both: your real holdings (shares x price) if a brokerage is connected, otherwise your watchlist as if $1,000 sat in each stock.
+  const PT = { hist: {}, spk: {}, at: {}, busy: {} };
+  function ptHist(syms) { // daily closes, about 25 sessions, for 1W / 1M
+    const k = syms.slice().sort().join(','); if (!k || PT.busy['h' + k] || (PT.at['h' + k] && Date.now() - PT.at['h' + k] < 30 * 60000)) return;
+    PT.busy['h' + k] = 1; const X = TODAY.home;
+    X.ctool('get_stock_bars', { symbols: syms.slice(0, 40), category: 'US_STOCK', timespan: 'D', count: 25 }, 0.5).then((p) => { ((p && p.result) || []).forEach((r) => { PT.hist[r.symbol] = (r.result || []).map((b) => +b.close).filter((v) => v > 0); }); PT.at['h' + k] = Date.now(); })
+      .catch(() => { PT.at['h' + k] = Date.now(); }).finally(() => { PT.busy['h' + k] = 0; render(); });
+  }
+  function ptSpk(syms) { // today's 5-minute closes (web version only)
+    if (!window.JT_WEB || typeof mcp === 'undefined' || !mcp) return; const k = syms.slice().sort().join(','); if (!k || PT.busy['s' + k] || (PT.at['s' + k] && Date.now() - PT.at['s' + k] < 60000)) return;
+    PT.busy['s' + k] = 1;
+    mcp.callTool(SERVER, 'get_sparks', { symbols: syms.slice(0, 60).join(',') }).then((res) => { const p = payloadOf(res) || {}; Object.keys(p).forEach((s) => { if (p[s] && p[s].c) PT.spk[s] = p[s]; }); PT.at['s' + k] = Date.now(); })
+      .catch(() => { PT.at['s' + k] = Date.now(); }).finally(() => { PT.busy['s' + k] = 0; render(); });
+  }
+  // the chart style from the boards: thin blue line, soft fill, dotted line where the day started, a dot on the latest point
+  function ptChart(vals, base, w, h, id) {
+    if (!vals || vals.length < 3) return ''; const lo = Math.min(base, ...vals), hi = Math.max(base, ...vals), rg = hi - lo || 1, pad = 6;
+    const X = (i) => (i / (vals.length - 1)) * (w - 6), Y = (v) => pad + ((hi - v) / rg) * (h - 2 * pad);
+    const d = vals.map((v, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(v).toFixed(1)).join(' '); const ex = X(vals.length - 1), ey = Y(vals[vals.length - 1]), by = Y(base);
+    return '<svg class="ptc" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5B9BEA" stop-opacity=".28"/><stop offset="1" stop-color="#5B9BEA" stop-opacity="0"/></linearGradient></defs>' +
+      '<line x1="0" y1="' + by.toFixed(1) + '" x2="' + w + '" y2="' + by.toFixed(1) + '" stroke="#96A2AF" stroke-opacity=".5" stroke-width="1.2" stroke-dasharray="3 4" vector-effect="non-scaling-stroke"/>' +
+      '<path d="' + d + ' L' + ex.toFixed(1) + ',' + h + ' L0,' + h + 'Z" fill="url(#' + id + ')"/><path d="' + d + '" fill="none" stroke="#6FA6F0" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/><circle cx="' + ex.toFixed(1) + '" cy="' + ey.toFixed(1) + '" r="3.6" fill="#6FA6F0"/></svg>';
+  }
+  function miniSpark(sym, up) { const s = PT.spk[sym]; if (!s || !s.c || s.c.length < 3) return '<span class="ptmS"></span>'; const c = s.c, b = s.pc || c[0], lo = Math.min(b, ...c), hi = Math.max(b, ...c), rg = hi - lo || 1;
+    const P = dPal(), col = up ? P.up : P.dn; const pts = c.map((v, i) => ((i / (c.length - 1)) * 54).toFixed(1) + ',' + (22 - ((v - lo) / rg) * 20).toFixed(1)).join(' ');
+    return '<svg class="ptmS" viewBox="0 0 54 24" preserveAspectRatio="none" aria-hidden="true"><polyline points="' + pts + '" fill="none" stroke="' + col + '" stroke-width="1.6" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>'; }
+  const money = (v) => '$' + Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const sgn = (v) => (v >= 0 ? '+' : '−');
+  H.portTile = function (P, mine) {
+    const own = H.pos && H.pos.length; const Q = own ? (H.q || {}) : ((TODAY && TODAY.wlQ) || {});
+    let rows = own ? H.pos.map((p) => ({ sym: p.sym, q: Q[p.sym], qty: p.qty })) : Object.keys(Q).map((s) => ({ sym: s, q: Q[s] })).filter((r) => r.q && r.q.price > 0 && r.q.pct != null);
+    rows = rows.filter((r) => r.q && r.q.price > 0);
+    if (!rows.length) {
+      if (H.posLoading) return card('PORTFOLIO', P.acc, skel);
+      return card('YOUR LIST TODAY', P.acc, '<p class="desc dim" style="margin:0 0 12px">Follow a few stocks and this shows how your list did today, this week and this month.</p><button class="bldFake" data-tab="watch">☆ Start your watchlist</button>');
+    }
+    rows.forEach((r) => { const prev = r.q.price - (r.q.chg || 0); r.prev = prev > 0 ? prev : r.q.price; if (!own) r.qty = 1000 / r.prev; });
+    const syms = rows.map((r) => r.sym); ptSpk(syms); ptHist(syms);
+    const val = rows.reduce((a, r) => a + r.qty * r.q.price, 0), base = rows.reduce((a, r) => a + r.qty * r.prev, 0), dChg = val - base, dPct = base ? (dChg / base) * 100 : 0;
+    // intraday line: every holding's 5-minute closes, added up (only when all of them have it)
+    let line = null; const S5 = rows.map((r) => PT.spk[r.sym]); if (S5.every((s) => s && s.c && s.c.length > 2)) { const n = Math.min(...S5.map((s) => s.c.length)); line = []; for (let i = 0; i < n; i++) line.push(rows.reduce((a, r, j) => a + r.qty * S5[j].c[S5[j].c.length - n + i], 0)); }
+    const H1 = rows.map((r) => PT.hist[r.sym]); let wk = null, mo = null; if (H1.every((h) => h && h.length >= 6)) { const at = (k) => rows.reduce((a, r, j) => { const h = H1[j]; return a + r.qty * h[Math.max(0, h.length - 1 - k)]; }, 0); const a5 = at(5), a21 = at(Math.min(21, Math.min(...H1.map((h) => h.length)) - 1)); wk = a5 ? (val / a5 - 1) * 100 : null; mo = a21 ? (val / a21 - 1) * 100 : null;
+      if (!line) { const n = Math.min(...H1.map((h) => h.length)); line = []; for (let i = 0; i < n; i++) line.push(rows.reduce((a, r, j) => a + r.qty * H1[j][H1[j].length - n + i], 0)); line.push(val); } }
+    const col = (v) => (v == null ? P.txt : v >= 0 ? P.up : P.dn); const pc = (v) => (v == null ? '—' : sgn(v) + Math.abs(v).toFixed(2) + '%');
+    const top = rows.filter((r) => r.q.pct != null).sort((a, b) => b.q.pct - a.q.pct).slice(0, 3);
+    const nm = (s) => esc(cleanName(symName(s) || s));
+    const lab = own ? 'PORTFOLIO' : 'YOUR LIST TODAY'; const sub = own ? (H.nAcc > 1 ? H.nAcc + ' accounts' : 'Your account') : rows.length + ' stocks';
+    const big = own ? '<div class="ptBig">' + money(val) + '</div><div class="ptCh" style="color:' + col(dChg) + '">' + sgn(dChg) + money(dChg) + '&nbsp;&nbsp;' + pc(dPct) + '</div>'
+      : '<div class="ptBig" style="color:' + col(dPct) + '">' + pc(dPct) + '</div><div class="ptCh"><span style="color:' + P.up + '">' + rows.filter((r) => r.q.pct > 0).length + ' up</span> · <span style="color:' + P.dn + '">' + rows.filter((r) => r.q.pct < 0).length + ' down</span></div>';
+    return '<div class="glass sec hm ptCard" style="--c:' + P.acc + '"><button class="ptHead" data-tab="' + (own ? 'portfolios' : 'watch') + '"><small>' + lab + '</small><span>' + esc(sub) + '</span><i>›</i></button>' +
+      '<div class="ptTop"><div>' + big + '</div><div class="ptChart">' + ptChart(line, line ? (line.length > 30 ? base : line[0]) : 0, 150, 66, 'ptg' + (own ? 'o' : 'w')) + '</div></div>' +
+      '<div class="ptLbl">TOP PERFORMERS TODAY</div>' + top.map((r) => '<button class="ptRow" data-open="' + esc(r.sym) + '">' + logoHTML(r.sym, 32) + '<span class="rn"><b>' + esc(r.sym) + '</b><small>' + nm(r.sym) + '</small></span>' + miniSpark(r.sym, r.q.pct >= 0) + '<span class="rp"><b>$' + px(r.q.price) + '</b><small style="color:' + col(r.q.pct) + '">' + sgn(r.q.chg || 0) + '$' + px(Math.abs(r.q.chg || 0)) + '&nbsp; ' + pc(r.q.pct) + '</small></span></button>').join('') +
+      '<div class="ptTri"><div><span>TODAY</span><b style="color:' + col(dPct) + '">' + pc(dPct) + '</b></div><div><span>1W</span><b style="color:' + col(wk) + '">' + pc(wk) + '</b></div><div><span>1M</span><b style="color:' + col(mo) + '">' + pc(mo) + '</b></div></div></div>';
+  };
+  H.pulseTile = function (P) {
+    const X = TODAY.home; const Hh = X.health(); const hv = Hh ? X.HV[Hh.v] : null; const I = (TODAY && TODAY.idx) || {};
+    const pcI = (s) => (I[s] && I[s].pct != null ? I[s].pct : null); const sp = pcI('SPY'), nq = pcI('QQQ'), rt = pcI('IWM');
+    const sess = typeof sessionAt === 'function' ? sessionAt() : 'regular';
+    let head = 'Here’s the market today.';
+    if (sp != null) { const amt = Math.abs(sp) < 0.15 ? 'flat' : (sp >= 0 ? 'higher' : 'lower'); const who = sess === 'closed' ? 'Stocks closed ' : sess === 'pre' ? 'Futures point ' : 'Stocks ' + (Math.abs(sp) < 0.15 ? 'are ' : 'trade ');
+      let tail = ''; const tg = nq != null ? nq - sp : 0, sm = rt != null ? rt - sp : 0;
+      if (Math.abs(tg) >= Math.abs(sm) && Math.abs(tg) >= 0.4) tail = tg > 0 ? ' as tech leads' : ' as tech lags'; else if (Math.abs(sm) >= 0.5) tail = sm > 0 ? ' as small caps lead' : ' as small caps lag';
+      head = who + amt + tail; }
+    const why = (function () { const L = (window.NR && NR.list) || []; const a = L.find((x) => x && x.kind === 'brief' && Date.now() - x.t < 8 * 3600000); return a ? (a.dek || a.title || '') : ''; })();
+    const cell = (s, lab, v) => '<span data-open="' + s + '"><small>' + lab + '</small><b style="color:' + (v == null ? P.txt : v >= 0 ? P.up : P.dn) + '">' + (v == null ? '—' : sgn(v) + Math.abs(v).toFixed(2) + '%') + '</b></span>';
+    return '<div class="glass sec hm puCard"><button class="puMain" data-plan="1"><span class="puLbl"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>MARKET PULSE' + (hv ? '<em>' + hv[0] + '</em>' : '') + '</span><b class="puHead">' + esc(head) + '</b>' + (why ? '<small class="puWhy">' + esc(why) + '</small>' : '') + '<i class="puGo">›</i></button>' +
+      '<div class="puIdx">' + cell('SPY', 'S&amp;P 500', sp) + cell('QQQ', 'Nasdaq', nq) + cell('IWM', 'Small caps', rt) + '</div></div>';
+  };
+  const MVI = { bolt: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>', cal: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>', tgt: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>', list: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/>' };
+  H.movesTile = function (P, watched) {
+    const X = TODAY.home; const it = [];
+    const mv = (ico, t, s, attr) => '<button class="mvRow"' + attr + '><span class="mvI"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + MVI[ico] + '</svg></span><span class="mvT"><b>' + t + '</b><small>' + s + '</small></span><i>›</i></button>';
+    const and = (a) => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+    // setups that are actually near their entry right now
+    if (window.ENR && ENR.topSetups) { ENR.topSetups(false); const top = (ENR.lastTop || []).slice(0, 3); if (top.length) it.push(mv('bolt', top.length + ' trade setup' + (top.length > 1 ? 's' : ''), esc(and(top.map((x) => x.sym))) + ' near entry', ' data-tab="setups"')); }
+    // earnings for stocks you own or follow, next 7 days
+    const C = FILES['catalysts.json']; if (ready(C)) { const d0 = X.todayISO(), d1 = X.addD(d0, 7); const E = ((C.earnings || {}).upcoming || []).filter((e) => watched[e.ticker] && e.date >= d0 && e.date <= d1).sort((a, b) => a.date < b.date ? -1 : 1);
+      if (E.length) { const e = E[0]; const day = e.date === d0 ? 'today' : new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' }); const tm = /bmo|before/i.test(e.timing || '') ? 'Before the open' : /amc|after/i.test(e.timing || '') ? 'After close' : '';
+        it.push(mv('cal', esc(e.ticker) + ' earnings ' + day, (tm ? tm : 'Reports this week') + (E.length > 1 ? ' · ' + (E.length - 1) + ' more of yours this week' : ''), ' data-open="' + esc(e.ticker) + '"')); } }
+    // analyst calls on your stocks in the last 3 days
+    const R = FILES['ratings.json']; if (ready(R)) { const cut = X.addD(X.todayISO(), -3); const L = R.ratings.filter((r) => watched[r.ticker] && r.date >= cut);
+      if (L.length) { const r = L[0]; it.push(mv('tgt', L.length + ' analyst call' + (L.length > 1 ? 's' : '') + ' on your stocks', esc(r.ticker) + ' · ' + esc(r.firm || '') + (r.new_target ? ' · ' + tgtMove(r, true) : ''), ' data-tab="ratings"')); } }
+    // the morning checklist, before and during the session
+    const sess = typeof sessionAt === 'function' ? sessionAt() : ''; if (/pre|regular/.test(sess) && it.length < 3) it.push(mv('list', 'Today’s game plan', sess === 'pre' ? '3 steps before the open' : 'Your checklist and position sizer', ' data-plan="1"'));
+    if (!it.length) return '';
+    return '<div class="mvWrap">' + secCap('YOUR NEXT MOVES', P.acc) + it.slice(0, 3).join('') + '</div>';
+  };
   H.render = function () {
     const gr = greet(); if ($('hmTitle')) { const nm = (function () { try { return (localStorage.getItem('jt.name') || '').trim().split(/\s+/)[0].slice(0, 12); } catch (e) { return ''; } })(); $('hmTitle').classList.toggle('named', false); $('hmTitle').innerHTML = false ? '<span>GOOD ' + gr.g + ',</span><br><b>' + esc(nm.toUpperCase()) + '<em class="dot sq">.</em></b>' : '<span>Market</span><br><b>briefing<em class="dot sq">.</em></b>'; $('hmSub').innerHTML = gr.sub; }
     if (!window.TODAY || !TODAY.home) { setHTML($('hmList'), '<div class="glass sec hm"><div class="skel"></div><div class="skel" style="width:70%"></div></div><div class="glass sec hm"><div class="skel"></div><div class="skel" style="width:55%"></div></div>'); setTimeout(render, 300); return; }
@@ -87,7 +181,7 @@
     cur = 'changed';
     const ch = [];
     Object.keys(TODAY.wlQ || {}).map((s) => TODAY.wlQ[s]).filter((r) => r && Math.abs(r.pct) >= 3 && watched[r.sym]).sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct)).slice(0, 3).forEach((r) => ch.push(li(r.pct >= 0 ? P.up : P.dn, '<b data-open="' + esc(r.sym) + '">' + esc(r.sym) + '</b> $' + px(r.price) + ' <span style="color:' + (r.pct >= 0 ? P.up : P.dn) + '">' + mvS(r.pct, r.price, r.chg) + '</span>' + (mine[r.sym] ? ' · you own it' : ''))));
-    const R = FILES['ratings.json']; if (ready(R)) { const cut = X.addD(X.todayISO(), -3); R.ratings.filter((r) => watched[r.ticker] && r.date >= cut && /upgrade|downgrade|initiate/.test(r.action)).slice(0, 3).forEach((r) => ch.push(li(r.action === 'downgrade' ? P.dn : P.up, '<b data-open="' + esc(r.ticker) + '">' + esc(r.ticker) + '</b> ' + ({ upgrade: 'upgraded', downgrade: 'downgraded', initiate: 'new coverage' }[r.action]) + (r.to_rating ? ' to ' + esc(r.to_rating) : '') + ' at ' + esc(r.firm || '') + (r.new_target ? ', target $' + px(r.new_target) : '') + '.'))); }
+    const R = FILES['ratings.json']; if (ready(R)) { const cut = X.addD(X.todayISO(), -3); R.ratings.filter((r) => watched[r.ticker] && r.date >= cut && /upgrade|downgrade|initiate/.test(r.action)).slice(0, 3).forEach((r) => ch.push(li(r.action === 'downgrade' ? P.dn : P.up, '<b data-open="' + esc(r.ticker) + '">' + esc(r.ticker) + '</b> ' + ({ upgrade: 'upgraded', downgrade: 'downgraded', initiate: 'new coverage' }[r.action]) + (r.to_rating ? ' to ' + esc(r.to_rating) : '') + ' at ' + esc(r.firm || '') + (r.new_target ? ', ' + tgtMove(r) : '') + '.'))); }
     const C2 = FILES['congress.json']; if (ready(C2)) { const cut = X.addD(X.todayISO(), -7); C2.trades.filter((t) => watched[t.ticker] && t.filed >= cut).slice(0, 2).forEach((t) => ch.push(li('#C3A8FF', (t.chamber === 'Senate' ? 'Sen. ' : 'Rep. ') + esc(t.name) + ' ' + (t.action === 'buy' ? 'bought' : 'sold') + ' <b data-open="' + esc(t.ticker) + '">' + esc(t.ticker) + '</b> (' + esc(t.amount) + ').'))); }
     const wlEmpty = window.JT_WEB && (() => { try { const v = JSON.parse(localStorage.getItem('jt.webwl') || 'null'); return !v || !Object.values(v).flat().length; } catch (e) { return false; } })();
     W[cur] = (W[cur] || '') + card('WHAT CHANGED', P.acc, wlEmpty ? '<p class="desc dim" style="margin:0 0 10px">Follow a few stocks and this shows their big moves, rating changes and Congress trades.</p><button class="bldFake" data-tab="watch">☆ Start your watchlist</button>' : ch.length ? ch.join('') : '<p class="desc dim">Nothing big on your stocks: no 3%+ moves, rating changes or Congress trades.</p>');
@@ -134,6 +228,7 @@
         t('Your live log', lv.s.n ? Math.round(lv.s.win * 100) + '%' : lv.L.length, lv.s.n ? lv.s.n + ' closed' : 'logged so far', P.txt) + '</div>', '<button class="hmr" data-tab="record">2 yrs ›</button>');
     } else W[cur] = (W[cur] || '') + card('SIGNAL TRACK RECORD', P.vi, '<p class="desc dim">' + (window.REC && REC.busy ? 'Testing the signals… ' + Math.round(REC.prog * 100) + '%' : 'Testing the signals on two years of prices…') + '</p>', '<button class="hmr" data-tab="record">Open ›</button>');
     Object.assign(W, H.extra(X, P, mine, watched));
+    W.port = H.portTile(P, mine); W.pulse = H.pulseTile(P); W.moves = H.movesTile(P, watched);
     const cfg = H.cfg(); const ids = cfg.order.filter((id) => !cfg.hide[id] && W[id]);
     const list = $('hmList');
     if (!ids.length) { setHTML(list, '<p class="desc dim" style="text-align:center;margin:40px 0">Every widget is hidden. Tap ⊕ to add some back.</p>'); return; }
@@ -148,16 +243,16 @@
   const NHOT = /\b(scandal|probe|investigat|indict|charged|arrest|lawsuit|sec |doj|fraud|spy|espionage|smuggl|ban|sanction|export control|resign|steps down|fired|ousted|ceo|bankrupt|default|halt|crash|plunge|tumble|soar|surge|record|rate cut|rate hike|cpi|inflation|jobs report|recession|acquire|merger|buyout|guidance|downgrade|upgrade|recall|hack|outage)/i;
   function newsImp(n) { const t = n.title + ' ' + (n.summary || ''); let s = 0; if (NBIG.test(t)) s += 4; const h = t.match(new RegExp(NHOT.source, 'gi')); if (h) s += Math.min(3, h.length) * 3; if (/^(why|how|what|is|should|\d+ (stocks|reasons))\b/i.test(n.title)) s -= 4; return s; }
   // ---------- widgets: config, extra widgets, customize sheet ----------
-  const DEF = ['regime', 'alerts', 'stories', 'themes', 'jc', 'news', 'today', 'watch', 'play', 'runners', 'build', 'changed', 'pos', 'setups', 'week', 'record', 'idx', 'gainers', 'uvol', 'uopt', 'dips', 'value', 'sectors', 'flow', 'congress', 'earn', 'upg'];
+  const DEF = ['port', 'pulse', 'moves', 'regime', 'alerts', 'stories', 'themes', 'jc', 'news', 'today', 'watch', 'play', 'runners', 'build', 'changed', 'pos', 'setups', 'week', 'record', 'idx', 'gainers', 'uvol', 'uopt', 'dips', 'value', 'sectors', 'flow', 'congress', 'earn', 'upg'];
   const OFF = { build: 1, changed: 1, week: 1, record: 1, setups: 1, idx: 1, gainers: 1, uvol: 1, uopt: 1, dips: 1, value: 1, sectors: 1, flow: 1, congress: 1, earn: 1, upg: 1 };
-  const NAMES = { regime: ['Market', 'S&P, Nasdaq, small caps and risk-on/off'], themes: ['Themes today', 'Hottest and coldest themes, like Photonics or Drones'], alerts: ['Big news', 'Warnings and good news on your stocks and the market'], stories: ['Story cards', 'Market tonight, your biggest watchlist moves, who reports next'], jc: ['Ask Jump', 'Ask anything about a stock or the market'], today: ['Today', 'Economic data and earnings today'], runners: ['Potential runners', 'Stocks showing early signs of a run'], build: ['Build a portfolio', 'Type a theme, get a portfolio'], play: ['Your move today', 'Best setups where 3+ signals agree, with levels'], news: ['Top news', 'The 5 biggest stories right now'], changed: ['What changed', 'Big moves, ratings and Congress trades on your stocks'], pos: ['Your positions', 'Holdings that need a look'], setups: ['Top setups', 'Best 3 trades with entry and stop'], week: ['This week', 'Big releases and earnings by day'], record: ['Signal track record', 'How the signals have done'],
+  const NAMES = { port: ['Portfolio', 'Your accounts, or your watchlist, today / 1W / 1M'], pulse: ['Market pulse', 'The market in one line, plus the S&P, Nasdaq and small caps'], moves: ['Your next moves', 'Setups near entry, your earnings and analyst calls'], regime: ['Market', 'S&P, Nasdaq, small caps and risk-on/off'], themes: ['Themes today', 'Hottest and coldest themes, like Photonics or Drones'], alerts: ['Big news', 'Warnings and good news on your stocks and the market'], stories: ['Story cards', 'Market tonight, your biggest watchlist moves, who reports next'], jc: ['Ask Jump', 'Ask anything about a stock or the market'], today: ['Today', 'Economic data and earnings today'], runners: ['Potential runners', 'Stocks showing early signs of a run'], build: ['Build a portfolio', 'Type a theme, get a portfolio'], play: ['Your move today', 'Best setups where 3+ signals agree, with levels'], news: ['Top news', 'The 5 biggest stories right now'], changed: ['What changed', 'Big moves, ratings and Congress trades on your stocks'], pos: ['Your positions', 'Holdings that need a look'], setups: ['Top setups', 'Best 3 trades with entry and stop'], week: ['This week', 'Big releases and earnings by day'], record: ['Signal track record', 'How the signals have done'],
     idx: ['Indexes', 'S&P 500, Nasdaq 100, Russell 2000'], gainers: ['Top movers', 'The 4 biggest movers right now'], uvol: ['Unusual volume', 'Trading far above normal volume'], uopt: ['Unusual options', 'The biggest options bets'], dips: ['Dips', 'Dip buys that are triggering'], value: ['Undervalued', 'Cheapest for their growth'], watch: ['Watchlist', 'Your names, live'], sectors: ['Sector heat', 'All sectors ranked today'], flow: ['Big money', 'Latest major block trades'], congress: ['Congress', 'Latest trades by members'], earn: ['Earnings for you', 'Your names reporting this week'], upg: ['Upgrades', 'Latest analyst upgrades and downgrades'] };
   H.cfg = function () {
     let c = null; try { c = JSON.parse(localStorage.getItem('jt.home2') || 'null'); } catch (e) {} if (!c && S['_jt.home2']) c = JSON.parse(JSON.stringify(S['_jt.home2']));
     if (!c || !Array.isArray(c.order)) c = { order: DEF.slice(), hide: Object.assign({}, OFF) };
     if (!c.pm2) { c.pm2 = 1; const pi = c.order.indexOf('play'); if (pi >= 0) c.order.splice(pi, 1); }
     DEF.forEach((id) => { if (c.order.indexOf(id) < 0) { if (id === 'jc') { const ri = c.order.indexOf('regime'); c.order.splice(ri >= 0 ? ri + 1 : 0, 0, id); } else if (id === 'play') { const ni = c.order.indexOf('news'); c.order.splice(ni >= 0 ? ni + 1 : Math.min(2, c.order.length), 0, id); } else if (id === 'build') { const ri = c.order.indexOf('runners'); c.order.splice(ri >= 0 ? ri + 1 : c.order.length, 0, id); } else if (id === 'runners') { const ni = c.order.indexOf('news'); c.order.splice(ni >= 0 ? ni + 1 : Math.min(1, c.order.length), 0, id); } else c.order.push(id); if (OFF[id]) c.hide[id] = 1; } });
-    c.order = c.order.filter((id) => DEF.indexOf(id) >= 0); if (!c.pm4) { c.pm4 = 1; c.hide = c.hide || {}; delete c.hide.watch; const wi = c.order.indexOf('watch'); if (wi >= 0) c.order.splice(wi, 1); const ni = c.order.indexOf('news'); c.order.splice(ni >= 0 ? ni + 1 : Math.min(2, c.order.length), 0, 'watch'); c.pm2 = 1; } if (!c.pm3) { c.pm3 = 1; c.hide = c.hide || {}; c.hide.setups = 1; c.pm2 = 1; } if (!c.pm6) { c.pm6 = 1; c.pm5 = 0; } if (!c.pm5) { c.pm5 = 1; c.hide = c.hide || {}; ['changed', 'build', 'week', 'record', 'runners', 'play'].forEach((k) => { c.hide[k] = 1; }); delete c.hide.gainers; const top = ['regime', 'jc', 'news', 'today', 'watch', 'gainers']; c.order = top.concat(c.order.filter((k) => top.indexOf(k) < 0)); saveCfg(c); } if (!c.pm9) { c.pm9 = 1; c.hide = c.hide || {}; delete c.hide.themes; c.order = c.order.filter((k) => k !== 'themes'); const si = c.order.indexOf('stories'); c.order.splice(si >= 0 ? si + 1 : 1, 0, 'themes'); saveCfg(c); } if (!c.pm8) { c.pm8 = 1; c.hide = c.hide || {}; delete c.hide.alerts; c.order = c.order.filter((k) => k !== 'alerts'); const ri = c.order.indexOf('regime'); c.order.splice(ri >= 0 ? ri + 1 : 0, 0, 'alerts'); saveCfg(c); } if (!c.pm7) { c.pm7 = 1; c.hide = c.hide || {}; delete c.hide.stories; delete c.hide.gainers; delete c.hide.watch; delete c.hide.news; delete c.hide.today; const top = ['regime', 'alerts', 'stories', 'themes', 'jc', 'gainers', 'watch', 'news', 'today']; c.order = top.concat(c.order.filter((k) => top.indexOf(k) < 0)); saveCfg(c); } if (c.pm2 === 1) { c.pm2 = 2; saveCfg(c); } return c;
+    c.order = c.order.filter((id) => DEF.indexOf(id) >= 0); if (!c.pm4) { c.pm4 = 1; c.hide = c.hide || {}; delete c.hide.watch; const wi = c.order.indexOf('watch'); if (wi >= 0) c.order.splice(wi, 1); const ni = c.order.indexOf('news'); c.order.splice(ni >= 0 ? ni + 1 : Math.min(2, c.order.length), 0, 'watch'); c.pm2 = 1; } if (!c.pm3) { c.pm3 = 1; c.hide = c.hide || {}; c.hide.setups = 1; c.pm2 = 1; } if (!c.pm6) { c.pm6 = 1; c.pm5 = 0; } if (!c.pm5) { c.pm5 = 1; c.hide = c.hide || {}; ['changed', 'build', 'week', 'record', 'runners', 'play'].forEach((k) => { c.hide[k] = 1; }); delete c.hide.gainers; const top = ['regime', 'jc', 'news', 'today', 'watch', 'gainers']; c.order = top.concat(c.order.filter((k) => top.indexOf(k) < 0)); saveCfg(c); } if (!c.pm9) { c.pm9 = 1; c.hide = c.hide || {}; delete c.hide.themes; c.order = c.order.filter((k) => k !== 'themes'); const si = c.order.indexOf('stories'); c.order.splice(si >= 0 ? si + 1 : 1, 0, 'themes'); saveCfg(c); } if (!c.pm8) { c.pm8 = 1; c.hide = c.hide || {}; delete c.hide.alerts; c.order = c.order.filter((k) => k !== 'alerts'); const ri = c.order.indexOf('regime'); c.order.splice(ri >= 0 ? ri + 1 : 0, 0, 'alerts'); saveCfg(c); } if (!c.pm7) { c.pm7 = 1; c.hide = c.hide || {}; delete c.hide.stories; delete c.hide.gainers; delete c.hide.watch; delete c.hide.news; delete c.hide.today; const top = ['regime', 'alerts', 'stories', 'themes', 'jc', 'gainers', 'watch', 'news', 'today']; c.order = top.concat(c.order.filter((k) => top.indexOf(k) < 0)); saveCfg(c); } if (!c.v2a) { c.v2a = 1; const KEEP = ['port', 'pulse', 'moves', 'news', 'runners', 'watch']; c.order = KEEP.concat(c.order.filter((id) => KEEP.indexOf(id) < 0)); c.hide = {}; DEF.forEach((id) => { if (KEEP.indexOf(id) < 0) c.hide[id] = 1; }); saveCfg(c); } if (c.pm2 === 1) { c.pm2 = 2; saveCfg(c); } return c;
   };
   function saveCfg(c) { if (typeof lsSet === 'function') lsSet('jt.home2', c); else try { localStorage.setItem('jt.home2', JSON.stringify(c)); } catch (e) {} }
   const row = (sym, sub, rt, rtCol, rsub) => '<button class="hmrow" data-open="' + esc(sym) + '">' + logoHTML(sym, 30) + '<span class="rn"><b>' + esc(sym) + '</b><small>' + sub + '</small></span><span class="rp"><b' + (rtCol ? ' style="color:' + rtCol + '"' : '') + '>' + rt + '</b>' + (rsub ? '<small>' + rsub + '</small>' : '') + '</span></button>';
@@ -225,7 +320,7 @@
     if (on('earn')) { const C = FILES['catalysts.json']; const d0 = X.todayISO(), d1 = X.addD(d0, 7);
       const E = ready(C) ? ((C.earnings || {}).upcoming || []).filter((e) => watched[e.ticker] && e.date >= d0 && e.date <= d1).slice(0, 5) : [];
       W.earn = card('EARNINGS FOR YOU', '#F2C27A', ready(C) ? (E.length ? E.map((e) => row(e.ticker, mine[e.ticker] ? 'You own it' : 'On your watchlist', new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }), null, esc(e.timing || ''))).join('') : '<p class="desc dim">None of your names report in the next 7 days.</p>') : skel, '<button class="hmr" data-tab="catalysts">Calendar ›</button>'); }
-    if (on('upg')) { const R = FILES['ratings.json']; W.upg = card('UPGRADES', P.up, ready(R) ? R.ratings.filter((r) => /upgrade|downgrade/.test(r.action)).slice(0, 4).map((r) => row(r.ticker, esc(r.firm || '') + (r.to_rating ? ' · to ' + esc(r.to_rating) : ''), r.action === 'upgrade' ? 'Upgrade' : 'Downgrade', r.action === 'upgrade' ? P.up : P.dn, r.new_target ? 'target $' + px(r.new_target) : '')).join('') : skel, '<button class="hmr" data-tab="ratings">All ›</button>'); }
+    if (on('upg')) { const R = FILES['ratings.json']; W.upg = card('UPGRADES', P.up, ready(R) ? R.ratings.filter((r) => /upgrade|downgrade/.test(r.action)).slice(0, 4).map((r) => row(r.ticker, esc(r.firm || '') + (r.to_rating ? ' · to ' + esc(r.to_rating) : ''), r.action === 'upgrade' ? 'Upgrade' : 'Downgrade', r.action === 'upgrade' ? P.up : P.dn, r.new_target ? tgtMove(r, true) : '')).join('') : skel, '<button class="hmr" data-tab="ratings">All ›</button>'); }
     return W;
   };
   // customize sheet
