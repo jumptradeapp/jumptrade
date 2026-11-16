@@ -688,20 +688,49 @@ async function etfChange(sym, days) {
   const cl = c.filter((x) => x != null); if (cl.length <= days) return null;
   return cl[cl.length - 1] / cl[cl.length - 1 - days] - 1;
 }
+// Insider trades, free fallback for Webull's feed: SEC EDGAR Form 4 filings (public; SEC asks for a contact in the user agent)
+const SEC_H = { 'user-agent': 'JumpTrade admin@survyr.ai', 'accept-encoding': 'gzip, deflate' };
+let SEC_CIK = null;
+async function secCik(sym) {
+  if (!SEC_CIK || Date.now() - SEC_CIK.t > 864e5) { const r = await fetch('https://www.sec.gov/files/company_tickers.json', { headers: SEC_H, cf: { cacheTtl: 86400, cacheEverything: true } }); if (!r.ok) throw Object.assign(new Error('SEC ' + r.status), { status: 502 }); const j = await r.json(); const m = {}; Object.values(j).forEach((x) => { m[x.ticker] = x.cik_str; }); SEC_CIK = { t: Date.now(), m }; }
+  return SEC_CIK.m[String(sym).toUpperCase().replace('.', '-')] || null;
+}
+const F4CODE = { P: 'Buy', S: 'Sale', A: 'Award', M: 'Option exercise', F: 'Tax withholding', G: 'Gift', C: 'Conversion', X: 'Option exercise', D: 'Return to company', J: 'Other' };
+T.get_insider_transactions = async (i) => {
+  const sym = String(i.symbol || '').toUpperCase(); if (!/^[A-Z.\-]{1,7}$/.test(sym)) throw Object.assign(new Error('symbol needed'), { status: 400 });
+  const cik = await secCik(sym); if (!cik) return { symbol: sym, src: 'SEC EDGAR', data: [] };
+  const r = await fetch('https://data.sec.gov/submissions/CIK' + String(cik).padStart(10, '0') + '.json', { headers: SEC_H }); if (!r.ok) throw Object.assign(new Error('SEC ' + r.status), { status: 502 });
+  const rc = ((await r.json()).filings || {}).recent || {}; const idx = []; (rc.form || []).forEach((f, k) => { if (f === '4' && idx.length < Math.min(+i.count || 12, 15)) idx.push(k); });
+  const tag = (x, t) => { const m = new RegExp('<' + t + '>\\s*(?:<value>)?\\s*([^<]*)', 'i').exec(x); return m ? m[1].trim() : ''; };
+  const out = [];
+  await Promise.all(idx.map(async (k) => {
+    const acc = rc.accessionNumber[k], doc = String(rc.primaryDocument[k] || '').replace(/^xsl[^/]+\//, ''); const url = 'https://www.sec.gov/Archives/edgar/data/' + cik + '/' + acc.replace(/-/g, '') + '/' + doc;
+    const x = await fetch(url, { headers: SEC_H, cf: { cacheTtl: 86400, cacheEverything: true } }).then((y) => (y.ok ? y.text() : '')).catch(() => ''); if (!x) return;
+    const who = tag(x, 'rptOwnerName'), title = tag(x, 'officerTitle') || (tag(x, 'isDirector') === '1' || tag(x, 'isDirector') === 'true' ? 'Director' : tag(x, 'isTenPercentOwner') === '1' ? '10% owner' : '');
+    const plan = /<aff10b5One>\s*(1|true)/i.test(x);
+    (x.match(/<nonDerivativeTransaction>[\s\S]*?<\/nonDerivativeTransaction>/g) || []).forEach((t) => { const sh = +tag(t, 'transactionShares'), px = +tag(t, 'transactionPricePerShare'), code = tag(t, 'transactionCode');
+      out.push({ symbol: sym, name: who, title, date: tag(t, 'transactionDate'), filed: rc.filingDate[k], code, type: F4CODE[code] || code, ad: tag(t, 'transactionAcquiredDisposedCode'), shares: sh || 0, price: px || null, value: sh && px ? sh * px : null, after: +tag(t, 'sharesOwnedFollowingTransaction') || null, plan, url: 'https://www.sec.gov/Archives/edgar/data/' + cik + '/' + acc.replace(/-/g, '') + '/' + acc + '-index.htm' }); });
+  }));
+  out.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  return { symbol: sym, src: 'SEC EDGAR Form 4', data: out };
+};
 T.get_market_sectors = async (i) => {
   const per = PERDAYS[i.period] ? i.period : 'D1';
   const all = [...new Set(GROUPS.flatMap((g) => g[3].split(',')))];
-  const q = await quotes(all); const by = {}; q.forEach((x) => { by[x.symbol] = x; });
-  const etfQ = per === 'D1' ? await quotes(GROUPS.map((g) => g[2])) : [];
-  const eBy = {}; etfQ.forEach((x) => { eBy[x.symbol] = x; });
+  // quote the 30 sector ETFs first (cheap). If Yahoo only gives the minimal spark quote (no market caps), skip the ~360 member quotes:
+  // they'd blow the free plan's subrequest cap and carry no caps to weight by. Then each group is just its ETF, flagged etfOnly.
+  const etfQ = await quotes(GROUPS.map((g) => g[2])); const eBy = {}; etfQ.forEach((x) => { eBy[x.symbol] = x; });
+  const full = etfQ.some((x) => x.source !== 'yahoo-spark');
+  const q = full ? await quotes(all).catch(() => []) : []; const by = {}; q.forEach((x) => { by[x.symbol] = x; });
   const changes = per === 'D1' ? null : await Promise.all(GROUPS.map((g) => etfChange(g[2], PERDAYS[per]).catch(() => null)));
   return GROUPS.map((g, k) => {
     const m = g[3].split(',').map((s) => by[s]).filter(Boolean);
     const cap = m.reduce((a, x) => a + (+x.market_value || 0), 0);
     const wavg = cap ? m.reduce((a, x) => a + (+x.market_value || 0) * (+x.change_ratio || 0), 0) / cap : 0;
     const cr = per === 'D1' ? (eBy[g[2]] && eBy[g[2]].change_ratio != null ? eBy[g[2]].change_ratio : wavg) : changes[k];
+    if (!m.length) return { id: g[0], name: g[1], etf: g[2], change_ratio: cr, market_value: null, advanced: null, declined: null, etfOnly: true };
     return { id: g[0], name: g[1], etf: g[2], change_ratio: cr == null ? wavg : cr, market_value: cap, advanced: m.filter((x) => x.change_ratio > 0).length, declined: m.filter((x) => x.change_ratio < 0).length };
-  }).filter((s) => s.market_value > 0);
+  }).filter((s) => s.etfOnly ? s.change_ratio != null : s.market_value > 0);
 };
 T.get_market_sectors_detail = async (i) => {
   const g = GROUPS.find((x) => String(x[0]) === String(i.sector_id)); if (!g) return { data: [] };
@@ -710,7 +739,7 @@ T.get_market_sectors_detail = async (i) => {
   return { data: rows };
 };
 // How long each answer may be reused (seconds). Prices: short. Fundamentals: long.
-const TTL = { get_mover_setup: 60, get_analyst_actions: 900, get_mover_why: 300, get_earnings_week: 600, get_pick_record: 600, get_playbook: 60, get_stock_unusual_activities: 60, get_community_hot_stocks: 180, get_runners: 60, get_sparks: 60, get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 60, search_news: 45,
+const TTL = { get_mover_setup: 60, get_insider_transactions: 3600, get_analyst_actions: 900, get_mover_why: 300, get_earnings_week: 600, get_pick_record: 600, get_playbook: 60, get_stock_unusual_activities: 60, get_community_hot_stocks: 180, get_runners: 60, get_sparks: 60, get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 60, search_news: 45,
   get_company_profile: 86400, get_analyst_target_price: 21600, get_analyst_rating: 21600, get_stock_forecast_eps: 21600, get_stock_earnings_calendar: 21600,
   get_fund_brief: 86400, get_fund_holdings: 86400, get_fund_performance: 86400 };
 
@@ -880,6 +909,9 @@ async function wbRoutes(url, env) {
 
 async function runTool(tool, input, ctx, env, fresh) {
   const fn = T[tool] || (WBMAP[tool] ? async () => { throw Object.assign(new Error('This data isn’t available right now'), { status: 503 }); } : null); /* say 'unavailable', never a fake empty result */ if (!fn) return json({ error: { code: 'tool_error', message: 'Unknown tool ' + tool } }, 404);
+  if (input && typeof input === 'object' && 'category' in input) { input = Object.assign({}, input); delete input.category; } // same answer either way: share one cache entry
+  const QS = /^(get_analyst_rating|get_analyst_target_price|get_company_profile|get_stock_forecast_eps|get_stock_earnings_calendar)$/.test(tool) && input && input.symbol; // Yahoo quoteSummary (crumb) tools
+  const qsKey = QS ? 'qs1_' + tool + '_' + String(input.symbol).toUpperCase().replace(/[^A-Z0-9.\-]/g, '').slice(0, 12) : null;
   const key = new Request('https://cache.jumptrade/' + tool + '?' + encodeURIComponent(JSON.stringify(input || {})));
   const cache = caches.default;
   const hit = fresh ? null : await cache.match(key); if (hit) return hit;
@@ -890,6 +922,7 @@ async function runTool(tool, input, ctx, env, fresh) {
     const w = env && !/news/.test(tool) ? await wbCall(env, tool, input || {}).catch((e) => { WBLAST = { tool, error: String(e.message || e), t: Date.now() }; return null; }) : null;
     const payload = w ? w.payload : await fn(input || {});
     const res = json(w || !WBMAP[tool] ? { payload } : { payload, src: 'backup' }, 200, { 'cache-control': 'public, max-age=' + (TTL[tool] || 30) }); // src: 'backup' = the free feed (no halt flags), so the app can say so
+    if (qsKey && env && ctx) ctx.waitUntil(vput(env, qsKey, { t: Date.now(), p: payload }).catch(() => {}));
     try { await cache.put(key, res.clone()); if (SLOW) await cache.put(skey, json({ payload }, 200, { 'cache-control': 'public, max-age=86400', 'x-jt-t': String(Date.now()) })); } catch (e) {} // the cron has no cache; the Vault copy covers it
     return res;
   };
@@ -907,6 +940,7 @@ async function runTool(tool, input, ctx, env, fresh) {
   try {
     return await produce();
   } catch (e) {
+    if (qsKey && env) { const v = await vget(env, qsKey).catch(() => null); if (v && v.p) return json({ payload: v.p, asOf: v.t, stale: true }, 200, { 'cache-control': 'public, max-age=60' }); } // Yahoo refused the crumb: serve the last good copy, dated
     return json({ error: { code: e.status === 429 ? 'rate_limited' : 'server_unavailable', message: 'Can’t reach the price feed right now (' + (e.message || e) + ').', retryable: true } }, 502);
   }
 }
@@ -1401,6 +1435,7 @@ export default {
     if (/^\/api\/(alertstate|wbstate|ovncheck|selftest|newsdiag|session|scan)$/.test(url.pathname)) { const w0 = await sessionFrom(req, env, vget).catch(() => null); if (!w0 || !w0.u.owner) return json({ error: { code: 'not_found' } }, 404, { 'cache-control': 'no-store' }); }
     if (url.pathname === '/api/alertstate') { const a = (await vget(env, 'alertrun')) || {}; const s = (await vget(env, 'subs')) || {}; const pr = (await vget(env, 'prerun')) || {}; const cb = (await vget(env, 'cronbeat')) || {}; const pl = (await vget(env, 'pushlast')) || {}; return json({ push: pl.t ? { at: new Date(pl.t).toISOString(), status: pl.status, reason: pl.reason, via: pl.via, host: pl.host } : null, cron: cb.t ? new Date(cb.t).toISOString() : null, cronBuild: cb.build, now: new Date().toISOString(), last: a.t ? new Date(a.t).toISOString() : null, sent: a.sent, error: a.error, closed: a.closed, subs: Object.keys(s).length, precompute: { t: pr.t ? new Date(pr.t).toISOString() : null, r: pr.r } }); }
     if (url.pathname === '/api/newsdiag') { const out = await Promise.all(FEEDS.map(async (f) => { const t0 = Date.now(); try { const r = await fetch(f[1], { headers: { 'user-agent': NUA, accept: 'application/rss+xml, text/xml' } }); const x = await r.text(); const a = await rss(f[1], f[0]); return f[0] + ': http ' + r.status + ', ' + x.length + ' bytes, ' + a.length + ' items, newest ' + (a[0] ? a.map((n) => n.publish_time).sort().pop() : '-') + ', ' + (Date.now() - t0) + 'ms'; } catch (e) { return f[0] + ': error ' + e.message; } })); return new Response('build news2\n' + out.join('\n'), { headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } }); }
+    if (url.pathname === '/api/wbon') return json({ on: !!new Webull(env).ready }); // public yes/no only: is the Webull feed configured
     if (url.pathname === '/api/wbstate') { const s = (await vget(env, 'tokstate')) || {}; const cr = (await vget(env, 'cron')) || {}; const ck = (await vget(env, 'tokcheck')) || {}; const tk = (await vget(env, 'token')) || {}; return json({ token_status: tk.status || null, check_http: ck.http || null, check_msg: ck.body && (ck.body.msg || ck.body.message || ck.body.error_code || ck.body.status) || null, upkeep: cr.t ? new Date(cr.t).toISOString() : null, keys: cr.ready == null ? null : cr.ready, status: s.status || 'none', http: s.http || null, code: s.code || null, created: s.created ? new Date(s.created).toISOString() : null, checked: s.checked ? new Date(s.checked).toISOString() : null }); }
     if (url.pathname.startsWith('/api/wb/')) { const r = await wbRoutes(url, env); if (r) return r; }
     if (url.pathname === '/api/selftest') return json(await selftest());
