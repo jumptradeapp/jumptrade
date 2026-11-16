@@ -23,8 +23,15 @@ const syms = (s) => (Array.isArray(s) ? s : String(s || '').split(',')).map((x) 
 
 // ---------- Yahoo session (cookie + crumb), cached in memory for the life of the isolate ----------
 let SESSION = null;
+// one crumb fetch at a time per isolate: parallel cold calls used to each ask Yahoo for a crumb, get throttled and 401
+let SESSION_P = null;
 async function session(force) {
-  if (SESSION && !force && Date.now() - SESSION.t < 50 * 60 * 1000) return SESSION;
+  if (SESSION && !force && SESSION.crumb && Date.now() - SESSION.t < 50 * 60 * 1000) return SESSION;
+  if (SESSION_P) return SESSION_P;
+  SESSION_P = sessionFetch().finally(() => { SESSION_P = null; });
+  return SESSION_P;
+}
+async function sessionFetch() {
   let cookie = '';
   try {
     const r = await fetch('https://fc.yahoo.com/', { headers: { 'user-agent': UA }, redirect: 'manual' });
@@ -40,11 +47,11 @@ async function session(force) {
   return SESSION;
 }
 async function yget(path, { crumb = false, base = Y2 } = {}) {
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const s = crumb ? await session(attempt > 0) : null;
-    const url = base + path + (crumb && s.crumb ? (path.includes('?') ? '&' : '?') + 'crumb=' + encodeURIComponent(s.crumb) : '');
+  for (let attempt = 0; attempt < (crumb ? 3 : 2); attempt++) {
+    const s = crumb ? await session(attempt === 1) : null;
+    const url = (crumb && attempt === 2 ? (base === Y2 ? Y1 : Y2) : base) + path + (crumb && s.crumb ? (path.includes('?') ? '&' : '?') + 'crumb=' + encodeURIComponent(s.crumb) : '');
     const r = await fetch(url, { headers: { 'user-agent': UA, accept: 'application/json', ...(s && s.cookie ? { cookie: s.cookie } : {}) } });
-    if (r.status === 401 && crumb && attempt === 0) continue; // stale crumb: refresh once
+    if (r.status === 401 && crumb && attempt < 2) continue; // stale crumb: refresh once, then try the other Yahoo host
     if (!r.ok) throw Object.assign(new Error('upstream ' + r.status), { status: r.status });
     return r.json();
   }
@@ -92,9 +99,33 @@ function snapOf(q) {
 async function quotes(list) {
   const out = [];
   for (const c of chunk(syms(list), 150)) {
-    const d = await yget('/v7/finance/quote?symbols=' + encodeURIComponent(c.join(',')), { crumb: true });
+    let d;
+    try { d = await yget('/v7/finance/quote?symbols=' + encodeURIComponent(c.join(',')), { crumb: true }); }
+    catch (e) { // Yahoo sometimes refuses the crumb quote endpoint (401/429) from Cloudflare: use the no-crumb spark endpoint instead of failing the whole price feed
+      const back = await sparkQuotes(c).catch(() => []);
+      if (!back.length) throw e;
+      back.forEach((q) => out.push(q)); continue;
+    }
     ((d.quoteResponse || {}).result || []).forEach((q) => out.push(snapOf(q)));
   }
+  return out;
+}
+// backup quotes from /v8/finance/spark (no cookie/crumb): last regular-session price vs previous close; no names or extended hours
+async function sparkQuotes(list) {
+  const out = [];
+  await Promise.all(chunk(syms(list).slice(0, 300), 20).map(async (c) => {
+    const d = await yget('/v8/finance/spark?symbols=' + encodeURIComponent(c.join(',')) + '&range=1d&interval=5m', { base: Y1 }).catch(() => null);
+    if (!d) return;
+    const rows = d.spark && d.spark.result ? d.spark.result.map((r) => { const x = (r.response || [])[0] || {}; const m = x.meta || {}; const cl = ((x.indicators || {}).quote || [{}])[0].close || []; return { symbol: r.symbol, close: cl, previousClose: m.previousClose != null ? m.previousClose : m.chartPreviousClose, price: m.regularMarketPrice }; })
+      : Object.keys(d).map((k) => ({ symbol: k, close: (d[k] && d[k].close) || [], previousClose: d[k] && (d[k].previousClose != null ? d[k].previousClose : d[k].chartPreviousClose), price: d[k] && d[k].fulldayPrice }));
+    rows.forEach((r) => {
+      const last = (r.close || []).filter((v) => v != null).pop();
+      const price = num(r.price) || num(last); const pc = num(r.previousClose);
+      if (!price) return;
+      const chg = pc ? price - pc : null;
+      out.push({ symbol: r.symbol, name: r.symbol, price, close: price, change: chg, change_ratio: pc ? chg / pc : null, pre_close: pc, source: 'yahoo-spark' });
+    });
+  }));
   return out;
 }
 
@@ -233,14 +264,15 @@ function mergeNews(lists, max) {
 T.get_stock_news = async (i) => {
   const s = String(i.symbol || '').toUpperCase().trim(); if (!s) return { data: [] };
   const q = encodeURIComponent(s + ' stock');
+  let ok = 0; const okp = (pr) => pr.then((x) => { ok++; return x; });
   const lists = await Promise.all([
-    ySearchNews(s, s).catch(() => []),
-    rss('https://feeds.finance.yahoo.com/rss/2.0/headline?s=' + encodeURIComponent(s) + '&region=US&lang=en-US', 'Yahoo Finance', s).catch(() => []),
-    rss('https://news.google.com/rss/search?q=' + q + '+when:7d&hl=en-US&gl=US&ceid=US:en', 'Google News', s).catch(() => []),
-    rss('https://www.globenewswire.com/RssFeed/keyword/' + encodeURIComponent(s), 'GlobeNewswire', s).catch(() => []),
-    rss('https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=' + encodeURIComponent(s) + '&type=8-K&dateb=&owner=include&count=10&output=atom', 'SEC filing', s).then((a) => a.map((n) => ({ ...n, title: n.title.replace(/^8-K\s*-\s*/, '8-K filing: ') }))).catch(() => []),
+    okp(ySearchNews(s, s)).catch(() => []),
+    okp(rss('https://feeds.finance.yahoo.com/rss/2.0/headline?s=' + encodeURIComponent(s) + '&region=US&lang=en-US', 'Yahoo Finance', s)).catch(() => []),
+    okp(rss('https://news.google.com/rss/search?q=' + q + '+when:7d&hl=en-US&gl=US&ceid=US:en', 'Google News', s)).catch(() => []),
+    okp(rss('https://www.globenewswire.com/RssFeed/keyword/' + encodeURIComponent(s), 'GlobeNewswire', s)).catch(() => []),
+    okp(rss('https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=' + encodeURIComponent(s) + '&type=8-K&dateb=&owner=include&count=10&output=atom', 'SEC filing', s).then((a) => a.map((n) => ({ ...n, title: n.title.replace(/^8-K\s*-\s*/, '8-K filing: ') })))).catch(() => []),
   ]);
-  return { data: mergeNews(lists, 30) };
+  return { data: mergeNews(lists, 30), feedsOk: ok };
 };
 // Market-wide headline feeds. Each is fail-soft; /api/newsdiag shows which ones are answering.
 const FEEDS = [
@@ -301,6 +333,182 @@ T.get_sparks = async (i) => {
   return out;
 };
 
+// ---------- v2 Movers: why each mover is moving (same rules as the cron's move scanner, on demand; never invents a reason) ----------
+// list/roundup headlines ("Most Active Stocks", "Top gainers") name a stock without giving a reason, so they never count as a why
+const ROUNDUP_T = /most active|\bmovers\b|\bgainers and losers\b|top (?:gainers|losers|movers)|biggest (?:movers|gainers|losers)|stocks? (?:moving|to (?:watch|research|buy|consider|sell))|penny stocks|stocks under \$|top \d+ (?:stocks|gainers|losers)|(?:pre-?market|after-?hours|midday|mid-day) (?:movers|gainers|losers)|movers? (?:in|of) the/i;
+T.get_mover_why = async (i) => {
+  const list = syms(i.symbols).filter((x) => /^[A-Z.]{1,6}$/.test(x)).slice(0, 30); const out = {};
+  await Promise.all(list.map(async (s) => {
+    let news = [];
+    try { const d = await T.get_stock_news({ symbol: s }); if (d && d.feedsOk === 0) throw new Error('no feeds'); news = ((d && d.data) || []).filter((n) => n && n.title && (n.related_symbols || []).indexOf(s) >= 0 && !ROUNDUP_T.test(n.title) && Date.now() - Date.parse(n.publish_time) < 36 * 3600000).slice(0, 3); } catch (e) { out[s] = { v: 'unknown', kind: 'Couldn’t check news' }; return; }
+    const hit = news.map((n) => ({ n, k: MW_KIND.find((k) => k[0].test(n.title)) })).find((y) => y.k);
+    let v, kind;
+    if (hit) { v = hit.k[2]; kind = hit.k[1]; } else if (news.length) { v = 'news'; kind = 'In the news'; } else { v = 'nonews'; kind = 'No news found'; }
+    const top = hit ? hit.n : news[0] || null;
+    out[s] = { v, kind, h: top ? { title: String(top.title).slice(0, 160), source: top.source || '', t: Date.parse(top.publish_time) || null, url: /^https:\/\//.test(top.url || '') ? top.url : '' } : null };
+  }));
+  return out;
+};
+// ---------- v2 setup read: transparent, rules-based tag per mover (not advice) ----------
+// Inputs are all real: Yahoo 5-minute bars (5 days, with pre/after hours) for session open/high/low/VWAP, gap,
+// premarket high/low, SSR; Yahoo key statistics for float, short interest and days to cover (exchange-reported, twice a
+// month); headlines from get_mover_why for the catalyst and dilution/bad-news flags. Anything missing is reported missing.
+const DILUTE_T = /\b(offering|private placement|registered direct|warrants?|at-the-market|atm (program|facility|offering)|shelf|s-3|s-1|424b\d?|dilut\w*|reverse (stock )?split)\b/i;
+const BAD_T = /\b(miss(es|ed)?|falls short|cuts? (guidance|outlook|forecast)|lowers? (guidance|outlook)|downgrade\w*|delist\w*|going concern|bankrupt\w*|chapter 11|investigation|subpoena|lawsuit|class action|recall|complete response letter|crl|fails?|failed|halts? (trial|study)|resign\w*|restat\w*|guidance below)\b/i;
+const etParts = (t) => { const p = {}; new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(t * 1000)).forEach((x) => { p[x.type] = x.value; }); return { d: p.year + '-' + p.month + '-' + p.day, m: +p.hour * 60 + +p.minute }; };
+// ---------- official trading halts today (NasdaqTrader RSS, keyless; same feed jump. uses) ----------
+const HALT_REASON = { T1: 'news pending', T2: 'news released', T3: 'news and resumption times', T5: 'single-stock pause', T6: 'extraordinary market activity', T8: 'ETF', T12: 'information requested', H4: 'non-compliance', H9: 'not current in filings', H10: 'SEC trading suspension', H11: 'regulatory concern', O1: 'operations', M: 'volatility pause (LULD)', LUDP: 'volatility pause (LULD)', LUDS: 'volatility pause (LULD, straddle)', MWC1: 'market-wide circuit breaker' };
+let HALTS = null;
+async function haltsToday() {
+  if (HALTS && Date.now() - HALTS.t < 60000) return HALTS.m;
+  const r = await fetch('https://www.nasdaqtrader.com/rss.aspx?feed=tradehalts', { headers: { 'user-agent': 'Mozilla/5.0 jumptrade halts' } });
+  if (!r.ok) throw new Error('halts ' + r.status);
+  const xml = await r.text(); const tg = (e, k) => ((new RegExp('<ndaq:' + k + '>([^<]*)</ndaq:' + k + '>').exec(e) || [])[1] || '').trim();
+  const m = {};
+  for (const it of xml.matchAll(/<item>([\s\S]*?)<\/item>/g)) {
+    const e = it[1], s = tg(e, 'IssueSymbol'); if (!s) continue; const code = tg(e, 'ReasonCode');
+    const h = m[s] = m[s] || { n: 0, last: null };
+    h.n++; const x = { time: tg(e, 'HaltTime'), code, why: HALT_REASON[code] || code, resumed: tg(e, 'ResumptionTradeTime') || null };
+    if (!h.last || x.time > h.last.time) h.last = x;
+  }
+  HALTS = { t: Date.now(), m }; return m;
+}
+async function nqShort(sym) {
+  const r = await fetch('https://api.nasdaq.com/api/quote/' + encodeURIComponent(sym) + '/short-interest?assetClass=stocks', { headers: NQH }); if (!r.ok) return null;
+  const j = await r.json(); const row = j && j.data && j.data.shortInterestTable && j.data.shortInterestTable.rows && j.data.shortInterestTable.rows[0]; if (!row) return null;
+  const n = (v) => { const x = Number(String(v || '').replace(/[$,\s]/g, '')); return isFinite(x) && x > 0 ? x : null; };
+  return { shares: n(row.interest), dtc: n(row.daysToCover), date: row.settlementDate || null };
+}
+async function setupOne(s, sess, why, halts) {
+  const [ch, ks] = await Promise.all([
+    yget('/v8/finance/chart/' + encodeURIComponent(s) + '?interval=5m&range=5d&includePrePost=true', { base: Y1 }).catch(() => null),
+    summary(s, 'defaultKeyStatistics,summaryDetail').then((v) => { if (CUR_ENV && v && v.defaultKeyStatistics) vput(CUR_ENV, 'ks1_' + s, { t: Date.now(), v: { defaultKeyStatistics: v.defaultKeyStatistics, summaryDetail: v.summaryDetail } }).catch(() => {}); return v; })
+      .catch(async () => { const g = CUR_ENV ? await vget(CUR_ENV, 'ks1_' + s).catch(() => null) : null; return g && g.v ? Object.assign({ _stale: g.t }, g.v) : null; })]);
+  const ksOk = !!ks;
+  const r = ch && ch.chart && ch.chart.result && ch.chart.result[0]; if (!r || !r.timestamp) return { s, err: 'no bars', why: why || null };
+  const q = r.indicators.quote[0]; const bars = [];
+  r.timestamp.forEach((t, k) => { if (q.close[k] == null) return; const e = etParts(t); bars.push({ d: e.d, m: e.m, o: q.open[k], h: q.high[k], l: q.low[k], c: q.close[k], v: q.volume[k] || 0 }); });
+  if (!bars.length) return { s, err: 'no bars', why: why || null };
+  const days = [...new Set(bars.map((b) => b.d))]; const today = days[days.length - 1];
+  const reg = (d) => bars.filter((b) => b.d === d && b.m >= 570 && b.m < 960);
+  const regDays = days.filter((d) => reg(d).length);
+  const todayReg = reg(today); const prevDay = regDays.filter((d) => d < today).pop(); const prevReg = prevDay ? reg(prevDay) : [];
+  const prevClose = prevReg.length ? prevReg[prevReg.length - 1].c : null;
+  const pre = bars.filter((b) => b.d === today && b.m < 570), post = bars.filter((b) => b.d === today && b.m >= 960);
+  const sb = sess === 'pre' ? pre : sess === 'after' ? post : todayReg;
+  const base = sess === 'after' ? (todayReg.length ? todayReg[todayReg.length - 1].c : null) : prevClose;
+  if (!sb.length || !base) return { s, err: 'no ' + sess + ' bars yet', why: why || null };
+  const last = sb[sb.length - 1].c, open = sb[0].o, hi = Math.max(...sb.map((b) => b.h)), lo = Math.min(...sb.map((b) => b.l));
+  const vol = sb.reduce((a, b) => a + b.v, 0); const pv = sb.reduce((a, b) => a + ((b.h + b.l + b.c) / 3) * b.v, 0); const vwap = vol ? pv / vol : null;
+  const pct = (last / base - 1) * 100;
+  const pmHi = pre.length ? Math.max(...pre.map((b) => b.h)) : null, pmLo = pre.length ? Math.min(...pre.map((b) => b.l)) : null;
+  const gap = todayReg.length && prevClose ? (todayReg[0].o / prevClose - 1) * 100 : null;
+  // SSR (Reg SHO 201): on once a stock trades 10%+ below the prior close in regular hours, for the rest of that day and the next
+  let ssr = null;
+  if (todayReg.length && prevClose && Math.min(...todayReg.map((b) => b.l)) <= prevClose * 0.9) ssr = 'Triggered today';
+  else if (prevReg.length) { const pd2 = regDays.filter((d) => d < prevDay).pop(); const pc2 = pd2 ? reg(pd2).slice(-1)[0].c : null; if (pc2 && Math.min(...prevReg.map((b) => b.l)) <= pc2 * 0.9) ssr = 'On today (triggered yesterday)'; }
+  const dk = (ks && ks.defaultKeyStatistics) || {}, sd = (ks && ks.summaryDetail) || {};
+  let nqs = null; if (!ksOk || raw(dk.shortRatio) == null) nqs = await nqShort(s).catch(() => null);
+  const hl = halts ? halts[s] || null : undefined;
+  const flt = raw(dk.floatShares) || null, siP = raw(dk.shortPercentOfFloat) != null ? raw(dk.shortPercentOfFloat) * 100 : null, dtc = raw(dk.shortRatio) || (nqs && nqs.dtc) || null;
+  const siDate = raw(dk.dateShortInterest) ? new Date(raw(dk.dateShortInterest) * 1000).toISOString().slice(0, 10) : nqs && nqs.date ? new Date(nqs.date).toISOString().slice(0, 10) : null;
+  const avgV = raw(sd.averageDailyVolume10Day) || raw(sd.averageVolume10days) || raw(sd.averageVolume) || null;
+  const rvol = avgV && vol ? vol / avgV : null;
+  const run = pct >= 0 ? hi - base : base - lo; const back = run > 0 ? (pct >= 0 ? (hi - last) / run : (last - lo) / run) : 0;
+  const f = (x, d) => (x == null ? null : +x.toFixed(d == null ? 2 : d));
+  const facts = { ksOk, ksStale: ks && ks._stale || null, siShares: raw(dk.sharesShort) || (nqs && nqs.shares) || null, siSrc: raw(dk.shortRatio) != null ? 'Yahoo' : nqs ? 'Nasdaq' : null, halt: hl === undefined ? 'unknown' : hl, last: f(last, 4), base: f(base, 4), pct: f(pct), open: f(open, 4), hi: f(hi, 4), lo: f(lo, 4), vwap: f(vwap, 4), vol, avgVol: avgV, rvol: f(rvol, 1), gap: f(gap), pmHi: f(pmHi, 4), pmLo: f(pmLo, 4), float: flt, si: f(siP, 1), dtc: f(dtc, 1), siDate, ssr, back: f(back * 100, 0) };
+  // ---- rules, first match wins; each rule names its reasons ----
+  const t = why && why.h ? why.h.title || '' : ''; const P = (x) => (x == null ? '?' : (x >= 0 ? '+' : '') + x.toFixed(1) + '%');
+  const abv = vwap ? last >= vwap : null; const R = []; let tag;
+  const sizeNote = !ksOk ? 'Float, short interest and average volume didn’t load this time (Yahoo refused the request), so this read uses price only' : flt == null && siP == null ? 'Float and short interest aren’t reported for this stock, so this read uses price and volume only' : null;
+  if (DILUTE_T.test(t) || (why && /offering|reverse split/i.test(why.kind || ''))) {
+    tag = 'stay'; R.push('Dilution headline: “' + t.slice(0, 90) + '”'); R.push('Offerings, shelf filings (S-3/424B) and reverse splits add or reshape shares and often cap a run');
+    if (abv === false) R.push('Trading below VWAP ($' + vwap.toFixed(vwap < 1 ? 4 : 2) + ')');
+  } else if (pct <= -10 && (BAD_T.test(t) || (why && why.v === 'warn'))) {
+    tag = 'dump'; R.push('Down ' + Math.abs(pct).toFixed(1) + '%' + ' on bad news: “' + t.slice(0, 90) + '”'); if (abv === false) R.push('Still below VWAP; sellers in control'); if (back < 0.25) R.push('Sitting near the low of the session');
+  } else if (pct <= -15 && abv === false) {
+    tag = 'dump'; R.push('Down ' + Math.abs(pct).toFixed(1) + '%' + ' and below VWAP'); R.push(back < 0.25 ? 'Near the session low, no bounce yet' : 'Bounced ' + Math.round(back * 100) + '% off the low but still under VWAP'); if (!t) R.push('No clear catalyst found');
+  } else if (pct < 0) {
+    if (abv === true && back >= 0.4) { tag = 'fade'; R.push('Down ' + Math.abs(pct).toFixed(1) + '%' + ' but back above VWAP'); R.push('Recovered ' + Math.round(back * 100) + '% of the drop; selling is fading'); }
+    else { tag = 'cont'; R.push('Down ' + Math.abs(pct).toFixed(1) + '%' + (abv === false ? ', below VWAP' : '')); R.push(back < 0.25 ? 'Holding near the session low' : 'Bounced ' + Math.round(back * 100) + '% off the low'); }
+  } else if (last < 1 && !t && abv === false) {
+    tag = 'stay'; R.push('Sub-$1 stock with no clear catalyst found'); R.push('Lost VWAP ($' + vwap.toFixed(4) + ')'); if (rvol != null) R.push('Volume ' + rvol.toFixed(1) + '× a normal day');
+  } else if (back >= 0.4 || abv === false || (gap != null && gap >= 10 && sess === 'day' && last < open)) {
+    tag = 'fade';
+    if (gap != null && gap >= 10 && sess === 'day' && last < open) R.push('Gap-and-fade: opened ' + P(gap) + ', now below the open');
+    if (back >= 0.4) R.push('Gave back ' + Math.round(back * 100) + '% of the move from the high ($' + hi.toFixed(hi < 1 ? 4 : 2) + ')');
+    if (abv === false) R.push('Below VWAP ($' + vwap.toFixed(vwap < 1 ? 4 : 2) + ')');
+  } else {
+    const tight = (siP != null && siP >= 15) || (flt != null && flt < 20e6) || (dtc != null && dtc >= 5);
+    const pv2 = pct >= 20 && rvol != null && rvol >= 5 && back < 0.2;
+    if (pv2 && (tight || (flt == null && siP == null && pct >= 40 && rvol >= 10))) {
+      tag = 'sq'; R.push('Up ' + pct.toFixed(1) + '%' + ' on ' + rvol.toFixed(0) + '× normal volume, holding near the high');
+      if (tight) R.push([siP != null && siP >= 15 ? 'Short interest ' + siP.toFixed(0) + '% of float' : null, flt != null && flt < 20e6 ? 'Float ' + (flt / 1e6).toFixed(1) + 'M shares' : null, dtc != null && dtc >= 5 ? dtc.toFixed(1) + ' days to cover' : null].filter(Boolean).join(' · '));
+      else R.push('Price/volume squeeze only: short interest and float aren’t available');
+    } else {
+      tag = 'cont'; R.push('Up ' + pct.toFixed(1) + '%' + (abv ? ', holding above VWAP' : ''));
+      R.push(gap != null && gap >= 5 && sess === 'day' ? 'Gap-and-hold: opened ' + P(gap) + ' and still above the open' : 'Kept ' + Math.round((1 - back) * 100) + '% of the move from the high');
+      if (rvol != null) R.push('Volume ' + rvol.toFixed(1) + '× a normal day' + (rvol < 1.5 ? ' (light)' : ''));
+    }
+  }
+  if (hl && hl.n) R.unshift('Halted ' + hl.n + '× today (last: ' + hl.last.why + ' at ' + hl.last.time.slice(0, 5) + ' ET' + (hl.last.resumed ? ', resumed' : ', not resumed yet') + ')');
+  if (sizeNote && R.length < 4) R.push(sizeNote);
+  return { s, tag, reasons: R.filter(Boolean).slice(0, 4), facts, why: why || null };
+}
+T.get_mover_setup = async (i) => {
+  const list = syms(i.symbols).filter((x) => /^[A-Z.]{1,6}$/.test(x)).slice(0, 25); const sess = /^(pre|day|after)$/.test(i.session) ? i.session : 'day';
+  const [why, halts] = await Promise.all([T.get_mover_why({ symbols: list.join(',') }).catch(() => ({})), haltsToday().catch(() => null)]);
+  const out = {}; await Promise.all(list.map(async (s) => { out[s] = await setupOne(s, sess, why[s], halts).catch((e) => ({ s, err: String(e && e.message || e).slice(0, 80) })); }));
+  return { at: Date.now(), session: sess, data: out };
+};
+// ---------- v2 analyst actions: Yahoo quoteSummary upgradeDowngradeHistory (same source SURVYR's analyst.py uses) ----------
+const AN_LV = [[7, /^(strong buy|conviction buy|top pick( buy)?)$/], [6, /^(buy|long term buy|speculative buy|outright buy)$/], [5, /^(outperform|overweight|accumulate|moderate buy|positive|sector outperform|market outperform|add|above average|outperformer|sector overweight)$/], [4, /^(hold|neutral|equal weight|market perform|sector perform|peer perform|in line|sector weight|market weight|perform|mixed|average|fair value|sector neutral)$/], [3, /^(underperform|underweight|reduce|moderate sell|negative|sector underperform|market underperform|below average|underperformer|sector underweight)$/], [2, /^sell$/], [1, /^strong sell$/]];
+const anRank = (g) => { const n = String(g || '').toLowerCase().replace(/[-_]/g, ' ').replace(/\s+/g, ' ').trim(); const h = AN_LV.find((x) => x[1].test(n)); return h ? h[0] : null; };
+const AN_KIND = { up: 'Upgrade', down: 'Downgrade', init: 'Initiate', reit: 'Reiterate', main: 'Maintain' };
+async function analystOne(sym, days) {
+  const d = await summary(sym, 'upgradeDowngradeHistory'); const h = ((d.upgradeDowngradeHistory || {}).history || []);
+  const since = Date.now() / 1000 - days * 86400;
+  return h.filter((x) => x.epochGradeDate >= since).slice(0, 25).map((x) => {
+    const a = String(x.action || '').toLowerCase(); const fr = x.fromGrade || null, to = x.toGrade || null;
+    const rf = anRank(fr), rt = anRank(to); const now = raw(x.currentPriceTarget) || null, pr = raw(x.priorPriceTarget) || null;
+    const rdir = a === 'up' ? 'up' : a === 'down' ? 'down' : a === 'init' ? (rt >= 5 ? 'up' : rt && rt <= 3 ? 'down' : 'flat') : rf && rt && rt !== rf ? (rt > rf ? 'up' : 'down') : 'flat';
+    return { s: sym, t: x.epochGradeDate * 1000, firm: x.firm || '', action: AN_KIND[a] || (fr ? 'Maintain' : 'Initiate'), from: fr && fr !== to ? fr : null, to, rdir,
+      ptFrom: pr && pr > 0 ? pr : null, ptTo: now && now > 0 ? now : null, ptAction: x.priceTargetAction || null };
+  });
+}
+T.get_analyst_actions = async (i) => {
+  const list = syms(i.symbols || i.symbol).filter((x) => /^[A-Z.]{1,6}$/.test(x)).slice(0, 40); const days = Math.min(120, +i.days || 30);
+  const out = []; const bad = [];
+  const stale = {};
+  // last good copy per ticker (Yahoo's crumb endpoint sometimes refuses the Worker); served with its own check time
+  await Promise.all(list.map(async (s) => {
+    try { const rows = await analystOne(s, 120); if (CUR_ENV) await vput(CUR_ENV, 'an1_' + s, { t: Date.now(), rows }).catch(() => {}); out.push(...rows.filter((x) => x.t >= Date.now() - days * 86400000)); }
+    catch (e) { const g = CUR_ENV ? await vget(CUR_ENV, 'an1_' + s).catch(() => null) : null; if (g && g.rows) { stale[s] = g.t; out.push(...g.rows.filter((x) => x.t >= Date.now() - days * 86400000)); } else bad.push(s); }
+  }));
+  if (bad.length === list.length && list.length) throw Object.assign(new Error('Analyst history didn’t load (Yahoo refused the request)'), { status: 503 });
+  out.sort((a, b) => b.t - a.t);
+  return { at: Date.now(), days, src: 'Yahoo Finance analyst history (upgradeDowngradeHistory)', failed: bad, stale, data: out.slice(0, 200) };
+};
+// ---------- v2 Earnings week: Nasdaq's public earnings calendar (no key), Mon-Fri of this week, $10B+ companies, beat/miss = reported EPS vs consensus ----------
+const NQH = { 'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36', accept: 'application/json, text/plain, */*', 'accept-language': 'en-US,en;q=0.9', origin: 'https://www.nasdaq.com', referer: 'https://www.nasdaq.com/' };
+const nqNum = (v) => { if (v == null) return null; const t = String(v).replace(/[$,\s]/g, ''); if (!t || t === 'N/A' || t === '--') return null; const neg = /^\(.*\)$/.test(t); const n = parseFloat(t.replace(/[()]/g, '')); return isFinite(n) ? (neg ? -n : n) : null; };
+T.get_earnings_week = async (i) => {
+  const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' }).formatToParts(new Date());
+  const g = (t) => (p.find((x) => x.type === t) || {}).value; const wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(g('weekday'));
+  const base = new Date(Date.UTC(+g('year'), +g('month') - 1, +g('day'))); const off = wd === 0 ? 1 : wd === 6 ? 2 : 1 - wd; // weekend: next week
+  const days = []; for (let k = 0; k < 5; k++) { const d = new Date(base.getTime() + (off + k) * 864e5); days.push(d.toISOString().slice(0, 10)); }
+  const today = g('year') + '-' + g('month') + '-' + g('day'); let got = 0;
+  const out = await Promise.all(days.map(async (d) => {
+    let rows = [];
+    try { const r = await fetch('https://api.nasdaq.com/api/calendar/earnings?date=' + d, { headers: NQH }); if (r.ok) { const j = await r.json(); rows = (j && j.data && j.data.rows) || []; got++; } } catch (e) {}
+    const tiles = rows.map((r) => { const mc = nqNum(r.marketCap), eps = nqNum(r.eps), est = nqNum(r.epsForecast); return { s: String(r.symbol || '').trim(), n: r.name || '', mc, when: r.time === 'time-pre-market' ? 'bmo' : r.time === 'time-after-hours' ? 'amc' : null, eps, est, sur: nqNum(r.surprise), res: eps == null || est == null ? null : eps > est + 0.005 ? 'beat' : eps < est - 0.005 ? 'miss' : 'inline' }; })
+      .filter((t) => t.s && /^[A-Z.]{1,6}$/.test(t.s) && t.mc >= 10e9).sort((a, b) => b.mc - a.mc).slice(0, 16);
+    return { d, tiles };
+  }));
+  if (!got) throw Object.assign(new Error('Nasdaq earnings calendar unavailable'), { status: 503 });
+  return { at: Date.now(), today, partial: got < days.length, days: out, src: 'Nasdaq earnings calendar', srcUrl: 'https://www.nasdaq.com/market-activity/earnings', note: 'Companies over $10B market cap, up to 16 a day. Beat/miss = reported EPS vs the consensus estimate.' };
+};
+
 // ---------- potential runners: scores the whole active market for early signs of a run ----------
 function etMinutes() { const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }).formatToParts(new Date()); const g = (t) => +p.find((x) => x.type === t).value; return g('hour') * 60 + g('minute'); }
 T.get_runners = async (i) => {
@@ -340,7 +548,7 @@ T.get_runners = async (i) => {
   // fresh catalyst check for the leaders (headline in the last 24h)
   await Promise.all(top.slice(0, 14).map(async (r) => {
     const n = await ySearchNews(r.symbol, r.symbol).catch(() => []);
-    const fresh = n.filter((x) => Date.now() - Date.parse(x.publish_time) < 24 * 3600000 && (x.related_symbols || []).indexOf(r.symbol) >= 0);
+    const fresh = n.filter((x) => Date.now() - Date.parse(x.publish_time) < 24 * 3600000 && (x.related_symbols || []).indexOf(r.symbol) >= 0 && !ROUNDUP_T.test(x.title || ''));
     if (fresh.length) { r.score += 10; r.why.unshift('news: ' + fresh[0].title.slice(0, 70)); r.news = { title: fresh[0].title, url: fresh[0].url, t: fresh[0].publish_time }; }
   }));
   top.forEach((r) => { r.score = Math.max(0, Math.min(100, r.score)); });
@@ -374,9 +582,10 @@ T.get_stock_unusual_activities = async (i) => {
     const r = d && d.chart && d.chart.result && d.chart.result[0]; if (!r || !r.timestamp) return;
     const q = r.indicators.quote[0]; const v = q.volume || [], c = q.close || [], o = q.open || [];
     const vols = v.filter((x) => x > 0).sort((a, b) => a - b); if (vols.length < 30) return;
-    const med = vols[Math.floor(vols.length / 2)] || 1;
+    const med = vols[Math.floor(vols.length / 2)] || 1; const tot = vols.reduce((x, y) => x + y, 0);
     for (let k = 0; k < v.length; k++) {
       const vol = v[k] || 0, cl = c[k], op = o[k]; if (!cl || !op || vol < med * 8) continue;
+      if (vol > (tot - vol) * 0.25) continue; // one 1-minute bar bigger than a quarter of the rest of the day is a feed glitch (cumulative volume), not a trade
       const amt = vol * cl; if (amt < 2e6) continue;
       const mv = (cl - op) / op; if (Math.abs(mv) < 0.0008) continue;
       out.push({ symbol: s, alert_type: mv > 0 ? 'MAJOR_BUY' : 'MAJOR_SELL', time: new Date(r.timestamp[k] * 1000).toISOString(), volume: vol, price: +cl.toFixed(4), amount: Math.round(amt), multiple: Math.round(vol / med) });
@@ -501,7 +710,7 @@ T.get_market_sectors_detail = async (i) => {
   return { data: rows };
 };
 // How long each answer may be reused (seconds). Prices: short. Fundamentals: long.
-const TTL = { get_pick_record: 600, get_playbook: 60, get_stock_unusual_activities: 60, get_community_hot_stocks: 180, get_runners: 60, get_sparks: 60, get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 60, search_news: 45,
+const TTL = { get_mover_setup: 60, get_analyst_actions: 900, get_mover_why: 300, get_earnings_week: 600, get_pick_record: 600, get_playbook: 60, get_stock_unusual_activities: 60, get_community_hot_stocks: 180, get_runners: 60, get_sparks: 60, get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 60, search_news: 45,
   get_company_profile: 86400, get_analyst_target_price: 21600, get_analyst_rating: 21600, get_stock_forecast_eps: 21600, get_stock_earnings_calendar: 21600,
   get_fund_brief: 86400, get_fund_holdings: 86400, get_fund_performance: 86400 };
 
@@ -1204,7 +1413,7 @@ export default {
         rows: a ? a.map((x) => ({ s: x.symbol, ovn: x.ovn_price, ovnPct: x.ovn_change_ratio, ovnVol: x.ovn_volume, ovnT: x.ovn_last_trade_time, ext: x.extend_hour_last_price, keys: Object.keys(x).filter((k) => /ovn|overnight/i.test(k)) })) : null }); }
     if (url.pathname === '/api/health') return json({ ok: true, provider: 'yahoo', time: new Date().toISOString() });
     if (url.pathname === '/api/nimg') { // small article thumbnail: the story's own preview image (og:image), proxied and cached
-      const rf = req.headers.get('referer') || ''; if (!/^https:\/\/(www\.)?jumptrade\.app\//.test(rf) && !(url.searchParams.get('j') && await sessionFrom(req, env, vget).catch(() => null))) return new Response('', { status: 403 }); const u = url.searchParams.get('u') || ''; if (!/^https:\/\/[^\s]{8,600}$/.test(u) || !safeHost(u)) return new Response('', { status: 400 });
+      const rf = req.headers.get('referer') || ''; if (!/^https:\/\/(www\.)?jumptrade\.app\//.test(rf) && rf.indexOf(url.origin + '/') !== 0 && !(url.searchParams.get('j') && await sessionFrom(req, env, vget).catch(() => null))) return new Response('', { status: 403 }); const u = url.searchParams.get('u') || ''; if (!/^https:\/\/[^\s]{8,600}$/.test(u) || !safeHost(u)) return new Response('', { status: 400 });
       const ck = new Request('https://cache.jumptrade/nimg2/' + encodeURIComponent(u) + '/' + encodeURIComponent((url.searchParams.get('s') || '').toUpperCase())); const hit = url.searchParams.get('j') ? null : await caches.default.match(ck); if (hit) return hit;
       const miss = () => { const m = new Response('', { status: 404, headers: { 'cache-control': 'public, max-age=1800' } }); ctx.waitUntil(caches.default.put(ck, m.clone())); return m; };
       try {

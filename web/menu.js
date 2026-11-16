@@ -18,12 +18,12 @@
   const add = () => document.querySelectorAll('.view > .top .bar').forEach((bar) => {
     if (bar.querySelector('.menuBtn')) return;
     const b = document.createElement('button'); b.className = 'menuBtn'; b.setAttribute('aria-label', 'All pages'); b.innerHTML = IC;
-    const s = bar.querySelector('.searchBtn'); s ? bar.insertBefore(b, s) : bar.appendChild(b);
+    bar.appendChild(b);
   });
-  // The menu lives in the bottom bar: the last button (was Portfolios, which is now in the menu) becomes "More".
+  add();
+  // The menu opens from the ≡ button in each page header; the last bottom-bar button is Portfolio.
   const nb = document.getElementById('navPort');
-  if (nb) { nb.id = 'navMore'; nb.setAttribute('aria-label', 'All pages'); nb.innerHTML = '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg><span>More</span>';
-    nb.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); open(); }); }
+  if (nb) { nb.setAttribute('aria-label', 'Portfolio'); nb.innerHTML = '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9h-9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></svg><span>Portfolio</span>'; }
   // groups fold away so the menu fits on one screen; the first two start open, and your choice is remembered
   const pmState = () => { try { return JSON.parse(localStorage.getItem('jt.pmOpen') || '{}'); } catch (e) { return {}; } };
   function pmShut(name, i) { const st = pmState(); return name in st ? !st[name] : !(name === 'Find trade ideas' || name === 'The market'); }

@@ -1242,7 +1242,7 @@ function crRefresh() { $('crRows').innerHTML = crRows(); $('crTot').innerHTML = 
 function crMode() { return '<button class="' + (S.cr.eq ? 'on' : '') + '" data-creq="1">Equal</button><button class="' + (!S.cr.eq ? 'on' : '') + '" data-creq="0">Custom</button>'; }
 function renderCreator() {
   const c = S.cr;
-  let h = '<div class="title shTitle"><h1><span>' + (c.id ? 'EDIT' : 'NEW') + '</span><br><b>PORTFOLIO<em class="dot sq">.</em></b></h1><div class="sub">Prices live,<br>tracks from today</div></div>';
+  let h = '<div class="title shTitle"><h1><span>' + (c.id ? 'Edit' : 'New') + '</span><br><b>portfolio<em class="dot sq">.</em></b></h1><div class="sub">Prices live,<br>tracks from today</div></div>';
   h += '<div class="glass"><label class="cap" for="crName">NAME</label><input id="crName" class="cin" maxlength="40" placeholder="e.g. AI Power Book" value="' + esc(c.name) + '"></div>';
   h += '<div class="glass"><label class="cap" for="crQ">ADD STOCKS</label><input id="crQ" class="cin" placeholder="Ticker or company name" autocomplete="off" autocorrect="off" spellcheck="false"><div id="crHits"></div></div>';
   h += '<div class="glass"><div class="ih"><span class="cap" id="crCount">HOLDINGS · ' + c.h.length + '</span><span class="segmini" id="crMode">' + crMode() + '</span></div><div id="crRows">' + crRows() + '</div><div id="crTot">' + crTot() + '</div></div>';
@@ -1611,7 +1611,7 @@ function render() { if (pDown && Date.now() - pDown < 2500) { rPend = true; retu
   document.addEventListener('touchend', up, true); document.addEventListener('touchcancel', up, true); })();
 function doRender() {
   document.body.dataset.tab = S.tab;
-  { const XT = { options: ['OPTIONS', 'BETS'], congress: ['CONGRESS', 'TRADES'], shorts: ['BET', 'AGAINST'] }[S.tab]; const xh = XT && document.querySelector('#vExtra h1'); if (xh && xh.dataset.t !== S.tab) { xh.dataset.t = S.tab; xh.innerHTML = '<span>' + XT[0] + '</span><br><b>' + XT[1] + '<em class="dot sq">.</em></b>'; } } // each Markets page says what it is
+  { const XT = { options: ['Options', 'bets'], congress: ['Congress', 'trades'], shorts: ['Bet', 'against'] }[S.tab]; const xh = XT && document.querySelector('#vExtra h1'); if (xh && xh.dataset.t !== S.tab) { xh.dataset.t = S.tab; xh.innerHTML = '<span>' + XT[0] + '</span><br><b>' + XT[1] + '<em class="dot sq">.</em></b>'; } } // each Markets page says what it is
   const navOf = isIntel(S.tab) ? 'intel' : isIdeas(S.tab) ? 'dips' : S.tab; [['navHome', 'home'], ['navMovers', 'movers'], ['navDips', 'dips'], ['navWatch', 'watch'], ['navIntel', 'intel'], ['navPort', 'portfolios']].forEach((x) => { if (!$(x[0])) return; $(x[0]).classList.toggle('on', navOf === x[1]); $(x[0]).setAttribute('aria-current', navOf === x[1] ? 'page' : 'false'); });
   document.body.classList.toggle('collapsed', S.collapsed);
   ({ home: () => window.HOME && HOME.render(), research: () => window.RES && RES.render(), setups: () => window.ENR && ENR.renderSetups(), leaders: () => TODAY.renderLeaders(), runners: () => window.RUN && RUN.render(), build: () => window.BLD && BLD.render(), insiders: () => TODAY.renderInsiders(), flow: () => TODAY.renderFlow(), movers: renderMovers, dips: renderDips, value: renderValue, buzz: renderBuzz, watch: renderWatch, news: renderNews, ratings: renderRatings, record: () => window.REC && REC.render(), live: () => { if ($('laSeg')) setHTML($('laSeg'), ideasSeg('live')); if (window.LA) LA.render(); }, compare: () => window.CMP && CMP.render(), patterns: () => window.PAT && PAT.render(), options: () => EXT.render('options'), congress: () => EXT.render('congress'), shorts: () => EXT.render('shorts'), catalysts: renderCatalysts, ipos: renderIpos, sectors: renderSectors, portfolios: renderPortfolios }[S.tab] || renderMovers)();
@@ -1852,7 +1852,7 @@ const MEAN = {
   insiders: 'executives buying or selling their own company’s stock. Buying with their own money is one of the strongest signs there is.',
   news: 'the stories moving stocks today, newest first. Each one shows the stock’s price and move.',
   catalysts: 'what’s coming up: earnings, FDA decisions and IPOs. Big moves often happen on these days.',
-  sectors: 'each box is a group of stocks, like Photonics or Drones. Brighter cyan = up more today. Tap one to see its stocks.',
+  sectors: 'each box is a group of stocks, like Photonics or Drones. Brighter blue = up more today. Tap one to see its stocks.',
   ipos: 'companies about to go public, and the stocks that move with them.',
   ratings: 'what analysts are saying: upgrades, downgrades and price targets.',
   research: 'deep dives on themes and companies, in plain English.',
