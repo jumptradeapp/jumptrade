@@ -6,10 +6,10 @@
 .jmimg .jmL{display:none}:is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-light .jmimg .jmD{display:none}:is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-light .jmimg .jmL{display:block}
 /* header lockup: JUMP + trade. */
 :is(#_,html):is(#_,html):is(#_,html):is(#_,html) .brand .jm,:is(#_,html):is(#_,html):is(#_,html):is(#_,html) .brand .wm{display:none!important}
-:is(#_,html):is(#_,html):is(#_,html):is(#_,html) .brand::before{content:"";display:block;width:122px;height:40px;background:url(../img/jump-trade.png?v=1794705416) left center/contain no-repeat;flex-shrink:0}
+:is(#_,html):is(#_,html):is(#_,html):is(#_,html) .brand::before{content:"";display:block;width:122px;height:40px;background:url(../img/jump-trade.png?v=1794800001) left center/contain no-repeat;flex-shrink:0}
 :is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-light .brand::before{background-image:url(../img/jump-trade-light.png?v=1794705416)}
 :is(#_,html):is(#_,html):is(#_,html):is(#_,html) #splash .m{display:none!important}
-:is(#_,html):is(#_,html):is(#_,html):is(#_,html) #splash .wm{display:block!important;margin:0 auto 22px!important;position:static!important;font-size:0!important;width:240px;height:80px;background:url(../img/jump-trade.png?v=1794705416) center/contain no-repeat;color:transparent!important}
+:is(#_,html):is(#_,html):is(#_,html):is(#_,html) #splash .wm{display:block!important;margin:0 auto 22px!important;position:static!important;font-size:0!important;width:240px;height:80px;background:url(../img/jump-trade.png?v=1794800001) center/contain no-repeat;color:transparent!important}
 :is(#_,html):is(#_,html):is(#_,html):is(#_,html) #splash .wm *{display:none!important}
 :is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-light #splash .wm{background-image:url(../img/jump-trade-light.png?v=1794705416)}
 /* no square periods anywhere */
