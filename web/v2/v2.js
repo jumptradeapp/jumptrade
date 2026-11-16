@@ -526,7 +526,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   function themeRows() { if (!S.themes || !S.tq) return null; return S.themes.map((t) => { const v = (t.names || []).map((n) => S.tq.m[n[0]]).filter(Boolean); return { id: t.id, name: t.name, n: v.length, pct: v.length ? v.reduce((a, x) => a + x.pct, 0) / v.length : null }; }).filter((x) => x.pct != null).sort((a, b) => b.pct - a.pct); }
   // blue heat: brighter swoop blue for up, deep slate blue for down, intensity by size; the sign is in the text, not the hue family
   // swoop scale, dark -> light: bigger moves (either way) are lighter; position blends the move's size with its rank so tiles always spread
-  const HEAT = ['#0A142A', '#0F253F', '#173B63', '#2559A0', '#5B9BEA', '#93C0F6', '#BBD7F9'].map((h) => [1, 3, 5].map((k) => parseInt(h.slice(k, k + 2), 16)));
+  const HEAT = ['#0A142A', '#0F253F', '#173B63', '#22508F', '#2E66B5', '#4A86D6', '#6FA6EC'].map((h) => [1, 3, 5].map((k) => parseInt(h.slice(k, k + 2), 16)));
   const heatAt = (t) => { t = Math.max(0, Math.min(1, t)) * (HEAT.length - 1); const i = Math.min(HEAT.length - 2, Math.floor(t)), f = t - i; const c = HEAT[i].map((v, k) => Math.round(v + (HEAT[i + 1][k] - v) * f)); return c; };
   const heatT = (p, all) => { const a = Math.abs(p), mx = Math.max.apply(null, all.map(Math.abs)) || 1; const rk = all.filter((z) => Math.abs(z) < a).length / Math.max(1, all.length - 1); return 0.12 + 0.88 * (0.5 * a / mx + 0.5 * rk); };
   const heatStyle = (p, all) => { const c = heatAt(heatT(p, all)); const lum = (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255; return 'background:rgb(' + c.join(',') + ');color:' + (lum > 0.55 ? '#0A142A' : '#EAF2FB') + (lum > 0.55 ? ';--hs:#0A142A' : ''); };
