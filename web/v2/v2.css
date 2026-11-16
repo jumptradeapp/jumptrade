@@ -443,3 +443,20 @@ html body .card.pglass>*{position:relative}
 /* compact header: one label row under the bar (phase left, time left right) */
 .hbl{display:flex;justify-content:space-between;font-size:12.5px;margin-top:6px}.hbl span:first-child{color:#BBD7F9;font-weight:600}.hbl span:last-child{color:#AEC0D8}
 .hbar{margin-top:10px}.hkick+h1{margin-top:2px!important}
+
+/* Today without the big greeting: one quiet line, the hours bar, then room to breathe before the portfolio */
+.tday{padding:52px 4px 4px;position:relative;z-index:1}
+.tline{font-size:15px;line-height:22px;color:#E6EDF4;margin:0}
+.tday .hbar{margin:16px 0 0;max-width:330px}
+.tday+.hcar,.tday+div{margin-top:10px!important}
+
+/* keep the top text clear of the swoop: narrower column, soft shadow for legibility */
+.tday{max-width:66%}
+.tline{text-shadow:0 1px 10px rgba(3,10,22,.9)}
+.tday .hbar{max-width:100%}
+
+.tmk{font-size:20px;line-height:26px;font-weight:600;color:#fff;margin:0 0 2px}
+.tline{font-size:14px!important;color:#AEC0D8!important}
+.top .brand img{height:36px!important}
+
+.tline+.tmk{margin:2px 0 0}
