@@ -10,8 +10,10 @@
   const arr = (p) => Array.isArray(p) ? p : (p && (p.data || p.list || p.items || p.result || p.instruments)) || [];
   // tools only the public server has: answer what we can from Webull, fail fast on the rest
   const SERVER_ONLY = /^(get_runners|get_mover_setup|get_analyst_actions|get_earnings_week|get_mover_why|get_pick_record|get_playbook)$/;
+  function sparkPart(syms) { return tool('get_stock_bars', { symbols: syms, category: 'US_STOCK', timespan: 'M5', count: 78 }).then((p) => { const out = {}; ((p && p.result) || []).forEach((r) => { const b = (r.result || []).slice().reverse(); if (!b.length) return; const day = String(b[b.length - 1].time || '').slice(0, 10); const d = b.filter((x) => String(x.time || '').slice(0, 10) === day); out[r.symbol] = { c: d.map((x) => +x.close) }; }); return out; }); }
   window.privTool = function (t, input) {
-    if (t === 'get_sparks') { const syms = String(input.symbols || '').split(',').filter(Boolean).slice(0, 20); if (!syms.length) return Promise.resolve({});
+    if (t === 'get_sparks') { const all = String(input.symbols || '').split(',').filter(Boolean).slice(0, 80); if (!all.length) return Promise.resolve({}); const parts = []; for (let k = 0; k < all.length; k += 20) parts.push(all.slice(k, k + 20)); return Promise.all(parts.map((syms) => sparkPart(syms).catch(() => ({})))).then((r) => Object.assign({}, ...r)); }
+    if (t === '__never') { const syms = [];
       return tool('get_stock_bars', { symbols: syms, category: 'US_STOCK', timespan: 'M5', count: 78 }).then((p) => { const out = {}; ((p && p.result) || []).forEach((r) => { const b = (r.result || []).slice().reverse(); if (!b.length) return; const day = String(b[b.length - 1].time || '').slice(0, 10); const d = b.filter((x) => String(x.time || '').slice(0, 10) === day); out[r.symbol] = { c: d.map((x) => +x.close) }; }); return out; }); }
     if (SERVER_ONLY.test(t)) return Promise.reject({ code: 'unavailable', message: 'Not on the private copy' });
     return null;

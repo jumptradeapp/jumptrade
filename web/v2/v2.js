@@ -118,16 +118,16 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
 
   // ---------- account math ----------
   function acctCalc(a) {
-    let val = a.cash, day = 0, cost = 0, hold = 0, allSpark = true; const rows = []; const series = []; const L = Math.max.apply(null, [0].concat(Object.keys(a.pos).map((s) => (S.spark[s] || []).length)));
+    let val = a.cash, day = 0, cost = 0, hold = 0, anySpark = false, flatAdd = 0; const rows = []; const series = []; const L = Math.max.apply(null, [0].concat(Object.keys(a.pos).map((s) => (S.spark[s] || []).length)));
     Object.keys(a.pos).forEach((s) => {
       const [qty, basis] = a.pos[s]; const q = S.q[s]; if (!q || !isFinite(q.price)) return;
       const mv = qty * q.price; val += mv; hold += mv; day += qty * (q.chg || 0); cost += qty * basis;
       rows.push({ sym: s, qty, mv, pct: q.pct, chg: q.chg, price: q.price });
-      const c = S.spark[s]; if (c && c.length > 2) { for (let i = 0; i < L; i++) series[i] = (series[i] == null ? a.cash : series[i]) + qty * c[Math.min(i, c.length - 1)]; } else allSpark = false;
+      const c = S.spark[s]; if (c && c.length > 2) { anySpark = true; for (let i = 0; i < L; i++) series[i] = (series[i] == null ? a.cash : series[i]) + qty * c[Math.min(i, c.length - 1)]; } else { flatAdd += qty * q.price; }
     });
     const prev = val - day; const ready = rows.length === Object.keys(a.pos).length;
     const per = (n) => { let now = a.cash, then = a.cash, ok = true; Object.keys(a.pos).forEach((s) => { const b = S.bars[s], q = S.q[s]; if (!b || b.length <= n || !q) { ok = false; return; } now += a.pos[s][0] * q.price; then += a.pos[s][0] * b[n]; }); /* bars come newest first (b[0] = today); b[5] = 5 sessions ago */ return ok ? (now / then - 1) * 100 : null; };
-    return { val, day, dayPct: prev ? day / prev * 100 : 0, gain: hold - cost, gainPct: cost ? (hold - cost) / cost * 100 : 0, cash: a.cash, rows, top: rows.slice().sort((x, y) => y.pct - x.pct), series: allSpark ? series : [], ready, w1: per(5), m1: per(21) };
+    return { val, day, dayPct: prev ? day / prev * 100 : 0, gain: hold - cost, gainPct: cost ? (hold - cost) / cost * 100 : 0, cash: a.cash, rows, top: rows.slice().sort((x, y) => y.pct - x.pct), series: (function () { if (anySpark && series.length > 2) return series.map((v) => v + flatAdd); const ks = Object.keys(a.pos); const n = Math.min.apply(null, ks.map((k) => (S.bars[k] || []).length)); if (!ks.length || !isFinite(n) || n < 3) return []; const o = []; for (let i = n - 1; i >= 0; i--) o.push(a.cash + ks.reduce((t, k) => t + a.pos[k][0] * S.bars[k][i], 0)); return o; })(), ready, w1: per(5), m1: per(21) };
   }
   function allCalc() {
     const merged = { name: 'All accounts', sub: ACCTS.length + ' Webull account' + (ACCTS.length === 1 ? '' : 's'), cash: ACCTS.reduce((a, x) => a + x.cash, 0), pos: {} };
@@ -242,6 +242,17 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     return act('cal', E(up.symbol) + ' earnings ' + when, (up.eps_estimate != null ? 'EPS estimate $' + (+up.eps_estimate).toFixed(2) : 'Date confirmed') + ' · ' + E(nameOf(up.symbol) || up.symbol) + (HOLD_SYMS.indexOf(up.symbol) >= 0 && (wl() || []).indexOf(up.symbol) < 0 ? ' · demo holding' : ''), V2_STAGE >= 2 ? '#earnings' : '#calendar');
   }
   // Today's header: a greeting with your first name, a small "Market brief" label, and one line on how the market's doing
+  // market-hours bar: where we are in the trading day (pre-market, regular, after hours), with time left
+  const HOLS = { '2026-11-26': 'Thanksgiving', '2026-12-25': 'Christmas', '2027-01-01': 'New Year’s Day', '2027-01-18': 'MLK Day', '2027-02-15': 'Presidents’ Day', '2027-03-26': 'Good Friday', '2027-05-31': 'Memorial Day', '2027-06-18': 'Juneteenth', '2027-07-05': 'Independence Day', '2027-09-06': 'Labor Day', '2027-11-25': 'Thanksgiving', '2027-12-24': 'Christmas' };
+  const HALFD = { '2026-11-27': 1, '2026-12-24': 1, '2027-11-26': 1 };
+  function hoursBar() {
+    const et = etNow(), wd = et.getDay(), m = et.getHours() * 60 + et.getMinutes(); const ds = et.getFullYear() + '-' + String(et.getMonth() + 1).padStart(2, '0') + '-' + String(et.getDate()).padStart(2, '0');
+    const hm = (x) => (x >= 60 ? Math.floor(x / 60) + 'h ' : '') + (x % 60) + 'm'; const S0 = 240, O = 570, C = HALFD[ds] ? 780 : 960, EN = HALFD[ds] ? 1020 : 1200;
+    const off = wd === 0 || wd === 6 || HOLS[ds];
+    const left = off ? (HOLS[ds] ? 'Closed for ' + HOLS[ds] : 'Opens Monday 9:30 AM') : m < S0 ? 'Pre-market in ' + hm(S0 - m) : m < O ? 'Opens in ' + hm(O - m) : m < C ? hm(C - m) + ' to the close' : m < EN ? hm(EN - m) + ' of after hours left' : 'Pre-market at 4:00 AM';
+    const seg = (a, b, col, lab, on) => { const f = off ? 0 : Math.max(0, Math.min(1, (m - a) / (b - a))); return '<div class="hbs" style="flex:' + (b - a) + '"><div class="hbt"><i style="width:' + (f * 100).toFixed(1) + '%;background:' + col + '"></i>' + (on ? '<em style="left:' + (f * 100).toFixed(1) + '%"></em>' : '') + '</div><small' + (on ? ' class="on"' : '') + '>' + lab + '</small></div>'; };
+    return '<div class="hbar"><div class="hbr">' + seg(S0, O, '#2E66B5', 'Pre-market', !off && m >= S0 && m < O) + seg(O, C, '#5B9BEA', 'Market open', !off && m >= O && m < C) + seg(C, EN, '#93C0F6', 'After hours', !off && m >= C && m < EN) + '</div><div class="hbl">' + left + '</div></div>';
+  }
   function greetHead() {
     const d = etNow(), h = d.getHours(); const g = h < 5 ? 'Good evening' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
     let nm = ''; try { nm = ((window.JT_AUTH && JT_AUTH.user && JT_AUTH.user.name) || localStorage.getItem('jt.name') || '').trim().split(/\s+/)[0].slice(0, 14); } catch (e) {}
@@ -250,10 +261,10 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const mk = !dir ? '' : /closed|After|Overnight/.test(ses) ? 'stocks closed ' + dir : ses === 'Pre-market' ? 'futures point ' + dir : dir === 'flat' ? 'stocks are flat' : 'stocks are ' + (p > 0 ? 'up' : 'down');
     return '<div class="hkick">Market brief · ' + E(d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })) + '</div>' +
       '<h1>' + g + (nm ? ',<br><em>' + E(nm.charAt(0).toUpperCase() + nm.slice(1)) + '.</em>' : '<em>.</em>') + '</h1>' +
-      '<p class="sub">' + ses + ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' ET' + (mk ? ' · ' + mk : '') + '</p>';
+      '<p class="sub">' + ses + ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' ET' + (mk ? ' · ' + mk : '') + '</p>' + hoursBar();
   }
   function today() {
-    return RIB + '<div class="wrap" style="position:relative;z-index:1">' + topbar() + greetHead() + pxAge() +
+    return RIB + '<div class="wrap" style="position:relative;z-index:1">' + topbar() + greetHead() +
       portCard() + pulse() + (V2_STAGE >= 2 ? whatsHot() + lab('radar', 'Starting to run', 'See all', '#radar') + radarStrip() : '') + lab('news', 'Top news', 'All news', '#news') + newsRows() +
       lab('star', 'Watchlist', 'View all', '#watch') + watchRows() +
       lab('target', 'Your next moves') + moves() + earnCard() + act('target', 'Analyst calls', 'Upgrades, downgrades and price-target changes', '#analysts') + (V2_STAGE >= 2 ? act('cal', 'Earnings week', 'Who reports this week, beat or miss', '#earnings') : '') + (V2_STAGE >= 3 ? act('bank', 'Follow the money', 'Big options bets, Congress trades, short interest', '#money') : '') + '</div>';
