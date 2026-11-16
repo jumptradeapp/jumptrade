@@ -177,7 +177,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       '<div style="display:flex;align-items:center;gap:14px;margin-top:8px"><div style="flex:none"><div style="font-size:31px;line-height:40px;font-weight:600">' + money(c.val) + '</div><div class="' + cls(c.day) + '" style="font-size:16px;font-weight:500;margin-top:2px">' + chg(c.day) + '<span style="margin-left:10px">' + pct(c.dayPct) + '</span></div></div>' +
       '<div class="pchart" style="flex:1;min-width:0;height:58px;display:flex;justify-content:flex-end">' + mtn(c.series, 120, 58, c.val - c.day, c.day >= 0) + '</div></div>' +
       '<div class="kick" style="font-size:11px;letter-spacing:.2em;margin:16px 0 0;color:#C9D6E2">Top performers today</div><div class="rows" style="padding:0!important">' + (c.top.length ? perf(c.top, 3, 60) : '<div class="err">No stock holdings in this account.</div>') + '</div>' +
-      '<div class="strip" style="margin-top:6px">' + strip + '</div></div>', 'padding:16px 20px 12px', '', 'div', ' data-go="#portfolio' + (i ? '/' + i : '') + '"');
+      '<div class="strip" style="margin-top:6px">' + strip + '</div></div>', 'padding:16px 20px 12px', 'pglass', 'div', ' data-go="#portfolio' + (i ? '/' + i : '') + '"');
   }
   function portCard() {
     const all = allCalc(); const c0 = all.c;
@@ -273,7 +273,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   // ---------- Portfolio ----------
   function acctCard(i, a, c) {
     const top = c.ready ? perf(c.top, 3, 60) : skel(3);
-    return '<div class="card" style="padding:16px 16px 6px" data-i="' + i + '"><div style="display:flex;align-items:center;gap:10px">' + tl('BULL', 30) + '<div style="min-width:0;flex:1"><div class="kick" style="font-size:11.5px;letter-spacing:.18em">' + E(a.name) + '</div><div class="mini" style="color:var(--fg2);margin-top:1px">' + E(a.sub) + ' · read-only</div></div>' + (REAL ? '' : DEMO) + '</div>' +
+    return '<div class="card pglass" style="padding:16px 16px 6px" data-i="' + i + '"><div style="display:flex;align-items:center;gap:10px">' + tl('BULL', 30) + '<div style="min-width:0;flex:1"><div class="kick" style="font-size:11.5px;letter-spacing:.18em">' + E(a.name) + '</div><div class="mini" style="color:var(--fg2);margin-top:1px">' + E(a.sub) + ' · read-only</div></div>' + (REAL ? '' : DEMO) + '</div>' +
       '<div style="display:flex;align-items:flex-end;gap:8px;margin-top:12px"><div style="flex:1"><div style="font-size:30px;line-height:38px;font-weight:600">' + (c.ready ? money(c.val) : '—') + '</div><div class="' + cls(c.day) + '" style="font-size:15px;font-weight:500;white-space:nowrap">' + (c.ready ? chg(c.day) + '<span style="margin-left:10px">' + pct(c.dayPct) + '</span>' : '&nbsp;') + '<span style="color:var(--fg2);margin-left:6px">today</span></div></div>' + mtn(c.series, 104, 52) + '</div>' +
       '<div class="kick" style="font-size:11px;letter-spacing:.2em;margin:14px 0 2px;color:#C9D6E2">Top performers today</div><div class="rows" style="padding:0!important">' + top + '</div></div>';
   }
