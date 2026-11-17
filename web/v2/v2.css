@@ -690,3 +690,15 @@ html[data-x2t="light"] body .card:not(.pglass){box-shadow:0 1px 2px rgba(16,40,8
 html body .rows .row+.row{border-top-color:var(--hair)!important}
 html body .tl{border-radius:10px!important}
 html body .sub{font-size:14px!important}
+
+/* simplified Today */
+.top.tc{position:relative}.top.tc .brand{position:absolute;left:50%;transform:translateX(-50%)}.top.tc .brand img{height:34px!important}.top.tc>.ib{margin-left:-8px}.top.tc .acts{margin-right:-8px}
+.pulse2{display:block;color:inherit;text-decoration:none}
+.pzh{display:flex;align-items:center;gap:10px;min-width:0}.pzk{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--fg2);flex:none}.pzk svg{color:#5B9BEA}
+.pzh b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-left:auto}
+.pzi{display:flex;margin-top:12px;gap:8px}.pzi>div{flex:1;border-radius:12px;padding:9px 12px;background:rgba(255,255,255,.04);border:1px solid var(--hair)}
+.pzi small{display:block;font-size:12px;color:var(--fg2)}.pzi b{display:block;font-size:17px;font-weight:600;margin-top:2px;font-variant-numeric:tabular-nums}
+html[data-x2t="light"] .pzi>div{background:#F3F6FA;border-color:#E1E8F1}
+.wsum2{padding:14px 0 12px;border-bottom:1px solid var(--hair)}.wsum2 b{display:block;font-size:15px;font-weight:600}.wsum2 small{display:block;font-size:13px;color:var(--fg2);margin-top:3px}
+html[data-x2t="light"] .hero .card.pglass{margin-top:0}
+html body .card.pulse2{display:flex!important;flex-direction:column!important;align-items:stretch!important}.pulse2>.pzh,.pulse2>.pzi{width:100%}

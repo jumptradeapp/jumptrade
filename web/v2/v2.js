@@ -149,7 +149,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const d = new Date(e.date + 'T12:00:00'); const days = Math.floor((d - t0) / 864e5); return '<span class="amb"><i></i>Earnings ' + (days === 0 ? 'today' : days === 1 ? 'tomorrow' : d.toLocaleDateString('en-US', { weekday: 'short' })) + '</span>'; };
   const perf = (list, n, minh) => list.slice(0, n).map((r) => { const s = r.sym, x = S.q[s]; return '<a class="row perf" href="#stock/' + encodeURIComponent(s) + '" style="min-height:' + minh + 'px!important;gap:8px">' + tl(s, 30) + '<span class="nm"><b style="font-size:15px">' +E(s) + earnTag(s) + '</b><small style="font-size:11.5px;line-height:15px;white-space:normal">' + E(nameOf(s)) + '</small></span><span style="flex:none">' + sp(s, x.chg >= 0, 40, 24) + '</span><span class="q" style="width:96px;flex:none"><b style="font-size:15px">' + money(x.price) + '</b><small style="font-size:11.5px" class="' + cls(x.chg) + '">' + chg(x.chg) + '<i style="margin-left:5px">' + pct(x.pct) + '</i></small></span></a>'; }).join('');
   const skel = (n) => Array.from({ length: n || 3 }, (_, i) => '<div class="skel" style="width:' + (90 - i * 15) + '%"></div>').join('');
-  const topbar = () => '<div class="top"><span class="brand"><img src="/v2/img/jumptrade-logo.svg?v=3" alt="jumptrade." width="90" height="26"></span><div class="acts">' + (REAL || !/^(today|portfolio)$/.test(route().v) ? '' : DEMO) + '<a class="ib" href="#ask" aria-label="Ask Jump">' + ic('spark', 21) + '</a>' + (V2_STAGE >= 3 ? '<a class="ib" href="#alerts" aria-label="Alerts">' + ic('bell') + (alertCount() ? '<em class="bdot"></em>' : '') + '</a>' : '<a class="ib" href="#calendar" aria-label="Alerts and events">' + ic('bell') + '<em class="bdot"></em></a>') + '<a class="ib" href="#search" aria-label="Search">' + ic('search2', 20) + '</a><a class="ib" href="#menu" aria-label="All pages">' + ic('menu') + '</a></div></div>';
+  const topbar = () => '<div class="top tc"><a class="ib" href="#menu" aria-label="All pages">' + ic('menu') + '</a><span class="brand"><img src="/v2/img/jumptrade-logo.svg?v=3" alt="jumptrade." width="90" height="26"></span><div class="acts">' + (REAL || !/^(today|portfolio)$/.test(route().v) ? '' : DEMO) + (V2_STAGE >= 3 ? '<a class="ib" href="#alerts" aria-label="Alerts">' + ic('bell') + (alertCount() ? '<em class="bdot"></em>' : '') + '</a>' : '<a class="ib" href="#calendar" aria-label="Alerts and events">' + ic('bell') + '<em class="bdot"></em></a>') + '</div></div>';
   const backbar = (title, href) => '<div class="top"><div style="display:flex;align-items:center;gap:6px;min-width:0"><a class="ib" style="margin-left:-10px" href="' + href + '" aria-label="Back">' + ic('back', 22) + '</a><b class="tbt">' + title + '</b></div><div class="acts">' + (REAL || route().v !== 'connect' ? '' : DEMO) + '</div></div>';
   const head = (t, sub) => { const p = t.lastIndexOf(' '); return '<h1>' + (p > 0 ? t.slice(0, p) + ' <em>' + t.slice(p + 1) + '</em>' : '<em>' + t + '</em>') + '</h1>' + (sub ? '<p class="sub">' + sub + '</p>' : ''); };
   const sh = (t, link, href, icon) => '<div class="sh"><h2><span class="shi">' + ic(icon || 'layers', 16) + '</span>' + t + '</h2>' + (link ? '<a href="' + href + '">' + link + ic('arrow', 14, 2.2) + '</a>' : '') + '</div>';
@@ -210,14 +210,13 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     return { title: verb + lead, desc: d };
   }
   function pulse() {
-    const t = pulseText();
-    return card('<div class="pane"></div><div style="position:relative;z-index:1;display:flex;align-items:flex-end;gap:10px"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:12px;color:#5B9BEA">' + ic('activity', 20, 2.2) + kick('Market pulse') + '</div>' +
-      (t ? '<div style="font-size:21px;line-height:28px;font-weight:600;margin-top:6px;max-width:262px">' + E(t.title) + '</div><div style="font-size:14px;line-height:21px;color:#D5DEE8;margin-top:6px;max-width:262px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">' + t.desc + '</div>' : S.loaded && S.err.q ? '<div class="err" style="max-width:262px">Index prices aren’t loading right now. Retrying every 30 seconds.</div>' : skel(3)) +
-      '</div><span class="rbtn">' + ic('chev', 20, 2.6) + '</span></div>', 'padding:14px 16px 16px 20px;margin-top:12px', 'glass', 'a', ' href="' + (V2_STAGE >= 2 ? '#markets' : '#sectors') + '"');
+    const t = pulseText(); const ix = [['SPY', 'S&P 500'], ['QQQ', 'Nasdaq'], ['IWM', 'Russell 2000']];
+    return card('<div class="pzh"><span class="pzk">' + ic('activity', 16, 2.2) + 'Market pulse</span>' + (t ? '<b>' + E(t.title) + '</b>' : '') + '</div>' +
+      '<div class="pzi">' + ix.map((x) => { const q = S.q[x[0]]; return '<div><small>' + x[1] + '</small><b class="' + (q ? cls(q.pct) : '') + '">' + (q ? pct(q.pct) : '—') + '</b></div>'; }).join('') + '</div>', 'padding:14px 16px;margin-top:14px', 'pulse2', 'a', ' href="' + (V2_STAGE >= 2 ? '#markets' : '#sectors') + '"');
   }
   function newsRows() {
     if (S.news == null) return rowsBox(skel(4), 'padding:14px');
-    const L = S.news.filter((n) => n && n.title && /^https:\/\//i.test(n.url || '')).slice(0, 3); /* only https links: never a javascript: or data: URL from a feed */
+    const L = S.news.filter((n) => n && n.title && /^https:\/\//i.test(n.url || '')).slice(0, 5); /* only https links: never a javascript: or data: URL from a feed */
     if (!L.length) return rowsBox('<div class="err">Headlines aren’t loading right now. Try again in a minute.</div>');
     return rowsBox(L.map((n) => {
       const sym = window.NTH && NTH.tk ? NTH.tk(n) : null; const light = sym && LG && sym in LG && LG[sym] !== 1;
@@ -227,8 +226,11 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     }).join(''));
   }
   function watchRows() {
-    const L = wlSyms(); const own = !!wl();
-    return rowsBox(L.slice(0, 3).map((s) => srow(s, 64)).join('')) + (own ? '' : '<p class="note">Suggested stocks. Add your own from any stock page and they show here.</p>');
+    const L = wlSyms(); const own = !!wl(); const V5 = L.slice(0, 5);
+    const have = L.map((x) => S.q[x]).filter((q) => q && isFinite(q.pct)); const up = have.filter((q) => q.pct > 0).length, dn = have.filter((q) => q.pct < 0).length;
+    const tot = have.reduce((a, q) => a + q.pct * 10, 0); const flat = Math.abs(tot) < 0.5;
+    const sum = own && have.length >= 2 ? '<div class="wsum2"><b>' + up + ' up · ' + dn + ' down today' + (flat ? '' : ' · <span class="' + (tot > 0 ? 'up' : 'dn') + '">' + (tot > 0 ? '+' : '−') + '$' + Math.abs(Math.round(tot)).toLocaleString('en-US') + '</span>') + '</b><small>' + (flat ? 'Flat overall today' : 'If you’d put $1,000 in each, you’d be ' + (tot > 0 ? 'up' : 'down') + ' $' + Math.abs(Math.round(tot)).toLocaleString('en-US') + ' today') + '</small></div>' : '';
+    return rowsBox(sum + V5.map((x) => srow(x, 64)).join('')) + (own ? '' : '<p class="note">Suggested stocks. Add your own from any stock page and they show here.</p>');
   }
   function moves() {
     const st = (S.setups || []).filter((x) => x && x.symbol).slice(0, 3);
@@ -263,7 +265,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const ses = session(); const x = S.q.SPY; const p = x && isFinite(x.pct) ? x.pct : null;
     const dir = p == null ? '' : Math.abs(p) < 0.15 ? 'flat' : p > 0 ? 'higher' : 'lower';
     const mk = !dir ? '' : /closed|After|Overnight/.test(ses) ? 'stocks closed ' + dir : ses === 'Pre-market' ? 'futures point ' + dir : dir === 'flat' ? 'stocks are flat' : 'stocks are ' + (p > 0 ? 'up' : 'down');
-    return '<div class="tday">' + '<p class="tline">' + E(d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })) + ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' ET</p>' + (mk ? '<p class="tmk">' + E(mk.charAt(0).toUpperCase() + mk.slice(1)) + '</p>' : '') + hoursBar() + '</div>'; void g; void nm;
+    return '<div class="tday">' + '<p class="tline">' + E(d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })) + ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' ET</p>' + hoursBar() + '</div>'; void g; void nm; void mk;
   }
   // top gainers on Today: the 5 biggest movers right now (pre-market, regular or after hours)
   S.tg = null; S.tgT = 0;
@@ -274,10 +276,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     return rowsBox(S.tg.map((x) => { const p = +x.change_ratio * 100, pr = +x.price, c = isFinite(+x.change) ? +x.change : pr - pr / (1 + p / 100); return '<a class="row" href="#stock/' + encodeURIComponent(x.symbol) + '" style="min-height:62px">' + tl(x.symbol, 36) + '<span class="nm"><b>' + E(x.symbol) + '</b><small>' + E(x.name || nameOf(x.symbol)) + '</small></span><span style="flex:none">' + sp(x.symbol, p >= 0, 52, 24) + '</span><span class="q"><b>' + pxs(pr) + '</b><small class="' + cls(p) + '">' + (c >= 0 ? '+' : '−') + '$' + Math.abs(c).toFixed(Math.abs(c) < 1 ? 2 : 2) + '<i>' + pct(p) + '</i></small></span></a>'; }).join(''));
   }
   function today() {
-    return '<div class="wrap" style="position:relative;z-index:1"><div class="hero">' + RIB + topbar() + greetHead() +
-      portCard() + '</div>' + pulse() + lab('trend', 'Top gainers', 'See all', '#movers') + tgRows() + lab('news', 'Top news', 'All news', '#news') + newsRows() + (V2_STAGE >= 2 ? whatsHot() + lab('radar', 'Starting to run', 'See all', '#radar') + radarStrip() : '') +
-      lab('star', 'Watchlist', 'View all', '#watch') + watchRows() +
-      lab('target', 'Your next moves') + moves() + earnCard() + act('target', 'Analyst calls', 'Upgrades, downgrades and price-target changes', '#analysts') + (V2_STAGE >= 2 ? act('cal', 'Earnings week', 'Who reports this week, beat or miss', '#earnings') : '') + (V2_STAGE >= 3 ? act('bank', 'Follow the money', 'Big options bets, Congress trades, short interest', '#money') : '') + '</div>';
+    return '<div class="wrap" style="position:relative;z-index:1"><div class="hero">' + RIB + topbar() + greetHead() + portCard() + '</div>' + pulse() +
+      lab('news', 'Top news', 'All news', '#news') + newsRows() + lab('trend', 'Top gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + '</div>';
   }
 
   // ---------- Portfolio ----------
@@ -411,7 +411,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       '<div style="margin-top:10px"><div class="seg">' + [['up', 'Gainers'], ['dn', 'Losers']].map((x) => '<span class="' + (S.mv.dir === x[0] ? 'on' : '') + '" data-mvd="' + x[0] + '" role="button">' + x[1] + '</span>').join('') + '</div></div>' +
       '<div style="margin-top:10px">' + body + '</div>' +
       '<p class="note">All US stocks, small caps included. Why lines are real headlines from the last 36 hours; “No news found” means we didn’t find one. Refreshes every few seconds.</p>' +
-      (V2_STAGE >= 2 ? lab('radar', 'Jump radar', 'Open', '#radar') + radarStrip(true) : '') + '</div>';
+      (V2_STAGE >= 2 ? whatsHot() + lab('radar', 'Starting to run', 'Open', '#radar') + radarStrip(true) : '') + '</div>';
   }
 
   // ---------- (4) Ask Jump ----------
@@ -560,7 +560,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
         card(R.map((r) => '<div class="rbar"><span class="rbn">' + E(r[0]) + '</span><span class="rbt"><i class="' + (r[1] >= 0 ? 'p' : 'n') + '" style="width:' + (Math.abs(r[1]) / mx * 50).toFixed(1) + '%"></i></span><b class="' + cls(r[1]) + '">' + (r[1] >= 0 ? '+' : '−') + Math.abs(r[1]).toFixed(1) + '%</b></div>').join(''), 'padding:12px 14px;margin-top:10px') +
         (S.rot.lead ? '<p class="note">Leading: ' + S.rot.lead.map(E).join(', ') + ' · Lagging: ' + (S.rot.lag || []).map(E).join(', ') + '</p>' : ''); }
     return swoosh() + '<div class="wrap">' + topbar() + head('Markets', 'Themes, indexes and where money is moving') + pxAge() + ix +
-      sh('Themes today', 'Earnings week', '#earnings', 'grid') + heat + sh('Money flow', '', '', 'activity') + rot + '</div>';
+      sh('Themes today', 'Earnings week', '#earnings', 'grid') + heat + sh('Money flow', '', '', 'activity') + rot +
+      lab('target', 'Your next moves') + moves() + earnCard() + act('target', 'Analyst calls', 'Upgrades, downgrades and price-target changes', '#analysts') + act('cal', 'Earnings week', 'Who reports this week, beat or miss', '#earnings') + (V2_STAGE >= 3 ? act('bank', 'Follow the money', 'Big options bets, Congress trades, short interest', '#money') : '') + '</div>';
   }
   function themeScreen(id) {
     loadThemes(); const t = (S.themes || []).find((x) => x.id === id);
