@@ -21,17 +21,44 @@
   const tool = (t, i) => mcp().then((m) => m.callTool('Webull', t, i || {})).then((r) => r.payload !== undefined ? r.payload : (r.content && r.content[0] && JSON.parse(r.content[0].text)));
   const arr = (p) => Array.isArray(p) ? p : (p && (p.data || p.list || p.items || p.result || p.instruments)) || [];
   // tools only the public server has: answer what we can from Webull, fail fast on the rest
-  const SERVER_ONLY = /^(get_runners|get_mover_setup|get_analyst_actions|get_earnings_week|get_mover_why|get_pick_record|get_playbook)$/;
+  const SERVER_ONLY = /^(get_runners|get_mover_setup|get_analyst_actions|get_mover_why|get_pick_record|get_playbook)$/;
   function sparkPart(syms) { return tool('get_stock_bars', { symbols: syms, category: 'US_STOCK', timespan: 'M5', count: 78 }).then((p) => { const out = {}; ((p && p.result) || []).forEach((r) => { const b = (r.result || []).slice().reverse(); if (!b.length) return; const day = String(b[b.length - 1].time || '').slice(0, 10); const d = b.filter((x) => String(x.time || '').slice(0, 10) === day); out[r.symbol] = { c: d.map((x) => +x.close) }; }); return out; }); }
   // the news line on the private copy: newest Webull headline that names the stock
   function newsWhy(s) { return tool('get_stock_news', { symbol: s }).then((p) => { const L = arr(p); if (!L.length) return { v: 'nonews', kind: 'No news' };
     const h = L.find((n) => (n.related_symbols || []).indexOf(s) >= 0) || L.find((n) => new RegExp('\\b' + s.replace('.', '\\.') + '\\b').test(n.title || '')) || null;
     if (!h) return { v: 'nonews', kind: 'No news' };
     return { v: 'news', kind: 'News', h: { title: h.title, source: h.source, t: Date.parse(h.publish_time) || null, url: h.url } }; }); }
+  const BIG = 'AAPL,MSFT,NVDA,GOOGL,AMZN,META,AVGO,TSLA,BRK.B,LLY,JPM,WMT,V,ORCL,MA,XOM,NFLX,COST,JNJ,PG,HD,ABBV,BAC,PLTR,KO,AMD,CRM,CVX,TMUS,CSCO,PM,WFC,MS,GE,IBM,ABT,MCD,LIN,GS,AXP,DIS,MRK,PEP,INTU,NOW,UBER,T,CAT,RTX,VZ,TXN,BKNG,ISRG,QCOM,ADBE,SPGI,AMGN,PGR,BLK,BSX,SCHW,C,NEE,LOW,TJX,UNP,AMAT,HON,SYK,BA,DE,PFE,ETN,COF,GILD,ANET,MU,PANW,LRCX,ADP,KLAC,CMCSA,MDT,APH,ADI,CRWD,INTC,SBUX,LMT,KKR,CB,MMC,ICE,CEG,DELL,PLD,MO,SO,WM,SNPS,CDNS,TT,DUK,NKE,ABNB,SHOP,MRVL,TGT,SNOW,DASH,ZS,WDAY,ROST,HPQ,LOW,PANW,BABA,PDD,JD,BIDU,TJX'.split(',');
+  let EWP = null;
+  function earnWeek() { if (EWP) return EWP;
+    const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' }).formatToParts(new Date()); const g = (k) => (p.find((x) => x.type === k) || {}).value;
+    const wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(g('weekday')); const base = Date.UTC(+g('year'), +g('month') - 1, +g('day')); const off = wd === 0 ? 1 : wd === 6 ? 2 : 1 - wd;
+    const days = []; for (let k = 0; k < 5; k++) days.push(new Date(base + (off + k) * 864e5).toISOString().slice(0, 10)); const today = g('year') + '-' + g('month') + '-' + g('day');
+    const U = Array.from(new Set(BIG)); const hits = []; let ok = 0;
+    const one = (s) => tool('get_stock_earnings_calendar', { symbol: s, category: 'US_STOCK' }).then((r) => { ok++; arr(r).forEach((x) => { if (days.indexOf(x.expected_publish_date) >= 0) { const eps = x.eps_actual != null && x.eps_actual !== '' ? +x.eps_actual : null, est = x.eps_est != null && x.eps_est !== '' ? +x.eps_est : null;
+      hits.push({ d: x.expected_publish_date, s, n: '', mc: 0, when: null, eps, est, sur: eps != null && est ? Math.round((eps - est) / Math.abs(est) * 1000) / 10 : null, res: eps == null || est == null ? null : eps > est + 0.005 ? 'beat' : eps < est - 0.005 ? 'miss' : 'inline' }); } }); }).catch(() => {});
+    const chunks = []; for (let k = 0; k < U.length; k += 10) chunks.push(U.slice(k, k + 10));
+    EWP = chunks.reduce((pr, ch) => pr.then(() => Promise.all(ch.map(one))), Promise.resolve()).then(() => {
+      if (!ok) throw new Error('calendar');
+      const syms = Array.from(new Set(hits.map((h) => h.s))); return (syms.length ? tool('get_stock_snapshot', { symbols: syms.join(','), category: 'US_STOCK', extend_hour_required: false, overnight_required: false }).catch(() => []) : Promise.resolve([])).then((q) => { const M = {}; arr(q).forEach((x) => { M[x.symbol] = x; });
+        hits.forEach((h) => { const x = M[h.s]; if (x) { h.mc = +x.market_value || 0; h.n = x.name || ''; } });
+        return { at: Date.now(), today, days: days.map((d) => ({ d, tiles: hits.filter((h) => h.d === d).sort((a, b) => b.mc - a.mc).slice(0, 16) })), src: 'Webull earnings calendar', note: 'About 120 of the biggest US companies. Beat/miss = reported EPS vs the estimate.' }; }); });
+    EWP.catch(() => { EWP = null; }); return EWP; }
   window.privTool = function (t, input) {
     if (t === 'get_sparks') { const all = String(input.symbols || '').split(',').filter(Boolean).slice(0, 80); if (!all.length) return Promise.resolve({}); const parts = []; for (let k = 0; k < all.length; k += 20) parts.push(all.slice(k, k + 20)); return Promise.all(parts.map((syms) => sparkPart(syms).catch(() => ({})))).then((r) => Object.assign({}, ...r)); }
     if (t === '__never') { const syms = [];
       return tool('get_stock_bars', { symbols: syms, category: 'US_STOCK', timespan: 'M5', count: 78 }).then((p) => { const out = {}; ((p && p.result) || []).forEach((r) => { const b = (r.result || []).slice().reverse(); if (!b.length) return; const day = String(b[b.length - 1].time || '').slice(0, 10); const d = b.filter((x) => String(x.time || '').slice(0, 10) === day); out[r.symbol] = { c: d.map((x) => +x.close) }; }); return out; }); }
+    // Earnings week on the private copy: check about 120 of the biggest US companies with Webull, one call each, once per visit
+    if (t === 'get_earnings_week') return earnWeek();
+    // earnings dates for your stocks: Webull answers one symbol at a time; keep the next (or most recent) report per stock
+    if (t === 'get_stock_earnings_calendar' && input.symbols) { const list = String(input.symbols).split(',').filter((x) => /^[A-Z.]{1,6}$/.test(x)).slice(0, 30); const today = new Date().toISOString().slice(0, 10);
+      return Promise.all(list.map((s) => tool(t, { symbol: s, category: 'US_STOCK' }).then((r) => { const L = arr(r).filter((x) => x.expected_publish_date); if (!L.length) return null; const up = L.filter((x) => x.expected_publish_date >= today).sort((a, b) => a.expected_publish_date.localeCompare(b.expected_publish_date))[0] || L[L.length - 1];
+        return { symbol: s, date: up.expected_publish_date, eps_estimate: +up.eps_est || null }; }).catch(() => null))).then((r) => r.filter(Boolean)); }
+    // Webull needs a category for sectors; the public server fills it in
+    if ((t === 'get_market_sectors' || t === 'get_market_sectors_detail') && !input.category) return tool(t, Object.assign({ category: 'US_STOCK' }, input));
+    // price history: at most 20 stocks per request, so split bigger asks and join the answers
+    if (t === 'get_stock_bars') { const all = (Array.isArray(input.symbols) ? input.symbols : String(input.symbols || '').split(',')).filter(Boolean); if (all.length > 20) { const parts = []; for (let k = 0; k < all.length; k += 20) parts.push(all.slice(k, k + 20));
+      return Promise.all(parts.map((syms) => tool(t, Object.assign({}, input, { symbols: syms })).catch(() => null))).then((r) => ({ result: [].concat(...r.map((x) => (x && x.result) || [])) })); } }
     // Webull answers at most 100 symbols per quote request: split bigger asks and join the answers
     if (t === 'get_stock_snapshot') { const all = String(input.symbols || '').split(',').filter(Boolean); if (all.length > 100) { const parts = []; for (let k = 0; k < all.length; k += 100) parts.push(all.slice(k, k + 100));
       return Promise.all(parts.map((syms) => tool(t, Object.assign({}, input, { symbols: syms.join(',') })).catch(() => []))).then((r) => [].concat(...r.map((x) => Array.isArray(x) ? x : arr(x)))); } }

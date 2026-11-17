@@ -311,7 +311,7 @@
   // ---------- track record ----------
   function recordScreen() {
     const d = once('record', 600, () => V().call('get_pick_record', {}));
-    let body; if (!d) body = V().rowsBox(V().skel(4), 'padding:14px'); else if (d.err) body = V().rowsBox(errB('The track record didn’t load.'));
+    let body; if (!d) body = V().rowsBox(V().skel(4), 'padding:14px'); else if (d.err) body = V().rowsBox(window.JT_PRIV ? V2SRV('The track record', '#record') : errB('The track record didn’t load.'));
     else if (!d.rows || !d.rows.length) body = offB('No picks recorded yet', 'Each day’s picks are saved after the close and graded after 1 and 5 days. Check back tomorrow.');
     else body = '<div class="xgrid3">' + [['Picks', d.total], ['1-day win rate', d.d1.win != null ? Math.round(d.d1.win) + '%' : '—'], ['5-day win rate', d.d5.win != null ? Math.round(d.d5.win) + '%' : '—'], ['Avg 1-day', sgnP(d.d1.avg)], ['Avg 5-day', sgnP(d.d5.avg)], ['Hit target / stop', d.targets + ' / ' + d.stops]].map((x) => '<div class="xk"><small>' + x[0] + '</small><b>' + x[1] + '</b></div>').join('') + '</div>' +
       tbl('rec', [['sym', 'Symbol', (r) => symCell(r.symbol || r.s), (r) => r.symbol || r.s], ['d', 'Date', (r) => E(r.date || r.d || ''), (r) => r.date || r.d], ['r1', '1-day', (r) => '<span class="' + cl(r.r1) + '">' + sgnP(r.r1) + '</span>', (r) => r.r1], ['r5', '5-day', (r) => '<span class="' + cl(r.r5) + '">' + sgnP(r.r5) + '</span>', (r) => r.r5]], d.rows, { href: (r) => '#stock/' + (r.symbol || r.s) });
@@ -459,7 +459,7 @@
     const row = (s, sub, tag, cl2) => { const q = V().S.q[s]; return '<a class="row" href="#stock/' + encodeURIComponent(s) + '">' + V().tl(s, 30) + '<span class="nm"><b>' + E(s) + ' <i class="xtag ' + (cl2 || '') + '">' + tag + '</i></b><small>' + E(nm(s)) + ' · ' + E(sub) + '</small></span>' + V().qv(q ? q.price : null, q ? q.chg : null, q ? q.pct : null) + '</a>'; };
     const sec = (t, href, L, empty) => V().lab('zap', t, 'All', href) + (L.length ? '<div class="card rows">' + L.join('') + '</div>' : V().rowsBox(empty));
     return wrap(V().topbar() + V().head('All ideas', 'Runners, dips and leaders in one place') +
-      sec('Starting to run', '#radar', rn.map((x) => row(x.symbol, (x.why || []).slice(0, 2).join(' · '), 'score ' + Math.round(x.score))), !run ? V().skel(3) : errB('No runners right now.')) +
+      sec('Starting to run', '#radar', rn.map((x) => row(x.symbol, (x.why || []).slice(0, 2).join(' · '), 'score ' + Math.round(x.score))), !run ? V().skel(3) : run.err && window.JT_PRIV ? V2SRV('The radar', '#radar') : errB('No runners right now.')) +
       sec('Dip buys', '#dips', dp.map((x) => row(x.s, (DST[x.d.state] || x.d.state) + ' · ' + sgnP(x.d.off * 100) + ' from high', 'dip')), sc.pending ? V().skel(3) : errB('No clean dips right now.')) +
       sec('Leaders', '#leaders', ld.map((x) => row(x.s, sgnP((x.t.p / x.t.hi - 1) * 100) + ' from 52w high · RSI ' + x.t.rsi.toFixed(0), 'leader')), sc.pending ? V().skel(3) : errB('No leaders pass the rules right now.')) +
       note('Each list uses its own published rules. Ideas, not advice.'));

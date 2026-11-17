@@ -156,7 +156,10 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const lab = (icon, t, link, href) => '<div class="lab"><span class="lic">' + ic(icon, 15, 2.4) + '</span>' + (href ? '<a class="labt" href="' + href + '">' + t + '</a>' : t) + (link ? '<a href="' + href + '">' + link + ' →</a>' : '') + '</div>';
   // "Breaking": under 45 minutes old, or under 3 hours old and about a market-moving event
   const BRK = /\b(halt(ed|s)?|FDA|Fed(eral Reserve)?|rate (hike|cut)|resign(s|ed|ation)?|steps down|ousted|acquir(e|es|ed|ing)|acquisition|merger|buyout|takeover|bankrupt(cy)?|chapter 11|guidance|recall|SEC (charges|probe)|investigation|lawsuit|plunge[sd]?|soar(s|ed)|tariff|export (ban|rule|curbs?)|CPI|jobs report|beats?|miss(es|ed)?)\b/i;
-  const isBreaking = (n) => { const ms = typeof n.publish_time === 'number' ? (n.publish_time < 1e12 ? n.publish_time * 1000 : n.publish_time) : Date.parse(n.publish_time); if (!isFinite(ms)) return false; const age = (Date.now() - ms) / 60000; return age >= 0 && (age < 45 || (age < 180 && BRK.test(dec(n.title || '')))); };
+  // screens whose data is worked out on jumptrade.app's server, which the private copy can't reach
+  const srvOnly = (what, hash) => window.JT_PRIV ? '<div class="err">' + what + ' is worked out on jumptrade.app’s server, so it isn’t in this private copy. <a href="https://jumptrade.app/' + hash + '" target="_blank" rel="noopener">Open it on jumptrade.app</a>.</div>' : '';
+  window.V2SRV = srvOnly;
+  const isBreaking = (n) => { const ms = typeof n.publish_time === 'number' ? (n.publish_time < 1e12 ? n.publish_time * 1000 : n.publish_time) : Date.parse(n.publish_time); if (!isFinite(ms)) return false; const age = (Date.now() - ms) / 60000; return age >= 0 && age < 60 && BRK.test(dec(n.title || '')); };
   const act = (icon, t, s, href) => '<a class="card act" href="' + href + '"><span class="ibx">' + ic(icon, 28, 2.1) + '</span><span class="tx"><b>' + t + '</b><small>' + s + '</small></span><span class="chv">' + ic('chev', 22, 2.4) + '</span></a>';
   // sun = pre-market, moon = after hours / overnight: the extra price line under any regular price
   const SUN = '<svg class="sIc" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#F2C27A" stroke-width="2.4" stroke-linecap="round" aria-label="Pre-market"><circle cx="12" cy="12" r="4.2" fill="#F2C27A"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7L7 17M17 7l1.7-1.7"/></svg>';
@@ -319,7 +322,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       const rel = (x.related_symbols || []).some((s) => mine.indexOf(s) >= 0) || nm.some(([s, w]) => new RegExp('\\b(' + s + '|' + w.replace(/[^\w]/g, '') + ')\\b', 'i').test(t)); if (rel) sc += 4;
       if (BRK.test(t)) sc += 2; if (TIER.test(x.source || x.source_name || '')) sc += 1.5; if (x.image) sc += 0.5; if (FLUFF.test(t)) sc -= 4;
       const ms = Date.parse(x.publish_time); const age = isFinite(ms) ? (now - ms) / 3600000 : 24; sc -= Math.min(age, 24) / 2;
-      return [sc, x]; }).sort((a, b) => b[0] - a[0]).slice(0, n).map((y) => y[1]);
+      return [sc, x]; }).filter((y) => !FLUFF.test(dec(y[1].title))).sort((a, b) => (Date.parse(b[1].publish_time) || 0) - (Date.parse(a[1].publish_time) || 0)).slice(0, n).map((y) => y[1]); // newest first
   }
   function newsRows() {
     if (S.news == null) return rowsBox(skel(4), 'padding:14px');
@@ -631,7 +634,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const asOf = p.from ? 'From the last session, ' + new Date(p.from).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) + ' ET' : p.updated ? 'Scored ' + ago2(Date.parse(p.updated)) + ' · ' + sess : '';
     let body;
     if (!S.run) body = rowsBox(skel(6), 'padding:14px');
-    else if (!L.length) body = rowsBox('<div class="err">' + (S.run.err ? 'The radar isn’t loading right now. Retrying every 30 seconds.' : 'Nothing is starting to run right now.') + '</div>');
+    else if (!L.length) body = rowsBox(S.run.err && window.JT_PRIV ? srvOnly('The radar', '#radar') : '<div class="err">' + (S.run.err ? 'The radar isn’t loading right now. Retrying every 30 seconds.' : 'Nothing is starting to run right now.') + '</div>');
     else body = rowsBox(L.map((x) => { const pr = +x.price, r = +x.change_ratio; const c = pr - pr / (1 + r);
       return moverBlock(x.symbol, rs, '<a class="row" href="#stock/' + encodeURIComponent(x.symbol) + '" style="align-items:flex-start;padding:12px 0">' + tl(x.symbol, 38) + '<span class="nm"><b>' + E(x.symbol) + '</b><small>' + E(x.name || nameOf(x.symbol)) + '</small><span class="stl">' + setupChip(x.symbol, rs) + factLine(x.symbol, rs) + '</span>' + whyLine3(x.symbol) + '<small class="why" style="color:' + BL.b3 + ';white-space:normal">Radar: ' + E((x.why || []).filter((w) => !/^news:/.test(w)).slice(0, 2).join(' · ') || 'no standout signal') + '</small></span><span style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">' + qv(pr, c, r * 100) + scoreRing(x.score) + '</span></a>'); }).join(''));
     return '<div class="wrap">' + backbar('Jump radar', '#movers') + head('Starting to run', asOf) + '<div style="margin-top:12px">' + body + '</div>' +
@@ -867,7 +870,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     let body;
     if (S.anTab === 'live') {
       const an = S.an.feed; const rows = an && an.p && an.p.data;
-      body = chipsHTML(F, S.anF, 'data-anf') + (!an || (!rows && !an.err) ? rowsBox(skel(6), 'padding:14px;margin-top:10px') : an.err ? rowsBox('<div class="err">Yahoo is refusing the analyst-history request from our data feed right now, so there’s nothing live to show (we don’t show old calls as new). Retrying every minute. The Weekly roundup tab has the saved list.</div>', 'margin-top:10px') :
+      body = chipsHTML(F, S.anF, 'data-anf') + (!an || (!rows && !an.err) ? rowsBox(skel(6), 'padding:14px;margin-top:10px') : an.err && window.JT_PRIV ? rowsBox(srvOnly('Analyst calls history', '#analysts'), 'margin-top:10px') : an.err ? rowsBox('<div class="err">Yahoo is refusing the analyst-history request from our data feed right now, so there’s nothing live to show (we don’t show old calls as new). Retrying every minute. The Weekly roundup tab has the saved list.</div>', 'margin-top:10px') :
         (rows.filter(keep).length ? rowsBox(rows.filter(keep).slice(0, 80).map((a) => anRow(a, true)).join(''), 'margin-top:10px') : rowsBox('<div class="err">No matching calls in the last 7 days.</div>', 'margin-top:10px'))) +
         '<p class="note">Last 7 days for your watchlist, your holdings and ' + AN_UNI.length + ' large caps. Source: Yahoo Finance analyst history' + (an && an.t ? ', checked ' + ago2(an.t) : '') + '. Yahoo doesn’t give analyst names or note links.' + (an && an.p && an.p.failed && an.p.failed.length ? ' ' + an.p.failed.length + ' tickers didn’t load this time (' + E(an.p.failed.slice(0, 6).join(', ')) + (an.p.failed.length > 6 ? '…' : '') + '); retrying in a minute.' : '') + '</p>';
     } else {
