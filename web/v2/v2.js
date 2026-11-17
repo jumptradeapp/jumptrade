@@ -74,7 +74,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   // ---------- state + data ----------
   const S = { q: {}, spark: {}, pc: {}, bars: {}, news: null, sectors: null, setups: null, earn: null, err: {}, t: {} };
   const call = (tool, input) => Promise.race([window.claude.use('mcp').then((m) => m.callTool('Webull', tool, input)).then((r) => r.payload), new Promise((_, no) => setTimeout(() => no({ code: 'timeout' }), 20000))]);
-  const wl = () => { try { const v = JSON.parse(localStorage.getItem('jt.webwl') || 'null'); if (v && Array.isArray(v.mine) && v.mine.length && !(v.mine.join(',') === 'NVDA,TSLA,AAPL,AMD,PLTR,SOFI' && !localStorage.getItem('jt.wlown'))) return v.mine.slice(0, 6); /* same rule as shim.js: the old sample list doesn't count as yours */ } catch (e) {} return null; };
+  const wl = () => { if (window.V2X && V2X.wlFull) { const L = V2X.wlFull(); return L.length ? L.slice(0, 6) : null; } try { const v = JSON.parse(localStorage.getItem('jt.webwl') || 'null'); if (v && Array.isArray(v.mine) && v.mine.length && !(v.mine.join(',') === 'NVDA,TSLA,AAPL,AMD,PLTR,SOFI' && !localStorage.getItem('jt.wlown'))) return v.mine.slice(0, 6); /* same rule as shim.js: the old sample list doesn't count as yours */ } catch (e) {} return null; };
   const WL_SUGGEST = ['NVDA', 'AAPL', 'TSLA'];
   const wlSyms = () => wl() || WL_SUGGEST;
   const IDX = ['SPY', 'QQQ', 'DIA', 'IWM'];
@@ -325,7 +325,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const have = L.map((x) => S.q[x]).filter((q) => q && isFinite(q.pct)); const up = have.filter((q) => q.pct > 0).length, dn = have.filter((q) => q.pct < 0).length;
     const tot = have.reduce((a, q) => a + q.pct * 10, 0); const flat = Math.abs(tot) < 0.5;
     const sum = have.length >= 2 ? '<div class="wsum2"><b>' + up + ' up · ' + dn + ' down today' + (flat ? '' : ' · <span class="' + (tot > 0 ? 'up' : 'dn') + '">' + (tot > 0 ? '+' : '−') + '$' + Math.abs(Math.round(tot)).toLocaleString('en-US') + '</span>') + '</b><small>' + (flat ? 'Flat overall today' : 'If you’d put $1,000 in each' + (own ? '' : ' of these') + ', you’d be ' + (tot > 0 ? 'up' : 'down') + ' $' + Math.abs(Math.round(tot)).toLocaleString('en-US') + ' today') + '</small></div>' : '';
-    return rowsBox(sum + V5.map((x) => srow(x, 64)).join('')) + (own ? '' : '<p class="note">Suggested stocks. Add your own from any stock page and they show here.</p>');
+    return (window.V2X && V2X.listPicker ? V2X.listPicker() : '') + rowsBox(sum + V5.map((x) => srow(x, 64)).join('')) + (own ? '' : '<p class="note">Suggested stocks. Add your own from any stock page and they show here.</p>');
   }
   function moves() {
     const st = (S.setups || []).filter((x) => x && x.symbol).slice(0, 3);

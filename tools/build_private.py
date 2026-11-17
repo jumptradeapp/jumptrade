@@ -5,7 +5,7 @@ if not os.path.exists(DST+'/classic.html'): shutil.copy(DST+'/index.html',DST+'/
 os.makedirs(DST+'/v2/img',exist_ok=True)
 for f in ['v2.css','patterns.json']: shutil.copy(SRC+'/v2/'+f,DST+'/v2/'+f)
 for f in os.listdir(SRC+'/v2/img'): shutil.copy(SRC+'/v2/img/'+f,DST+'/v2/img/'+f)
-shutil.copy('/tmp/priv/priv.js',DST+'/v2/priv.js')
+shutil.copy(os.path.join(os.path.dirname(os.path.abspath(__file__)),'priv.js'),DST+'/v2/priv.js')
 def fix(s):
     s=s.replace('"/v2/','"v2/').replace("'/v2/","'v2/").replace("'/lg/","'lg/").replace('/classic.html#','classic.html#')
     return s

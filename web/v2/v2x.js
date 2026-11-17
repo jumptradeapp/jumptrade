@@ -98,11 +98,38 @@
 
   // ---------- watchlist storage (same key as classic + v2 Today) ----------
   const DEF_WL = 'NVDA,TSLA,AAPL,AMD,PLTR,SOFI';
-  function wlFull() { const v = lsGet('jt.webwl', null); if (v && Array.isArray(v.mine) && v.mine.length && !(v.mine.join(',') === DEF_WL && !localStorage.getItem('jt.wlown'))) return v.mine.slice(); return []; }
-  function wlSave(L) { const v = lsGet('jt.webwl', {}) || {}; v.mine = L; lsSet('jt.webwl', v); try { localStorage.setItem('jt.wlown', '1'); } catch (e) {} }
+  // Watchlists: your own in-app lists, your Webull lists (private copy), and lists made automatically
+  // from model portfolios and portfolios you build. One list is "active": the home tile and the Watchlist page show it.
+  function wlOld() { const v = lsGet('jt.webwl', null); if (v && Array.isArray(v.mine) && v.mine.length && !(v.mine.join(',') === DEF_WL && !localStorage.getItem('jt.wlown'))) return v.mine.slice(); return []; }
+  function LS() { let v = lsGet('jt.lists', null); if (!v || !Array.isArray(v.lists) || !v.lists.length) { v = { active: 'app:main', lists: [{ id: 'app:main', name: 'My list', syms: window.JT_PRIV ? [] : wlOld() }], fresh: !!window.JT_PRIV }; lsSet('jt.lists', v); } return v; }
+  function allLists() {
+    const v = LS(); const out = v.lists.map((l) => ({ id: l.id, name: l.name, src: 'app', syms: l.syms || [] }));
+    (window.JT_WB || []).forEach((w) => out.push({ id: 'wb:' + w.id, name: w.name, src: 'webull', syms: w.syms }));
+    const j = file('/models.json'); if (j && j.models) j.models.filter((m) => (m.positions || []).length).forEach((m) => out.push({ id: 'model:' + m.id, name: m.name, src: 'model', syms: (m.positions || []).map((p) => p.etf || p.s || p.symbol).filter(Boolean) }));
+    (lsGet('jt.builtl', []) || []).forEach((b) => out.push({ id: 'built:' + b.id, name: b.name, src: 'built', syms: b.syms || [] }));
+    return out;
+  }
+  function activeList() { const v = LS(); const L = allLists(); if (v.fresh && window.JT_WB && JT_WB.length) { const c = JT_WB.find((w) => /core/i.test(w.name)) || JT_WB[0]; v.active = 'wb:' + c.id; delete v.fresh; lsSet('jt.lists', v); } return L.find((l) => l.id === v.active) || L[0]; }
+  function mirror(syms) { const o = lsGet('jt.webwl', {}) || {}; o.mine = syms || []; lsSet('jt.webwl', o); try { localStorage.setItem('jt.wlown', '1'); } catch (e) {} } // older parts of the app (alerts, news) read this
+  function wlFull() { const l = activeList(); if (l.src === 'webull' && !l.syms && window.JT_WBLOAD) { JT_WBLOAD(l.id.slice(3)).then(() => { mirror((activeList().syms || [])); R(); }).catch(() => {}); return []; } return (l.syms || []).slice(); }
+  function wlSave(L) { const l = activeList(); const v = LS();
+    if (l.src === 'app') { const it = v.lists.find((x) => x.id === l.id); it.syms = L; lsSet('jt.lists', v); }
+    else if (l.src === 'webull') { if (window.JT_WBSET) JT_WBSET(l.id.slice(3), L); }
+    else { V().toast('This list follows its model and can’t be edited. Make your own list to change it.'); return false; }
+    mirror(L); return true; }
+  function setActive(id) { const v = LS(); v.active = id; delete v.fresh; lsSet('jt.lists', v); mirror(wlFull()); R(); }
+  function newList(name) { name = String(name || '').trim().slice(0, 30); if (!name) return; const v = LS(); const id = 'app:' + Date.now().toString(36); v.lists.push({ id, name, syms: [] }); v.active = id; delete v.fresh; lsSet('jt.lists', v); mirror([]); R(); V().toast('Created “' + name + '”'); }
+  function listPicker(full) {
+    const L = allLists(), a = activeList(); const grp = (src, lab) => { const g = L.filter((l) => l.src === src); return g.length ? '<optgroup label="' + lab + '">' + g.map((l) => '<option value="' + E(l.id) + '"' + (l.id === a.id ? ' selected' : '') + '>' + E(l.name) + '</option>').join('') + '</optgroup>' : ''; };
+    const tag = { app: 'In app', webull: 'Webull', model: 'Model', built: 'Built portfolio' }[a.src];
+    return '<div class="lpk"><label class="lpsel"><span>' + E(a.name) + '</span><em>' + tag + '</em>' + ic('chev', 14, 2.4) + '<select data-lpick aria-label="Choose a watchlist">' + grp('app', 'In-app lists') + grp('webull', 'Webull lists') + grp('model', 'Model portfolios') + grp('built', 'Portfolios you built') + '<option value="__new">+ New list…</option></select></label>' +
+      (full && a.src === 'app' && a.id !== 'app:main' ? '<button class="lpx" data-lpdel="' + E(a.id) + '">Delete list</button>' : '') + '</div>';
+  }
   const inWl = (s) => wlFull().indexOf(s) >= 0;
-  function wlToggle(s) { const L = wlFull(); const i = L.indexOf(s); if (i >= 0) L.splice(i, 1); else L.unshift(s); wlSave(L); V().toast(i >= 0 ? s + ' removed from your watchlist' : s + ' added to your watchlist'); R(); }
-  X.wlFull = wlFull;
+  function wlToggle(s) { const L = wlFull(); const i = L.indexOf(s); if (i >= 0) L.splice(i, 1); else L.unshift(s); if (wlSave(L) === false) return; V().toast(i >= 0 ? s + ' removed from ' + activeList().name : s + ' added to ' + activeList().name); R(); }
+  X.wlFull = wlFull; X.listPicker = listPicker; X.activeList = activeList; X.allLists = allLists;
+  D.addEventListener('change', (e) => { const t = e.target; if (!t || !t.dataset || t.dataset.lpick == null) return; if (t.value === '__new') { const n = prompt('Name your new list'); if (n) newList(n); else R(); return; } setActive(t.value); if (window.V2 && V2.render) V2.render(); });
+  D.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-lpdel]'); if (!b) return; const v = LS(); const it = v.lists.find((x) => x.id === b.dataset.lpdel); if (!it || !confirm('Delete “' + it.name + '”?')) return; v.lists = v.lists.filter((x) => x.id !== it.id); v.active = 'app:main'; lsSet('jt.lists', v); mirror(wlFull()); R(); });
 
   // ---------- menu: every page, grouped like the classic menu ----------
   const MENU = [
@@ -141,9 +168,9 @@
   // one easy line per stock (logo, ticker + company, today's chart, price with $ and % change), live prices, swipe-free remove.
   st.wsort = lsGet('jt.wsort', 'move'); const wSpk = {};
   function watchScreen() {
-    const L = wlFull(); st.vis = L; quotes(L);
+    const L = wlFull(); st.vis = L; quotes(L); const AL = activeList(); const RO = AL.src === 'model' || AL.src === 'built';
     const SUG = ['NVDA', 'AAPL', 'MSFT', 'TSLA', 'AMD', 'PLTR', 'AMZN', 'META', 'GOOGL', 'AVGO'];
-    const add = '<div class="xadd"><input id="xwa" class="xin" placeholder="Add a ticker, e.g. NVDA" autocapitalize="characters" autocomplete="off" spellcheck="false"><button class="xbtn" data-wadd="#xwa">Add</button></div>';
+    const add = listPicker(true) + (RO ? '' : '<div class="xadd"><input id="xwa" class="xin" placeholder="Add a ticker, e.g. NVDA" autocapitalize="characters" autocomplete="off" spellcheck="false"><button class="xbtn" data-wadd="#xwa">Add</button></div>');
     if (!L.length) { st.vis = SUG; quotes(SUG);
       return wrap(V().topbar() + V().head('Watchlist', 'Build your list') + add + '<div style="margin-top:10px">' + V().rowsBox('<div class="err" style="text-align:left">Your watchlist is empty. Add a ticker above, tap ☆ on any stock page, or tap + on a suggestion below.</div>', 'padding:4px 14px') + '</div>' +
         '<div class="lab">Popular to start with</div>' + V().rowsBox(SUG.map((s) => wRow(s, true)).join('')) + note('Suggestions with live prices, not your list. Nothing is added until you tap +.')); }
@@ -157,7 +184,7 @@
     const rows = srt ? Q.slice().sort(srt) : Q;
     const seg = '<div class="seg" style="margin-top:12px">' + [['move', 'Biggest move'], ['up', 'Gainers'], ['down', 'Losers'], ['az', 'A–Z']].map((x) => '<span class="' + (st.wsort === x[0] ? 'on' : '') + '" data-wsort="' + x[0] + '">' + x[1] + '</span>').join('') + '</div>';
     return wrap(V().topbar() + V().head('Watchlist', L.length + ' stocks · ' + up + ' up · ' + dn + ' down · live') + add + '<div style="margin-top:12px">' + sum + '</div>' + seg +
-      '<div style="margin-top:12px">' + V().rowsBox(rows.map((r) => wRow(r.s)).join('')) + '</div>' + note('Saved to your account and this device. Tap a stock for its chart, the call and news; ✕ removes it.'));
+      '<div style="margin-top:12px">' + V().rowsBox(rows.map((r) => wRow(r.s)).join('')) + '</div>' + note('' + (RO ? 'This list follows its portfolio automatically.' : AL.src === 'webull' ? 'Changes here update this list in Webull too.' : 'Saved on this device.') + ' Tap a stock for its chart, the call and news.'));
   }
   function wRow(s, sug) {
     const x = V().S.q[s]; const up = !x || (x.chg || 0) >= 0;
@@ -264,7 +291,7 @@
     let pick = all.find((x) => x.id === st.bt); let miss = '';
     if (!pick && st.btq) { const q = st.btq.toLowerCase(); let best = null, bs = 0; all.forEach((t) => { const sc = (t.keys || []).reduce((a, k) => a + (q.indexOf(k) >= 0 ? 1 : 0), 0) + (q.indexOf(t.name.toLowerCase()) >= 0 ? 3 : 0); if (sc > bs) { bs = sc; best = t; } }); if (best) pick = best; else miss = st.btq; }
     let res = '';
-    if (pick) { const syms = pick.w.map((x) => x.s); quotes(syms); st.vis = syms; const amt = +st.amt || 0; let used = 0;
+    if (pick) { const syms = pick.w.map((x) => x.s); quotes(syms); st.vis = syms; { const B = lsGet('jt.builtl', []) || []; if (!B.some((b) => b.id === pick.id)) { B.unshift({ id: pick.id, name: pick.name, syms }); lsSet('jt.builtl', B.slice(0, 20)); } } const amt = +st.amt || 0; let used = 0;
       const rows = pick.w.map((x) => { const q = V().S.q[x.s]; const dol = amt * x.w; const sh = q && q.price ? Math.floor(dol / q.price) : null; if (sh != null) used += sh * q.price; return Object.assign({}, x, { dol: dol, sh: sh, q: q }); });
       res = '<div class="lab">' + E(pick.name) + '</div>' + card('<p class="xp">' + E(pick.blurb || '') + (pick.how ? ' ' + E(pick.how) : '') + '</p>') +
         tbl('build', [['sym', 'Symbol', (r) => symCell(r.s), (r) => r.s], ['px', 'Price', (r) => '<b>' + (r.q ? V().px(r.q.price) : '—') + '</b>', (r) => (r.q ? r.q.price : null)], ['pct', 'Chg %', (r) => (r.q ? '<b class="' + cl(r.q.pct) + '">' + V().pct(r.q.pct) + '</b>' : '—'), (r) => (r.q ? r.q.pct : null)], ['w', 'Weight', (r) => (r.w * 100).toFixed(1) + '%', (r) => r.w], ['d', 'Dollars', (r) => money(r.dol), (r) => r.dol], ['sh', 'Shares', (r) => (r.sh == null ? '…' : r.sh ? '<b>' + r.sh + '</b>' : '<small>fractional</small>'), (r) => r.sh], ['role', 'Role', (r) => E(r.role || r.d || ''), (r) => r.role || '']], rows, { href: (r) => '#stock/' + r.s }) +
@@ -645,7 +672,7 @@
     const t = e.target; let b;
     if ((b = t.closest('[data-xsort]'))) { const p = b.dataset.xsort.split(':'); const o = st.sort[p[0]]; st.sort[p[0]] = o && o.k === p[1] ? { k: p[1], d: o.d === 'desc' ? 'asc' : 'desc' } : { k: p[1], d: p[1] === 'sym' || p[1] === 'nm' ? 'asc' : 'desc' }; R(); return; }
     if ((b = t.closest('[data-wsort]'))) { st.wsort = b.dataset.wsort; lsSet('jt.wsort', st.wsort); R(); return; }
-    if ((b = t.closest('[data-wrm]'))) { e.stopPropagation(); const L = wlFull().filter((x) => x !== b.dataset.wrm); wlSave(L); V().toast(b.dataset.wrm + ' removed'); R(); return; }
+    if ((b = t.closest('[data-wrm]'))) { e.stopPropagation(); const L = wlFull().filter((x) => x !== b.dataset.wrm); if (wlSave(L) === false) return; V().toast(b.dataset.wrm + ' removed'); R(); return; }
     if ((b = t.closest('[data-wadd]'))) { addWl(b.dataset.wadd === '#xwa' ? val('xwa') : b.dataset.wadd); return; }
     if ((b = t.closest('tr[data-href]')) && !t.closest('button,a')) { location.hash = b.dataset.href; return; }
     if ((b = t.closest('[data-xnk]'))) { st.nk = b.dataset.xnk; R(); return; }

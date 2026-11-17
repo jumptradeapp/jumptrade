@@ -41,18 +41,20 @@
         if (window.V2SETREAL) V2SETREAL(true); V.fastSnap(V.HOLD_SYMS).then(() => V.sparks(V.HOLD_SYMS).catch(() => {})).then(() => V.bars && V.bars(V.HOLD_SYMS).catch(() => {})).then(V.render).catch(V.render); V.render(); });
     }).catch(() => {});
   }
-  // your Webull watchlist: shown here, and adds/removes go back to Webull
-  let WL = null;
+  // your Webull watchlists: listed in the app's watchlist picker; a list's stocks load when you pick it,
+  // and adds/removes on a Webull list go back to Webull.
+  const SKIP = /^(CN|HK|My Bonds|Crypto|Mutual Funds|Events|Portfolios)$/;
   function loadWatch() {
-    tool('get_watchlists', {}).then((p) => { const L = arr(p); if (!L.length) return; WL = L[0].watchlist_id;
-      return tool('get_watchlist_instruments', { watchlist_id: WL }).then((q) => { const syms = arr(q).map((x) => x.symbol).filter((s) => /^[A-Z.]{1,6}$/.test(s || ''));
-        const v = { mine: syms }; RAW.call(localStorage, 'jt.webwl', JSON.stringify(v)); RAW.call(localStorage, 'jt.wlown', '1'); if (window.V2) V2.render(); }); }).catch(() => {});
+    tool('get_watchlists', {}).then((p) => { const L = arr(p).filter((w) => w && w.watchlist_id && !SKIP.test(w.name || '')); if (!L.length) return;
+      const old = {}; (window.JT_WB || []).forEach((w) => { old[w.id] = w.syms; });
+      window.JT_WB = L.map((w) => ({ id: w.watchlist_id, name: w.name, syms: old[w.watchlist_id] || null }));
+      if (window.V2) V2.render(); }).catch(() => {});
   }
-  const RAW = Storage.prototype.setItem;
-  Storage.prototype.setItem = function (k, val) {
-    if (this === localStorage && k === 'jt.webwl' && WL) { try { const was = (JSON.parse(localStorage.getItem(k) || '{}').mine) || [], now = (JSON.parse(val || '{}').mine) || [];
-      const add = now.filter((s) => was.indexOf(s) < 0), rm = was.filter((s) => now.indexOf(s) < 0);
-      if (add.length) tool('add_watchlist_instruments', { watchlist_id: WL, symbols: add, category: 'US_STOCK' }).catch(() => {}); if (rm.length) tool('remove_watchlist_instruments', { watchlist_id: WL, symbols: rm, category: 'US_STOCK' }).catch(() => {}); } catch (e) {} }
-    return RAW.call(this, k, val); };
+  window.JT_WBLOAD = (id) => { const w = (window.JT_WB || []).find((x) => x.id === id); if (!w) return Promise.resolve();
+    if (w.busy) return w.busy; w.busy = tool('get_watchlist_instruments', { watchlist_id: id }).then((q) => { w.syms = arr(q).map((x) => x.symbol).filter((s) => /^[A-Z.]{1,6}$/.test(s || '')); }).catch(() => { w.syms = w.syms || []; }).then(() => { w.busy = null; }); return w.busy; };
+  window.JT_WBSET = (id, now) => { const w = (window.JT_WB || []).find((x) => x.id === id); if (!w) return; const was = w.syms || [];
+    const add = now.filter((s) => was.indexOf(s) < 0), rm = was.filter((s) => now.indexOf(s) < 0); w.syms = now.slice();
+    if (add.length) tool('add_watchlist_instruments', { watchlist_id: id, symbols: add, category: 'US_STOCK' }).catch(() => {});
+    if (rm.length) tool('remove_watchlist_instruments', { watchlist_id: id, symbols: rm, category: 'US_STOCK' }).catch(() => {}); };
   (function wait(n) { if (window.V2 && window.claude && window.claude.use) { loadAccounts(); loadWatch(); setInterval(() => { if (!document.hidden) loadAccounts(); }, 60000); return; } if (n < 100) setTimeout(() => wait(n + 1), 200); })(0);
 })();
