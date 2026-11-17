@@ -1114,6 +1114,51 @@ async function aiCall(env, system, user, maxTokens) {
 const aiKey = (env) => { if (!env.ANTHROPIC_API_KEY) { const k = Object.keys(env).find((x) => x.trim().toUpperCase() === 'ANTHROPIC_API_KEY'); if (k) env.ANTHROPIC_API_KEY = String(env[k]).trim(); } return !!env.ANTHROPIC_API_KEY; };
 const BH = { wbCall: (...a) => wbCall(...a), aiCall: (...a) => aiCall(...a), vget: (...a) => vget(...a), vput: (...a) => vput(...a), vlease: (...a) => vlease(...a), etNow: () => etNow() };
 // owner-only email controls: who gets the brief, and a "send a test now" button in Admin
+// ---------- owner mode: your real Webull accounts on jumptrade.app, read-only ----------
+// Needs your signed-in owner session AND a recent unlock with your owner password (kept per session for 12 hours).
+// Only three read-only Webull calls are used: account list, balances, positions. No order or trading call exists here.
+const OWN_UNLOCK_MS = 12 * 3600000;
+const b64 = (u8) => btoa(String.fromCharCode(...u8)); const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+async function pwHash(pw, salt) { const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']); return new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: 20000 }, k, 256)); }
+const sameBytes = (a, b) => { if (a.length !== b.length) return false; let d = 0; for (let i = 0; i < a.length; i++) d |= a[i] ^ b[i]; return d === 0; };
+let OWNACC = null; // brief per-server cache so a refresh every minute doesn't hammer Webull
+async function ownerRoutes(url, req, env) {
+  const w = await sessionFrom(req, env, vget).catch(() => null); if (!w || !w.u.owner) return json({ error: 'auth' }, 401);
+  const unlockKey = 'ownunl_' + w.tokHash; const pwRec = await vget(env, 'owner_pw'); const until = +((await vget(env, unlockKey)) || 0); const unlocked = until > Date.now();
+  if (url.pathname === '/api/owner/state') return json({ hasPw: !!pwRec, unlocked, until: unlocked ? until : null });
+  let b = {}; if (req.method === 'POST') { try { b = JSON.parse((await req.text()).slice(0, 2000)); } catch (e) {} }
+  if (url.pathname === '/api/owner/setpw' && req.method === 'POST') {
+    if (pwRec && !unlocked) return json({ error: 'locked', message: 'Unlock first to change the password.' }, 403);
+    const pw = String(b.pw || ''); if (pw.length < 10) return json({ error: 'weak', message: 'Use at least 10 characters.' }, 400);
+    const salt = crypto.getRandomValues(new Uint8Array(16)); await vput(env, 'owner_pw', { salt: b64(salt), hash: b64(await pwHash(pw, salt)), t: Date.now() });
+    await vput(env, unlockKey, Date.now() + OWN_UNLOCK_MS); return json({ ok: true, unlocked: true }); }
+  if (url.pathname === '/api/owner/unlock' && req.method === 'POST') {
+    if (!pwRec) return json({ error: 'no_pw' }, 400);
+    const F = (await vget(env, 'owner_pwfail')) || []; const recent = F.filter((t) => Date.now() - t < 15 * 60000); if (recent.length >= 5) return json({ error: 'slow', message: 'Too many tries. Wait 15 minutes.' }, 429);
+    const ok = sameBytes(await pwHash(String(b.pw || ''), unb64(pwRec.salt)), unb64(pwRec.hash));
+    if (!ok) { recent.push(Date.now()); await vput(env, 'owner_pwfail', recent); return json({ error: 'wrong', message: 'That password didn’t match.' }, 403); }
+    await vput(env, 'owner_pwfail', []); await vput(env, unlockKey, Date.now() + OWN_UNLOCK_MS); return json({ ok: true, until: Date.now() + OWN_UNLOCK_MS }); }
+  if (url.pathname === '/api/owner/lock' && req.method === 'POST') { await vput(env, unlockKey, null); return json({ ok: true }); }
+  if (url.pathname === '/api/owner/accounts') {
+    if (!unlocked) return json({ error: 'locked' }, 403);
+    if (OWNACC && Date.now() - OWNACC.t < 30000) return json(OWNACC.v);
+    const wb = new Webull(env); if (!wb.ready) return json({ error: 'no_webull', message: 'Webull keys aren’t set on the server.' }, 503);
+    const token = await wbToken(env, wb).catch(() => null);
+    const list = (p) => (Array.isArray(p) ? p : (p && (p.data || p.list || p.accounts || p.holdings || p.positions || p.items || p.result)) || []);
+    const r0 = await wb.raw('GET', '/trading/accounts/list', {}, null, token);
+    if (r0.status !== 200) return json({ error: 'webull', status: r0.status, message: 'Webull didn’t allow account access (status ' + r0.status + '). The API key may not include account permission.' }, 502);
+    const accts = list(r0.data).filter((a) => a && a.account_id && !/CRYPTO/i.test(a.account_class || ''));
+    const out = await Promise.all(accts.map(async (a) => {
+      const [rb, rp] = await Promise.all([wb.raw('GET', '/trading/assets/balances/get', { account_id: a.account_id }, null, token), wb.raw('GET', '/trading/assets/positions/list', { account_id: a.account_id }, null, token)]);
+      const bal = rb.status === 200 ? (rb.data && (rb.data.data || rb.data)) || {} : {}; const pos = {};
+      list(rp.status === 200 ? rp.data : []).forEach((x) => { const sym = x.symbol || (x.instrument && x.instrument.symbol) || x.ticker; const q = +x.quantity || +x.qty || 0; if (!sym || !/^[A-Z.]{1,6}$/.test(sym) || !q) return; if (x.instrument_type && !/EQUITY|ETF|STOCK/i.test(x.instrument_type)) return;
+        const cost = +x.cost || (+x.cost_price || +x.avg_cost || 0) * q; pos[sym] = [(pos[sym] ? pos[sym][0] : 0) + q, q ? cost / q : 0]; });
+      return { name: a.account_label || a.account_class_mapping || 'Account', sub: 'Webull ···' + String(a.account_id).slice(-4), cash: +(bal.total_cash_balance || bal.cash_balance || 0) || 0, mv: +(bal.total_market_value || 0) || 0, pos, posStatus: rp.status };
+    }));
+    const v = { at: Date.now(), accounts: out }; OWNACC = { t: Date.now(), v }; return json(v, 200, { 'cache-control': 'no-store' });
+  }
+  return json({ error: 'bad_request' }, 400);
+}
 // invite requests from the landing page: list, send an invite (creates the link and emails it), dismiss. Owner only.
 async function inviteReqRoutes(url, req, env) {
   const w = await sessionFrom(req, env, vget).catch(() => null); if (!w || !w.u.owner) return json({ error: 'auth' }, 401);
@@ -1497,6 +1542,7 @@ export default {
         if (!b || typeof b.data !== 'object') return json({ error: { code: 'bad_request' } }, 400); const cur = await vget(env, k); if (cur && cur.t > (+b.t || 0)) return json(cur); await vput(env, k, { t: +b.t || Date.now(), data: b.data }); return json({ ok: true, t: +b.t }); }
     }
     if (url.pathname.indexOf('/api/admin/invreq') === 0) return inviteReqRoutes(url, req, env);
+    if (url.pathname.indexOf('/api/owner/') === 0) { const r = await ownerRoutes(url, req, env); r.headers.set('cache-control', 'no-store'); return r; }
     if (url.pathname.indexOf('/api/admin/mail') === 0) { const r = await mailRoutes(url, req, env); if (r) return r; }
     if (url.pathname.indexOf('/api/auth/') === 0 || url.pathname.indexOf('/api/admin/') === 0) { const r = await authRoutes(url, req, env, ctx, { vget, vput, json, subId, notifyOwner: (m) => notifyOwner(env, m), lease: (k, ms) => vlease(env, k, ms), release: (k, id) => vrelease(env, k, id) }); if (r) return r; }
     if (url.pathname === '/api/moverwhy') { const W = (await vget(env, 'mwhy')) || { m: {} }; const m = {}; Object.entries(W.m || {}).forEach((e) => { const v = e[1]; m[e[0]] = { v: v.v, kind: v.kind, h: v.h, fresh: v.fresh || null, seen: v.seen }; }); return json({ payload: { t: W.t || 0, session: W.session, m } }); }

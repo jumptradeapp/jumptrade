@@ -1009,3 +1009,12 @@ html body .wrap{max-width:1120px!important;margin-left:auto!important;margin-rig
 .lab>a,.lab .labt,a.sht,.sh>a,.pt2k,.fsort button,.lpLink{position:relative}
 .lab>a:after,.lab .labt:after,a.sht:after,.sh>a:after,.pt2h a.pt2k:after{content:"";position:absolute;left:-8px;right:-8px;top:50%;height:44px;transform:translateY(-50%)}
 html body .stg{font-size:12px!important}html body .fl{font-size:12px!important}html body .hw{font-size:12px!important}
+
+/*owner mode*/
+.own{display:grid;gap:6px;padding:4px 0 2px}.own b{font-size:17px;font-weight:600}.own small{color:var(--fg2);font-size:13.5px;line-height:19px}.own .xbtn{justify-self:start;margin-top:6px;min-height:44px;padding:0 20px}
+.ownBg{position:fixed;inset:0;z-index:10001;background:rgba(2,6,14,.72);display:flex;align-items:flex-end;justify-content:center;padding:16px;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.ownBox{width:100%;max-width:440px;background:#0B1830;border:1px solid rgba(156,203,255,.2);border-radius:22px;padding:22px 20px calc(18px + env(safe-area-inset-bottom,0px));display:grid;gap:10px}
+.ownBox h3{margin:0;font-size:20px}.ownBox p{margin:0;color:#AFC4E0;font-size:14.5px;line-height:21px}.ownBox label{display:grid;gap:6px;font-size:14px;color:#C9DBF2}
+.ownBox input{height:50px;border-radius:12px;border:1px solid rgba(156,203,255,.3);background:rgba(4,12,26,.9);color:#EAF3FF;font:500 17px Inter,system-ui,sans-serif;padding:0 14px}
+.ownMsg{min-height:18px;color:#FF8A84!important;font-size:13.5px!important}.ownRow{display:flex;gap:10px;justify-content:flex-end}.ownRow .xbtn{min-height:46px;padding:0 20px}
+@media (min-width:700px){.ownBg{align-items:center}}

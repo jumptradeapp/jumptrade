@@ -70,7 +70,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   // ---------- brokerage accounts ----------
   const ACCTS = []; // no made-up accounts: empty until a real brokerage is connected (the owner's private copy fills this in)
   // the owner's real Webull accounts (owner session only; everyone else sees $0 and no positions)
-  let REAL = false; window.V2REAL = () => REAL;
+  let REAL = false; window.V2REAL = () => REAL; window.V2SETREAL = (x) => { REAL = !!x; };
   const HOLD_SYMS = Array.from(new Set(ACCTS.reduce((a, x) => a.concat(Object.keys(x.pos)), [])));
 
   // ---------- state + data ----------
@@ -265,7 +265,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   }
   function portCard() {
     if (window.JT_PRIV && !REAL && Date.now() - T0 < 25000) { setTimeout(render, 1500); return card('<div style="position:relative">' + kick('Portfolio') + '<div class="mini" style="margin:6px 0 10px;color:var(--fg2)">Loading your Webull accounts…</div>' + skel(3) + '</div>', 'padding:16px 20px 14px;margin-top:8px', 'pglass pt2'); } // private copy: never flash the demo accounts before the real ones arrive
-    if (!ACCTS.length && !(window.JT_PRIV && Date.now() - T0 < 25000)) return card('<div class="pt2h"><a class="pt2k" href="#portfolio">Portfolio</a><span class="acct2 solo"><i></i>No brokerage connected</span><a class="pt2go" href="#portfolio" aria-label="Open portfolio">' + ic('chev', 20, 2.2) + '</a></div><div class="pt2b">$0<small>.00</small></div><a class="pt2p pt2cn" href="#connect">Connect a brokerage to see your balance</a><div class="pt2gap"></div>', 'margin-top:12px', 'pglass pt2');
+    if (!ACCTS.length && !(window.JT_PRIV && Date.now() - T0 < 25000)) return card('<div class="pt2h"><a class="pt2k" href="#portfolio">Portfolio</a><span class="acct2 solo"><i></i>No brokerage connected</span><a class="pt2go" href="#portfolio" aria-label="Open portfolio">' + ic('chev', 20, 2.2) + '</a></div>' + (window.JT_OWN && JT_OWN.card() ? JT_OWN.card() : '<div class="pt2b">$0<small>.00</small></div><a class="pt2p pt2cn" href="#connect">Connect a brokerage to see your balance</a>') + '<div class="pt2gap"></div>', 'margin-top:12px', 'pglass pt2');
     const all = allCalc(); const c0 = all.c;
     if (!c0.ready) return card('<div style="position:relative">' + kick('Portfolio') + (S.loaded && S.err.q ? '<div class="err">Prices aren’t loading right now, so balances can’t be worked out. Retrying every 30 seconds.</div>' : skel(4)) + '</div>', 'padding:16px 20px 12px;margin-top:12px');
     const cards = [{ a: all.a, c: c0 }].concat(ACCTS.length > 1 ? ACCTS.map((a) => ({ a, c: acctCalc(a) })) : []);
@@ -386,7 +386,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     return rowsBox(S.tg.map((x) => { const lq = curSess() === 'day' ? S.q[x.symbol] : null; const p = lq && lq.pct != null ? lq.pct : +x.change_ratio * 100, pr = lq && lq.price ? lq.price : +x.price, c = lq && lq.chg != null ? lq.chg : isFinite(+x.change) ? +x.change : pr - pr / (1 + p / 100); return '<a class="row" href="#stock/' + encodeURIComponent(x.symbol) + '" style="min-height:62px">' + tl(x.symbol, 36) + '<span class="nm"><b>' + E(x.symbol) + '</b><small>' + E(x.name || nameOf(x.symbol)) + '</small></span><span style="flex:none">' + sp(x.symbol, p >= 0, 52, 24) + '</span><span class="q"><b>' + pxs(pr) + '</b><small class="' + cls(p) + '">' + (c >= 0 ? '+' : '−') + '$' + Math.abs(c).toFixed(Math.abs(c) < 1 ? 2 : 2) + '<i>' + pct(p) + '</i></small></span></a>'; }).join(''));
   }
   // ---------- Filings & approvals (Today): 13F buying, big stakes, FDA & trial news, deals ----------
-  S.fil = 'news'; S.filN = {};
+  S.fil = 'news'; S.filN = {}; if (S.fil === 'f13') S.fil = 'news';
   const recentDay = (d, n) => d && (Date.now() - Date.parse(d + 'T12:00:00')) / 864e5 <= n;
   const updPill = (d) => '<span class="upd">Updated ' + E(shortD(d)) + '</span>';
   const FILQ = { fda: [['FDA approval', /\b(FDA|approv(al|es|ed)|clearance|complete response|CRL|PDUFA|breakthrough designation|fast track)\b/i], ['Phase 3 trial results', /\bphase (1|2|3|i{1,3})\b|\btrial\b|\btopline\b/i]],
@@ -399,7 +399,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     F.forEach((f) => f.h.forEach((h) => { if (!/^[A-Z.]{1,6}$/.test(h[0]) || (h[3] !== 'new' && h[3] !== 'added')) return; (M[h[0]] = M[h[0]] || { s: h[0], n: h[1], f: [], nw: 0 }).f.push(f.fund.split(/ (Capital|Management|Investment|Asset|Group|Global|Associates|Advisors|Partners|Fund|Investors|& Co|Family)\b/)[0]); if (h[3] === 'new') M[h[0]].nw++; }));
     return { F, L: Object.values(M).sort((a, b) => b.f.length - a.f.length || b.nw - a.nw).slice(0, n || 5) }; }
   function filingsTile() {
-    loadFunds(); const k = S.fil; const tabs = [['news', 'News'], ['f13', '13F filings'], ['stake', 'Big stakes'], ['fda', 'FDA & trials'], ['deals', 'Deals']];
+    loadFunds(); const k = S.fil; const tabs = [['news', 'News'], ['stake', 'Big stakes'], ['fda', 'FDA & trials'], ['deals', 'Deals']];
     let body = '';
     if (k === 'news') body = newsRows();
     else if (k === 'f13') { if (!S.funds) body = rowsBox(skel(3), 'padding:14px'); else { const b = fundBuys(); const last = b.F.reduce((m, f) => (f.filed > m ? f.filed : m), '');
@@ -416,6 +416,17 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const DESK = window.matchMedia ? matchMedia('(min-width:1024px)') : { matches: false };
   try { DESK.addEventListener('change', () => render()); } catch (e) {}
   // "Coming up" tile: earnings dates for your stocks in the next two weeks, plus the newest alerts. Hidden when there's nothing.
+  // Recent 13F filings (Today): the funds that just filed, what each newly bought, and the stocks the most funds bought
+  function f13Tile() {
+    loadFunds(); if (!S.funds) return lab('bank', 'Recent 13F filings', 'All funds', '#funds') + rowsBox(skel(3), 'padding:14px'); if (S.funds.err) return '';
+    const F = (S.funds.funds || []).filter((f) => f.h && f.h.length && f.filed).sort((a, b) => b.filed.localeCompare(a.filed) || (b.total || 0) - (a.total || 0)); if (!F.length) return '';
+    const last = F[0].filed; const fresh = F.filter((f) => recentDay(f.filed, 7)).length; const top = F.slice(0, 5); const fb = fundBuys(8);
+    return lab('bank', 'Recent 13F filings', 'All funds', '#funds') + (fresh ? '<p class="filh">' + updPill(last) + fresh + ' funds filed in the last week.</p>' : '') +
+      (fb.L.length ? '<div class="fbuy" style="margin-bottom:10px">' + fb.L.map((x) => { const q = S.q[x.s]; return '<a class="fbc" href="#stock/' + encodeURIComponent(x.s) + '">' + tl(x.s, 30) + '<b>' + E(x.s) + '</b><small>' + x.f.length + ' funds bought</small>' + (q ? '<i class="' + cls(q.pct) + '">' + pct(q.pct) + '</i>' : '') + '</a>'; }).join('') + '</div>' : '') +
+      rowsBox(top.map((f) => { const nw = f.h.filter((h) => h[3] === 'new' && /^[A-Z.]{1,6}$/.test(h[0])).slice(0, 2).map((h) => h[0]); const ad = f.h.filter((h) => h[3] === 'added' && /^[A-Z.]{1,6}$/.test(h[0])).slice(0, 2).map((h) => h[0]);
+        const what = nw.length ? 'New: ' + nw.join(', ') : ad.length ? 'Added: ' + ad.join(', ') : 'No new buys';
+        return '<a class="row" href="#fund/' + encodeURIComponent(f.slug) + '" style="min-height:64px">' + fundMark(f, 36) + '<span class="nm"><b>' + E(f.fund.replace(/ (Capital |Asset |Investment )?(Management|Partners|Group|Advisors|Investors|LP|& Co)$/i, '')) + '</b><small>' + E(shortD(f.filed)) + ' · <span style="color:' + (nw.length ? '#CFE4FF' : 'inherit') + '">' + E(what) + '</span></small></span>' + ic('chev', 18, 2.4) + '</a>'; }).join(''));
+  }
   function comingUp() {
     const td = etNow(); td.setHours(0, 0, 0, 0); const mine = Array.from(new Set(HOLD_SYMS.concat(wlSyms())));
     const ear = (S.earn || []).filter((e) => e && e.date && mine.indexOf(e.symbol) >= 0).map((e) => ({ e, days: Math.round((new Date(e.date + 'T12:00:00') - td) / 864e5) })).filter((x) => x.days >= 0 && x.days <= 14).sort((a, b) => a.days - b.days).slice(0, 4);
@@ -427,9 +438,9 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       al.map((a) => '<a class="row" href="#stock/' + encodeURIComponent(a.s) + '" style="min-height:58px">' + tl(a.s, 32) + '<span class="nm"><b style="font-weight:500">' + a.h + '</b>' + (a.sub ? '<small>' + a.sub + '</small>' : '') + '</span></a>').join(''));
   }
   function today() {
-    if (DESK.matches) return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="dk2"><div class="dkL"><div class="hero ptile">' + RIB + portCard() + '</div>' + filingsTile() + '</div><div class="dkR">' + pulse() + lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + comingUp() + '</div></div></div>';
+    if (DESK.matches) return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="dk2"><div class="dkL"><div class="hero ptile">' + RIB + portCard() + '</div>' + f13Tile() + filingsTile() + '</div><div class="dkR">' + pulse() + lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + comingUp() + '</div></div></div>';
     return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="hero ptile">' + RIB + portCard() + '</div>' + pulse() +
-      lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + comingUp() + filingsTile() + '</div>';
+      lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + f13Tile() + comingUp() + filingsTile() + '</div>';
   }
 
   // ---------- Portfolio ----------
@@ -448,7 +459,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const c = cur.c; const totalVal = all.c.val;
     const ct = '<div style="display:flex;gap:10px;margin-top:14px">' + counter('trend', 'Total gain', c.ready ? (c.gain >= 0 ? '+' : '−') + money(Math.abs(c.gain), 0) : '—', c.ready ? (c.gainPct >= 0 ? '+' : '−') + Math.abs(c.gainPct).toFixed(1) + '%' : '', c.ready && c.gain ? cls(c.gain) : '') + counter('dollar', 'Cash', money(c.cash, 0), on === 0 ? Math.round(c.cash / (totalVal || 1) * 100) + '% of total' : Math.round(c.cash / (c.val || 1) * 100) + '% of account') + '</div>';
     const hl = c.rows.slice().sort((x, y) => y.mv - x.mv).slice(0, S.allHold ? 99 : 5).map((r) => r.sym);
-    const hd = sh('Holdings · ' + E(cur.a.name), c.rows.length > 5 ? (S.allHold ? 'Show less' : 'View all') : '', '#hold', 'layers') + (hl.length ? rowsBox(hl.map((s) => srow(s, 64)).join('')) : c.ready || !ACCTS.length ? rowsBox('<div class="err">No positions. <a href="#connect">Connect a brokerage</a> to see your holdings.</div>', 'padding:14px') : rowsBox(skel(4), 'padding:14px'));
+    const hd = sh('Holdings · ' + E(cur.a.name), c.rows.length > 5 ? (S.allHold ? 'Show less' : 'View all') : '', '#hold', 'layers') + (hl.length ? rowsBox(hl.map((s) => srow(s, 64)).join('')) : c.ready || !ACCTS.length ? (window.JT_OWN && JT_OWN.card() ? card(JT_OWN.card(), 'padding:14px 16px;margin-top:6px') : rowsBox('<div class="err">No positions. <a href="#connect">Connect a brokerage</a> to see your holdings.</div>', 'padding:14px')) : rowsBox(skel(4), 'padding:14px'));
     const link = '<a class="card act" style="margin-top:12px" href="#connect"><span class="ibx">' + tl('BULL', 30) + '</span><span class="tx"><b>Webull accounts</b><small>' + (ACCTS.length ? ACCTS.length + ' linked · add or manage' : 'None connected yet') + '</small></span><span class="chv">' + ic('chev', 22, 2.4) + '</span></a>';
     return swoosh() + '<div class="wrap">' + topbar() + head('Portfolio', 'Your accounts &amp; model portfolios') + seg + car + ct + hd + link + '</div>';
   }
