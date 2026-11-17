@@ -725,3 +725,39 @@ html body .pglass .pline b.up{color:#7BEA8A!important}html body .pglass .pline b
 .pzh2{margin-top:10px}.pzh2>*{margin-top:0!important}
 html[data-x2t="light"] .pulse2 .hbl span:first-child{color:#1F5FB8!important}html[data-x2t="light"] .pulse2 .hbl span:last-child{color:#5B6B82!important}html[data-x2t="light"] .pulse2 .hbt{background:#D5E0EE!important}
 .hero .hcar{margin-top:6px!important}
+
+/* pulse: date/time top right, indexes as one quiet line */
+.pzt{margin-left:auto;font-size:12px;color:var(--fg2);font-weight:500;white-space:nowrap}
+html body .pzi{display:flex!important;gap:16px!important;margin-top:6px!important}
+html body .pzi>div{display:flex!important;align-items:baseline;gap:5px;flex:none!important;padding:0!important;background:none!important;border:0!important}
+html body .pzi small{font-size:12px!important;color:var(--fg2)}html body .pzi b{font-size:13px!important;font-weight:600}
+/* swoops show through the portfolio glass */
+.hero .ribbon{top:52px!important;opacity:.9}
+html:not([data-x2t="light"]) .hero .card.pglass{background:radial-gradient(90% 70% at 0% 0%,rgba(150,195,255,.18),transparent 60%),linear-gradient(160deg,rgba(28,71,122,.80) 0%,rgba(19,54,99,.78) 40%,rgba(11,34,68,.84) 75%,rgba(8,24,51,.90) 100%)!important;-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+.hero .card.pglass{position:relative;z-index:1}
+
+/* portfolio tile G */
+.pt2{color:#fff;position:relative;overflow:visible!important}
+.pt2h{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:3}
+.acct2{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 10px 0 8px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(200,225,255,.16);color:#fff;font:600 13.5px Inter,system-ui,sans-serif;cursor:pointer}
+.acct2 i{width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,#8FC0FF,#2E6DD0);display:inline-block}
+.acct2 svg{transform:rotate(90deg);opacity:.75}.acct2.solo{cursor:default}
+.pt2go{color:#AEC0D8;display:flex;padding:6px;margin-right:-6px}
+.pt2b{text-align:center;font-size:40px;line-height:46px;font-weight:500;letter-spacing:-.03em;margin-top:8px;font-variant-numeric:tabular-nums}
+.pt2b small{font-size:24px;color:#AEC0D8;font-weight:500}
+.pt2p{display:table;margin:6px auto 0;height:26px;line-height:26px;padding:0 11px;border-radius:999px;font-size:13px;font-weight:600;background:rgba(255,255,255,.08);color:#DDE8F4}
+.pt2p.u{background:rgba(123,234,138,.14);color:#7BEA8A}.pt2p.d{background:rgba(255,138,132,.14);color:#FF8A84}
+.pt2c{display:block;width:100%;height:72px;margin-top:12px}.pt2e{height:72px}
+.pt2t{display:flex;gap:4px;background:rgba(255,255,255,.06);border-radius:10px;padding:3px;margin-top:10px}
+.pt2t button{flex:1;height:30px;border:0;background:none;border-radius:8px;color:#AEC0D8;font:600 12.5px Inter,system-ui,sans-serif;cursor:pointer}
+.pt2t button.on{background:rgba(255,255,255,.14);color:#fff}
+.amenu{position:absolute;left:0;right:0;top:44px;z-index:20;border-radius:18px;background:linear-gradient(180deg,#173F70,#0C2549);border:1px solid rgba(200,225,255,.18);box-shadow:0 20px 40px rgba(0,0,0,.45);padding:6px 12px}
+.amenu button{display:flex;align-items:center;gap:12px;width:100%;padding:11px 2px;background:none;border:0;border-top:1px solid rgba(200,225,255,.10);color:#fff;text-align:left;cursor:pointer;font-family:inherit}
+.amenu button:first-child{border-top:0}.amenu i{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#8FC0FF,#2E6DD0);flex:none}
+.am-n{flex:1;min-width:0}.am-n b,.am-v b{display:block;font-size:14.5px;font-weight:600}.am-n small,.am-v small{font-size:12px;color:#AEC0D8}.am-v{text-align:right}.am-v small.up{color:#7BEA8A}.am-v small.dn{color:#FF8A84}
+.amenu em{width:14px;color:#8FC0FF;font-style:normal}
+html body .pt2 *{color:inherit}html body .pglass.pglass.pglass.pt2 .pt2p.u{color:#7BEA8A!important}html body .pglass.pglass.pglass.pt2 .pt2p.d{color:#FF8A84!important}
+html body .pglass.pglass.pglass.pt2 .pt2b small,html body .pglass.pglass.pglass.pt2 .pt2t button,html body .pglass.pglass.pglass.pt2 small{color:#AEC0D8!important}html body .pglass.pglass.pglass.pt2 .pt2t button.on{color:#fff!important}
+html body .pglass.pglass.pglass.pt2 .am-v small.up{color:#7BEA8A!important}html body .pglass.pglass.pglass.pt2 .am-v small.dn{color:#FF8A84!important}
+html[data-x2t="light"] .hero .card.pglass.pt2{padding:6px 4px 4px!important}
+html body .card.pt2 .amenu{position:absolute!important;z-index:30!important}

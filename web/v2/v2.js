@@ -91,7 +91,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     });
   }
   function sparks(list) { return call('get_sparks', { symbols: list.join(',') }).then((p) => { Object.keys(p || {}).forEach((k) => { if (p[k] && p[k].c) { S.spark[k] = p[k].c; S.pc[k] = p[k].pc; } }); }); }
-  function bars(list) { return call('get_stock_bars', { symbols: list, timespan: 'D', count: 25 }).then((p) => { ((p && p.result) || []).forEach((r) => { S.bars[r.symbol] = (r.result || []).map((b) => +b.close); }); }); }
+  function bars(list) { return call('get_stock_bars', { symbols: list, timespan: 'D', count: 300 }).then((p) => { ((p && p.result) || []).forEach((r) => { S.bars[r.symbol] = (r.result || []).map((b) => +b.close); }); }); }
   // if the quote call fails, price what we can from the sparkline call (last 5-minute close vs previous close) so cards never wait forever
   function fillFromSparks() {
     Object.keys(S.spark).forEach((k) => { if (S.q[k] && !S.q[k].approx) return; const c = S.spark[k], pc = +S.pc[k]; const price = c && c.length ? +c[c.length - 1] : NaN; if (!isFinite(price) || !price || !isFinite(pc) || !pc) return; S.q[k] = { price, chg: price - pc, pct: (price - pc) / pc * 100, name: '', approx: 1 }; });
@@ -175,22 +175,54 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   let hcI = 0; S.pOpen = (function () { try { return localStorage.getItem('jt.pOpen') === '1'; } catch (e) { return false; } })();
   D.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-ptog]'); if (!b) return; e.preventDefault(); e.stopPropagation(); S.pOpen = !S.pOpen; try { localStorage.setItem('jt.pOpen', S.pOpen ? '1' : '0'); } catch (x) {} render(); }, true);
   function portOne(a, c, i, n) {
-    const strip = void 0 || [['Today', c.dayPct], ['1 week', c.w1], ['1 month', c.m1]].map((x) => '<div><span>' + x[0] + '</span><b class="' + (x[1] == null ? '' : cls(x[1])) + '">' + (x[1] == null ? '—' : pct(x[1])) + '</b></div>').join('');
+    const strip = [['Today', c.dayPct], ['1 week', c.w1], ['1 month', c.m1]].map((x) => '<div><span>' + x[0] + '</span><b class="' + (x[1] == null ? '' : cls(x[1])) + '">' + (x[1] == null ? '—' : pct(x[1])) + '</b></div>').join('');
     const label = i === 0 ? 'Portfolio' : a.name;
     return card('<div class="ptop" style="position:relative"><div style="display:flex;align-items:center;min-width:0">' + kick(E(label), 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%') + '<span class="mini" style="margin-left:10px;color:var(--fg2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + E(a.sub) + (REAL ? '' : ' · demo') + '</span><a href="#portfolio' + (i ? '/' + i : '') + '" aria-label="Open portfolio" style="margin-left:auto;flex:none">' + ic('chev', 22, 2.2) + '</a></div>' +
-      '<div style="display:flex;align-items:center;gap:14px;margin-top:8px"><div style="flex:none"><div style="font-size:31px;line-height:40px;font-weight:600">' + money(c.val) + '</div><div class="' + cls(c.day) + '" style="font-size:16px;font-weight:500;margin-top:2px">' + chg(c.day) + '<span style="margin-left:10px">' + pct(c.dayPct) + '</span><span class="pday">today</span></div>' +
-        '<div class="pline">' + [['1W', c.w1], ['1M', c.m1]].map((x) => '<span>' + x[0] + ' <b class="' + (x[1] == null ? '' : cls(x[1])) + '">' + (x[1] == null ? '—' : pct(x[1])) + '</b></span>').join('') + '</div></div>' +
+      '<div style="display:flex;align-items:center;gap:14px;margin-top:8px"><div style="flex:none"><div style="font-size:31px;line-height:40px;font-weight:600">' + money(c.val) + '</div><div class="' + cls(c.day) + '" style="font-size:16px;font-weight:500;margin-top:2px">' + chg(c.day) + '<span style="margin-left:10px">' + pct(c.dayPct) + '</span></div></div>' +
       '<div class="pchart" style="flex:1;min-width:0;height:58px;display:flex;justify-content:flex-end">' + mtn(c.series, 120, 58, c.val - c.day, c.day >= 0) + '</div></div>' +
       '<button class="ptog' + (S.pOpen ? ' on' : '') + '" data-ptog="1" aria-expanded="' + !!S.pOpen + '"><span>Top performers today</span><i>' + ic('chev', 16, 2.4) + '</i></button>' + (S.pOpen ? '<div class="rows" style="padding:0!important">' + (c.top.length ? perf(c.top, 3, 60) : '<div class="err">No stock holdings in this account.</div>') + '</div>' : '') +
-      '</div>', 'padding:16px 20px 14px', 'pglass', 'div', ' data-go="#portfolio' + (i ? '/' + i : '') + '"');
+      '</div><div class="strip" style="margin-top:6px">' + strip + '</div>', 'padding:16px 20px 12px', 'pglass', 'div', ' data-go="#portfolio' + (i ? '/' + i : '') + '"');
+  }
+  // Today's portfolio tile: account menu (top left), centered balance, gain pill, area chart, 1D/1W/1M/3M/1Y tabs
+  const lsg = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } };
+  S.acct = +lsg('jt.acct', '0') || 0; S.tf = lsg('jt.tf', '1D'); S.amenu = false;
+  const TF = [['1D', 0, 'today'], ['1W', 5, 'past week'], ['1M', 21, 'past month'], ['3M', 63, 'past 3 months'], ['1Y', 252, 'past year']];
+  function tfSeries(a, n, val) {
+    const ks = Object.keys(a.pos); if (!ks.length) return null; const out = [];
+    for (const k of ks) { const b = S.bars[k]; if (!b || b.length <= n) return null; }
+    for (let k = n; k >= 1; k--) out.push(ks.reduce((t, s) => t + a.pos[s][0] * S.bars[s][k], a.cash));
+    out.push(val); return out;
+  }
+  function areaChart(v, up) {
+    if (!v || v.length < 2) return '<div class="pt2c pt2e"></div>';
+    const W = 300, H = 72, mn = Math.min.apply(null, v), mx = Math.max.apply(null, v), r = mx - mn || 1;
+    const pts = v.map((y, i) => [(i / (v.length - 1)) * W, 6 + (1 - (y - mn) / r) * (H - 12)]);
+    const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+    const last = pts[pts.length - 1]; void up;
+    return '<svg class="pt2c" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="pt2f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7BB3FF" stop-opacity=".30"/><stop offset="1" stop-color="#7BB3FF" stop-opacity="0"/></linearGradient></defs><path d="' + d + ' L' + W + ' ' + H + ' L0 ' + H + 'Z" fill="url(#pt2f)"/><path d="' + d + '" fill="none" stroke="#8FC0FF" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/><circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="3.5" fill="#fff" class="pt2d"/></svg>';
   }
   function portCard() {
     const all = allCalc(); const c0 = all.c;
-    if (!c0.ready) return card('<div style="position:relative">' + kick('Portfolio') + (S.loaded && S.err.q ? '<div class="err">Prices aren’t loading right now, so balances can’t be worked out. Retrying every 30 seconds.</div>' : skel(4)) + '</div>', 'padding:16px 20px 12px;margin-top:16px');
+    if (!c0.ready) return card('<div style="position:relative">' + kick('Portfolio') + (S.loaded && S.err.q ? '<div class="err">Prices aren’t loading right now, so balances can’t be worked out. Retrying every 30 seconds.</div>' : skel(4)) + '</div>', 'padding:16px 20px 12px;margin-top:12px');
     const cards = [{ a: all.a, c: c0 }].concat(ACCTS.length > 1 ? ACCTS.map((a) => ({ a, c: acctCalc(a) })) : []);
-    if (cards.length === 1) return '<div style="margin-top:16px">' + portOne(all.a, c0, 0, 1) + '</div>';
-    return '<div class="hcar" id="hcar">' + cards.map((x, i) => portOne(x.a, x.c, i, cards.length)).join('') + '</div><div class="dots" id="hdots">' + cards.map((_, i) => '<i class="' + (i === hcI ? 'on' : '') + '"></i>').join('') + '</div>';
+    const idx = Math.min(S.acct, cards.length - 1), a = cards[idx].a, c = cards[idx].c;
+    const tf = TF.find((x) => x[0] === S.tf) || TF[0];
+    let ser, amt, pc;
+    if (tf[1] === 0) { ser = c.series; amt = c.day; pc = c.dayPct; }
+    else { ser = tfSeries(a, tf[1], c.val); const base = ser ? ser[0] : null; amt = base ? c.val - base : null; pc = base ? (c.val / base - 1) * 100 : null; }
+    const m = money(c.val), dot = m.lastIndexOf('.');
+    const name = idx === 0 ? 'All accounts' : a.name;
+    const menu = cards.length > 1 ? '<button class="acct2" data-acctmenu="1" aria-haspopup="listbox" aria-expanded="' + S.amenu + '"><i></i>' + E(name) + ic('chev', 14, 2.4) + '</button>' : '<span class="acct2 solo"><i></i>' + E(name) + '</span>';
+    const list = S.amenu ? '<div class="amenu" role="listbox">' + cards.map((x, k) => '<button role="option" aria-selected="' + (k === idx) + '" data-acct="' + k + '"><i></i><span class="am-n"><b>' + E(k === 0 ? 'All accounts' : x.a.name) + '</b><small>' + E(x.a.sub || '') + '</small></span><span class="am-v"><b>' + money(x.c.val) + '</b><small class="' + cls(x.c.dayPct) + '">' + pct(x.c.dayPct) + '</small></span>' + (k === idx ? '<em>✓</em>' : '<em></em>') + '</button>').join('') + '</div>' : '';
+    return card('<div class="pt2h">' + menu + '<a class="pt2go" href="#portfolio' + (idx ? '/' + idx : '') + '" aria-label="Open portfolio">' + ic('chev', 20, 2.2) + '</a></div>' + list +
+      '<div class="pt2b">' + (dot > 0 ? m.slice(0, dot) + '<small>' + m.slice(dot) + '</small>' : m) + '</div>' +
+      '<div class="pt2p ' + (amt == null ? '' : amt >= 0 ? 'u' : 'd') + '">' + (amt == null ? 'Loading ' + tf[2] + '…' : (amt >= 0 ? '▲ ' : '▼ ') + chg(amt).replace(/^[+−-]/, '') + ' · ' + pct(Math.abs(pc)).replace(/^[+−-]/, '') + ' ' + tf[2]) + '</div>' +
+      areaChart(ser, (amt || 0) >= 0) +
+      '<div class="pt2t" role="tablist">' + TF.map((x) => '<button role="tab" aria-selected="' + (x[0] === tf[0]) + '" class="' + (x[0] === tf[0] ? 'on' : '') + '" data-tf="' + x[0] + '">' + x[0] + '</button>').join('') + '</div>',
+      'padding:14px 16px 14px;margin-top:8px', 'pglass pt2');
   }
+  D.addEventListener('click', (e) => { const t = e.target.closest && e.target.closest('[data-acctmenu],[data-acct],[data-tf]'); if (!t) { if (S.amenu && !(e.target.closest && e.target.closest('.amenu'))) { S.amenu = false; render(); } return; } e.preventDefault(); e.stopPropagation();
+    if (t.dataset.acctmenu) S.amenu = !S.amenu; else if (t.dataset.acct != null) { S.acct = +t.dataset.acct; S.amenu = false; try { localStorage.setItem('jt.acct', S.acct); } catch (x) {} } else { S.tf = t.dataset.tf; try { localStorage.setItem('jt.tf', S.tf); } catch (x) {} } render(); }, true);
   function wireHome(keep) {
     const car = D.getElementById('hcar'), dots = D.getElementById('hdots'); if (!car) return;
     const w = () => car.clientWidth + 12; car.scrollLeft = keep != null ? keep : hcI * w();
@@ -212,7 +244,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   }
   function pulse() {
     const t = pulseText(); const ix = [['SPY', 'S&P 500'], ['QQQ', 'Nasdaq'], ['IWM', 'Russell']];
-    return card('<div class="pzh"><span class="pzk">' + ic('activity', 16, 2.2) + 'Market pulse</span></div>' + (t ? '<p class="pzl">' + E(t.title) + '</p>' : '') +
+    return card('<div class="pzh"><span class="pzk">' + ic('activity', 16, 2.2) + 'Market pulse</span><span class="pzt">' + (() => { const d = etNow(); return E(d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })) + ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' ET'; })() + '</span></div>' + (t ? '<p class="pzl">' + E(t.title) + '</p>' : '') +
       '<div class="pzi">' + ix.map((x) => { const q = S.q[x[0]]; return '<div><small>' + x[1] + '</small><b class="' + (q ? cls(q.pct) : '') + '">' + (q ? pct(q.pct) : '—') + '</b></div>'; }).join('') + '</div>' + '<div class="pzh2">' + hoursBar() + '</div>', 'padding:14px 16px;margin-top:14px', 'pulse2', 'a', ' href="' + (V2_STAGE >= 2 ? '#markets' : '#sectors') + '"');
   }
   function newsRows() {
