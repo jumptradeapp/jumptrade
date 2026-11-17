@@ -914,6 +914,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const VIEW = { portfolio: () => portfolio(carI), connect, movers, markets: marketsScreen, mtheme: () => themeScreen(r.id), radar: radarScreen, earnings: earnScreen, alerts: alertsScreen, ask: askScreen, funds: fundsScreen, fund: () => fundScreen(r.id), money: () => moneyScreen(r.id), stock: () => stockScreen(r.id), analysts: analystsScreen, today };
     if (lastV !== r.v) { if (r.v === 'movers') loadMovers().then(render); }
     if (window.V2X) Object.assign(VIEW, V2X.views(r));
+    const newPage = render.h !== location.hash;
     const tsc = render.h === location.hash ? Array.from(app.querySelectorAll('.mvt')).map((t) => [t.scrollTop, t.scrollLeft]) : [];
     const hk = D.getElementById('hcar'); const hKeep = hk && lastV === r.v ? hk.scrollLeft : null;
     gid = 0; let html = (VIEW[r.v] || today)();
@@ -926,7 +927,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     D.querySelector('.scrim').style.display = r.v === 'connect' ? 'none' : '';
     if (r.v === 'portfolio') wireCarousel(keepScroll, lastV !== 'portfolio');
     if (r.v === 'today') wireHome(hKeep);
-    if (lastV !== r.v) window.scrollTo(0, 0);
+    if (newPage || lastV !== r.v) { window.scrollTo(0, 0); const se = D.scrollingElement; if (se) se.scrollTop = 0; }
     lastV = r.v;
   }
   window.render = render; // auth.js calls this once sign-in is known
@@ -959,6 +960,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   });
     function toast(t) { let el = D.querySelector('.toast'); if (!el) { el = D.createElement('div'); el.className = 'toast'; el.setAttribute('role', 'status'); D.body.appendChild(el); } el.textContent = t; clearTimeout(toast.t); toast.t = setTimeout(() => el.remove(), 3200); }
   D.addEventListener('input', (e) => { if (e.target && e.target.id === 'askq') S.ai.q = e.target.value; });
+  try { history.scrollRestoration = 'manual'; } catch (e) {} // every page opens at the top, even going back
   window.addEventListener('hashchange', () => { touching = 0; pend = 0; if (D.activeElement && D.activeElement.blur) D.activeElement.blur(); render(); });
   setInterval(() => { if (!D.hidden && route().v === 'today') { const s = D.querySelector('.app2 .sub'); if (s) s.textContent = dateLine(); } }, 30000);
 
