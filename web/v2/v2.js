@@ -1027,6 +1027,10 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   });
     function toast(t) { let el = D.querySelector('.toast'); if (!el) { el = D.createElement('div'); el.className = 'toast'; el.setAttribute('role', 'status'); D.body.appendChild(el); } el.textContent = t; clearTimeout(toast.t); toast.t = setTimeout(() => el.remove(), 3200); }
   D.addEventListener('input', (e) => { if (e.target && e.target.id === 'askq') S.ai.q = e.target.value; });
+  // keyboard: tappable spans and chips act like buttons (focusable, Enter/Space)
+  (function () { let q = 0; const fix = () => { q = 0; D.querySelectorAll('[role="button"]:not([tabindex])').forEach((el) => { el.tabIndex = 0; }); };
+    try { new MutationObserver(() => { if (!q) q = requestAnimationFrame(fix); }).observe(D.body, { childList: true, subtree: true }); } catch (e) {}
+    D.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.getAttribute && e.target.getAttribute('role') === 'button' && e.target.tagName !== 'BUTTON') { e.preventDefault(); e.target.click(); } }); })();
   try { history.scrollRestoration = 'manual'; } catch (e) {} // every page opens at the top, even going back
   window.addEventListener('hashchange', () => { touching = 0; pend = 0; if (D.activeElement && D.activeElement.blur) D.activeElement.blur(); render(); });
   setInterval(() => { if (!D.hidden && route().v === 'today') { const s = D.querySelector('.app2 .sub'); if (s) s.textContent = dateLine(); } }, 30000);

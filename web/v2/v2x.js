@@ -182,7 +182,7 @@
     const srt = { move: (a, b) => Math.abs(pc(b)) - Math.abs(pc(a)), up: (a, b) => pc(b) - pc(a), down: (a, b) => pc(a) - pc(b), az: (a, b) => (a.s < b.s ? -1 : 1) }[st.wsort] || null;
     function pc(r) { return r.q && isFinite(r.q.pct) ? r.q.pct : 0; }
     const rows = srt ? Q.slice().sort(srt) : Q;
-    const seg = '<div class="seg" style="margin-top:12px">' + [['move', 'Biggest move'], ['up', 'Gainers'], ['down', 'Losers'], ['az', 'A–Z']].map((x) => '<span class="' + (st.wsort === x[0] ? 'on' : '') + '" data-wsort="' + x[0] + '">' + x[1] + '</span>').join('') + '</div>';
+    const seg = '<div class="seg" style="margin-top:12px">' + [['move', 'Biggest move'], ['up', 'Gainers'], ['down', 'Losers'], ['az', 'A–Z']].map((x) => '<span class="' + (st.wsort === x[0] ? 'on' : '') + '" data-wsort="' + x[0] + '" role="button">' + x[1] + '</span>').join('') + '</div>';
     return wrap(V().topbar() + V().head('Watchlist', L.length + ' stocks · ' + up + ' up · ' + dn + ' down · live') + add + '<div style="margin-top:12px">' + sum + '</div>' + seg +
       '<div style="margin-top:12px">' + V().rowsBox(rows.map((r) => wRow(r.s)).join('')) + '</div>' + note('' + (RO ? 'This list follows its portfolio automatically.' : AL.src === 'webull' ? 'Changes here update this list in Webull too.' : 'Saved on this device.') + ' Tap a stock for its chart, the call and news.'));
   }
