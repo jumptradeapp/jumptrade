@@ -121,7 +121,7 @@ def map_tickers(cus, rows, cache, sec_titles):
 TK2T = {}
 def label(tk, r):
     m = re.search(r'\bCL(?:ASS)?\s*([A-C])\b', r['cls'].upper())
-    if tk and tk in NAMES['names']: return NAMES['names'][tk]
+    if tk and tk in NAMES['names']: return NAMES['names'][tk] + (' (Class %s)' % m.group(1) if m and '(Class' not in NAMES['names'][tk] else '')
     t = TK2T.get(tk) if tk else None
     if t:
         t = re.sub(r'\s*/[A-Z]{2,3}/?\s*$', '', t).strip()
