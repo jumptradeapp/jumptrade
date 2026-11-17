@@ -917,3 +917,5 @@ a:focus-visible,button:focus-visible,[role="button"]:focus-visible,.chip:focus-v
 .row:focus-visible{outline-offset:-2px}
 .mvt td,.mvt th,.q,.pfv,.xk b,.dnl em{font-variant-numeric:tabular-nums}
 h1,h2{text-wrap:balance}
+.segn{display:inline-block;width:7px;height:7px;border-radius:50%;background:#F2B45A;margin-left:6px;vertical-align:2px}
+.lgl p{margin:0 0 10px;line-height:22px;font-size:15px}.lgl p:last-child{margin:0}

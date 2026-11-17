@@ -1423,6 +1423,23 @@ export default {
       }
     }
     if (dataFile) { const r = await env.ASSETS.fetch(req); if (!r.ok || /text\/html/.test(r.headers.get('content-type') || '')) return json({ error: { code: 'not_found' } }, 404); return r; } // signed in (or site unlocked): serve the data file; a missing one is a real 404, not the app page
+    if (url.pathname === '/api/pap') { // public built portfolios: everyone sees them; signed-in people can add; authors (and the owner) can delete
+      const ses = await sessionFrom(req, env, vget).catch(() => null); const me = ses && ses.u;
+      const L = (await vget(env, 'pap_all')) || [];
+      const out = (p) => { const o = Object.assign({}, p, { mine: !!(me && (p.uid === me.uid)), can: !!(me && (p.uid === me.uid || me.owner)) }); delete o.uid; return o; };
+      if (req.method === 'GET') return json({ at: Date.now(), list: L.slice(0, 200).map(out) }, 200, { 'cache-control': 'no-store' });
+      if (!me) return json({ error: { code: 'sign_in', message: 'Sign in to share a portfolio.' } }, 401);
+      if (req.method === 'POST') { const txt = await req.text(); if (txt.length > 20000) return json({ error: { code: 'too_big' } }, 413); let b; try { b = JSON.parse(txt); } catch (e) { return json({ error: { code: 'bad_request' } }, 400); }
+        const num = (v) => (isFinite(+v) ? +v : null); const h = (Array.isArray(b.h) ? b.h : []).slice(0, 40).filter((x) => x && /^[A-Z.]{1,6}$/.test(x.s) && num(x.sh) > 0 && num(x.px) > 0).map((x) => ({ s: x.s, sh: +(+x.sh).toFixed(4), px: +(+x.px).toFixed(4) }));
+        const amt = num(b.amt); if (!h.length || !(amt > 0 && amt <= 1e9) || !(num(b.spy0) > 0)) return json({ error: { code: 'bad_request' } }, 400);
+        const today = new Date().toISOString().slice(0, 10); if (L.filter((p) => p.uid === me.uid && p.d === today).length >= 20) return json({ error: { code: 'rate_limited', message: 'That’s 20 portfolios today. Try again tomorrow.' } }, 429);
+        const p = { id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: String(b.name || 'Portfolio').replace(/[<>]/g, '').slice(0, 60), src: /^(theme|fund)$/.test(b.src) ? b.src : 'theme', ref: String(b.ref || '').slice(0, 60),
+          amt, t: Date.now(), d: today, spy0: +b.spy0, h, cash: Math.max(0, num(b.cash) || 0), by: String(me.name || 'Someone').split(/\s+/)[0].slice(0, 24), uid: me.uid };
+        L.unshift(p); await vput(env, 'pap_all', L.slice(0, 300)); return json({ ok: true, p: out(p) }); }
+      if (req.method === 'DELETE') { const id = url.searchParams.get('id'); const p = L.find((x) => x.id === id); if (!p) return json({ ok: true }); if (p.uid !== me.uid && !me.owner) return json({ error: { code: 'forbidden' } }, 403);
+        await vput(env, 'pap_all', L.filter((x) => x.id !== id)); return json({ ok: true }); }
+      return json({ error: { code: 'bad_request' } }, 400);
+    }
     if (url.pathname === '/api/sync') { // device sync: a long random code is the only key; whoever has the link shares one saved copy
       const c = url.searchParams.get('c') || ''; if (!/^[A-Za-z0-9]{24,64}$/.test(c)) return json({ error: { code: 'bad_request' } }, 400);
       const k = 'sy_' + Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(c)))).slice(0, 16).map((b) => b.toString(16).padStart(2, '0')).join('');

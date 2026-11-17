@@ -281,14 +281,24 @@
       tbl('models', [['nm', 'Model', (r) => '<span class="xdot" style="background:' + E(r.color || '#5B9BEA') + '"></span><span class="sn"><b>' + E(r.name) + '</b><small>' + E(r.tag || '') + '</small></span>', (r) => r.name], ['bt', 'Backtest/yr', (r) => '<b>' + cg(r.bt) + '</b>', (r) => (r.bt || {}).cagr], ['sp', 'S&amp;P/yr', (r) => cg(r.btSpy), (r) => (r.btSpy || {}).cagr], ['lv', 'Live/yr', (r) => cg(r.live), (r) => (r.live || {}).cagr], ['dd', 'Worst drop', (r) => ddc(r.bt), (r) => (r.bt || {}).mdd], ['lev', 'Leverage', (r) => (r.lev ? r.lev + '×' : '1×'), (r) => r.lev || 1]], j.models, { href: (r) => '#models/' + r.id, short: 1 }) +
       note('Tap a model for its chart, yearly returns, positions and rules.'));
   }
-  const segP = (on) => '<div class="seg" style="margin-top:12px">' + [['Accounts', '#portfolio'], ['Built', '#mine'], ['Models', '#models'], ['Funds', '#funds']].map((x) => '<a class="' + (x[1] === on ? 'on' : '') + '" href="' + x[1] + '">' + x[0] + '</a>').join('') + '</div>';
+  const segP = (on) => { loadPub(); const n = papNew(); return '<div class="seg" style="margin-top:12px">' + [['Accounts', '#portfolio'], ['Built', '#mine'], ['Models', '#models'], ['Funds', '#funds']].map((x) => '<a class="' + (x[1] === on ? 'on' : '') + '" href="' + x[1] + '">' + x[0] + (x[1] === '#mine' && n ? '<i class="segn" aria-label="' + n + ' new"></i>' : '') + '</a>').join('') + '</div>'; };
 
   // ---------- build a portfolio (themes.json; free text matched to theme keywords) ----------
   st.bt = null; st.amt = lsGet('jt.v2amt', 1000); st.btq = '';
   const RW = { core: 3, pick: 2, spec: 1 };
   // ---------- Built: paper portfolios you build from a theme or copy from a fund, tracked from the moment you build them ----------
-  const PAP = () => lsGet('jt.paper', []) || [];
-  const papSave = (L) => { lsSet('jt.paper', L.slice(0, 30)); try { window.dispatchEvent(new Event('jt-sync')); } catch (e) {} };
+  // Built portfolios. On jumptrade.app they are public: everyone sees everyone's, new ones get a New badge.
+  // Saved on this device only when not signed in, or on the private copy (which can't reach the server).
+  const PAPL = () => lsGet('jt.paper', []) || [];
+  const papSave = (L) => { lsSet('jt.paper', L.slice(0, 30)); };
+  st.pub = null; st.pubT = 0;
+  function loadPub(force) { if (window.JT_PRIV || st.pubBusy || (!force && Date.now() - st.pubT < 60000)) return; st.pubBusy = 1; st.pubT = Date.now();
+    fetch('/api/pap', { credentials: 'same-origin' }).then((r) => r.json()).then((j) => { st.pub = (j && j.list) || []; }).catch(() => { st.pub = st.pub || []; st.pubErr = 1; }).then(() => { st.pubBusy = 0; R(); }); }
+  X.loadPub = loadPub;
+  const PAP = () => (window.JT_PRIV ? [] : st.pub || []).concat(PAPL().map((p) => Object.assign({ local: 1, can: 1, mine: 1 }, p)));
+  const seenT = () => +lsGet('jt.papSeen', 0) || 0;
+  const papNew = () => (st.pub || []).filter((p) => !p.mine && p.t > seenT()).length;
+  X.papNew = papNew;
   const DC = ['#9CCBFF', '#5B9BEA', '#2F6FC7', '#C9E1FF', '#1E4F94', '#78ACEE', '#3E83D8', '#E3EFFF'];
   // donut: slices [{k, v}] by value; the rest go into "Other", cash shown grey
   function donut(sl, size) { size = size || 132; const tot = sl.reduce((a, x) => a + Math.max(0, x.v), 0) || 1; const r = size / 2 - 9, C = 2 * Math.PI * r; let off = 0;
@@ -305,7 +315,11 @@
   function papMake(name, src, ref, amt, w) { const S = V().S; const sq = S.q.SPY; const miss = w.filter((x) => !(S.q[x.s] && S.q[x.s].price)); if (miss.length || !sq) return null;
     const ws = w.reduce((a, x) => a + x.w, 0) || 1; const h = w.map((x) => { const px = S.q[x.s].price; return { s: x.s, sh: Math.round(amt * x.w / ws / px * 10000) / 10000, px }; });
     const p = { id: 'p' + Date.now().toString(36), name, src, ref, amt, t: Date.now(), d: new Date().toISOString().slice(0, 10), spy0: sq.price, h, cash: Math.max(0, Math.round((amt - h.reduce((a, x) => a + x.sh * x.px, 0)) * 100) / 100) };
-    const L = PAP(); L.unshift(p); papSave(L); const B = lsGet('jt.builtl', []) || []; if (!B.some((b) => b.id === p.id)) { B.unshift({ id: p.id, name: p.name, syms: h.map((x) => x.s) }); lsSet('jt.builtl', B.slice(0, 20)); } return p; }
+    const keepLocal = (why) => { const L = PAPL(); L.unshift(p); papSave(L); if (why) V().toast(why); return p; };
+    if (window.JT_PRIV) return Promise.resolve(keepLocal());
+    return fetch('/api/pap', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify(p) }).then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+      .then(({ ok, j }) => { if (ok && j.p) { st.pub = [j.p].concat(st.pub || []); return j.p; } return keepLocal(j && j.error && j.error.code === 'sign_in' ? 'Saved on this device. Sign in to share it with everyone.' : 'Couldn’t share it, so it’s saved on this device.'); })
+      .catch(() => keepLocal('Couldn’t share it, so it’s saved on this device.')); }
   X.papMake = papMake;
   // performance since built: daily closes of the holdings, plus today's live value; S&P line scaled to the same starting amount
   function papSeries(p) { const k = 'pap:' + p.id; const syms = p.h.map((h) => h.s).concat(['SPY']);
@@ -316,24 +330,25 @@
   const since = (t) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: new Date(t).getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined });
   const gainL = (g, p) => { if (Math.abs(g) < 0.005) { g = 0; p = 0; } return '<span class="' + (g ? cl(g) : '') + '">' + (g >= 0 ? '+' : '−') + money(Math.abs(g)).replace('−', '') + ' (' + sgnP(p) + ')</span>'; };
   function mineScreen(id) {
-    const L = PAP(); const S = V().S;
+    loadPub(); const L = PAP(); const S = V().S; const seen = seenT();
     if (id) { const p = L.find((x) => x.id === id); if (!p) return wrap(V().backbar('Built', '#mine') + V().rowsBox(errB('That portfolio isn’t here. It may have been deleted, or built on another device.')));
       const syms = p.h.map((h) => h.s).concat(['SPY']); quotes(syms); st.vis = syms; const c = papCalc(p); const pts = papSeries(p);
       const ch = !pts ? card(V().skel(3), 'padding:16px') : pts.length < 3 ? card('<p class="xp" style="color:var(--fg2)">The chart fills in after the first full trading day. Built ' + since(p.t) + '.</p>') :
         card(chart(pts.map((x) => ({ c: x.c })), { h: 150, base: p.amt, lines: [{ v: pts.map((x) => x.sp), c: SPC }] }) + '<small class="xcap"><i class="lgd" style="background:#9CCBFF"></i>This portfolio <i class="lgd" style="background:' + SPC + ';margin-left:10px"></i>S&amp;P 500 · since ' + since(p.t) + '</small>');
       const del = st.pdel === p.id;
-      return wrap(V().backbar(E(p.name), '#mine') + V().head(E(p.name), 'Built ' + since(p.t) + ' with ' + money(p.amt) + (p.src === 'fund' ? ' · copy of a fund' : '')) +
+      return wrap(V().backbar(E(p.name), '#mine') + V().head(E(p.name), 'Built ' + since(p.t) + (p.by ? ' by ' + E(p.by) : '') + ' with ' + money(p.amt) + (p.src === 'fund' ? ', copying a fund' : '') + (p.local ? ' · on this device only' : '')) +
         '<div class="pfv"><b>' + money(c.val) + '</b><div>' + gainL(c.gain, c.gainPct) + ' <small>since built</small></div><div>' + (c.ready ? gainL(c.day, c.dayPct) : '…') + ' <small>today</small></div></div>' +
         '<div class="xgrid3"><div class="xk"><small>You</small><b class="' + cl(c.gainPct) + '">' + sgnP(c.gainPct) + '</b></div><div class="xk"><small>S&amp;P 500</small><b class="' + cl(c.spyP) + '">' + sgnP(c.spyP) + '</b></div><div class="xk"><small>Vs S&amp;P</small><b class="' + cl(c.vs) + '">' + sgnP(c.vs) + '</b></div></div>' +
         ch + '<div class="lab">Mix</div>' + donutCard(c.rows, p.cash) +
         '<div class="lab">Holdings</div>' + tbl('pap', [['sym', 'Symbol', (r) => symCell(r.s), (r) => r.s], ['v', 'Value', (r) => '<b>' + money(r.v) + '</b>', (r) => r.v], ['g', 'Gain', (r) => r.q ? '<span class="' + cl(r.v - r.cost) + '">' + sgnP((r.v / r.cost - 1) * 100) + '</span>' : '—', (r) => r.v / r.cost], ['d', 'Today', (r) => r.q ? '<span class="' + cl(r.q.pct) + '">' + V().pct(r.q.pct) + '</span>' : '—', (r) => (r.q ? r.q.pct : null)], ['sh', 'Shares', (r) => (+r.sh).toFixed(r.sh < 10 ? 3 : 1), (r) => r.sh], ['px', 'Bought at', (r) => V().px(r.px), (r) => r.px]], c.rows, { href: (r) => '#stock/' + r.s, def: { k: 'v', d: 'desc' } }) +
-        note('Paper portfolio: fractional shares bought at the live price when you tapped Build. No real money or trades.') +
-        '<button class="xbtn pdel' + (del ? ' on' : '') + '" data-pdel="' + E(p.id) + '">' + (del ? 'Tap again to delete' : 'Delete this portfolio') + '</button>');
+        note('Paper portfolio: fractional shares bought at the live price when it was built. No real money or trades.' + (p.local ? '' : ' Everyone on jumptrade can see built portfolios.')) +
+        (p.can ? '<button class="xbtn pdel' + (del ? ' on' : '') + '" data-pdel="' + E(p.id) + '">' + (del ? 'Tap again to delete' : 'Delete this portfolio') + '</button>' : ''));
     }
     const syms = Array.from(new Set(L.reduce((a, p) => a.concat(p.h.map((h) => h.s)), ['SPY']))); quotes(syms); st.vis = syms.slice(0, 80);
-    const list = L.length ? V().rowsBox(L.map((p) => { const c = papCalc(p); return '<a class="row" href="#mine/' + E(p.id) + '" style="min-height:74px!important">' + '<span class="pfi">' + donut(p.h.map((h, i) => ({ v: h.sh * ((S.q[h.s] || {}).price || h.px), c: DC[i % DC.length] })), 40) + '</span><span class="nm"><b>' + E(p.name) + '</b><small>Built ' + since(p.t) + ' · ' + money(p.amt) + (c.vs != null ? ' · <span class="' + cl(c.vs) + '">' + sgnP(c.vs) + ' vs S&amp;P</span>' : '') + '</small></span><span class="q"><b>' + money(c.val) + '</b><small class="' + cl(c.gain) + '">' + sgnP(c.gainPct) + '</small></span></a>'; }).join(''))
-      : card('<p class="xp"><b>No portfolios yet.</b> Pick an amount and a theme, or copy one of the big funds, and it’s tracked here from that moment against the S&amp;P 500.</p>');
-    return wrap(V().topbar() + V().head('Portfolio', 'Portfolios you built, tracked live') + segP('#mine') + '<a class="xbtn pnew" href="#build">' + ic('plus', 18, 2.4) + ' Build a portfolio</a>' + '<div style="margin-top:12px">' + list + '</div>');
+    const list = L.length ? V().rowsBox(L.map((p) => { const c = papCalc(p); return '<a class="row" href="#mine/' + E(p.id) + '" style="min-height:74px!important">' + '<span class="pfi">' + donut(p.h.map((h, i) => ({ v: h.sh * ((S.q[h.s] || {}).price || h.px), c: DC[i % DC.length] })), 40) + '</span><span class="nm"><b>' + E(p.name) + '</b><small>' + (p.t > seen && !p.mine ? '<span class="updt">New</span> · ' : '') + (p.by ? E(p.by) + ', ' : '') + since(p.t) + ' · ' + money(p.amt) + (c.vs != null ? ' · <span class="' + cl(c.vs) + '">' + sgnP(c.vs) + ' vs S&amp;P</span>' : '') + '</small></span><span class="q"><b>' + money(c.val) + '</b><small class="' + cl(c.gain) + '">' + sgnP(c.gainPct) + '</small></span></a>'; }).join(''))
+      : !window.JT_PRIV && !st.pub ? V().rowsBox(V().skel(3), 'padding:14px') : card('<p class="xp"><b>No portfolios yet.</b> Pick an amount and a theme, or copy one of the big funds. It’s tracked from that moment against the S&amp;P 500' + (window.JT_PRIV ? '.' : ', and everyone on jumptrade can see it.') + '</p>');
+    if (st.pub && st.pub.length) { const mx = Math.max.apply(null, st.pub.map((p) => p.t)); if (mx > seen) setTimeout(() => lsSet('jt.papSeen', mx), 1500); }
+    return wrap(V().topbar() + V().head('Portfolio', window.JT_PRIV ? 'Portfolios you built, tracked live' : 'Portfolios built on jumptrade, tracked live') + segP('#mine') + '<a class="xbtn pnew" href="#build">' + ic('plus', 18, 2.4) + ' Build a portfolio</a>' + '<div style="margin-top:12px">' + list + '</div>');
   }
   // builder: amount → theme → review → Build
   function buildScreen() {
@@ -351,6 +366,21 @@
       '<div class="xchips brail">' + all.filter((t) => !t.theme).concat([null], all.filter((t) => t.theme)).map((t) => t ? '<button class="chip' + (pick && pick.id === t.id ? ' on' : '') + '" data-xbt="' + t.id + '">' + E(t.name) + '</button>' : '<span class="bsep"></span>').join('') + '</div>' +
       (res || card('<p class="xp" style="color:var(--fg2)">Pick a theme to see the mix.</p>')));
   }
+  // ---------- privacy & terms (plain-language; reviewed by the owner, not a lawyer) ----------
+  const legal = (title, back, upd, secs) => wrap(V().backbar(title, back) + V().head(title, 'Last updated ' + upd) + secs.map((x) => '<div class="lab">' + x[0] + '</div>' + card('<div class="xp lgl">' + x[1] + '</div>')).join('') + note('Questions? Use <a href="#feedback">Send feedback</a> in the menu.'));
+  function privacyScreen() { return legal('Privacy', '#settings', 'Nov 17, 2026', [
+    ['What jumptrade keeps', '<p>Your name and the invite or sign-in code you used. Your watchlists, starred funds, alert settings and app settings, so they follow you to your other devices. A record of when you visit, so the app can be improved.</p>'],
+    ['Who can see it', '<p>Only you. Your watchlists, starred funds and settings are tied to your account and are never shown to other people.</p><p><b>Built portfolios are public.</b> When you build or copy a portfolio while signed in, everyone on jumptrade can see it, with your first name. You can delete your own at any time.</p>'],
+    ['Brokerage accounts', '<p>jumptrade doesn’t connect to or store anyone’s brokerage account on its servers. Account views only show what you connect yourself, on your own device.</p>'],
+    ['Alerts and email', '<p>If you turn on push alerts, your device’s push address and the stocks you follow are stored so alerts can be sent. Turn alerts off in the app to remove them. Emails go only to addresses you ask to receive them.</p>'],
+    ['What jumptrade doesn’t do', '<p>No ads, no selling or sharing your data, no tracking across other sites. Market data comes from Webull, the SEC and public news and price feeds.</p>'],
+    ['Where it lives', '<p>The app runs on Cloudflare. Sign-in uses a secure cookie that scripts can’t read. Ask through Send feedback to have your account and data deleted.</p>']]); }
+  function termsScreen() { return legal('Terms', '#settings', 'Nov 17, 2026', [
+    ['Not investment advice', '<p>jumptrade shows market data, filings, news and rules-based tags. None of it is a recommendation to buy or sell anything. You make your own decisions and carry your own risk.</p>'],
+    ['Data can be late or wrong', '<p>Prices, filings and headlines come from third parties and can be delayed, incomplete or wrong. 13F filings are snapshots from up to 45 days after a quarter ends. Check anything important at the source.</p>'],
+    ['Paper portfolios', '<p>Built portfolios and model portfolios are hypothetical. Backtests and paper results don’t include taxes or trading costs and don’t promise future returns.</p>'],
+    ['Using jumptrade', '<p>Use it for your own research. Don’t try to break it, scrape it at scale, or post portfolio names that are abusive. Built portfolios that break this may be removed.</p>'],
+    ['Changes', '<p>jumptrade is a beta. Features and these terms can change; the date at the top shows the latest version.</p>']]); }
   // ---------- track record ----------
   function recordScreen() {
     const d = once('record', 600, () => V().call('get_pick_record', {}));
@@ -671,6 +701,7 @@
       '<div class="lab">Mode</div>' + opt('data-xmode', md, [['simple', 'Simple', 'Price, chart, ratings and red flags only'], ['pro', 'Pro', 'Adds technicals, levels, plan and patterns']]) +
       '<div class="lab">In-app alerts</div><div class="card xc xform">' + num('move', 'Your stocks move at least', at.move, '%') + num('idx', 'S&amp;P / Nasdaq move at least', at.idx, '%') + num('flow', 'Big trades of at least', at.flow / 1e6, '$M') + num('run', 'Runner score at least', at.run, '') +
         '<label class="xf xchk"><input type="checkbox" data-xat="earn"' + (at.earn ? ' checked' : '') + '><span>Earnings within two days</span></label><button class="xbtn" data-xatsave="1">Save alert settings</button></div>' +
+      '<div class="lab">About</div><div class="card rows"><a class="row" href="#privacy"><span class="nm"><b>Privacy</b><small>What’s kept and who can see it</small></span></a><a class="row" href="#terms"><span class="nm"><b>Terms</b><small>Not investment advice, data accuracy, paper portfolios</small></span></a></div>' +
       '<button class="btn pri" style="width:100%;margin-top:12px" onclick="window.ALERTS&&ALERTS.open()">Turn on phone alerts</button>' +
       '<div class="lab">Sync &amp; devices</div>' + offB('Saved on this device only', 'Your watchlist, journal and settings follow your account on every device you sign in on.') +
       '<div class="lab">More</div>' + V().act('plus', 'Get the app', 'Add JumpTrade to your home screen', '#getapp') + V().act('msg', 'Send feedback', 'Report a bug or suggest an idea', '#feedback') + V().act('shield', 'Account & connections', 'Sign-in, Webull and AI status', '#account') + V().act('link', 'Classic app', 'The original JumpTrade', '/classic.html#home') +
@@ -701,9 +732,9 @@
   }
 
   // ---------- routing ----------
-  const RT = { menu: 1, search: 1, watch: 1, news: 1, sectors: 1, calendar: 1, ipos: 1, models: 1, build: 1, mine: 1, record: 1, research: 1, compare: 1, patterns: 1, calc: 1, journal: 1, ideas: 1, dips: 1, leaders: 1, value: 1, flow: 1, insiders: 1, buzz: 1, live: 1, strategies: 1, analyzer: 1, settings: 1, account: 1, feedback: 1, getapp: 1 };
+  const RT = { menu: 1, search: 1, watch: 1, news: 1, sectors: 1, calendar: 1, ipos: 1, models: 1, build: 1, mine: 1, privacy: 1, terms: 1, record: 1, research: 1, compare: 1, patterns: 1, calc: 1, journal: 1, ideas: 1, dips: 1, leaders: 1, value: 1, flow: 1, insiders: 1, buzz: 1, live: 1, strategies: 1, analyzer: 1, settings: 1, account: 1, feedback: 1, getapp: 1 };
   X.route = function (h) { const p = (h || '').split('/'); if (!RT[p[0]]) return null; return { v: 'x' + p[0], id: p[1] ? decodeURIComponent(p[1]) : null, id2: p[2] ? decodeURIComponent(p[2]) : null }; };
-  X.views = function (r) { st.vis = []; return { xmenu: menuScreen, xsearch: searchScreen, xwatch: watchScreen, xnews: newsScreen, xsectors: sectorsScreen, xcalendar: calendarScreen, xipos: iposScreen, xmodels: () => modelsScreen(r.id), xbuild: buildScreen, xmine: () => mineScreen(r.id), xrecord: recordScreen, xresearch: () => researchScreen(r.id), xcompare: () => compareScreen(r.id, r.id2), xpatterns: () => patternsScreen(r.id), xcalc: () => calcScreen(r.id), xjournal: journalScreen, xideas: ideasScreen, xdips: dipsScreen, xleaders: leadersScreen, xvalue: valueScreen, xflow: flowScreen, xinsiders: () => insidersScreen(r.id), xbuzz: buzzScreen, xlive: liveScreen, xstrategies: strategiesScreen, xanalyzer: analyzerScreen, xsettings: settingsScreen, xaccount: accountScreen, xfeedback: feedbackScreen, xgetapp: getappScreen }; };
+  X.views = function (r) { st.vis = []; return { xmenu: menuScreen, xsearch: searchScreen, xwatch: watchScreen, xnews: newsScreen, xsectors: sectorsScreen, xcalendar: calendarScreen, xipos: iposScreen, xmodels: () => modelsScreen(r.id), xbuild: buildScreen, xmine: () => mineScreen(r.id), xprivacy: privacyScreen, xterms: termsScreen, xrecord: recordScreen, xresearch: () => researchScreen(r.id), xcompare: () => compareScreen(r.id, r.id2), xpatterns: () => patternsScreen(r.id), xcalc: () => calcScreen(r.id), xjournal: journalScreen, xideas: ideasScreen, xdips: dipsScreen, xleaders: leadersScreen, xvalue: valueScreen, xflow: flowScreen, xinsiders: () => insidersScreen(r.id), xbuzz: buzzScreen, xlive: liveScreen, xstrategies: strategiesScreen, xanalyzer: analyzerScreen, xsettings: settingsScreen, xaccount: accountScreen, xfeedback: feedbackScreen, xgetapp: getappScreen }; };
   X.nav = { xwatch: 3, xnews: 2, xsectors: 2, xcalendar: 2, xipos: 2, xbuzz: 2, xmodels: 4, xbuild: 4, xmine: 4, xanalyzer: 4, xjournal: 4, xideas: 1, xdips: 1, xleaders: 1, xvalue: 1, xflow: 1, xinsiders: 1, xlive: 1 };
   X.syms = function (r) { if (r && r.v === 'stock') return st.peers || []; return (st.vis || []).slice(0, 80); };
   X.init = applyTheme;
@@ -728,8 +759,9 @@
     if ((b = t.closest('[data-xck]'))) { st.ck = b.dataset.xck; R(); return; }
     if ((b = t.closest('[data-xpk]'))) { st.pk = b.dataset.xpk; R(); return; }
     if ((b = t.closest('[data-pbuild]'))) { const j = file('/themes.json'); readAmt(); const all = (j.simple || []).map((x) => ({ id: x.id, name: x.name, w: x.w.map((r) => ({ s: r[0], w: r[1] / 100 })) })).concat((j.themes || []).map((t) => { const tot = t.names.reduce((a, n) => a + (RW[n[1]] || 1), 0); return { id: t.id, name: t.name, w: t.names.map((n) => ({ s: n[0], w: (RW[n[1]] || 1) / tot })) }; }));
-      const pk = all.find((x) => x.id === st.bt); if (!pk) return; const p = papMake(pk.name, 'theme', pk.id, +st.amt, pk.w); if (!p) { V().toast('Still getting live prices. Try again in a second.'); return; } V().toast('Built ' + pk.name); location.hash = 'mine/' + p.id; return; }
-    if ((b = t.closest('[data-pdel]'))) { const id = b.dataset.pdel; if (st.pdel !== id) { st.pdel = id; R(); setTimeout(() => { if (st.pdel === id) { st.pdel = null; R(); } }, 4000); return; } papSave(PAP().filter((p) => p.id !== id)); lsSet('jt.builtl', (lsGet('jt.builtl', []) || []).filter((x) => x.id !== id)); st.pdel = null; V().toast('Deleted'); location.hash = 'mine'; return; }
+      const pk = all.find((x) => x.id === st.bt); if (!pk) return; const pr = papMake(pk.name, 'theme', pk.id, +st.amt, pk.w); if (!pr) { V().toast('Still getting live prices. Try again in a second.'); return; } b.disabled = true; b.textContent = 'Building…'; pr.then((p) => { V().toast('Built ' + pk.name); location.hash = 'mine/' + p.id; }); return; }
+    if ((b = t.closest('[data-pdel]'))) { const id = b.dataset.pdel; if (st.pdel !== id) { st.pdel = id; R(); setTimeout(() => { if (st.pdel === id) { st.pdel = null; R(); } }, 4000); return; } const lp = PAPL(); st.pdel = null; if (lp.some((p) => p.id === id)) { papSave(lp.filter((p) => p.id !== id)); V().toast('Deleted'); location.hash = 'mine'; return; }
+      fetch('/api/pap?id=' + encodeURIComponent(id), { method: 'DELETE', credentials: 'same-origin' }).then((r) => { if (!r.ok) throw r; st.pub = (st.pub || []).filter((p) => p.id !== id); V().toast('Deleted'); location.hash = 'mine'; }).catch(() => V().toast('Couldn’t delete it. Try again.')); return; }
     if ((b = t.closest('[data-xbt]'))) { readAmt(); st.bt = b.dataset.xbt; st.btq = ''; R(); return; }
     if (t.closest('[data-xamt]')) { const v = parseFloat(val('xamt').replace(/[$,]/g, '')); if (v > 0) { st.amt = v; lsSet('jt.v2amt', v); } D.activeElement && D.activeElement.blur(); R(); return; }
     if (t.closest('[data-xbq]')) { st.btq = val('xbq'); st.bt = null; D.activeElement && D.activeElement.blur(); R(); return; }

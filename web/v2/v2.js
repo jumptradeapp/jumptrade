@@ -423,11 +423,11 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       '<div style="display:flex;align-items:flex-end;gap:8px;margin-top:12px"><div style="flex:1"><div style="font-size:30px;line-height:38px;font-weight:600">' + (c.ready ? money(c.val) : '—') + '</div><div class="' + cls(c.day) + '" style="font-size:15px;font-weight:500;white-space:nowrap">' + (c.ready ? chg(c.day) + '<span style="margin-left:10px">' + pct(c.dayPct) + '</span>' : '&nbsp;') + '<span style="color:var(--fg2);margin-left:6px">today</span></div></div>' + mtn(c.series, 104, 52) + '</div>' +
       '<div class="kick" style="font-size:11px;letter-spacing:.2em;margin:14px 0 2px;color:#C9D6E2">Top performers today</div><div class="rows" style="padding:0!important">' + top + '</div></div>';
   }
-  const SEG = [['Accounts', '#portfolio'], ['Built', '#mine'], ['Models', '#models'], ['Funds', '#funds']];
+  const SEG = [['Accounts', '#portfolio'], ['Built', '#mine'], ['Models', '#models'], ['Funds', '#funds']]; // Built shows an amber dot when others shared new portfolios
   function portfolio(on) {
     const all = allCalc(); const cards = [{ a: all.a, c: all.c }].concat(ACCTS.map((a) => ({ a, c: acctCalc(a) })));
     on = Math.max(0, Math.min(cards.length - 1, on | 0)); const cur = cards[on];
-    const seg = '<div style="margin-top:12px"><div class="seg">' + SEG.map((x, i) => '<a class="' + (i === 0 ? 'on' : '') + '" href="' + x[1] + '">' + x[0] + '</a>').join('') + '</div></div>';
+    const seg = '<div style="margin-top:12px"><div class="seg">' + SEG.map((x, i) => '<a class="' + (i === 0 ? 'on' : '') + '" href="' + x[1] + '">' + x[0] + (x[1] === '#mine' && window.V2X && V2X.papNew && (V2X.loadPub(), V2X.papNew()) ? '<i class="segn"></i>' : '') + '</a>').join('') + '</div></div>';
     const car = '<div class="car" id="car">' + cards.map((x, i) => acctCard(i, x.a, x.c)).join('') + '<span class="spacer"></span></div><div class="dots" id="dots">' + cards.map((_, i) => '<i class="' + (i === on ? 'on' : '') + '"></i>').join('') + '</div>';
     const c = cur.c; const totalVal = all.c.val;
     const ct = '<div style="display:flex;gap:10px;margin-top:14px">' + counter('trend', 'Total gain', c.ready ? (c.gain >= 0 ? '+' : '−') + money(Math.abs(c.gain), 0) : '—', c.ready ? (c.gainPct >= 0 ? '+' : '−') + Math.abs(c.gainPct).toFixed(1) + '%' : '', c.ready && c.gain ? cls(c.gain) : '') + counter('dollar', 'Cash', money(c.cash, 0), on === 0 ? Math.round(c.cash / (totalVal || 1) * 100) + '% of total' : Math.round(c.cash / (c.val || 1) * 100) + '% of account') + '</div>';
@@ -592,7 +592,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const fstars = () => { try { return JSON.parse(localStorage.getItem('jt.fstar') || '[]') || []; } catch (e) { return []; } };
   function fundsScreen() {
     loadFunds();
-    const seg = '<div style="margin-top:12px"><div class="seg">' + SEG.map((x) => '<a class="' + (x[1] === '#funds' ? 'on' : '') + '" href="' + x[1] + '">' + x[0] + '</a>').join('') + '</div></div>';
+    const seg = '<div style="margin-top:12px"><div class="seg">' + SEG.map((x) => '<a class="' + (x[1] === '#funds' ? 'on' : '') + '" href="' + x[1] + '">' + x[0] + (x[1] === '#mine' && window.V2X && V2X.papNew && (V2X.loadPub(), V2X.papNew()) ? '<i class="segn"></i>' : '') + '</a>').join('') + '</div></div>';
     let body;
     if (!S.funds) body = rowsBox(skel(5), 'padding:14px');
     else if (S.funds.err) body = rowsBox('<div class="err">Funds aren’t loading right now. Try again in a minute.</div>');
@@ -1013,8 +1013,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     if ((b = e.target.closest('[data-mvd]'))) { S.mv.dir = b.dataset.mvd; render(); loadMovers().then(render); return; }
     if ((b = e.target.closest('[data-fcat]'))) { S.fcat = b.dataset.fcat; render(); return; }
     if ((b = e.target.closest('[data-fcopy]'))) { const f = S.funds && S.funds.funds && S.funds.funds.find((x) => x.slug === b.dataset.fcopy); if (!f) return;
-      const top = f.h.filter((h) => /^[A-Z.]{1,6}$/.test(h[0]) && +h[2] > 0).slice(0, 10); const p = V2X.papMake(f.fund + ' copy', 'fund', f.slug, 10000, top.map((h) => ({ s: h[0], w: +h[2] })));
-      if (!p) { fastSnap(top.map((h) => h[0]).concat(['SPY'])).then(render).catch(() => {}); toast('Getting live prices. Tap again in a second.'); return; } toast('Copied to Built'); location.hash = 'mine/' + p.id; return; }
+      const top = f.h.filter((h) => /^[A-Z.]{1,6}$/.test(h[0]) && +h[2] > 0).slice(0, 10); const pr = V2X.papMake(f.fund + ' copy', 'fund', f.slug, 10000, top.map((h) => ({ s: h[0], w: +h[2] })));
+      if (!pr) { fastSnap(top.map((h) => h[0]).concat(['SPY'])).then(render).catch(() => {}); toast('Getting live prices. Tap again in a second.'); return; } b.disabled = true; pr.then((p) => { toast('Copied to Built'); location.hash = 'mine/' + p.id; }); return; }
     if ((b = e.target.closest('[data-fstar]'))) { const k = b.dataset.fstar; let L = fstars(); L = L.indexOf(k) >= 0 ? L.filter((x) => x !== k) : L.concat([k]); try { localStorage.setItem('jt.fstar', JSON.stringify(L)); } catch (e2) {} toast(L.indexOf(k) >= 0 ? 'Starred' : 'Unstarred'); render(); return; }
     if ((b = e.target.closest('[data-fsort]'))) { S.fsort = b.dataset.fsort; render(); return; }
     if ((b = e.target.closest('[data-fil]'))) { S.fil = b.dataset.fil; render(); return; }
