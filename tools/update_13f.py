@@ -91,9 +91,11 @@ SUFFIX = re.compile(r'\b(INC|CORP|CORPORATION|CO|COMPANY|LTD|LIMITED|PLC|LLC|LP|
 def norm(s): return re.sub(r'\s+', ' ', SUFFIX.sub(' ', re.sub(r'[^A-Z0-9 ]', ' ', s.upper()))).strip()
 
 def nicename(name, cls):
-    small = {'AND', 'OF', 'THE', 'DE', 'FOR'}
-    w = [x if (x in ('ETF', 'ADR', 'REIT', 'II', 'III', 'LP', 'PLC', 'NV', 'SA', 'AG', 'SE') or len(x) <= 2 and x.isalpha() and x not in small and x not in ('CO',)) else x.capitalize() for x in name.split()]
-    n = ' '.join(w).replace(' Inc ', ' Inc ').strip()
+    keep = {'ETF', 'ADR', 'REIT', 'II', 'III', 'IV', 'LP', 'PLC', 'NV', 'SA', 'AG', 'SE', 'SPDR', 'USA', 'US', 'AI', 'TR', 'LLC', 'ASML', 'IBM', 'AMD', 'UBS', 'HSBC'}
+    def w(x):
+        if x in keep or '&' in x or (len(x) <= 3 and x.isalpha() and not any(v in x for v in 'AEIOU')): return x
+        return x.capitalize()
+    n = ' '.join(w(x) for x in name.split()).strip()
     m = re.search(r'\bCL(?:ASS)?\s*([A-C])\b', cls.upper())
     return n + (' (Class %s)' % m.group(1) if m else '')
 
