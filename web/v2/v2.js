@@ -115,7 +115,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   // headlines: Webull's live market feeds (SPY, QQQ) plus the general market search, newest first, refreshed every minute
   function loadNews() {
     const arrN = (p) => (p && (p.data || p.list)) || (Array.isArray(p) ? p : []);
-    return Promise.all([call('get_stock_news', { symbol: 'SPY' }), call('get_stock_news', { symbol: 'QQQ' }), call('search_news', { keyword: 'stock market' })].map((pr) => pr.then(arrN).catch(() => null)))
+    return Promise.all([call('get_news_feed', {}), call('get_stock_news', { symbol: 'SPY' }), call('get_stock_news', { symbol: 'QQQ' }), call('search_news', { keyword: 'stock market' })].map((pr) => pr.then(arrN).catch(() => null)))
       .then((R) => { if (R.every((r) => r == null)) throw new Error('news'); const seen = {}; const L = [];
         [].concat(...R.filter(Boolean)).forEach((x) => { const k = x && (x.news_id || x.url); if (!k || seen[k]) return; seen[k] = 1; L.push(x); });
         L.sort((a, b) => (Date.parse(b.publish_time) || 0) - (Date.parse(a.publish_time) || 0)); S.news = L; S.err.news = null; })
@@ -274,13 +274,13 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     let ser, amt, pc;
     if (tf[1] === 0) { ser = c.series; amt = c.day; pc = c.dayPct; }
     else { ser = tfSeries(a, tf[1], c.val); const base = ser ? ser[0] : null; amt = base ? c.val - base : null; pc = base ? (c.val / base - 1) * 100 : null; }
-    const m = money(c.val), dot = m.lastIndexOf('.');
+    const HB = hideBal(); const m = HB ? '$••••••' : money(c.val), dot = HB ? -1 : m.lastIndexOf('.');
     const name = idx === 0 ? 'All accounts' : a.name;
     const menu = cards.length > 1 ? '<button class="acct2" data-acctmenu="1" aria-haspopup="listbox" aria-expanded="' + S.amenu + '"><i></i>' + E(name) + ic('chev', 14, 2.4) + '</button>' : '<span class="acct2 solo"><i></i>' + E(name) + '</span>';
-    const list = S.amenu ? '<div class="amenu" role="listbox">' + cards.map((x, k) => '<button role="option" aria-selected="' + (k === idx) + '" data-acct="' + k + '"><i></i><span class="am-n"><b>' + E(k === 0 ? 'All accounts' : x.a.name) + '</b><small>' + E(x.a.sub || '') + '</small></span><span class="am-v"><b>' + money(x.c.val) + '</b><small class="' + cls(x.c.dayPct) + '">' + pct(x.c.dayPct) + '</small></span>' + (k === idx ? '<em>✓</em>' : '<em></em>') + '</button>').join('') + '</div>' : '';
+    const list = S.amenu ? '<div class="amenu" role="listbox">' + cards.map((x, k) => '<button role="option" aria-selected="' + (k === idx) + '" data-acct="' + k + '"><i></i><span class="am-n"><b>' + E(k === 0 ? 'All accounts' : x.a.name) + '</b><small>' + E(x.a.sub || '') + '</small></span><span class="am-v"><b>' + (HB ? '$••••' : money(x.c.val)) + '</b><small class="' + cls(x.c.dayPct) + '">' + pct(x.c.dayPct) + '</small></span>' + (k === idx ? '<em>✓</em>' : '<em></em>') + '</button>').join('') + '</div>' : '';
     return card('<div class="pt2h"><a class="pt2k" href="#portfolio' + (idx ? '/' + idx : '') + '">Portfolio</a>' + menu + '<a class="pt2go" href="#portfolio' + (idx ? '/' + idx : '') + '" aria-label="Open portfolio">' + ic('chev', 20, 2.2) + '</a></div>' + list +
-      '<div class="pt2b">' + (dot > 0 ? m.slice(0, dot) + '<small>' + m.slice(dot) + '</small>' : m) + '</div>' +
-      '<div class="pt2p ' + (amt == null ? '' : amt >= 0 ? 'u' : 'd') + '">' + (amt == null ? 'Loading ' + tf[2] + '…' : (amt >= 0 ? '▲ ' : '▼ ') + chg(amt).replace(/^[+−-]/, '') + ' · ' + pct(Math.abs(pc)).replace(/^[+−-]/, '') + ' ' + tf[2]) + '</div>' +
+      '<div class="pt2bw"><div class="pt2b">' + (dot > 0 ? m.slice(0, dot) + '<small>' + m.slice(dot) + '</small>' : m) + '</div><button type="button" class="eyeb" data-hidebal="1" aria-label="' + (HB ? 'Show balance' : 'Hide balance') + '" aria-pressed="' + HB + '">' + ic(HB ? 'eyeoff' : 'eye', 20, 2.0) + '</button></div>' +
+      '<div class="pt2p ' + (amt == null ? '' : amt >= 0 ? 'u' : 'd') + '">' + (amt == null ? 'Loading ' + tf[2] + '…' : (amt >= 0 ? '▲ ' : '▼ ') + (HB ? '' : chg(amt).replace(/^[+−-]/, '') + ' · ') + pct(Math.abs(pc)).replace(/^[+−-]/, '') + ' ' + tf[2]) + '</div>' +
       areaChart(ser, (amt || 0) >= 0, c.val - c.day) + mixRow(c) +
       '<button class="ptog' + (S.pOpen ? ' on' : '') + '" data-ptog="1" aria-expanded="' + !!S.pOpen + '"><span>Top performers today</span><i>' + ic('chev', 16, 2.4) + '</i></button>' + (S.pOpen ? '<div class="rows" style="padding:0!important">' + (c.top.length ? perf(c.top, 3, 60) : '<div class="err">No stock holdings in this account.</div>') + '</div>' : ''),
       'padding:14px 16px 14px;margin-top:8px', 'pglass pt2');
@@ -326,7 +326,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   }
   function newsRows() {
     if (S.news == null) return rowsBox(skel(4), 'padding:14px');
-    const L = topNews(S.news, 4);
+    const L = topNews(S.news, DESK.matches ? 8 : 4);
     if (!L.length) return rowsBox('<div class="err">Headlines aren’t loading right now. Try again in a minute.</div>');
     return rowsBox(L.map((n) => {
       const sym = window.NTH && NTH.tk ? NTH.tk(n) : null; const light = sym && LG && sym in LG && LG[sym] !== 1;
@@ -456,7 +456,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       al.map((a) => '<a class="row" href="#stock/' + encodeURIComponent(a.s) + '" style="min-height:58px">' + tl(a.s, 32) + '<span class="nm"><b style="font-weight:500">' + a.h + '</b>' + (a.sub ? '<small>' + a.sub + '</small>' : '') + '</span></a>').join(''));
   }
   function today() {
-    if (DESK.matches) return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="dk2"><div class="dkL"><div class="hero ptile">' + RIB + portCard() + '</div>' + f13Tile() + catTile() + filingsTile() + '</div><div class="dkR">' + pulse() + lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + comingUp() + '</div></div></div>';
+    if (DESK.matches) return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="dk2"><div class="dkL"><div class="hero ptile">' + RIB + portCard() + '</div>' + f13Tile() + '</div><div class="dkR">' + pulse() + lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + '</div></div>' +
+      '<div class="dk3"><div>' + catTile() + '</div><div>' + comingUp() + '</div></div><div class="dkN">' + filingsTile() + '</div></div>';
     return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="hero ptile">' + RIB + portCard() + '</div>' + pulse() +
       lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + f13Tile() + catTile() + comingUp() + filingsTile() + '</div>';
   }
@@ -505,6 +506,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     msg: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
     down: '<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+    eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    eyeoff: '<path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-2.6 3.5M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7c1.9 0 3.6-.6 5-1.5"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18"/>',
     gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
   });
   const V2_STAGE = 3; // staged rollout on the preview: 1 = Movers, Ask Jump, Funds; 2 = + radar, Markets, earnings; 3 = + alerts, follow the money, 5-second prices
@@ -962,6 +965,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       (L.length ? snapNote('From the saved weekly roundup, ' + E(W.week || '') + ' (snapshot, not live).') + rowsBox(L.map((r) => anRow(snapAn(r), false)).join(''), 'margin-top:8px') : '');
   }
   // Your position (only when your own brokerage accounts are loaded in owner mode): shares, cost, value and gain across accounts
+  function hideBal() { try { return localStorage.getItem('jt.hidebal') === '1'; } catch (e) { return false; } }
   function myPos(sym, q) {
     const L = ACCTS.filter((a) => a.pos && a.pos[sym]); if (!L.length) return '';
     let sh = 0, cost = 0; L.forEach((a) => { const [n, b] = a.pos[sym]; sh += +n || 0; cost += (+n || 0) * (+b || 0); });
@@ -969,8 +973,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const cell = (k, v, c) => '<div class="fct"><small>' + k + '</small><b' + (c ? ' class="' + c + '"' : '') + '>' + v + '</b></div>';
     return lab('layers', 'Your position', '', '') + '<div class="card mypos" style="padding:12px 14px"><div class="fgrid" style="margin:0">' +
       cell('Shares', (sh % 1 ? sh.toFixed(4).replace(/0+$/, '') : sh.toLocaleString())) + cell('Avg cost', pxs(avg)) +
-      cell('Market value', mv != null ? money(mv) : '—') + cell('Total gain', g != null ? (g >= 0 ? '+' : '') + money(g) + ' (' + pct(gp) + ')' : '—', g != null ? cls(g) : '') +
-      cell('Today', day != null ? (day >= 0 ? '+' : '') + money(day) : '—', day != null ? cls(day) : '') + cell('Accounts', L.length === 1 ? E(L[0].name) : L.length + ' accounts') +
+      cell('Market value', hideBal() ? '$••••' : mv != null ? money(mv) : '—') + cell('Total gain', g != null ? (hideBal() ? pct(gp) : (g >= 0 ? '+' : '') + money(g) + ' (' + pct(gp) + ')') : '—', g != null ? cls(g) : '') +
+      cell('Today', day != null ? (hideBal() ? (q && q.pct != null ? pct(q.pct) : '—') : (day >= 0 ? '+' : '') + money(day)) : '—', day != null ? cls(day) : '') + cell('Accounts', L.length === 1 ? E(L[0].name) : L.length + ' accounts') +
       '</div>' + (L.length > 1 ? '<small class="note" style="display:block;margin-top:8px">' + L.map((a) => E(a.name) + ': ' + (+a.pos[sym][0]).toLocaleString() + ' sh @ ' + pxs(a.pos[sym][1])).join(' · ') + '</small>' : '') + '</div>';
   }
   function stockScreen(sym) {
@@ -1126,6 +1130,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   }
   D.addEventListener('click', (e) => {
     const go = e.target.closest('[data-go]'); if (go && !e.target.closest('a')) { location.hash = go.dataset.go; return; }
+    if (e.target.closest('[data-hidebal]')) { e.preventDefault(); try { localStorage.setItem('jt.hidebal', hideBal() ? '0' : '1'); } catch (er) {} render(); return; }
     if (e.target.closest('#addAcct') || e.target.closest('a[href="#edit"]')) { e.preventDefault(); toast('Linking Webull accounts is coming soon.'); return; }
     let b;
     if ((b = e.target.closest('[data-mvsort]'))) { const k = b.dataset.mvsort; const so = S.mv.sort; S.mv.sort = so && so.k === k ? (so.d === 'desc' ? { k, d: 'asc' } : null) : { k, d: k === 'sym' || k === 'tag' ? 'asc' : 'desc' }; render(); return; }

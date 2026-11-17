@@ -1085,3 +1085,28 @@ html[data-x2t="light"] .gt{color:#243248;border-color:#CCD8E6}html[data-x2t="lig
 @media (min-width:1024px){.gtabs{margin:6px 0 8px;padding:2px 0 6px;flex-wrap:wrap}}
 .anrg{display:block;max-width:440px;margin-left:auto;margin-right:auto}
 @media (min-width:1024px){.top.tc a.ib[href="#alerts"],.top.tc a.ib[href="#calendar"]{display:none}}
+@media (min-width:1024px){
+/* Today: two columns on top, catalysts and heads-up side by side, news across the full width */
+.dk3{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start;margin-top:8px}
+.dk3>div>.lab:first-child,.dk3>div>.sh:first-child{margin-top:18px!important}
+.dkN{margin-top:8px}
+/* sidebar starts at the top, tighter */
+html body #nav.nav{padding:16px 12px 14px!important;justify-content:flex-start!important}
+html body #nav.nav:before{height:26px!important;margin:2px 10px 16px!important}
+.nsrch{margin:0 2px 10px}
+.nsep{margin:14px 14px 4px}
+}
+.pt2bw{display:flex;align-items:center;gap:6px}
+.eyeb{flex:none;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;margin-left:2px;border:0;border-radius:12px;background:none;color:#9FB3C8;cursor:pointer}
+.eyeb:hover{color:#E9F1F7;background:rgba(140,180,215,.08)}.eyeb:focus-visible{outline:2px solid #9CCBFF;outline-offset:2px}
+html[data-x2t="light"] .eyeb{color:#5A6B80}
+@media (min-width:1024px){.dkN .card.rows,.dkN .rows.card{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:28px}}
+.xnth{width:84px;height:60px;border-radius:10px;flex:none;overflow:hidden;position:relative;background:linear-gradient(135deg,#0E3A63,#041326);display:flex;align-items:center;justify-content:center;margin-right:12px;border:1px solid rgba(130,180,220,.2)}
+.xnth img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .2s}
+.xnth img.on{opacity:1}
+.xnr{align-items:center}
+@media (min-width:1024px){.xnth{width:120px;height:80px}.xnews{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:28px}}
+.pt2bw{display:flex;align-items:center;gap:6px}
+.eyeb{flex:none;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:0;border-radius:12px;background:none;color:#9FB3C8;cursor:pointer}
+.eyeb:hover{color:#E9F1F7;background:rgba(140,180,215,.08)}.eyeb:focus-visible{outline:2px solid #9CCBFF;outline-offset:2px}
+html[data-x2t="light"] .eyeb{color:#5A6B80}

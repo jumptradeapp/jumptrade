@@ -215,7 +215,8 @@
   const une = (t) => String(t || '').replace(/&amp;/g, '&').replace(/&#39;|&apos;/g, '’').replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
   const ago = (t) => { const m = Math.max(0, (Date.now() - Date.parse(t)) / 60000); return m < 60 ? Math.round(m) + 'm' : m < 1440 ? Math.round(m / 60) + 'h' : Math.round(m / 1440) + 'd'; };
   function newsList(items) {
-    return '<div class="card rows xnews">' + items.map((n) => { const rs = (n.related_symbols || []).slice(0, 3); return '<a class="row xnr" href="' + E(n.url) + '" target="_blank" rel="noopener"><span class="nm"><b>' + E(une(n.title)) + '</b><small>' + E(n.source_name || n.source || '') + ' · ' + ago(n.publish_time) + ' ago' + (rs.length ? ' · ' + rs.map(E).join(', ') : '') + '</small></span></a>'; }).join('') + '</div>';
+    return '<div class="card rows xnews">' + items.map((n) => { const rs = (n.related_symbols || []).slice(0, 3); const sym = rs.find((x) => /^[A-Z]{1,5}$/.test(x)) || ''; const th = window.JT_PRIV ? '' : '<span class="xnth">' + (sym ? V().tl(sym, 40) : '<span style="color:#5B9BEA">' + ic('news', 22) + '</span>') + '<img alt="" loading="lazy" src="/api/nimg?v=3&u=' + encodeURIComponent(n.url) + (n.image ? '&i=' + encodeURIComponent(n.image) : '') + '&s=' + encodeURIComponent(sym) + '&t=' + encodeURIComponent(une(n.title).slice(0, 140)) + '" onload="this.classList.add(\'on\')" onerror="this.remove()"></span>';
+      return '<a class="row xnr" href="' + E(n.url) + '" target="_blank" rel="noopener">' + th + '<span class="nm"><b>' + E(une(n.title)) + '</b><small>' + E(n.source_name || n.source || '') + ' · ' + ago(n.publish_time) + ' ago' + (rs.length ? ' · ' + rs.map(E).join(', ') : '') + '</small></span></a>'; }).join('') + '</div>';
   }
   function newsScreen() {
     const k = NEWSK.find((x) => x[0] === st.nk) || NEWSK[1]; let d;

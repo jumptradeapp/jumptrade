@@ -135,6 +135,41 @@ const T = {};
 
 T.get_stock_snapshot = async (i) => quotes(i.symbols);
 
+// Live market news from many newsrooms at once (their public RSS feeds), newest first, with each story's photo when the feed names one.
+const NEWS_FEEDS = [
+  ['MarketWatch', 'https://feeds.content.dowjones.io/public/rss/mw_topstories'],
+  ['CNBC', 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114'],
+  ['Benzinga', 'https://www.benzinga.com/feed'],
+  ['Investing.com', 'https://www.investing.com/rss/news_25.rss'],
+  ['Investing.com', 'https://www.investing.com/rss/news_301.rss'],
+  ['Financial Times', 'https://www.ft.com/markets?format=rss'],
+  ['Seeking Alpha', 'https://seekingalpha.com/market_currents.xml'],
+  ['Yahoo Finance', 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=SPY,QQQ,DIA,IWM&region=US&lang=en-US'],
+];
+const xunesc = (t) => String(t || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16))).replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(+d)).replace(/&amp;/g, '&');
+function parseFeed(xml, src) {
+  const out = []; const items = xml.match(/<item[\s>][\s\S]*?<\/item>/g) || [];
+  for (const it of items.slice(0, 40)) {
+    const tag = (n) => { const m = it.match(new RegExp('<' + n + '(?:\\s[^>]*)?>([\\s\\S]*?)</' + n + '>', 'i')); return m ? xunesc(m[1]).trim() : ''; };
+    const title = tag('title').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim(); let link = tag('link') || tag('guid'); if (!/^https:\/\//.test(link)) continue; if (!title) continue;
+    let pd = tag('pubDate') || tag('dc:date'); if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(pd)) pd = pd.replace(' ', 'T') + 'Z'; const t = Date.parse(pd); if (!t) continue;
+    let image = (it.match(/<media:(?:content|thumbnail)[^>]+url=["']([^"']+)["']/i) || it.match(/<enclosure[^>]+url=["']([^"']+\.(?:jpe?g|png|webp)[^"']*)["']/i) || it.match(/<enclosure[^>]+url=["']([^"']+)["'][^>]+type=["']image/i) || [])[1] || '';
+    if (!image) { const d = xunesc(tag('description') + tag('content:encoded')); image = (d.match(/<img[^>]+src=["']([^"']+)["']/i) || [])[1] || ''; }
+    image = xunesc(image); if (!/^https:\/\//.test(image)) image = '';
+    const desc = xunesc(tag('description')).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 240);
+    if (src === 'Seeking Alpha' && /GAAP EPS|Non-GAAP EPS|reports Q\d|declares .*dividend|dividend declared|prices .* offering/i.test(title)) continue; // routine filings, not news
+    out.push({ news_id: 'rss:' + link, title, url: link.replace(/[?&]mod=mw_rss_topstories/, ''), publish_time: new Date(t).toISOString(), source_name: src, source: src, image, summary: desc });
+  }
+  return out;
+}
+T.get_news_feed = async () => {
+  const got = await Promise.all(NEWS_FEEDS.map(([src, u]) => fetch(u, { headers: { 'user-agent': 'Mozilla/5.0 (compatible; jumptrade/1.0; +https://jumptrade.app)', accept: 'application/rss+xml, application/xml, text/xml' }, signal: AbortSignal.timeout(6000), cf: { cacheTtl: 60 } })
+    .then((r) => (r.ok ? r.text() : '')).then((x) => parseFeed(x, src)).catch(() => [])));
+  const seen = new Set(), L = []; const key = (x) => x.title.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(' ').slice(0, 8).join(' ');
+  [].concat(...got).sort((a, b) => Date.parse(b.publish_time) - Date.parse(a.publish_time)).forEach((x) => { const k = key(x); if (seen.has(k) || Date.now() - Date.parse(x.publish_time) > 48 * 3600000 || Date.parse(x.publish_time) > Date.now() + 600000) return; seen.add(k); L.push(x); });
+  return { data: L.slice(0, 120), sources: NEWS_FEEDS.map((f, i) => [f[0], got[i].length]) };
+};
+
 const SCREENS = { gain: 'day_gainers', lose: 'day_losers', active: 'most_actives', small: 'small_cap_gainers', aggressive: 'aggressive_small_caps' };
 async function screen(id, count = 100) {
   const d = await yget('/v1/finance/screener/predefined/saved?formatted=false&scrIds=' + id + '&count=' + count, { crumb: true });
@@ -757,7 +792,7 @@ T.get_market_sectors_detail = async (i) => {
   return { data: rows };
 };
 // How long each answer may be reused (seconds). Prices: short. Fundamentals: long.
-const TTL = { get_mover_setup: 60, get_insider_transactions: 3600, get_analyst_actions: 900, get_mover_why: 300, get_earnings_week: 600, get_pick_record: 600, get_playbook: 60, get_stock_unusual_activities: 60, get_community_hot_stocks: 180, get_runners: 60, get_sparks: 60, get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 60, search_news: 45,
+const TTL = { get_news_feed: 60, get_mover_setup: 60, get_insider_transactions: 3600, get_analyst_actions: 900, get_mover_why: 300, get_earnings_week: 600, get_pick_record: 600, get_playbook: 60, get_stock_unusual_activities: 60, get_community_hot_stocks: 180, get_runners: 60, get_sparks: 60, get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 60, search_news: 45,
   get_company_profile: 86400, get_analyst_target_price: 21600, get_analyst_rating: 21600, get_stock_forecast_eps: 21600, get_stock_earnings_calendar: 21600,
   get_fund_brief: 86400, get_fund_holdings: 86400, get_fund_performance: 86400 };
 
@@ -918,6 +953,7 @@ async function wbRoutes(url, env, req) {
     const c = await wb.raw('GET', '/openapi/config'); out.push('config -> ' + c.status + ' ' + JSON.stringify(c.data).slice(0, 200));
     return new Response(out.join('\n'), { headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } });
   }
+  if (url.pathname === '/api/wb/newsfeed') { const r = await T.get_news_feed(); return json({ sources: r.sources, n: r.data.length, img: r.data.filter((x) => x.image).length, top: r.data.slice(0, 5).map((x) => [x.publish_time, x.source_name, x.title]) }); } // owner-only check of the live news feeds
   if (url.pathname === '/api/wb/raw') { // market-data only (never account tools)
     const tool = url.searchParams.get('tool'); if (!WBMAP[tool]) return json({ error: 'not a market-data tool' }, 400);
     let inp = {}; try { inp = JSON.parse(url.searchParams.get('input') || '{}'); } catch (e) {}
