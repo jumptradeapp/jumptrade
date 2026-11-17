@@ -867,3 +867,18 @@ html body .top.tc .brand img{height:26px!important;width:auto!important}
 .pt2h a.pt2k{color:inherit;text-decoration:none}
 /*no brokerage*/.pt2 a.pt2p.pt2cn{display:table;margin:8px auto 4px;color:#BBD7F9!important;background:rgba(187,215,249,.10)!important;text-decoration:none;font-weight:500}.pt2 .pt2gap{height:6px}
 .sh h2 a.sht{color:inherit;text-decoration:none}
+
+/*open portfolio (dark themes): no tile, near-black page, glow at top*/
+html[data-x2t]:not([data-x2t="light"]) body,html[data-x2t]:not([data-x2t="light"]) .app2{background:#04060A!important}
+html[data-x2t]:not([data-x2t="light"]) .app2:before{content:"";position:absolute;left:0;right:0;top:0;height:440px;background:radial-gradient(120% 90% at 50% -10%,rgba(70,120,200,.55),rgba(20,40,80,.25) 45%,rgba(4,6,10,0) 75%);pointer-events:none;z-index:0}
+html[data-x2t]:not([data-x2t="light"]) .app2>*{position:relative;z-index:1}
+html[data-x2t]:not([data-x2t="light"]) .hero.ptile{background:none!important;border:0!important;box-shadow:none!important;padding:0!important;margin:8px 0 0!important;overflow:visible!important}
+html[data-x2t]:not([data-x2t="light"]) .hero.ptile:before,html[data-x2t]:not([data-x2t="light"]) .hero.ptile:after,html[data-x2t]:not([data-x2t="light"]) .hero.ptile .ribbon{display:none!important}
+html[data-x2t]:not([data-x2t="light"]) .hero.ptile .card{background:none!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;padding-left:2px!important;padding-right:2px!important}
+html[data-x2t]:not([data-x2t="light"]) .hero.ptile .card:before,html[data-x2t]:not([data-x2t="light"]) .hero.ptile .card:after{display:none!important}
+html[data-x2t]:not([data-x2t="light"]) .hero.ptile .pt2w{height:110px!important;margin:10px -2px 4px}
+.pt2w{background-image:radial-gradient(rgba(150,190,240,.16) 1px,transparent 1.2px);background-size:12px 12px}
+/*left-aligned balance*/
+.hero.ptile .pt2b{text-align:left!important;justify-content:flex-start!important;font-size:44px!important;margin-top:12px!important}
+.hero.ptile .pt2p:not(.pt2cn){margin-left:0!important;margin-right:auto!important;background:none!important;padding:0!important}
+.hero.ptile a.pt2p.pt2cn{margin-left:0!important}
