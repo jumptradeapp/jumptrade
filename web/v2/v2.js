@@ -423,7 +423,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       '<div style="display:flex;align-items:flex-end;gap:8px;margin-top:12px"><div style="flex:1"><div style="font-size:30px;line-height:38px;font-weight:600">' + (c.ready ? money(c.val) : '—') + '</div><div class="' + cls(c.day) + '" style="font-size:15px;font-weight:500;white-space:nowrap">' + (c.ready ? chg(c.day) + '<span style="margin-left:10px">' + pct(c.dayPct) + '</span>' : '&nbsp;') + '<span style="color:var(--fg2);margin-left:6px">today</span></div></div>' + mtn(c.series, 104, 52) + '</div>' +
       '<div class="kick" style="font-size:11px;letter-spacing:.2em;margin:14px 0 2px;color:#C9D6E2">Top performers today</div><div class="rows" style="padding:0!important">' + top + '</div></div>';
   }
-  const SEG = [['My account', '#portfolio'], ['Models', '#models'], ['Mine', '#build'], ['Funds', '#funds']];
+  const SEG = [['Accounts', '#portfolio'], ['Built', '#mine'], ['Models', '#models'], ['Funds', '#funds']];
   function portfolio(on) {
     const all = allCalc(); const cards = [{ a: all.a, c: all.c }].concat(ACCTS.map((a) => ({ a, c: acctCalc(a) })));
     on = Math.max(0, Math.min(cards.length - 1, on | 0)); const cur = cards[on];
@@ -638,7 +638,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const hs = f.h.slice().sort((a, b) => b[2] - a[2]).slice(0, S.allFund ? 99 : 10);
     return '<div class="wrap">' + backbar(E(f.fund), '#funds') + '<div style="display:flex;align-items:center;gap:14px;margin-top:4px">' + fundMark(f, 52) + '<div style="min-width:0"><h1 style="font-size:26px;line-height:32px">' + E(f.fund) + '</h1><p class="sub" style="margin-top:2px">' + (f.tag ? '<span class="ftag">' + E(f.tag) + '</span>' : '') + E(f.manager || '') + '</p></div></div>' +
       (recentDay(f.filed, 7) ? '<p class="filh" style="margin-top:8px">' + updPill(f.filed) + 'New ' + E(f.period) + ' 13F</p>' : '') + snapNote('13F for ' + E(f.period) + ', filed ' + E(shortD(f.filed)) + ' · ' + big$(f.total) + ' reported · ' + (f.n || f.h.length) + ' positions. Holdings are a dated snapshot; prices are live.') +
-      fundCopy(f) + sh('Top holdings', f.h.length > 10 ? (S.allFund ? 'Show less' : 'View all ' + f.h.length) : '', '#fundall', 'layers') +
+      fundCopy(f) + '<button class="xbtn pbuild" data-fcopy="' + E(f.slug) + '">Copy this fund · $10,000 paper portfolio</button>' + (window.V2X && V2X.donutCard ? '<div class="lab">Mix</div>' + V2X.donutCard(f.h.filter((h) => h[2] > 0).map((h) => ({ s: h[0] || h[1].split(' ')[0], v: +h[2] })), Math.max(0, 100 - f.h.reduce((a, h) => a + (+h[2] || 0), 0))).replace('<b>Cash</b>', '<b>Rest of fund</b>') : '') + sh('Top holdings', f.h.length > 10 ? (S.allFund ? 'Show less' : 'View all ' + f.h.length) : '', '#fundall', 'layers') +
       rowsBox(hs.map((h) => { const s = h[0], x = S.q[s]; return '<a class="row" href="#stock/' + encodeURIComponent(s) + '">' + tl(s, 38) + '<span class="nm"><b>' + E(s) + ' <span class="tag2" style="margin-left:4px">' + (FCH[h[3]] || 'HELD') + '</span></b><small>' + E(nameOf(s) !== s ? nameOf(s) : h[1]) + ' · ' + (+h[2]).toFixed(1) + '% of fund</small></span>' + (x ? qv(x.price, x.chg, x.pct) : qv(null)) + '</a>'; }).join('')) +
       (f.x && f.x.length ? '<p class="note">Sold out this quarter: ' + f.x.map((x) => E(x[0])).join(', ') + '.</p>' : '') + '</div>';
   }
@@ -998,6 +998,9 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     if ((b = e.target.closest('[data-mvs]'))) { S.mv.sess = b.dataset.mvs; render(); loadMovers().then(render); return; }
     if ((b = e.target.closest('[data-mvd]'))) { S.mv.dir = b.dataset.mvd; render(); loadMovers().then(render); return; }
     if ((b = e.target.closest('[data-fcat]'))) { S.fcat = b.dataset.fcat; render(); return; }
+    if ((b = e.target.closest('[data-fcopy]'))) { const f = S.funds && S.funds.funds && S.funds.funds.find((x) => x.slug === b.dataset.fcopy); if (!f) return;
+      const top = f.h.filter((h) => /^[A-Z.]{1,6}$/.test(h[0]) && +h[2] > 0).slice(0, 10); const p = V2X.papMake(f.fund + ' copy', 'fund', f.slug, 10000, top.map((h) => ({ s: h[0], w: +h[2] })));
+      if (!p) { fastSnap(top.map((h) => h[0]).concat(['SPY'])).then(render).catch(() => {}); toast('Getting live prices. Tap again in a second.'); return; } toast('Copied to Built'); location.hash = 'mine/' + p.id; return; }
     if ((b = e.target.closest('[data-fil]'))) { S.fil = b.dataset.fil; render(); return; }
     if ((b = e.target.closest('[data-rotw]'))) { S.rotW = b.dataset.rotw; render(); return; }
     if ((b = e.target.closest('[data-ewd]'))) { S.ewDay = b.dataset.ewd; render(); return; }

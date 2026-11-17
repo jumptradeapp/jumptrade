@@ -92,7 +92,7 @@
     const base = opt.base != null ? '<line x1="0" x2="' + W + '" y1="' + ys(opt.base).toFixed(1) + '" y2="' + ys(opt.base).toFixed(1) + '" stroke="rgba(187,215,249,.35)" stroke-dasharray="3 4"/>' : '';
     return '<svg class="xch" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="Price chart"><defs><linearGradient id="xg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5B9BEA" stop-opacity=".32"/><stop offset="1" stop-color="#5B9BEA" stop-opacity="0"/></linearGradient></defs>' + base +
       '<path d="' + ln + 'L' + xs(c.length - 1).toFixed(1) + ' ' + H + 'L' + xs(0).toFixed(1) + ' ' + H + 'Z" fill="url(#xg)"/>' + ov.map((l) => '<path d="' + path(l.v) + '" fill="none" stroke="' + l.c + '" stroke-width="1.3"' + (l.dash ? ' stroke-dasharray="4 3"' : '') + '/>').join('') +
-      '<path d="' + ln + '" fill="none" stroke="#93C0F6" stroke-width="1.8" stroke-linejoin="round"/></svg>' + (ov.length ? '<div class="xleg">' + ov.map((l) => '<span><i style="background:' + l.c + '"></i>' + l.n + '</span>').join('') + '</div>' : '') + (up ? '' : '');
+      '<path d="' + ln + '" fill="none" stroke="#93C0F6" stroke-width="1.8" stroke-linejoin="round"/></svg>' + (ov.some((l) => l.n) ? '<div class="xleg">' + ov.filter((l) => l.n).map((l) => '<span><i style="background:' + l.c + '"></i>' + l.n + '</span>').join('') + '</div>' : '') + (up ? '' : '');
   }
   X.chart = chart;
 
@@ -281,33 +281,76 @@
       tbl('models', [['nm', 'Model', (r) => '<span class="xdot" style="background:' + E(r.color || '#5B9BEA') + '"></span><span class="sn"><b>' + E(r.name) + '</b><small>' + E(r.tag || '') + '</small></span>', (r) => r.name], ['bt', 'Backtest/yr', (r) => '<b>' + cg(r.bt) + '</b>', (r) => (r.bt || {}).cagr], ['sp', 'S&amp;P/yr', (r) => cg(r.btSpy), (r) => (r.btSpy || {}).cagr], ['lv', 'Live/yr', (r) => cg(r.live), (r) => (r.live || {}).cagr], ['dd', 'Worst drop', (r) => ddc(r.bt), (r) => (r.bt || {}).mdd], ['lev', 'Leverage', (r) => (r.lev ? r.lev + '×' : '1×'), (r) => r.lev || 1]], j.models, { href: (r) => '#models/' + r.id, short: 1 }) +
       note('Tap a model for its chart, yearly returns, positions and rules.'));
   }
-  const segP = (on) => '<div class="seg" style="margin-top:12px">' + [['My account', '#portfolio'], ['Models', '#models'], ['Mine', '#build'], ['Funds', '#funds']].map((x) => '<a class="' + (x[1] === on ? 'on' : '') + '" href="' + x[1] + '">' + x[0] + '</a>').join('') + '</div>';
+  const segP = (on) => '<div class="seg" style="margin-top:12px">' + [['Accounts', '#portfolio'], ['Built', '#mine'], ['Models', '#models'], ['Funds', '#funds']].map((x) => '<a class="' + (x[1] === on ? 'on' : '') + '" href="' + x[1] + '">' + x[0] + '</a>').join('') + '</div>';
 
   // ---------- build a portfolio (themes.json; free text matched to theme keywords) ----------
   st.bt = null; st.amt = lsGet('jt.v2amt', 1000); st.btq = '';
   const RW = { core: 3, pick: 2, spec: 1 };
-  function buildScreen() {
-    const j = file('/themes.json'); if (!j) return wrap(V().topbar() + V().head('Build a portfolio', '') + V().rowsBox(V().skel(6), 'padding:14px'));
-    if (j.err) return wrap(V().topbar() + V().rowsBox(errB('The themes file didn’t load.')));
-    const all = (j.simple || []).map((x) => ({ id: x.id, name: x.name, blurb: x.blurb, how: x.how, w: x.w.map((r) => ({ s: r[0], w: r[1] / 100, d: r[2] })) }))
-      .concat((j.themes || []).map((t) => { const tot = t.names.reduce((a, n) => a + (RW[n[1]] || 1), 0); return { id: t.id, name: t.name, blurb: t.blurb, keys: t.keys, theme: 1, w: t.names.map((n) => ({ s: n[0], w: (RW[n[1]] || 1) / tot, d: n[2], role: n[1] })) }; }));
-    let pick = all.find((x) => x.id === st.bt); let miss = '';
-    if (!pick && st.btq) { const q = st.btq.toLowerCase(); let best = null, bs = 0; all.forEach((t) => { const sc = (t.keys || []).reduce((a, k) => a + (q.indexOf(k) >= 0 ? 1 : 0), 0) + (q.indexOf(t.name.toLowerCase()) >= 0 ? 3 : 0); if (sc > bs) { bs = sc; best = t; } }); if (best) pick = best; else miss = st.btq; }
-    let res = '';
-    if (pick) { const syms = pick.w.map((x) => x.s); quotes(syms); st.vis = syms; { const B = lsGet('jt.builtl', []) || []; if (!B.some((b) => b.id === pick.id)) { B.unshift({ id: pick.id, name: pick.name, syms }); lsSet('jt.builtl', B.slice(0, 20)); } } const amt = +st.amt || 0; let used = 0;
-      const rows = pick.w.map((x) => { const q = V().S.q[x.s]; const dol = amt * x.w; const sh = q && q.price ? Math.floor(dol / q.price) : null; if (sh != null) used += sh * q.price; return Object.assign({}, x, { dol: dol, sh: sh, q: q }); });
-      res = '<div class="lab">' + E(pick.name) + '</div>' + card('<p class="xp">' + E(pick.blurb || '') + (pick.how ? ' ' + E(pick.how) : '') + '</p>') +
-        tbl('build', [['sym', 'Symbol', (r) => symCell(r.s), (r) => r.s], ['px', 'Price', (r) => '<b>' + (r.q ? V().px(r.q.price) : '—') + '</b>', (r) => (r.q ? r.q.price : null)], ['pct', 'Chg %', (r) => (r.q ? '<b class="' + cl(r.q.pct) + '">' + V().pct(r.q.pct) + '</b>' : '—'), (r) => (r.q ? r.q.pct : null)], ['w', 'Weight', (r) => (r.w * 100).toFixed(1) + '%', (r) => r.w], ['d', 'Dollars', (r) => money(r.dol), (r) => r.dol], ['sh', 'Shares', (r) => (r.sh == null ? '…' : r.sh ? '<b>' + r.sh + '</b>' : '<small>fractional</small>'), (r) => r.sh], ['role', 'Role', (r) => E(r.role || r.d || ''), (r) => r.role || '']], rows, { href: (r) => '#stock/' + r.s }) +
-        '<div class="xgrid3"><div class="xk"><small>Invested</small><b>' + money(used) + '</b></div><div class="xk"><small>Left in cash</small><b>' + money(amt - used) + '</b></div><div class="xk"><small>Names</small><b>' + rows.length + '</b></div></div>' +
-        note('Weights: core names 3×, picks 2×, speculative 1×. Whole shares at live prices; “fractional” means the slice is smaller than one share. Not advice.'); }
-    return wrap(V().topbar() + V().head('Build a portfolio', 'Pick a theme and an amount') + segP('#build') +
-      '<div class="xadd" style="margin-top:12px"><span class="xpre">$</span><input id="xamt" class="xin" inputmode="decimal" value="' + E(String(st.amt)) + '" aria-label="Amount to invest"><button class="xbtn" data-xamt="1">Update</button></div>' +
-      '<div class="xadd"><input id="xbq" class="xin" placeholder="Or describe it: “AI power and nuclear”" value="' + E(st.btq) + '"><button class="xbtn" data-xbq="1">Match</button></div>' +
-      (miss ? offB('No theme matched “' + E(miss) + '”', 'Building a custom portfolio from free text needs the AI connection (Anthropic key), which isn’t available right now. Pick one of the themes below instead.') : '') + res +
-      '<div class="lab">Simple</div><div class="xchips">' + all.filter((t) => !t.theme).map((t) => '<button class="chip' + (pick && pick.id === t.id ? ' on' : '') + '" data-xbt="' + t.id + '">' + E(t.name) + '</button>').join('') + '</div>' +
-      '<div class="lab">Themes</div><div class="xchips">' + all.filter((t) => t.theme).map((t) => '<button class="chip' + (pick && pick.id === t.id ? ' on' : '') + '" data-xbt="' + t.id + '">' + E(t.name) + '</button>').join('') + '</div>');
+  // ---------- Built: paper portfolios you build from a theme or copy from a fund, tracked from the moment you build them ----------
+  const PAP = () => lsGet('jt.paper', []) || [];
+  const papSave = (L) => { lsSet('jt.paper', L.slice(0, 30)); try { window.dispatchEvent(new Event('jt-sync')); } catch (e) {} };
+  const DC = ['#9CCBFF', '#5B9BEA', '#2F6FC7', '#C9E1FF', '#1E4F94', '#78ACEE', '#3E83D8', '#E3EFFF'];
+  // donut: slices [{k, v}] by value; the rest go into "Other", cash shown grey
+  function donut(sl, size) { size = size || 132; const tot = sl.reduce((a, x) => a + Math.max(0, x.v), 0) || 1; const r = size / 2 - 9, C = 2 * Math.PI * r; let off = 0;
+    const arcs = sl.map((x, i) => { const f = Math.max(0, x.v) / tot; const seg = '<circle r="' + r + '" cx="' + size / 2 + '" cy="' + size / 2 + '" fill="none" stroke="' + (x.c || DC[i % DC.length]) + '" stroke-width="14" stroke-dasharray="' + (f * C).toFixed(2) + ' ' + C.toFixed(2) + '" stroke-dashoffset="' + (-off * C).toFixed(2) + '"/>'; off += f; return seg; }).join('');
+    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" style="transform:rotate(-90deg);flex:none" aria-hidden="true">' + arcs + '</svg>'; }
+  function donutCard(rows, cash) { const tot = rows.reduce((a, r) => a + r.v, 0) + (cash || 0) || 1; const top = rows.slice().sort((a, b) => b.v - a.v); const big = top.slice(0, 7), rest = top.slice(7).reduce((a, r) => a + r.v, 0);
+    const sl = big.map((r, i) => ({ k: r.s, v: r.v, c: DC[i % DC.length] })); if (rest > 0) sl.push({ k: 'Other', v: rest, c: '#4E6585' }); if (cash > 0.5) sl.push({ k: 'Cash', v: cash, c: '#2A3B55' });
+    return card('<div class="dnw">' + donut(sl) + '<div class="dnl">' + sl.map((x) => '<span><i style="background:' + x.c + '"></i><b>' + E(x.k) + '</b><em>' + (x.v / tot * 100).toFixed(x.v / tot < 0.1 ? 1 : 0) + '%</em></span>').join('') + '</div></div>', 'padding:14px 16px'); }
+  X.donutCard = donutCard;
+  // live value of a paper portfolio
+  function papCalc(p) { const S = V().S; let val = p.cash || 0, day = 0, ready = true; const rows = p.h.map((h) => { const q = S.q[h.s]; if (!q || !q.price) { ready = false; return { s: h.s, sh: h.sh, px: h.px, v: h.sh * h.px, cost: h.sh * h.px }; } const v = h.sh * q.price; val += v; day += h.sh * (q.chg || 0); return { s: h.s, sh: h.sh, px: h.px, q, v, cost: h.sh * h.px }; });
+    if (!ready) val = rows.reduce((a, r) => a + r.v, p.cash || 0); const sq = S.q.SPY; const spyP = sq && p.spy0 ? (sq.price / p.spy0 - 1) * 100 : null; const gain = val - p.amt; if (p.d === new Date().toISOString().slice(0, 10)) day = gain; // built today: today's move is the move since building
+    return { rows, val, day, dayPct: val - day ? day / (val - day) * 100 : 0, gain, gainPct: gain / p.amt * 100, spyP, vs: spyP != null ? gain / p.amt * 100 - spyP : null, ready }; }
+  function papMake(name, src, ref, amt, w) { const S = V().S; const sq = S.q.SPY; const miss = w.filter((x) => !(S.q[x.s] && S.q[x.s].price)); if (miss.length || !sq) return null;
+    const ws = w.reduce((a, x) => a + x.w, 0) || 1; const h = w.map((x) => { const px = S.q[x.s].price; return { s: x.s, sh: Math.round(amt * x.w / ws / px * 10000) / 10000, px }; });
+    const p = { id: 'p' + Date.now().toString(36), name, src, ref, amt, t: Date.now(), d: new Date().toISOString().slice(0, 10), spy0: sq.price, h, cash: Math.max(0, Math.round((amt - h.reduce((a, x) => a + x.sh * x.px, 0)) * 100) / 100) };
+    const L = PAP(); L.unshift(p); papSave(L); const B = lsGet('jt.builtl', []) || []; if (!B.some((b) => b.id === p.id)) { B.unshift({ id: p.id, name: p.name, syms: h.map((x) => x.s) }); lsSet('jt.builtl', B.slice(0, 20)); } return p; }
+  X.papMake = papMake;
+  // performance since built: daily closes of the holdings, plus today's live value; S&P line scaled to the same starting amount
+  function papSeries(p) { const k = 'pap:' + p.id; const syms = p.h.map((h) => h.s).concat(['SPY']);
+    const d = once(k, 600, () => V().call('get_stock_bars', { symbols: syms, category: 'US_STOCK', timespan: 'D', count: 260 }).then((r) => { const C = {}; ((r && r.result) || []).forEach((x) => { const m = {}; (x.result || []).forEach((b) => { const dd = String(b.time || '').slice(0, 10); if (dd) m[dd] = +b.close; }); C[x.symbol] = m; }); return C; }));
+    if (!d || d.err) return null; const days = Object.keys(d.SPY || {}).filter((x) => x > p.d).sort(); const today = new Date().toISOString().slice(0, 10);
+    const pts = [{ c: p.amt, sp: p.amt }]; days.filter((x) => x < today).forEach((dd) => { let v = p.cash || 0, ok = true; p.h.forEach((h) => { const c = d[h.s] && d[h.s][dd]; if (c) v += h.sh * c; else ok = false; }); if (ok && d.SPY[dd]) pts.push({ c: v, sp: p.amt * d.SPY[dd] / p.spy0 }); });
+    const c = papCalc(p); const sq = V().S.q.SPY; if (c.ready && sq) pts.push({ c: c.val, sp: p.amt * sq.price / p.spy0 }); return pts; }
+  const since = (t) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: new Date(t).getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined });
+  const gainL = (g, p) => { if (Math.abs(g) < 0.005) { g = 0; p = 0; } return '<span class="' + (g ? cl(g) : '') + '">' + (g >= 0 ? '+' : '−') + money(Math.abs(g)).replace('−', '') + ' (' + sgnP(p) + ')</span>'; };
+  function mineScreen(id) {
+    const L = PAP(); const S = V().S;
+    if (id) { const p = L.find((x) => x.id === id); if (!p) return wrap(V().backbar('Built', '#mine') + V().rowsBox(errB('That portfolio isn’t here. It may have been deleted, or built on another device.')));
+      const syms = p.h.map((h) => h.s).concat(['SPY']); quotes(syms); st.vis = syms; const c = papCalc(p); const pts = papSeries(p);
+      const ch = !pts ? card(V().skel(3), 'padding:16px') : pts.length < 3 ? card('<p class="xp" style="color:var(--fg2)">The chart fills in after the first full trading day. Built ' + since(p.t) + '.</p>') :
+        card(chart(pts.map((x) => ({ c: x.c })), { h: 150, base: p.amt, lines: [{ v: pts.map((x) => x.sp), c: SPC }] }) + '<small class="xcap"><i class="lgd" style="background:#9CCBFF"></i>This portfolio <i class="lgd" style="background:' + SPC + ';margin-left:10px"></i>S&amp;P 500 · since ' + since(p.t) + '</small>');
+      const del = st.pdel === p.id;
+      return wrap(V().backbar(E(p.name), '#mine') + V().head(E(p.name), 'Built ' + since(p.t) + ' with ' + money(p.amt) + (p.src === 'fund' ? ' · copy of a fund' : '')) +
+        '<div class="pfv"><b>' + money(c.val) + '</b><div>' + gainL(c.gain, c.gainPct) + ' <small>since built</small></div><div>' + (c.ready ? gainL(c.day, c.dayPct) : '…') + ' <small>today</small></div></div>' +
+        '<div class="xgrid3"><div class="xk"><small>You</small><b class="' + cl(c.gainPct) + '">' + sgnP(c.gainPct) + '</b></div><div class="xk"><small>S&amp;P 500</small><b class="' + cl(c.spyP) + '">' + sgnP(c.spyP) + '</b></div><div class="xk"><small>Vs S&amp;P</small><b class="' + cl(c.vs) + '">' + sgnP(c.vs) + '</b></div></div>' +
+        ch + '<div class="lab">Mix</div>' + donutCard(c.rows, p.cash) +
+        '<div class="lab">Holdings</div>' + tbl('pap', [['sym', 'Symbol', (r) => symCell(r.s), (r) => r.s], ['v', 'Value', (r) => '<b>' + money(r.v) + '</b>', (r) => r.v], ['g', 'Gain', (r) => r.q ? '<span class="' + cl(r.v - r.cost) + '">' + sgnP((r.v / r.cost - 1) * 100) + '</span>' : '—', (r) => r.v / r.cost], ['d', 'Today', (r) => r.q ? '<span class="' + cl(r.q.pct) + '">' + V().pct(r.q.pct) + '</span>' : '—', (r) => (r.q ? r.q.pct : null)], ['sh', 'Shares', (r) => (+r.sh).toFixed(r.sh < 10 ? 3 : 1), (r) => r.sh], ['px', 'Bought at', (r) => V().px(r.px), (r) => r.px]], c.rows, { href: (r) => '#stock/' + r.s, def: { k: 'v', d: 'desc' } }) +
+        note('Paper portfolio: fractional shares bought at the live price when you tapped Build. No real money or trades.') +
+        '<button class="xbtn pdel' + (del ? ' on' : '') + '" data-pdel="' + E(p.id) + '">' + (del ? 'Tap again to delete' : 'Delete this portfolio') + '</button>');
+    }
+    const syms = Array.from(new Set(L.reduce((a, p) => a.concat(p.h.map((h) => h.s)), ['SPY']))); quotes(syms); st.vis = syms.slice(0, 80);
+    const list = L.length ? V().rowsBox(L.map((p) => { const c = papCalc(p); return '<a class="row" href="#mine/' + E(p.id) + '" style="min-height:74px!important">' + '<span class="pfi">' + donut(p.h.map((h, i) => ({ v: h.sh * ((S.q[h.s] || {}).price || h.px), c: DC[i % DC.length] })), 40) + '</span><span class="nm"><b>' + E(p.name) + '</b><small>Built ' + since(p.t) + ' · ' + money(p.amt) + (c.vs != null ? ' · <span class="' + cl(c.vs) + '">' + sgnP(c.vs) + ' vs S&amp;P</span>' : '') + '</small></span><span class="q"><b>' + money(c.val) + '</b><small class="' + cl(c.gain) + '">' + sgnP(c.gainPct) + '</small></span></a>'; }).join(''))
+      : card('<p class="xp"><b>No portfolios yet.</b> Pick an amount and a theme, or copy one of the big funds, and it’s tracked here from that moment against the S&amp;P 500.</p>');
+    return wrap(V().topbar() + V().head('Portfolio', 'Portfolios you built, tracked live') + segP('#mine') + '<a class="xbtn pnew" href="#build">' + ic('plus', 18, 2.4) + ' Build a portfolio</a>' + '<div style="margin-top:12px">' + list + '</div>');
   }
-
+  // builder: amount → theme → review → Build
+  function buildScreen() {
+    const j = file('/themes.json'); const top = V().backbar('Build a portfolio', '#mine') + V().head('Build a portfolio', 'Pick an amount and a theme');
+    if (!j) return wrap(top + V().rowsBox(V().skel(6), 'padding:14px')); if (j.err) return wrap(top + V().rowsBox(errB('The themes file didn’t load.')));
+    const all = (j.simple || []).map((x) => ({ id: x.id, name: x.name, blurb: x.blurb, w: x.w.map((r) => ({ s: r[0], w: r[1] / 100, d: r[2] })) }))
+      .concat((j.themes || []).map((t) => { const tot = t.names.reduce((a, n) => a + (RW[n[1]] || 1), 0); return { id: t.id, name: t.name, blurb: t.blurb, theme: 1, w: t.names.map((n) => ({ s: n[0], w: (RW[n[1]] || 1) / tot, d: n[2], role: n[1] })) }; }));
+    const pick = all.find((x) => x.id === st.bt) || null; const amt = +st.amt || 0;
+    let res = '';
+    if (pick) { const syms = pick.w.map((x) => x.s).concat(['SPY']); quotes(syms); st.vis = syms; const S = V().S; const ready = pick.w.every((x) => S.q[x.s] && S.q[x.s].price) && S.q.SPY;
+      res = '<p class="bt">' + E(pick.name) + '</p><p class="bd">' + E(pick.blurb || '') + '</p>' + V().rowsBox(pick.w.slice().sort((a, b) => b.w - a.w).map((x) => { const q = S.q[x.s]; const dol = amt * x.w; const sh = q && q.price ? dol / q.price : null;
+        return '<div class="row" style="min-height:62px">' + V().tl(x.s, 34) + '<span class="nm"><b>' + E(x.s) + '</b><small>' + E(x.d || nm(x.s)) + '</small><span class="wbar"><i style="width:' + Math.min(100, x.w * 100 / (pick.w[0].w > 0.5 ? 1 : 0.5)).toFixed(0) + '%"></i></span></span><span class="q"><b>' + money(dol) + '</b><small>' + (sh == null ? '…' : (sh < 10 ? sh.toFixed(3) : sh.toFixed(1)) + ' sh · ' + (x.w * 100).toFixed(0) + '%') + '</small></span></div>'; }).join('')) +
+        '<button class="xbtn pbuild" data-pbuild="1"' + (ready && amt > 0 ? '' : ' disabled') + '>' + (ready ? 'Build this portfolio' : 'Getting live prices…') + '</button>' + note('Fractional shares at the live price when you tap Build, then tracked against the S&amp;P 500. Paper only, not advice.'); }
+    return wrap(top + '<label class="bamt"><span>$</span><input id="xamt" inputmode="decimal" value="' + E(String(amt || '')) + '" aria-label="Amount to invest"></label>' +
+      '<div class="xchips brail">' + all.filter((t) => !t.theme).concat([null], all.filter((t) => t.theme)).map((t) => t ? '<button class="chip' + (pick && pick.id === t.id ? ' on' : '') + '" data-xbt="' + t.id + '">' + E(t.name) + '</button>' : '<span class="bsep"></span>').join('') + '</div>' +
+      (res || card('<p class="xp" style="color:var(--fg2)">Pick a theme to see the mix.</p>')));
+  }
   // ---------- track record ----------
   function recordScreen() {
     const d = once('record', 600, () => V().call('get_pick_record', {}));
@@ -658,10 +701,10 @@
   }
 
   // ---------- routing ----------
-  const RT = { menu: 1, search: 1, watch: 1, news: 1, sectors: 1, calendar: 1, ipos: 1, models: 1, build: 1, record: 1, research: 1, compare: 1, patterns: 1, calc: 1, journal: 1, ideas: 1, dips: 1, leaders: 1, value: 1, flow: 1, insiders: 1, buzz: 1, live: 1, strategies: 1, analyzer: 1, settings: 1, account: 1, feedback: 1, getapp: 1 };
+  const RT = { menu: 1, search: 1, watch: 1, news: 1, sectors: 1, calendar: 1, ipos: 1, models: 1, build: 1, mine: 1, record: 1, research: 1, compare: 1, patterns: 1, calc: 1, journal: 1, ideas: 1, dips: 1, leaders: 1, value: 1, flow: 1, insiders: 1, buzz: 1, live: 1, strategies: 1, analyzer: 1, settings: 1, account: 1, feedback: 1, getapp: 1 };
   X.route = function (h) { const p = (h || '').split('/'); if (!RT[p[0]]) return null; return { v: 'x' + p[0], id: p[1] ? decodeURIComponent(p[1]) : null, id2: p[2] ? decodeURIComponent(p[2]) : null }; };
-  X.views = function (r) { st.vis = []; return { xmenu: menuScreen, xsearch: searchScreen, xwatch: watchScreen, xnews: newsScreen, xsectors: sectorsScreen, xcalendar: calendarScreen, xipos: iposScreen, xmodels: () => modelsScreen(r.id), xbuild: buildScreen, xrecord: recordScreen, xresearch: () => researchScreen(r.id), xcompare: () => compareScreen(r.id, r.id2), xpatterns: () => patternsScreen(r.id), xcalc: () => calcScreen(r.id), xjournal: journalScreen, xideas: ideasScreen, xdips: dipsScreen, xleaders: leadersScreen, xvalue: valueScreen, xflow: flowScreen, xinsiders: () => insidersScreen(r.id), xbuzz: buzzScreen, xlive: liveScreen, xstrategies: strategiesScreen, xanalyzer: analyzerScreen, xsettings: settingsScreen, xaccount: accountScreen, xfeedback: feedbackScreen, xgetapp: getappScreen }; };
-  X.nav = { xwatch: 3, xnews: 2, xsectors: 2, xcalendar: 2, xipos: 2, xbuzz: 2, xmodels: 4, xbuild: 4, xanalyzer: 4, xjournal: 4, xideas: 1, xdips: 1, xleaders: 1, xvalue: 1, xflow: 1, xinsiders: 1, xlive: 1 };
+  X.views = function (r) { st.vis = []; return { xmenu: menuScreen, xsearch: searchScreen, xwatch: watchScreen, xnews: newsScreen, xsectors: sectorsScreen, xcalendar: calendarScreen, xipos: iposScreen, xmodels: () => modelsScreen(r.id), xbuild: buildScreen, xmine: () => mineScreen(r.id), xrecord: recordScreen, xresearch: () => researchScreen(r.id), xcompare: () => compareScreen(r.id, r.id2), xpatterns: () => patternsScreen(r.id), xcalc: () => calcScreen(r.id), xjournal: journalScreen, xideas: ideasScreen, xdips: dipsScreen, xleaders: leadersScreen, xvalue: valueScreen, xflow: flowScreen, xinsiders: () => insidersScreen(r.id), xbuzz: buzzScreen, xlive: liveScreen, xstrategies: strategiesScreen, xanalyzer: analyzerScreen, xsettings: settingsScreen, xaccount: accountScreen, xfeedback: feedbackScreen, xgetapp: getappScreen }; };
+  X.nav = { xwatch: 3, xnews: 2, xsectors: 2, xcalendar: 2, xipos: 2, xbuzz: 2, xmodels: 4, xbuild: 4, xmine: 4, xanalyzer: 4, xjournal: 4, xideas: 1, xdips: 1, xleaders: 1, xvalue: 1, xflow: 1, xinsiders: 1, xlive: 1 };
   X.syms = function (r) { if (r && r.v === 'stock') return st.peers || []; return (st.vis || []).slice(0, 80); };
   X.init = applyTheme;
 
@@ -669,6 +712,8 @@
   const SYM = /^[A-Z][A-Z0-9.\-]{0,6}$/;
   const val = (id) => { const el = D.getElementById(id); return el ? el.value.trim() : ''; };
   function addWl(s) { s = (s || '').toUpperCase().replace(/^\$/, ''); if (!SYM.test(s)) { V().toast('Enter a ticker like NVDA'); return; } const j = symsAll(); if (j && !j.some((r) => r[0] === s)) { V().toast(s + ' isn’t in the US symbol list'); return; } const L = wlFull(); if (L.indexOf(s) < 0) { L.push(s); wlSave(L); V().toast(s + ' added'); } const el = D.getElementById('xwa'); if (el) el.value = ''; if (el) el.blur(); R(); }
+  function readAmt() { const el = D.getElementById('xamt'); if (!el) return; const v = parseFloat(el.value.replace(/[$,]/g, '')); if (v > 0) { st.amt = v; lsSet('jt.v2amt', v); } }
+  D.addEventListener('change', (e) => { if (e.target && e.target.id === 'xamt') { readAmt(); R(); } });
   function recent(s) { const L = lsGet('jt.v2recent', []).filter((x) => x !== s); L.unshift(s); lsSet('jt.v2recent', L.slice(0, 8)); }
   function readSz() { const cfg = lsGet('jt.sizer', { acct: 25000, risk: 1 }); D.querySelectorAll('[data-xsz]').forEach((el) => { const k = el.dataset.xsz, v = el.value.trim(); if (k === 'acct' || k === 'risk') { if (+v > 0) cfg[k] = +v; } else if (k === 'sym') st.sz.symIn = v.toUpperCase(); else st.sz[k] = v; }); lsSet('jt.sizer', cfg); }
   D.addEventListener('click', (e) => {
@@ -682,7 +727,10 @@
     if ((b = t.closest('[data-xsp]'))) { st.sp = b.dataset.xsp; R(); return; }
     if ((b = t.closest('[data-xck]'))) { st.ck = b.dataset.xck; R(); return; }
     if ((b = t.closest('[data-xpk]'))) { st.pk = b.dataset.xpk; R(); return; }
-    if ((b = t.closest('[data-xbt]'))) { st.bt = b.dataset.xbt; st.btq = ''; R(); return; }
+    if ((b = t.closest('[data-pbuild]'))) { const j = file('/themes.json'); readAmt(); const all = (j.simple || []).map((x) => ({ id: x.id, name: x.name, w: x.w.map((r) => ({ s: r[0], w: r[1] / 100 })) })).concat((j.themes || []).map((t) => { const tot = t.names.reduce((a, n) => a + (RW[n[1]] || 1), 0); return { id: t.id, name: t.name, w: t.names.map((n) => ({ s: n[0], w: (RW[n[1]] || 1) / tot })) }; }));
+      const pk = all.find((x) => x.id === st.bt); if (!pk) return; const p = papMake(pk.name, 'theme', pk.id, +st.amt, pk.w); if (!p) { V().toast('Still getting live prices. Try again in a second.'); return; } V().toast('Built ' + pk.name); location.hash = 'mine/' + p.id; return; }
+    if ((b = t.closest('[data-pdel]'))) { const id = b.dataset.pdel; if (st.pdel !== id) { st.pdel = id; R(); setTimeout(() => { if (st.pdel === id) { st.pdel = null; R(); } }, 4000); return; } papSave(PAP().filter((p) => p.id !== id)); lsSet('jt.builtl', (lsGet('jt.builtl', []) || []).filter((x) => x.id !== id)); st.pdel = null; V().toast('Deleted'); location.hash = 'mine'; return; }
+    if ((b = t.closest('[data-xbt]'))) { readAmt(); st.bt = b.dataset.xbt; st.btq = ''; R(); return; }
     if (t.closest('[data-xamt]')) { const v = parseFloat(val('xamt').replace(/[$,]/g, '')); if (v > 0) { st.amt = v; lsSet('jt.v2amt', v); } D.activeElement && D.activeElement.blur(); R(); return; }
     if (t.closest('[data-xbq]')) { st.btq = val('xbq'); st.bt = null; D.activeElement && D.activeElement.blur(); R(); return; }
     if (t.closest('[data-xcmp]')) { const a = val('xca').toUpperCase(), c = val('xcb').toUpperCase(); if (SYM.test(a) && SYM.test(c)) location.hash = 'compare/' + a + '/' + c; return; }
