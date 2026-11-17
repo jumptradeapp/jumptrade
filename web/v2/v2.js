@@ -277,13 +277,26 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     return card('<div class="pzh"><span class="pzk">' + ic('activity', 16, 2.2) + 'Market pulse</span><span class="pzt">' + (() => { const d = etNow(); return E(d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })) + ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' ET'; })() + '</span></div>' + (t ? '<p class="pzl">' + E(t.title) + '</p>' : '') +
       '<div class="pzi">' + ix.map((x) => { const q = S.q[x[0]]; return '<div><small>' + x[1] + '</small><b class="' + (q ? cls(q.pct) : '') + '">' + (q ? pct(q.pct) : '—') + '</b></div>'; }).join('') + '</div>' + '<div class="pzh2">' + hoursBar() + '</div>', 'padding:14px 16px;margin-top:14px', 'pulse2', 'a', ' href="' + (V2_STAGE >= 2 ? '#markets' : '#sectors') + '"');
   }
+  // Top news = what matters to you first: your holdings and watchlist, then market-moving events, then big outlets; skips clickbait
+  const FLUFF = /\b(here'?s why|should you (buy|sell)|is it time to|could make you|millionaire|best .{0,20}stocks? to buy|top \d+ |\d+ (stocks|reasons)|i'?m buying|my favorite|forever stock|retire|dividend stocks? to|plaque|boasted|jaw|affair|wife|petition|tribute)\b/i;
+  const TIER = /reuters|bloomberg|wsj|wall street journal|cnbc|financial times|\bft\b|barron|associated press|\bap\b|marketwatch|axios|fox business|business insider|investor'?s business daily/i;
+  function topNews(list, n) {
+    const mine = Array.from(new Set(HOLD_SYMS.concat(wlSyms())));
+    const nm = mine.map((s) => [s, (nameOf(s) || '').replace(/,?\s*(Inc|Corp|Corporation|Holdings|Ltd|plc|Co|Technologies|Platforms|Group)\.?$/i, '').split(' ')[0]]).filter((x) => x[1] && x[1].length > 2);
+    const now = Date.now();
+    return list.filter((x) => x && x.title && /^https:\/\//i.test(x.url || '')).map((x) => { const t = dec(x.title); let sc = 0;
+      const rel = (x.related_symbols || []).some((s) => mine.indexOf(s) >= 0) || nm.some(([s, w]) => new RegExp('\\b(' + s + '|' + w.replace(/[^\w]/g, '') + ')\\b', 'i').test(t)); if (rel) sc += 4;
+      if (BRK.test(t)) sc += 2; if (TIER.test(x.source || x.source_name || '')) sc += 1.5; if (x.image) sc += 0.5; if (FLUFF.test(t)) sc -= 4;
+      const ms = Date.parse(x.publish_time); const age = isFinite(ms) ? (now - ms) / 3600000 : 24; sc -= Math.min(age, 24) / 6;
+      return [sc, x]; }).sort((a, b) => b[0] - a[0]).slice(0, n).map((y) => y[1]);
+  }
   function newsRows() {
     if (S.news == null) return rowsBox(skel(4), 'padding:14px');
-    const L = S.news.filter((n) => n && n.title && /^https:\/\//i.test(n.url || '')).slice(0, 5); /* only https links: never a javascript: or data: URL from a feed */
+    const L = topNews(S.news, 5);
     if (!L.length) return rowsBox('<div class="err">Headlines aren’t loading right now. Try again in a minute.</div>');
     return rowsBox(L.map((n) => {
       const sym = window.NTH && NTH.tk ? NTH.tk(n) : null; const light = sym && LG && sym in LG && LG[sym] !== 1;
-      const ph = '<img class="ph" alt="" loading="lazy" src="/api/nimg?v=2&u=' + encodeURIComponent(n.url) + '&s=' + encodeURIComponent(sym || '') + '&t=' + encodeURIComponent(dec(n.title).slice(0, 140)) + '" onload="this.classList.add(\'on\');this.parentNode.classList.remove(\'wt\')" onerror="this.remove()">';
+      const ph = '<img class="ph" alt="" loading="lazy" src="/api/nimg?v=3&u=' + encodeURIComponent(n.url) + (n.image ? '&i=' + encodeURIComponent(n.image) : '') + '&s=' + encodeURIComponent(sym || '') + '&t=' + encodeURIComponent(dec(n.title).slice(0, 140)) + '" onload="this.classList.add(\'on\');this.parentNode.classList.remove(\'wt\')" onerror="this.remove()">';
       const fb = sym ? tl(sym, 44) : '<span style="color:#5B9BEA">' + ic('news', 26) + '</span>'; // no article photo: the company logo, or a news icon
       return '<a class="row nw" href="' + E(n.url) + '" target="_blank" rel="noopener" style="min-height:84px!important"><span class="thumb' + (light ? ' wt' : '') + '">' + fb + ph + '</span><span class="nm"><b>' + (isBreaking(n) ? '<span class="brk">Breaking</span>' : '') + E(dec(n.title)) + '</b><small style="margin-top:3px">' + E(dec(n.source || n.source_name || '')) + (ago(n.publish_time) ? ' · ' + ago(n.publish_time) : '') + '</small></span></a>';
     }).join(''));
