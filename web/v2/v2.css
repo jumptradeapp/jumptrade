@@ -1021,3 +1021,12 @@ html body .stg{font-size:12px!important}html body .fl{font-size:12px!important}h
 .catI{width:32px;height:32px;border-radius:10px;flex:none;display:flex;align-items:center;justify-content:center;background:rgba(91,155,234,.16);color:#9CCBFF}
 .catT{flex:none;font-size:11.5px;font-weight:600;padding:3px 8px;border-radius:999px;background:rgba(91,155,234,.16);color:#CFE4FF;align-self:center}.catT.fda,.catT.trial{background:rgba(156,203,255,.22)}.catT.mine{background:#F2B45A;color:#1A1203}
 .lab>a:not(.labt){white-space:nowrap!important;flex:none!important;margin-left:auto!important}.lab>.labt{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fmore{display:flex;flex-wrap:nowrap;gap:8px;margin:0 -16px 4px;padding:0 16px 6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}.fmore::-webkit-scrollbar{display:none}.fmc{flex:none;scroll-snap-align:start}.fmc{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:6px 12px 6px 6px;border-radius:999px;border:1px solid rgba(91,155,234,.28);background:rgba(91,155,234,.07);color:#E9F1F7;font-size:13.5px;font-weight:500;text-decoration:none;max-width:100%}.fmc .fmn{white-space:nowrap}.fmc img,.fmc>*:first-child{flex:none;border-radius:50%}html[data-x2t="light"] .fmc{color:#243248;background:rgba(31,95,184,.06)}
+.xsug{position:fixed;z-index:200;max-height:min(340px,50vh);overflow-y:auto;background:#0E1A2E;border:1px solid rgba(91,155,234,.35);border-radius:14px;box-shadow:0 14px 40px rgba(2,8,20,.6);padding:4px}
+.xsgi{display:flex;align-items:center;gap:10px;width:100%;min-height:48px;padding:8px 10px;border:0;background:none;color:#E9F1F7;text-align:left;border-radius:10px;font:inherit;cursor:pointer}
+.xsgi:hover,.xsgi:focus-visible{background:rgba(91,155,234,.12);outline:none}
+.xsgi span{display:flex;flex-direction:column;min-width:0}.xsgi b{font-size:15px}.xsgi small{font-size:12.5px;color:#9FB3C8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html[data-x2t="light"] .xsug{background:#fff;border-color:rgba(31,95,184,.25)}html[data-x2t="light"] .xsgi{color:#243248}
+/* app feel: no pinch/double-tap zoom, no rubber-band pull, inputs big enough that iOS doesn't zoom on focus */
+html,body{touch-action:pan-x pan-y;overscroll-behavior:none;-webkit-text-size-adjust:100%}
+input,select,textarea{font-size:16px!important}

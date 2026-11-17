@@ -804,6 +804,28 @@
     if (t.closest('[data-xfbsend]')) { const text = val('xfbt'); if (text.length < 3) { V().toast('Write a few words first'); return; } st.fb.text = text; fetch('/api/feedback', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: st.fb.kind, name: val('xfbn'), page: 'v2', text: text }) }).then((r) => { st.fb.msg = r.ok ? 'Sent. Thank you!' : r.status === 429 ? 'Too many today. Try tomorrow.' : 'Couldn’t send (' + r.status + '). Try again later.'; if (r.ok) st.fb.text = ''; }).catch(() => { st.fb.msg = 'Couldn’t send. Check your connection.'; }).then(() => { D.activeElement && D.activeElement.blur(); R(); }); return; }
     if (t.closest('[data-xinst]') && bip) { bip.prompt(); bip = null; return; }
   });
+  // Ticker suggestions under every ticker field (watchlist add, analyze, compare, insiders, backtest)
+  const SUGID = { xwa: 1, xla: 1, xca: 1, xcb: 1, xins: 1, xbq: 1 }; let sugEl = null, sugFor = null, sugL = [];
+  const sugTok = (inp) => { const v = inp.value; const i = v.lastIndexOf(','); return inp.id === 'xbq' ? v.slice(i + 1).trim() : v.trim(); };
+  const sugHide = () => { if (sugEl) sugEl.remove(); sugEl = null; sugFor = null; sugL = []; };
+  function sugMatch(q) { const j = symsAll(); if (!j || !q) return []; const U = q.toUpperCase().replace(/^\$/, ''), lq = q.toLowerCase(); const ex = [], pre = [], nmh = [];
+    for (const r of j) { if (r[0] === U) ex.push(r); else if (r[0].indexOf(U) === 0) pre.push(r); else if (q.length > 1 && String(r[1]).toLowerCase().indexOf(lq) >= 0) nmh.push(r); }
+    return ex.concat(pre.sort((a, b) => a[0].length - b[0].length).slice(0, 6), nmh.sort((a, b) => String(a[1]).toLowerCase().indexOf(lq) - String(b[1]).toLowerCase().indexOf(lq)).slice(0, 6)).slice(0, 6); }
+  function sugShow(inp) { const q = sugTok(inp); sugL = sugMatch(q); if (!sugL.length || (sugL.length === 1 && sugL[0][0] === q.toUpperCase())) { sugHide(); return; }
+    if (!sugEl) { sugEl = D.createElement('div'); sugEl.className = 'xsug'; sugEl.setAttribute('role', 'listbox'); D.body.appendChild(sugEl); }
+    sugFor = inp; const b = inp.getBoundingClientRect(); sugEl.style.left = Math.max(8, b.left) + 'px'; sugEl.style.top = (b.bottom + 6) + 'px'; sugEl.style.width = Math.max(240, b.width) + 'px';
+    sugEl.innerHTML = sugL.map((r, i) => '<button type="button" class="xsgi" role="option" data-sg="' + i + '">' + V().tl(r[0], 26) + '<span><b>' + E(r[0]) + '</b><small>' + E(r[1]) + '</small></span></button>').join(''); }
+  function sugPick(i) { const inp = sugFor, r = sugL[i]; if (!inp || !r) return; const id = inp.id; sugHide();
+    if (id === 'xbq') { const v = inp.value, k = v.lastIndexOf(','); inp.value = (k >= 0 ? v.slice(0, k + 1) + ' ' : '') + r[0] + ', '; inp.focus(); return; }
+    inp.value = r[0];
+    if (id === 'xwa') addWl(r[0]); else if (id === 'xla') location.hash = 'stock/' + r[0]; else if (id === 'xins') { const b = D.querySelector('[data-xins]'); if (b) b.click(); } else inp.blur(); }
+  D.addEventListener('input', (e) => { const t = e.target; if (t && SUGID[t.id]) sugShow(t); });
+  D.addEventListener('focusin', (e) => { const t = e.target; if (t && SUGID[t.id] && t.value) sugShow(t); });
+  D.addEventListener('focusout', (e) => { if (e.target === sugFor) setTimeout(() => { if (sugFor && D.activeElement !== sugFor) sugHide(); }, 200); });
+  D.addEventListener('pointerdown', (e) => { const b = e.target.closest && e.target.closest('[data-sg]'); if (b) { e.preventDefault(); sugPick(+b.dataset.sg); } }, true);
+  D.addEventListener('keydown', (e) => { if (!sugEl || e.target !== sugFor) return; if (e.key === 'Escape') { sugHide(); return; }
+    if (e.key === 'Enter') { const q = sugTok(e.target).toUpperCase(); if (!sugL.some((r) => r[0] === q)) { e.preventDefault(); e.stopImmediatePropagation(); sugPick(0); } else sugHide(); } }, true);
+  window.addEventListener('hashchange', sugHide); window.addEventListener('resize', () => { if (sugFor) sugShow(sugFor); });
   D.addEventListener('input', (e) => { if (e.target && e.target.id === 'xq') { st.q = e.target.value; const el = D.getElementById('xres'); if (el) el.innerHTML = searchRes(st.q); } });
   D.addEventListener('keydown', (e) => { if (e.key !== 'Enter' || !e.target || !e.target.id) return; const id = e.target.id;
     if (id === 'xwa') addWl(val('xwa')); else if (id === 'xla') { const s = val('xla').toUpperCase(); if (SYM.test(s)) location.hash = 'stock/' + s; } else if (id === 'xq') { const a = D.querySelector('#xres a.row'); if (a) { if (a.dataset.xrec) recent(a.dataset.xrec); location.hash = a.getAttribute('href').slice(1); } } else if (id === 'xamt') D.querySelector('[data-xamt]').click(); else if (id === 'xbq') D.querySelector('[data-xbq]').click(); else if (id === 'xins') D.querySelector('[data-xins]').click(); else if (id === 'xca' || id === 'xcb') D.querySelector('[data-xcmp]').click(); });
