@@ -221,7 +221,9 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const last = pts[pts.length - 1]; void up;
     return '<svg class="pt2c" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="pt2f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7BB3FF" stop-opacity=".30"/><stop offset="1" stop-color="#7BB3FF" stop-opacity="0"/></linearGradient></defs><path d="' + d + ' L' + W + ' ' + H + ' L0 ' + H + 'Z" fill="url(#pt2f)"/><path d="' + d + '" fill="none" stroke="#8FC0FF" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/><circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="3.5" fill="#fff" class="pt2d"/></svg>';
   }
+  const T0 = Date.now();
   function portCard() {
+    if (window.JT_PRIV && !REAL && Date.now() - T0 < 25000) { setTimeout(render, 1500); return card('<div style="position:relative">' + kick('Portfolio') + '<div class="mini" style="margin:6px 0 10px;color:var(--fg2)">Loading your Webull accounts…</div>' + skel(3) + '</div>', 'padding:16px 20px 14px;margin-top:8px', 'pglass pt2'); } // private copy: never flash the demo accounts before the real ones arrive
     const all = allCalc(); const c0 = all.c;
     if (!c0.ready) return card('<div style="position:relative">' + kick('Portfolio') + (S.loaded && S.err.q ? '<div class="err">Prices aren’t loading right now, so balances can’t be worked out. Retrying every 30 seconds.</div>' : skel(4)) + '</div>', 'padding:16px 20px 12px;margin-top:12px');
     const cards = [{ a: all.a, c: c0 }].concat(ACCTS.length > 1 ? ACCTS.map((a) => ({ a, c: acctCalc(a) })) : []);
@@ -273,7 +275,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     if (!L.length) return rowsBox('<div class="err">Headlines aren’t loading right now. Try again in a minute.</div>');
     return rowsBox(L.map((n) => {
       const sym = window.NTH && NTH.tk ? NTH.tk(n) : null; const light = sym && LG && sym in LG && LG[sym] !== 1;
-      const ph = '<img class="ph" alt="" loading="lazy" src="/api/nimg?v=2&u=' + encodeURIComponent(n.url) + '&s=' + encodeURIComponent(sym || '') + '&t=' + encodeURIComponent(dec(n.title).slice(0, 140)) + '" onload="this.parentNode.classList.remove(\'wt\')" onerror="this.remove()">';
+      const ph = '<img class="ph" alt="" loading="lazy" src="/api/nimg?v=2&u=' + encodeURIComponent(n.url) + '&s=' + encodeURIComponent(sym || '') + '&t=' + encodeURIComponent(dec(n.title).slice(0, 140)) + '" onload="this.classList.add(\'on\');this.parentNode.classList.remove(\'wt\')" onerror="this.remove()">';
       const fb = sym ? tl(sym, 44) : '<span style="color:#5B9BEA">' + ic('news', 26) + '</span>'; // no article photo: the company logo, or a news icon
       return '<a class="row nw" href="' + E(n.url) + '" target="_blank" rel="noopener" style="min-height:84px!important"><span class="thumb' + (light ? ' wt' : '') + '">' + fb + ph + '</span><span class="nm"><b>' + (isBreaking(n) ? '<span class="brk">Breaking</span>' : '') + E(dec(n.title)) + '</b><small style="margin-top:3px">' + E(dec(n.source || n.source_name || '')) + (ago(n.publish_time) ? ' · ' + ago(n.publish_time) : '') + '</small></span></a>';
     }).join(''));

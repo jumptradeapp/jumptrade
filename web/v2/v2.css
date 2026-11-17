@@ -784,3 +784,4 @@ html .lab .labt,html[data-x2t] .lab .labt{margin-left:0!important;color:inherit!
 .wxt{display:flex!important;align-items:center;justify-content:flex-end;gap:4px;font-size:11.5px!important;margin-top:2px;color:var(--fg2)}.wxt u{text-decoration:none;color:var(--fg2)}.wxt .sIc{flex:none}
 
 html body .top.tc .brand img{height:22px!important;width:auto!important}
+.nw .thumb img.ph{opacity:0;transition:opacity .25s ease-out}.nw .thumb img.ph.on{opacity:1}
