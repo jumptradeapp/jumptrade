@@ -123,14 +123,17 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   function acctCalc(a) {
     let val = a.cash, day = 0, cost = 0, hold = 0, anySpark = false, flatAdd = 0; const rows = []; const series = []; const L = Math.max.apply(null, [0].concat(Object.keys(a.pos).map((s) => (S.spark[s] || []).length)));
     Object.keys(a.pos).forEach((s) => {
-      const [qty, basis] = a.pos[s]; const q = S.q[s]; if (!q || !isFinite(q.price)) return;
+      const [qty, basis] = a.pos[s]; const q0 = S.q[s]; if (!q0 || !isFinite(q0.price)) return;
+      const ex = typeof extQ === 'function' ? extQ(s) : null; const lp = ex && isFinite(ex.price) && ex.price > 0 ? ex.price : q0.price; const pcl = q0.price - (q0.chg || 0); // live: pre-market / after-hours / overnight price when trading
+      const q = ex ? { price: lp, chg: ex.k === 'pre' ? lp - (q0.price) + (0) : lp - pcl, pct: pcl ? (lp - pcl) / pcl * 100 : 0 } : q0;
+      if (ex && ex.k === 'pre') { q.chg = lp - q0.price; q.pct = q0.price ? q.chg / q0.price * 100 : 0; } // before the open, today's move is from yesterday's close
       const mv = qty * q.price; val += mv; hold += mv; day += qty * (q.chg || 0); cost += qty * basis;
       rows.push({ sym: s, qty, mv, pct: q.pct, chg: q.chg, price: q.price });
       const c = S.spark[s]; if (c && c.length > 2) { anySpark = true; for (let i = 0; i < L; i++) series[i] = (series[i] == null ? a.cash : series[i]) + qty * c[Math.min(i, c.length - 1)]; } else { flatAdd += qty * q.price; }
     });
     const prev = val - day; const ready = rows.length === Object.keys(a.pos).length;
     const per = (n) => { let now = a.cash, then = a.cash, ok = true; Object.keys(a.pos).forEach((s) => { const b = S.bars[s], q = S.q[s]; if (!b || b.length <= n || !q) { ok = false; return; } now += a.pos[s][0] * q.price; then += a.pos[s][0] * b[n]; }); /* bars come newest first (b[0] = today); b[5] = 5 sessions ago */ return ok ? (now / then - 1) * 100 : null; };
-    return { val, day, dayPct: prev ? day / prev * 100 : 0, gain: hold - cost, gainPct: cost ? (hold - cost) / cost * 100 : 0, cash: a.cash, rows, top: rows.slice().sort((x, y) => y.pct - x.pct), series: (function () { if (anySpark && series.length > 2) return series.map((v) => v + flatAdd); const ks = Object.keys(a.pos); const n = Math.min.apply(null, ks.map((k) => (S.bars[k] || []).length)); if (!ks.length || !isFinite(n) || n < 3) return []; const o = []; for (let i = n - 1; i >= 0; i--) o.push(a.cash + ks.reduce((t, k) => t + a.pos[k][0] * S.bars[k][i], 0)); return o; })(), ready, w1: per(5), m1: per(21) };
+    return { val, day, dayPct: prev ? day / prev * 100 : 0, gain: hold - cost, gainPct: cost ? (hold - cost) / cost * 100 : 0, cash: a.cash, rows, top: rows.slice().sort((x, y) => y.pct - x.pct), series: (function () { if (anySpark && series.length > 2) return series.map((v) => v + flatAdd).concat([val]); /* ends on the live value so the line moves with prices */ const ks = Object.keys(a.pos); const n = Math.min.apply(null, ks.map((k) => (S.bars[k] || []).length)); if (!ks.length || !isFinite(n) || n < 3) return []; const o = []; for (let i = n - 1; i >= 0; i--) o.push(a.cash + ks.reduce((t, k) => t + a.pos[k][0] * S.bars[k][i], 0)); return o; })(), ready, w1: per(5), m1: per(21) };
   }
   function allCalc() {
     const merged = { name: 'All accounts', sub: ACCTS.length + ' Webull account' + (ACCTS.length === 1 ? '' : 's'), cash: ACCTS.reduce((a, x) => a + x.cash, 0), pos: {} };
