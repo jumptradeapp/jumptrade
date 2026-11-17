@@ -1139,16 +1139,30 @@ async function ownerRoutes(url, req, env) {
     if (!ok) { recent.push(Date.now()); await vput(env, 'owner_pwfail', recent); return json({ error: 'wrong', message: 'That password didn’t match.' }, 403); }
     await vput(env, 'owner_pwfail', []); await vput(env, unlockKey, Date.now() + OWN_UNLOCK_MS); return json({ ok: true, until: Date.now() + OWN_UNLOCK_MS }); }
   if (url.pathname === '/api/owner/lock' && req.method === 'POST') { await vput(env, unlockKey, null); return json({ ok: true }); }
+  if (url.pathname === '/api/owner/connect' && req.method === 'POST') { // asks Webull for a session token; Webull sends you an approval request in its app
+    if (!unlocked) return json({ error: 'locked' }, 403);
+    const wb = new Webull(env); if (!wb.ready) return json({ error: 'no_webull', message: 'Webull keys aren’t set on the server.' }, 503);
+    let r = await wb.raw('POST', '/auth/tokens/create', {}, null); if (r.status !== 200) r = await wb.raw('POST', '/openapi/auth/token/create', {}, null);
+    if (r.status !== 200 || !r.data || !r.data.token) return json({ error: 'webull', message: 'Webull didn’t start the login (status ' + r.status + '): ' + String((r.data && (r.data.message || r.data.msg)) || r.data || '').slice(0, 120) }, 502);
+    await vput(env, 'trtoken', { token: r.data.token, expires: r.data.expires, status: r.data.status || 'PENDING' }); OWNACC = null;
+    return json({ ok: true, status: r.data.status, message: r.data.status === 'NORMAL' ? 'Connected.' : 'Open the Webull app and approve the API login, then come back.' });
+  }
   if (url.pathname === '/api/owner/accounts') {
     if (!unlocked) return json({ error: 'locked' }, 403);
     if (OWNACC && Date.now() - OWNACC.t < 30000) return json(OWNACC.v);
     const wb = new Webull(env); if (!wb.ready) return json({ error: 'no_webull', message: 'Webull keys aren’t set on the server.' }, 503);
-    const token = await wbToken(env, wb).catch(() => null);
+    // account routes need a session token (x-access-token) that you approve once in the Webull app; market data doesn't, so it's kept separately
+    let tk = (await vget(env, 'trtoken').catch(() => null)) || (await vget(env, 'token').catch(() => null));
+    if (!tk || !tk.token) return json({ need: 'connect', message: 'Connect Webull once: tap Connect, then approve the login in your Webull app.' }, 200, { 'cache-control': 'no-store' });
+    if (tk.status !== 'NORMAL') { let c = await wb.raw('POST', '/auth/tokens/check', {}, null, tk.token); if (c.status !== 200) c = await wb.raw('POST', '/auth/tokens/check', {}, { token: tk.token });
+      if (c.status === 200 && c.data && c.data.status) { tk = Object.assign({}, tk, { status: c.data.status, expires: c.data.expires || tk.expires }); await vput(env, 'trtoken', tk); }
+      if (tk.status !== 'NORMAL') return json({ need: /PENDING|WAIT|INIT/i.test(tk.status || '') ? 'approve' : 'connect', status: tk.status, message: /PENDING|WAIT|INIT/i.test(tk.status || '') ? 'Waiting for you to approve the login in the Webull app.' : 'The Webull login expired. Tap Connect to approve a new one.' }, 200, { 'cache-control': 'no-store' }); }
+    const token = tk.token;
     const list = (p) => (Array.isArray(p) ? p : (p && (p.data || p.list || p.accounts || p.holdings || p.positions || p.items || p.result)) || []);
     // try the documented account-list routes, with and without the market-data session token; report Webull's own reason if all refuse
     const tries = [['/trading/accounts/list', token], ['/trading/accounts/list', null], ['/openapi/account/list', token], ['/openapi/account/list', null]]; let r0 = null, useTok = token, path0 = ''; const seen = [];
     for (const [pth, tk] of tries) { const r = await wb.raw('GET', pth, {}, null, tk); seen.push(pth.split('/').slice(-2).join('/') + (tk ? '+token' : '') + ' ' + r.status + (r.status !== 200 ? ': ' + String(typeof r.data === 'string' ? r.data : (r.data && (r.data.message || r.data.msg || r.data.error_code || r.data.code)) || '').slice(0, 80) : '')); if (r.status === 200) { r0 = r; useTok = tk; path0 = pth; break; } }
-    if (!r0) return json({ error: 'webull', status: 401, message: 'Webull refused account access. ' + seen.join(' | ') }, 502);
+    if (!r0) { if (/access-token/i.test(seen.join(' '))) { await vput(env, 'trtoken', Object.assign({}, tk, { status: 'INVALID' })); return json({ need: 'connect', message: 'Webull didn’t accept the saved login. Tap Connect to approve a new one.' }, 200, { 'cache-control': 'no-store' }); } return json({ error: 'webull', status: 401, message: 'Webull refused account access. ' + seen.join(' | ') }, 502); }
     const v1 = path0.indexOf('/openapi/') === 0;
     const accts = list(r0.data).filter((a) => a && a.account_id && !/CRYPTO/i.test(a.account_class || ''));
     const out = await Promise.all(accts.map(async (a) => {
