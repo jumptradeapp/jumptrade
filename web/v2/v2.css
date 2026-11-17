@@ -1000,3 +1000,12 @@ html body .wrap{max-width:1120px!important;margin-left:auto!important;margin-rig
 .aneps .zero{stroke:rgba(140,180,215,.25)}.aneps .est{fill:rgba(140,180,215,.28)}.aneps .act.beat{fill:#52E06A}.aneps .act.miss{fill:#FF6460}.aneps .next{fill:none;stroke:#9CCBFF;stroke-dasharray:3 3}
 .mixl i.est{background:rgba(140,180,215,.4)}.mixl i.beat{background:#52E06A}.mixl i.miss{background:#FF6460}.mixl i.next{background:none;border:1px dashed #9CCBFF}
 .anc{text-align:center}.ancH{flex-direction:column;align-items:center;justify-content:center;gap:4px}.ancG{text-align:center}.ancG small{display:inline}.ancG b{display:block}.mixl{justify-content:center}.ancN{text-align:center}
+
+/*session dot pulses softly while a session is live (pre, regular, after); still when closed*/
+@media (prefers-reduced-motion:no-preference){html body .hbt em{animation:hbPulse 2.4s ease-out infinite}}
+@keyframes hbPulse{0%{box-shadow:0 0 0 0 rgba(242,180,90,.6)}70%{box-shadow:0 0 0 7px rgba(242,180,90,0)}100%{box-shadow:0 0 0 0 rgba(242,180,90,0)}}
+.cuSoon{flex:none;font-size:11.5px;font-weight:600;color:#1A1203;background:#F2B45A;border-radius:999px;padding:2px 8px}
+/*44px tap areas on small text links without changing how they look*/
+.lab>a,.lab .labt,a.sht,.sh>a,.pt2k,.fsort button,.lpLink{position:relative}
+.lab>a:after,.lab .labt:after,a.sht:after,.sh>a:after,.pt2h a.pt2k:after{content:"";position:absolute;left:-8px;right:-8px;top:50%;height:44px;transform:translateY(-50%)}
+html body .stg{font-size:12px!important}html body .fl{font-size:12px!important}html body .hw{font-size:12px!important}

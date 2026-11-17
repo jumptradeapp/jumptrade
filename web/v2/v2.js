@@ -415,10 +415,21 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   // desktop (1024px+): Today in two columns, left = your money and the news, right = the market right now and your watchlist
   const DESK = window.matchMedia ? matchMedia('(min-width:1024px)') : { matches: false };
   try { DESK.addEventListener('change', () => render()); } catch (e) {}
+  // "Coming up" tile: earnings dates for your stocks in the next two weeks, plus the newest alerts. Hidden when there's nothing.
+  function comingUp() {
+    const td = etNow(); td.setHours(0, 0, 0, 0); const mine = Array.from(new Set(HOLD_SYMS.concat(wlSyms())));
+    const ear = (S.earn || []).filter((e) => e && e.date && mine.indexOf(e.symbol) >= 0).map((e) => ({ e, days: Math.round((new Date(e.date + 'T12:00:00') - td) / 864e5) })).filter((x) => x.days >= 0 && x.days <= 14).sort((a, b) => a.days - b.days).slice(0, 4);
+    const al = alertList().slice(0, 3);
+    if (!ear.length && !al.length) return '';
+    const when = (d) => (d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : new Date(td.getTime() + d * 864e5).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
+    return lab('cal', 'Heads up', al.length ? 'All alerts' : '', '#alerts') + rowsBox(
+      ear.map((x) => '<a class="row" href="#stock/' + encodeURIComponent(x.e.symbol) + '" style="min-height:58px">' + tl(x.e.symbol, 32) + '<span class="nm"><b>' + E(x.e.symbol) + ' reports earnings</b><small>' + when(x.days) + (x.e.eps_estimate ? ' · EPS est. $' + (+x.e.eps_estimate).toFixed(2) : '') + '</small></span>' + (x.days <= 2 ? '<span class="cuSoon">Soon</span>' : '') + '</a>').join('') +
+      al.map((a) => '<a class="row" href="#stock/' + encodeURIComponent(a.s) + '" style="min-height:58px">' + tl(a.s, 32) + '<span class="nm"><b style="font-weight:500">' + a.h + '</b>' + (a.sub ? '<small>' + a.sub + '</small>' : '') + '</span></a>').join(''));
+  }
   function today() {
-    if (DESK.matches) return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="dk2"><div class="dkL"><div class="hero ptile">' + RIB + portCard() + '</div>' + filingsTile() + '</div><div class="dkR">' + pulse() + lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + '</div></div></div>';
+    if (DESK.matches) return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="dk2"><div class="dkL"><div class="hero ptile">' + RIB + portCard() + '</div>' + filingsTile() + '</div><div class="dkR">' + pulse() + lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + comingUp() + '</div></div></div>';
     return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="hero ptile">' + RIB + portCard() + '</div>' + pulse() +
-      lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + filingsTile() + '</div>';
+      lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + comingUp() + filingsTile() + '</div>';
   }
 
   // ---------- Portfolio ----------
