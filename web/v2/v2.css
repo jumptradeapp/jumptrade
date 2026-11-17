@@ -1018,3 +1018,5 @@ html body .stg{font-size:12px!important}html body .fl{font-size:12px!important}h
 .ownBox input{height:50px;border-radius:12px;border:1px solid rgba(156,203,255,.3);background:rgba(4,12,26,.9);color:#EAF3FF;font:500 17px Inter,system-ui,sans-serif;padding:0 14px}
 .ownMsg{min-height:18px;color:#FF8A84!important;font-size:13.5px!important}.ownRow{display:flex;gap:10px;justify-content:flex-end}.ownRow .xbtn{min-height:46px;padding:0 20px}
 @media (min-width:700px){.ownBg{align-items:center}}
+.catI{width:32px;height:32px;border-radius:10px;flex:none;display:flex;align-items:center;justify-content:center;background:rgba(91,155,234,.16);color:#9CCBFF}
+.catT{flex:none;font-size:11.5px;font-weight:600;padding:3px 8px;border-radius:999px;background:rgba(91,155,234,.16);color:#CFE4FF;align-self:center}.catT.fda,.catT.trial{background:rgba(156,203,255,.22)}.catT.mine{background:#F2B45A;color:#1A1203}

@@ -427,6 +427,23 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
         const what = nw.length ? 'New: ' + nw.join(', ') : ad.length ? 'Added: ' + ad.join(', ') : 'No new buys';
         return '<a class="row" href="#fund/' + encodeURIComponent(f.slug) + '" style="min-height:64px">' + fundMark(f, 36) + '<span class="nm"><b>' + E(f.fund.replace(/ (Capital |Asset |Investment )?(Management|Partners|Group|Advisors|Investors|LP|& Co)$/i, '')) + '</b><small>' + E(shortD(f.filed)) + ' · <span style="color:' + (nw.length ? '#CFE4FF' : 'inherit') + '">' + E(what) + '</span></small></span>' + ic('chev', 18, 2.4) + '</a>'; }).join(''));
   }
+  // Upcoming catalysts (Today): the next 10 days of FDA decisions, trial readouts, lock-ups, index changes, IPOs, economic releases and big events
+  S.cat = null;
+  function catTile() {
+    if (!S.cat) { S.cat = { loading: 1 }; getJ('/catalysts.json').then((j) => { S.cat = j; render(); }).catch(() => { S.cat = { err: 1 }; render(); }); }
+    if (S.cat.loading || S.cat.err) return '';
+    const td = etNow(); td.setHours(0, 0, 0, 0); const t0 = td.getTime(); const day = (d) => Math.round((new Date(d + 'T12:00:00').getTime() - t0) / 864e5);
+    const mine = new Set(HOLD_SYMS.concat(wlSyms())); const W = { fda: 5, trial: 5, earnings: 3, index: 3, lockup: 2, ipo: 2, macro: 2, event: 1 };
+    const L = (S.cat.catalysts || []).filter((c) => c && c.date && c.status !== 'done').map((c) => Object.assign({ dd: day(c.date) }, c)).filter((c) => c.dd >= 0 && c.dd <= 10)
+      .sort((a, b) => a.dd - b.dd || ((mine.has(b.ticker) ? 9 : 0) + (W[b.type] || 0) + (b.impact === 'high' ? 3 : 0)) - ((mine.has(a.ticker) ? 9 : 0) + (W[a.type] || 0) + (a.impact === 'high' ? 3 : 0))).slice(0, 6);
+    if (!L.length) return '';
+    const TN = { fda: 'FDA', trial: 'Trial', earnings: 'Earnings', index: 'Index', lockup: 'Lock-up', ipo: 'IPO', macro: 'Economy', event: 'Event' };
+    const when = (d) => (d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : new Date(t0 + d * 864e5).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
+    return lab('cal', 'Upcoming catalysts', 'Calendar', '#calendar') + rowsBox(L.map((c) => { const href = c.ticker ? '#stock/' + encodeURIComponent(c.ticker) : c.source_url && /^https:\/\//.test(c.source_url) ? c.source_url : '#calendar'; const ext = !c.ticker && /^https:/.test(href);
+      return '<a class="row" href="' + E(href) + '"' + (ext ? ' target="_blank" rel="noopener"' : '') + ' style="min-height:62px">' + (c.ticker ? tl(c.ticker, 32) : '<span class="catI">' + ic(c.type === 'macro' ? 'activity' : 'cal', 17, 2.2) + '</span>') +
+        '<span class="nm"><b style="font-weight:500;font-size:14.5px;line-height:19px;white-space:normal">' + (c.ticker ? '<span style="font-weight:700">' + E(c.ticker) + '</span> · ' : '') + E(c.title) + '</b><small>' + when(c.dd) + (c.time ? ' · ' + E(c.time) : '') + '</small></span><span class="catT ' + E(c.type) + (mine.has(c.ticker) ? ' mine' : '') + '">' + (TN[c.type] || 'Event') + '</span></a>'; }).join('')) +
+      '<p class="snapb">From the jumptrade catalyst list. Dates can move; check the source before you trade.</p>';
+  }
   function comingUp() {
     const td = etNow(); td.setHours(0, 0, 0, 0); const mine = Array.from(new Set(HOLD_SYMS.concat(wlSyms())));
     const ear = (S.earn || []).filter((e) => e && e.date && mine.indexOf(e.symbol) >= 0).map((e) => ({ e, days: Math.round((new Date(e.date + 'T12:00:00') - td) / 864e5) })).filter((x) => x.days >= 0 && x.days <= 14).sort((a, b) => a.days - b.days).slice(0, 4);
@@ -438,9 +455,9 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       al.map((a) => '<a class="row" href="#stock/' + encodeURIComponent(a.s) + '" style="min-height:58px">' + tl(a.s, 32) + '<span class="nm"><b style="font-weight:500">' + a.h + '</b>' + (a.sub ? '<small>' + a.sub + '</small>' : '') + '</span></a>').join(''));
   }
   function today() {
-    if (DESK.matches) return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="dk2"><div class="dkL"><div class="hero ptile">' + RIB + portCard() + '</div>' + f13Tile() + filingsTile() + '</div><div class="dkR">' + pulse() + lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + comingUp() + '</div></div></div>';
+    if (DESK.matches) return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="dk2"><div class="dkL"><div class="hero ptile">' + RIB + portCard() + '</div>' + f13Tile() + catTile() + filingsTile() + '</div><div class="dkR">' + pulse() + lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + comingUp() + '</div></div></div>';
     return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="hero ptile">' + RIB + portCard() + '</div>' + pulse() +
-      lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + f13Tile() + comingUp() + filingsTile() + '</div>';
+      lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + f13Tile() + catTile() + comingUp() + filingsTile() + '</div>';
   }
 
   // ---------- Portfolio ----------

@@ -1145,11 +1145,14 @@ async function ownerRoutes(url, req, env) {
     const wb = new Webull(env); if (!wb.ready) return json({ error: 'no_webull', message: 'Webull keys aren’t set on the server.' }, 503);
     const token = await wbToken(env, wb).catch(() => null);
     const list = (p) => (Array.isArray(p) ? p : (p && (p.data || p.list || p.accounts || p.holdings || p.positions || p.items || p.result)) || []);
-    const r0 = await wb.raw('GET', '/trading/accounts/list', {}, null, token);
-    if (r0.status !== 200) return json({ error: 'webull', status: r0.status, message: 'Webull didn’t allow account access (status ' + r0.status + '). The API key may not include account permission.' }, 502);
+    // try the documented account-list routes, with and without the market-data session token; report Webull's own reason if all refuse
+    const tries = [['/trading/accounts/list', token], ['/trading/accounts/list', null], ['/openapi/account/list', token], ['/openapi/account/list', null]]; let r0 = null, useTok = token, path0 = ''; const seen = [];
+    for (const [pth, tk] of tries) { const r = await wb.raw('GET', pth, {}, null, tk); seen.push(pth.split('/').slice(-2).join('/') + (tk ? '+token' : '') + ' ' + r.status + (r.status !== 200 ? ': ' + String(typeof r.data === 'string' ? r.data : (r.data && (r.data.message || r.data.msg || r.data.error_code || r.data.code)) || '').slice(0, 80) : '')); if (r.status === 200) { r0 = r; useTok = tk; path0 = pth; break; } }
+    if (!r0) return json({ error: 'webull', status: 401, message: 'Webull refused account access. ' + seen.join(' | ') }, 502);
+    const v1 = path0.indexOf('/openapi/') === 0;
     const accts = list(r0.data).filter((a) => a && a.account_id && !/CRYPTO/i.test(a.account_class || ''));
     const out = await Promise.all(accts.map(async (a) => {
-      const [rb, rp] = await Promise.all([wb.raw('GET', '/trading/assets/balances/get', { account_id: a.account_id }, null, token), wb.raw('GET', '/trading/assets/positions/list', { account_id: a.account_id }, null, token)]);
+      const [rb, rp] = await Promise.all([wb.raw('GET', v1 ? '/openapi/assets/balance' : '/trading/assets/balances/get', { account_id: a.account_id }, null, useTok), wb.raw('GET', v1 ? '/openapi/assets/positions' : '/trading/assets/positions/list', { account_id: a.account_id }, null, useTok)]);
       const bal = rb.status === 200 ? (rb.data && (rb.data.data || rb.data)) || {} : {}; const pos = {};
       list(rp.status === 200 ? rp.data : []).forEach((x) => { const sym = x.symbol || (x.instrument && x.instrument.symbol) || x.ticker; const q = +x.quantity || +x.qty || 0; if (!sym || !/^[A-Z.]{1,6}$/.test(sym) || !q) return; if (x.instrument_type && !/EQUITY|ETF|STOCK/i.test(x.instrument_type)) return;
         const cost = +x.cost || (+x.cost_price || +x.avg_cost || 0) * q; pos[sym] = [(pos[sym] ? pos[sym][0] : 0) + q, q ? cost / q : 0]; });
