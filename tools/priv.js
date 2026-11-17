@@ -11,10 +11,18 @@
   // tools only the public server has: answer what we can from Webull, fail fast on the rest
   const SERVER_ONLY = /^(get_runners|get_mover_setup|get_analyst_actions|get_earnings_week|get_mover_why|get_pick_record|get_playbook)$/;
   function sparkPart(syms) { return tool('get_stock_bars', { symbols: syms, category: 'US_STOCK', timespan: 'M5', count: 78 }).then((p) => { const out = {}; ((p && p.result) || []).forEach((r) => { const b = (r.result || []).slice().reverse(); if (!b.length) return; const day = String(b[b.length - 1].time || '').slice(0, 10); const d = b.filter((x) => String(x.time || '').slice(0, 10) === day); out[r.symbol] = { c: d.map((x) => +x.close) }; }); return out; }); }
+  // the news line on the private copy: newest Webull headline that names the stock
+  function newsWhy(s) { return tool('get_stock_news', { symbol: s }).then((p) => { const L = arr(p); if (!L.length) return { v: 'nonews', kind: 'No news' };
+    const h = L.find((n) => (n.related_symbols || []).indexOf(s) >= 0) || L.find((n) => new RegExp('\\b' + s.replace('.', '\\.') + '\\b').test(n.title || '')) || null;
+    if (!h) return { v: 'nonews', kind: 'No news' };
+    return { v: 'news', kind: 'News', h: { title: h.title, source: h.source, t: Date.parse(h.publish_time) || null, url: h.url } }; }); }
   window.privTool = function (t, input) {
     if (t === 'get_sparks') { const all = String(input.symbols || '').split(',').filter(Boolean).slice(0, 80); if (!all.length) return Promise.resolve({}); const parts = []; for (let k = 0; k < all.length; k += 20) parts.push(all.slice(k, k + 20)); return Promise.all(parts.map((syms) => sparkPart(syms).catch(() => ({})))).then((r) => Object.assign({}, ...r)); }
     if (t === '__never') { const syms = [];
       return tool('get_stock_bars', { symbols: syms, category: 'US_STOCK', timespan: 'M5', count: 78 }).then((p) => { const out = {}; ((p && p.result) || []).forEach((r) => { const b = (r.result || []).slice().reverse(); if (!b.length) return; const day = String(b[b.length - 1].time || '').slice(0, 10); const d = b.filter((x) => String(x.time || '').slice(0, 10) === day); out[r.symbol] = { c: d.map((x) => +x.close) }; }); return out; }); }
+    if (t === 'get_mover_why' || t === 'get_mover_setup') { const list = String(input.symbols || '').split(',').filter((x) => /^[A-Z.]{1,6}$/.test(x)).slice(0, 8);
+      return Promise.all(list.map((s) => newsWhy(s).catch(() => null))).then((r) => { const w = {}; list.forEach((s, k) => { w[s] = r[k] || { v: 'unknown', kind: 'Couldn’t check news' }; });
+        if (t === 'get_mover_why') return w; const data = {}; list.forEach((s) => { data[s] = { s, err: 'shown on jumptrade.app', why: w[s] || null }; }); return { at: Date.now(), session: input.session, data }; }); }
     if (SERVER_ONLY.test(t)) return Promise.reject({ code: 'unavailable', message: 'Not on the private copy' });
     return null;
   };
