@@ -177,11 +177,11 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   function portOne(a, c, i, n) {
     const strip = [['Today', c.dayPct], ['1 week', c.w1], ['1 month', c.m1]].map((x) => '<div><span>' + x[0] + '</span><b class="' + (x[1] == null ? '' : cls(x[1])) + '">' + (x[1] == null ? '—' : pct(x[1])) + '</b></div>').join('');
     const label = i === 0 ? 'Portfolio' : a.name;
-    return card('<div style="position:relative"><div style="display:flex;align-items:center;min-width:0">' + kick(E(label), 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%') + '<span class="mini" style="margin-left:10px;color:var(--fg2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + E(a.sub) + (REAL ? '' : ' · demo') + '</span><a href="#portfolio' + (i ? '/' + i : '') + '" aria-label="Open portfolio" style="margin-left:auto;flex:none">' + ic('chev', 22, 2.2) + '</a></div>' +
+    return card('<div class="ptop" style="position:relative"><div style="display:flex;align-items:center;min-width:0">' + kick(E(label), 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%') + '<span class="mini" style="margin-left:10px;color:var(--fg2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + E(a.sub) + (REAL ? '' : ' · demo') + '</span><a href="#portfolio' + (i ? '/' + i : '') + '" aria-label="Open portfolio" style="margin-left:auto;flex:none">' + ic('chev', 22, 2.2) + '</a></div>' +
       '<div style="display:flex;align-items:center;gap:14px;margin-top:8px"><div style="flex:none"><div style="font-size:31px;line-height:40px;font-weight:600">' + money(c.val) + '</div><div class="' + cls(c.day) + '" style="font-size:16px;font-weight:500;margin-top:2px">' + chg(c.day) + '<span style="margin-left:10px">' + pct(c.dayPct) + '</span></div></div>' +
       '<div class="pchart" style="flex:1;min-width:0;height:58px;display:flex;justify-content:flex-end">' + mtn(c.series, 120, 58, c.val - c.day, c.day >= 0) + '</div></div>' +
       '<button class="ptog' + (S.pOpen ? ' on' : '') + '" data-ptog="1" aria-expanded="' + !!S.pOpen + '"><span>Top performers today</span><i>' + ic('chev', 16, 2.4) + '</i></button>' + (S.pOpen ? '<div class="rows" style="padding:0!important">' + (c.top.length ? perf(c.top, 3, 60) : '<div class="err">No stock holdings in this account.</div>') + '</div>' : '') +
-      '<div class="strip" style="margin-top:6px">' + strip + '</div></div>', 'padding:16px 20px 12px', 'pglass', 'div', ' data-go="#portfolio' + (i ? '/' + i : '') + '"');
+      '</div><div class="strip" style="margin-top:6px">' + strip + '</div>', 'padding:16px 20px 12px', 'pglass', 'div', ' data-go="#portfolio' + (i ? '/' + i : '') + '"');
   }
   function portCard() {
     const all = allCalc(); const c0 = all.c;
@@ -274,8 +274,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     return rowsBox(S.tg.map((x) => { const p = +x.change_ratio * 100, pr = +x.price, c = isFinite(+x.change) ? +x.change : pr - pr / (1 + p / 100); return '<a class="row" href="#stock/' + encodeURIComponent(x.symbol) + '" style="min-height:62px">' + tl(x.symbol, 36) + '<span class="nm"><b>' + E(x.symbol) + '</b><small>' + E(x.name || nameOf(x.symbol)) + '</small></span><span style="flex:none">' + sp(x.symbol, p >= 0, 52, 24) + '</span><span class="q"><b>' + pxs(pr) + '</b><small class="' + cls(p) + '">' + (c >= 0 ? '+' : '−') + '$' + Math.abs(c).toFixed(Math.abs(c) < 1 ? 2 : 2) + '<i>' + pct(p) + '</i></small></span></a>'; }).join(''));
   }
   function today() {
-    return RIB + '<div class="wrap" style="position:relative;z-index:1">' + topbar() + greetHead() +
-      portCard() + pulse() + lab('trend', 'Top gainers', 'See all', '#movers') + tgRows() + lab('news', 'Top news', 'All news', '#news') + newsRows() + (V2_STAGE >= 2 ? whatsHot() + lab('radar', 'Starting to run', 'See all', '#radar') + radarStrip() : '') +
+    return '<div class="wrap" style="position:relative;z-index:1"><div class="hero">' + RIB + topbar() + greetHead() +
+      portCard() + '</div>' + pulse() + lab('trend', 'Top gainers', 'See all', '#movers') + tgRows() + lab('news', 'Top news', 'All news', '#news') + newsRows() + (V2_STAGE >= 2 ? whatsHot() + lab('radar', 'Starting to run', 'See all', '#radar') + radarStrip() : '') +
       lab('star', 'Watchlist', 'View all', '#watch') + watchRows() +
       lab('target', 'Your next moves') + moves() + earnCard() + act('target', 'Analyst calls', 'Upgrades, downgrades and price-target changes', '#analysts') + (V2_STAGE >= 2 ? act('cal', 'Earnings week', 'Who reports this week, beat or miss', '#earnings') : '') + (V2_STAGE >= 3 ? act('bank', 'Follow the money', 'Big options bets, Congress trades, short interest', '#money') : '') + '</div>';
   }
@@ -806,7 +806,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     gid = 0; const html = (VIEW[r.v] || today)(); if (lastV !== r.v) app.innerHTML = html; else morph(app, html);
     app.querySelectorAll('.mvt').forEach((t, i) => { if (tsc[i]) { t.scrollTop = tsc[i][0]; t.scrollLeft = tsc[i][1]; } }); render.h = location.hash;
     let navOn = { today: 0, movers: 1, radar: 1, stock: 1, markets: 2, mtheme: 2, earnings: 2, portfolio: 4, funds: 4, fund: 4 }[r.v]; if (navOn == null && window.V2X) navOn = V2X.nav[r.v];
-    morph(nav, NAVI.map((x, i) => '<a class="ni' + (i === navOn ? ' on' : '') + '" href="' + x[2] + '"' + (i === navOn ? ' aria-current="page"' : '') + '>' + ic(x[0], 21, 2.0) + '<span>' + x[1] + '</span></a>').join(''));
+    morph(nav, NAVI.map((x, i) => '<a class="ni' + (i === navOn ? ' on' : '') + '" href="' + x[2] + '" aria-label="' + x[1] + '"' + (i === navOn ? ' aria-current="page"' : '') + '>' + ic(x[0], 21, 2.0) + '<span>' + x[1] + '</span></a>').join(''));
     nav.style.display = r.v === 'connect' ? 'none' : '';
     if (!D.querySelector('.scrim')) { const s = D.createElement('div'); s.className = 'scrim'; D.body.insertBefore(s, nav); }
     D.querySelector('.scrim').style.display = r.v === 'connect' ? 'none' : '';

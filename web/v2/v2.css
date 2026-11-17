@@ -631,3 +631,40 @@ html[data-x2t="light"] .tline,html[data-x2t="light"] .tmk{text-shadow:none!impor
 html[data-x2t="light"] .xsrch{background:#fff!important;border:1px solid #D5DFEB!important;color:#6B7A90!important;box-shadow:0 1px 2px rgba(16,40,80,.04)!important}html[data-x2t="light"] .xsrch *{color:#6B7A90!important}
 
 html[data-x2t="light"] h1,html[data-x2t="light"] .tmk{color:#243248!important}
+.tday{padding-top:22px!important}
+html[data-x2t="light"] body .card.pglass{box-shadow:0 8px 16px rgba(14,40,80,.16),inset 0 1px 0 rgba(255,255,255,.22),inset 0 -20px 40px rgba(4,12,28,.35)!important}
+
+/* Today top tile: in light mode the whole top is one navy glass panel */
+.hero{position:relative}.hero>*:not(.ribbon){position:relative;z-index:1}
+html[data-x2t="light"] .hero{margin:0 -16px;padding:0 16px 14px;isolation:isolate}
+html[data-x2t="light"] .hero:before{content:"";position:absolute;left:0;right:0;top:-120px;bottom:0;z-index:-1;border-radius:0 0 28px 28px;background:linear-gradient(115deg,rgba(255,255,255,.07) 0%,rgba(255,255,255,0) 38%),radial-gradient(80% 40% at 15% 120px,rgba(120,175,245,.20),transparent 65%),linear-gradient(175deg,#123462 0%,#0C2549 40%,#081A36 75%,#06142B 100%);border:1px solid rgba(170,205,255,.20);border-top:0;box-shadow:0 16px 34px rgba(8,24,52,.30),inset 0 -1px 0 rgba(170,205,255,.18),inset 0 -30px 50px rgba(2,8,20,.45)}
+html[data-x2t="light"] .hero+*{margin-top:22px!important}
+html[data-x2t="light"] .hero .top .ib,html[data-x2t="light"] .hero .top .ib *{color:#fff!important}
+html[data-x2t="light"] .hero .brand img{filter:none!important}
+html[data-x2t="light"] .hero .tmk{color:#fff!important}html[data-x2t="light"] .hero .tline{color:#AEC0D8!important}
+html[data-x2t="light"] .hero .hbl span:first-child{color:#fff!important}html[data-x2t="light"] .hero .hbl span:last-child{color:#AEC0D8!important}
+html[data-x2t="light"] .hero .hbt{background:rgba(255,255,255,.14)!important}
+html[data-x2t="light"] .hero #rb1 stop:nth-child(1){stop-color:#0B2748}html[data-x2t="light"] .hero #rb1 stop:nth-child(2){stop-color:#173F70}html[data-x2t="light"] .hero #rb1 stop:nth-child(3){stop-color:#2E6DB4}html[data-x2t="light"] .hero #rb1 stop:nth-child(4){stop-color:#5BA4DC}
+html[data-x2t="light"] .hero #rb2 stop:nth-child(1){stop-color:#0B2748}html[data-x2t="light"] .hero #rb2 stop:nth-child(2){stop-color:#143866}html[data-x2t="light"] .hero #rb2 stop:nth-child(3){stop-color:#2E6DB4}
+html[data-x2t="light"] .hero #hl stop{stop-color:#8FD8F8}html[data-x2t="light"] .hero .ribbon{opacity:.75}
+html[data-x2t="light"] .hero .tday{padding-top:10px!important}
+html[data-x2t="light"] .hero .hcar{margin-top:6px!important;padding-bottom:6px!important;margin-bottom:0!important}
+html[data-x2t="light"] .hero #hdots{margin-top:4px!important}
+html[data-x2t="light"] .hero #hdots *{background:rgba(255,255,255,.35)!important}html[data-x2t="light"] .hero #hdots .on{background:#fff!important}
+/* portfolio and % row as two frosted tiles on the navy */
+html[data-x2t="light"] .hero .card.pglass{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;border-radius:0!important}
+html[data-x2t="light"] .hero .card.pglass:before,html[data-x2t="light"] .hero .card.pglass:after{display:none!important}
+html[data-x2t="light"] .hero .pglass .ptop,html[data-x2t="light"] .hero .card.pglass .strip{background:linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,.04))!important;border:1px solid rgba(200,225,255,.16)!important;border-radius:18px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.14)!important}
+html[data-x2t="light"] .hero .pglass .ptop{padding:16px 18px 14px}
+html[data-x2t="light"] .hero .card.pglass .strip{margin:10px 0 0!important;padding:12px 0 14px!important}
+html[data-x2t="light"] .hero .pglass [style*="font-size:3"]{font-weight:500!important;letter-spacing:-.02em!important}
+html[data-x2t="light"] .hero .pglass .strip b,html[data-x2t="light"] .hero .pglass .up,html[data-x2t="light"] .hero .pglass .dn{font-weight:500!important}
+/* top performers: dark frosted pill in both modes */
+html body .card.pglass .ptog{background:rgba(255,255,255,.07)!important;border:1px solid rgba(200,225,255,.16)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.10)!important;color:#fff!important}
+html body .card.pglass .ptog *{background:none!important;border:0!important;color:#fff!important}html body .card.pglass .ptog svg,html body .card.pglass .ptog svg *{color:#93C0F6!important}
+/* bottom nav: icons only, round active state */
+.ni span{display:none!important}.ni{width:52px!important;height:52px!important;border-radius:50%!important}
+.nav{height:66px!important;border-radius:33px!important;left:max(24px,calc(50% - 210px))!important;right:max(24px,calc(50% - 210px))!important}
+html[data-x2t="light"] .nav{background:linear-gradient(180deg,#123563,#0B2244)!important;border:0!important;box-shadow:0 10px 26px rgba(11,34,68,.32)!important}
+html[data-x2t="light"] .ni{color:rgba(255,255,255,.72)!important}
+html[data-x2t="light"] .ni.on{background:linear-gradient(180deg,#E6F1FF,#C4DEFF)!important;box-shadow:none!important}html[data-x2t="light"] .ni.on,html[data-x2t="light"] .ni.on *{color:#0B2244!important}
