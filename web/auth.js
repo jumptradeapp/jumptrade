@@ -29,7 +29,7 @@
   }
   function ungate() { const g = D.getElementById('jtGate'); if (g) g.remove(); D.documentElement.classList.remove('jt-gated'); }
   function lockScreen() {
-    const g = gate('<h2>Private beta</h2><p>jumptrade is invite-only right now. Open your invite link to get in, or enter a sign-in code.</p>' +
+    const g = window.JT_LANDING ? JT_LANDING.show() : gate('<h2>Private beta</h2><p>jumptrade is invite-only right now. Open your invite link to get in, or enter a sign-in code.</p>' +
       '<input id="gCode" type="text" maxlength="80" autocapitalize="characters" autocomplete="one-time-code" spellcheck="false" placeholder="Sign-in code (like K7F2-9QXA)"><button id="gGo">Sign in</button><p id="gMsg" class="gMsg"></p>' +
       '<p class="gHelp">Already signed in on Safari? There, open the menu → <b>Your other devices</b> to get a code for this app.</p>');
     const go = g.querySelector('#gGo'), msg = g.querySelector('#gMsg'), ci = g.querySelector('#gCode');

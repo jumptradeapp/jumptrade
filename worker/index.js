@@ -1409,8 +1409,30 @@ export default {
     if (url.pathname === '/rotation.json') { const R = await vget(env, 'rotation').catch(() => null); if (R && R.asOf) return json(R, 200, { 'cache-control': 'public, max-age=600' }); return env.ASSETS.fetch(req); }
     if (req.method === 'OPTIONS') return new Response(null, { status: 204 }); // the app only calls its own server (same origin), so no cross-site access is granted
     // Private beta: while the site is locked, every data endpoint needs a signed-in account (cookie or bearer token).
+    // ---------- public landing page: a small live teaser and invite requests (no sign-in) ----------
+    if (url.pathname === '/api/public/teaser') {
+      const ck = new Request('https://cache.jumptrade/teaser'); const hit = await caches.default.match(ck); if (hit) return hit;
+      const et = etNow(); const m = et.hm; const rank = m < 570 ? 'PRE_MARKET' : m >= 960 ? 'AFTER_MARKET' : '1d';
+      let movers = []; try { const p = await cachedTool('get_gainers_losers', { category: 'US_STOCK', rank_type: rank, sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '30', page_index: '1' }, ctx, env);
+        movers = ((p && p.data) || []).filter((x) => x && /^[A-Z.]{1,6}$/.test(x.symbol) && +x.price >= 1 && (+x.volume || 0) >= 100000).slice(0, 5).map((x) => ({ s: x.symbol, n: String(x.name || '').slice(0, 40), pct: Math.round(+x.change_ratio * 1000) / 10 })); } catch (e) {}
+      let buys = [], filed = null, nf = 0; try { const r = await env.ASSETS.fetch(new Request('https://jumptrade.app/funds.json')); const j = await r.json(); const F = (j.funds || []).filter((f) => f.filed && Date.now() - Date.parse(f.filed + 'T12:00:00Z') < 21 * 864e5); nf = F.length; filed = F.reduce((a, f) => (f.filed > a ? f.filed : a), '');
+        const M = {}; F.forEach((f) => (f.h || []).forEach((h) => { if (/^[A-Z.]{1,6}$/.test(h[0]) && (h[3] === 'new' || h[3] === 'added')) M[h[0]] = (M[h[0]] || 0) + 1; })); buys = Object.entries(M).sort((a, b) => b[1] - a[1]).slice(0, 5).map((x) => ({ s: x[0], n: x[1] })); } catch (e) {}
+      const sess = rank === 'PRE_MARKET' ? 'pre' : rank === 'AFTER_MARKET' ? 'after' : 'day';
+      const res = json({ at: Date.now(), sess, closed: /Sat|Sun|Hol/.test(et.wd), movers, buys, nf, filed }, 200, { 'cache-control': 'public, max-age=60' }); ctx.waitUntil(caches.default.put(ck, res.clone())); return res;
+    }
+    if (url.pathname === '/api/public/invite' && req.method === 'POST') {
+      const txt = await req.text(); if (txt.length > 2000) return json({ error: { code: 'too_big' } }, 413); let b; try { b = JSON.parse(txt); } catch (e) { return json({ error: { code: 'bad_request' } }, 400); }
+      const name = String(b.name || '').trim().slice(0, 40), email = String(b.email || '').trim().slice(0, 120), note = String(b.note || '').trim().slice(0, 300);
+      if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ error: { code: 'bad_request', message: 'Add your first name and a valid email.' } }, 400);
+      const ip = req.headers.get('cf-connecting-ip') || ''; const day = new Date().toISOString().slice(0, 10); const R = (await vget(env, 'invite_req')) || [];
+      if (R.filter((x) => x.ip === ip && x.d === day).length >= 3) return json({ error: { code: 'rate_limited', message: 'You’ve already sent a request today.' } }, 429);
+      if (R.some((x) => x.email.toLowerCase() === email.toLowerCase())) return json({ ok: true, dup: true });
+      R.unshift({ t: Date.now(), d: day, name, email, note, ip }); await vput(env, 'invite_req', R.slice(0, 500));
+      ctx.waitUntil(notifyOwner(env, { title: 'Invite request: ' + name, body: email + (note ? ' · ' + note.slice(0, 80) : ''), url: '/#admin', tag: 'jt-admin' }));
+      return json({ ok: true });
+    }
     const dataFile = /^\/[a-z_]+\.json$/.test(url.pathname);
-    if ((dataFile || url.pathname.startsWith('/api/')) && !/^\/api\/(auth\/|admin\/|health$|nimg$|logo\/|wb\/)/.test(url.pathname) && !(url.pathname === '/api/feedback' && req.method === 'GET')) {
+    if ((dataFile || url.pathname.startsWith('/api/')) && !/^\/api\/(auth\/|admin\/|health$|nimg$|logo\/|wb\/|public\/)/.test(url.pathname) && !(url.pathname === '/api/feedback' && req.method === 'GET')) {
       // remembered per server for a minute so the 1-second price polling doesn't add storage lookups to every request
       if (!GATE_C || Date.now() - GATE_C.t > 60000) GATE_C = { t: Date.now(), g: (await vget(env, 'gate')) || { locked: true } };
       if (GATE_C.g.locked) {
