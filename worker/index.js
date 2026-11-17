@@ -1145,7 +1145,7 @@ async function ownerRoutes(url, req, env) {
     const r = await wb.raw('POST', '/auth/tokens/create', {}, null); // one try only: Webull locks the key after 5 failed logins
     if (r.status !== 200 || !r.data || !r.data.token) if (r.data && r.data.error_code === 'VERIFY_FAILURE_EXCEED_LIMIT') return json({ error: 'webull', message: 'Webull has paused logins for this API key after too many unapproved attempts. Wait for it to reset, then tap Connect once.' }, 502);
     return json({ error: 'webull', message: 'Webull didn’t start the login (status ' + r.status + '): ' + String((r.data && (r.data.message || r.data.msg)) || r.data || '').slice(0, 120) }, 502);
-    const nt = { token: r.data.token, expires: r.data.expires, status: r.data.status || 'PENDING' }; await vput(env, 'trtoken', nt); await vput(env, 'token', nt); await vput(env, 'tokstate', { status: nt.status, created: Date.now(), http: 200 }); WBOK.t = 0; OWNACC = null; // one approved login serves prices and accounts
+    const nt = { token: r.data.token, expires: r.data.expires, status: r.data.status || 'PENDING', created: Date.now() }; await vput(env, 'trtoken', nt); await vput(env, 'token', nt); await vput(env, 'tokstate', { status: nt.status, created: Date.now(), http: 200 }); WBOK.t = 0; OWNACC = null; // one approved login serves prices and accounts
     return json({ ok: true, status: r.data.status, message: r.data.status === 'NORMAL' ? 'Connected.' : 'Webull texts you a code. Open the Webull app, tap Check Now on the API login prompt, enter the code, then come back. You have 5 minutes.' });
   }
   if (url.pathname === '/api/owner/accounts') {
@@ -1158,6 +1158,7 @@ async function ownerRoutes(url, req, env) {
     if (!tk || !tk.token) return json({ need: 'connect', message: 'Connect Webull once: tap Connect, then approve the login in your Webull app.' }, 200, { 'cache-control': 'no-store' });
     if (tk.status !== 'NORMAL') { let c = await wb.raw('POST', '/auth/tokens/check', {}, null, tk.token); if (c.status !== 200) c = await wb.raw('POST', '/auth/tokens/check', {}, { token: tk.token });
       if (c.status === 200 && c.data && c.data.status) { tk = Object.assign({}, tk, { status: c.data.status, expires: c.data.expires || tk.expires }); await vput(env, 'trtoken', tk); if (tk.status === 'NORMAL') { await vput(env, 'token', tk); await vput(env, 'tokstate', { status: 'NORMAL', checked: Date.now(), http: 200 }); WBOK.t = 0; } }
+      if (tk.status !== 'NORMAL' && /PENDING|WAIT|INIT/i.test(tk.status || '') && !(tk.created && Date.now() - tk.created < 330000)) { tk = Object.assign({}, tk, { status: 'EXPIRED' }); await vput(env, 'trtoken', tk); } // Webull drops an unverified login after 5 minutes
       if (tk.status !== 'NORMAL') return json({ need: /PENDING|WAIT|INIT/i.test(tk.status || '') ? 'approve' : 'connect', status: tk.status, message: /PENDING|WAIT|INIT/i.test(tk.status || '') ? 'Waiting for you to enter the texted code in the Webull app (Check Now). It times out after 5 minutes.' : 'The Webull login expired. Tap Connect to approve a new one.' }, 200, { 'cache-control': 'no-store' }); }
     const token = tk.token;
     const list = (p) => (Array.isArray(p) ? p : (p && (p.data || p.list || p.accounts || p.holdings || p.positions || p.items || p.result)) || []);
