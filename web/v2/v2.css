@@ -843,3 +843,4 @@ html[data-x2t="midnight"] .hero .card.pglass .strip{padding:8px 0 9px!important;
 html[data-x2t="midnight"] .hero .pglass .ptop{padding:13px 16px 12px!important}
 html[data-x2t="midnight"] .hero .card.pglass.pt2{padding:6px 4px 4px!important}
 html[data-x2t="midnight"] .hero .card.pglass.pt2{padding:4px 2px 2px!important}
+html[data-x2t] .hero .card.pglass{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
