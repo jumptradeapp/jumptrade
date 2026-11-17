@@ -262,7 +262,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const L = wlSyms(); const own = !!wl(); const V5 = L.slice(0, 5);
     const have = L.map((x) => S.q[x]).filter((q) => q && isFinite(q.pct)); const up = have.filter((q) => q.pct > 0).length, dn = have.filter((q) => q.pct < 0).length;
     const tot = have.reduce((a, q) => a + q.pct * 10, 0); const flat = Math.abs(tot) < 0.5;
-    const sum = own && have.length >= 2 ? '<div class="wsum2"><b>' + up + ' up · ' + dn + ' down today' + (flat ? '' : ' · <span class="' + (tot > 0 ? 'up' : 'dn') + '">' + (tot > 0 ? '+' : '−') + '$' + Math.abs(Math.round(tot)).toLocaleString('en-US') + '</span>') + '</b><small>' + (flat ? 'Flat overall today' : 'If you’d put $1,000 in each, you’d be ' + (tot > 0 ? 'up' : 'down') + ' $' + Math.abs(Math.round(tot)).toLocaleString('en-US') + ' today') + '</small></div>' : '';
+    const sum = have.length >= 2 ? '<div class="wsum2"><b>' + up + ' up · ' + dn + ' down today' + (flat ? '' : ' · <span class="' + (tot > 0 ? 'up' : 'dn') + '">' + (tot > 0 ? '+' : '−') + '$' + Math.abs(Math.round(tot)).toLocaleString('en-US') + '</span>') + '</b><small>' + (flat ? 'Flat overall today' : 'If you’d put $1,000 in each' + (own ? '' : ' of these') + ', you’d be ' + (tot > 0 ? 'up' : 'down') + ' $' + Math.abs(Math.round(tot)).toLocaleString('en-US') + ' today') + '</small></div>' : '';
     return rowsBox(sum + V5.map((x) => srow(x, 64)).join('')) + (own ? '' : '<p class="note">Suggested stocks. Add your own from any stock page and they show here.</p>');
   }
   function moves() {
@@ -838,7 +838,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     if (window.V2X) Object.assign(VIEW, V2X.views(r));
     const tsc = render.h === location.hash ? Array.from(app.querySelectorAll('.mvt')).map((t) => [t.scrollTop, t.scrollLeft]) : [];
     const hk = D.getElementById('hcar'); const hKeep = hk && lastV === r.v ? hk.scrollLeft : null;
-    gid = 0; const html = (VIEW[r.v] || today)(); if (lastV !== r.v) app.innerHTML = html; else morph(app, html);
+    gid = 0; let html = (VIEW[r.v] || today)();
+    if (r.v !== 'today' && VIEW[r.v]) { const m = /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(html); const bi = html.indexOf('<span class="brand">'); if (m && bi >= 0) { const t = m[1].replace(/<[^>]+>/g, '').trim(); const be = html.indexOf('</span>', bi) + 7; html = html.slice(0, bi) + '<b class="ttl">' + t + '</b>' + html.slice(be); html = html.replace(m[0], ''); } } if (lastV !== r.v) app.innerHTML = html; else morph(app, html);
     app.querySelectorAll('.mvt').forEach((t, i) => { if (tsc[i]) { t.scrollTop = tsc[i][0]; t.scrollLeft = tsc[i][1]; } }); render.h = location.hash;
     let navOn = { today: 0, movers: 1, radar: 1, stock: 1, markets: 2, mtheme: 2, earnings: 2, portfolio: 4, funds: 4, fund: 4 }[r.v]; if (navOn == null && window.V2X) navOn = V2X.nav[r.v];
     morph(nav, NAVI.map((x, i) => '<a class="ni' + (i === navOn ? ' on' : '') + '" href="' + x[2] + '" aria-label="' + x[1] + '"' + (i === navOn ? ' aria-current="page"' : '') + '>' + ic(x[0], 21, 2.0) + '<span>' + x[1] + '</span></a>').join(''));

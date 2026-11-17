@@ -761,3 +761,7 @@ html body .pglass.pglass.pglass.pt2 .pt2b small,html body .pglass.pglass.pglass.
 html body .pglass.pglass.pglass.pt2 .am-v small.up{color:#7BEA8A!important}html body .pglass.pglass.pglass.pt2 .am-v small.dn{color:#FF8A84!important}
 html[data-x2t="light"] .hero .card.pglass.pt2{padding:6px 4px 4px!important}
 html body .card.pt2 .amenu{position:absolute!important;z-index:30!important}
+
+/* page title in the header on every page except Today */
+.top.tc .ttl{position:absolute;left:50%;transform:translateX(-50%);font-size:17px;font-weight:650;letter-spacing:-.015em;white-space:nowrap;max-width:60%;overflow:hidden;text-overflow:ellipsis}
+.top.tc+.sub{margin-top:2px}
