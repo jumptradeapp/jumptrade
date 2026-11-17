@@ -1020,8 +1020,8 @@ async function wbUpkeepRun(env) {
     await vput(env, 'tokstate', { ...st, status, checked: now, http: r.status });
     if (r.status === 200 && status !== 'INVALID' && status !== 'EXPIRED') return { status };
   }
-  if (st.created && now - st.created < 3600000 && st.status !== 'INVALID' && st.status !== 'EXPIRED') return { waiting: true };
-  if (st.created && now - st.created < 600000) return { waiting: true };
+  // never create a login on a timer: each unapproved one counts as a failed verification, and 5 lock the key. New logins start only from Connect in owner mode.
+  return { needsConnect: true };
   const r = await wb.raw('POST', '/auth/tokens/create', {}, null);
   if (r.status === 200 && r.data && r.data.token) { await vput(env, 'token', { token: r.data.token, expires: r.data.expires, status: r.data.status }); await vput(env, 'tokstate', { status: r.data.status, created: now, http: 200 }); return { created: r.data.status }; }
   await vput(env, 'tokstate', { ...st, status: 'CREATE_FAILED', created: now, http: r.status, code: r.data && r.data.error_code });
@@ -1142,9 +1142,10 @@ async function ownerRoutes(url, req, env) {
   if (url.pathname === '/api/owner/connect' && req.method === 'POST') { // asks Webull for a session token; Webull sends you an approval request in its app
     if (!unlocked) return json({ error: 'locked' }, 403);
     const wb = new Webull(env); if (!wb.ready) return json({ error: 'no_webull', message: 'Webull keys aren’t set on the server.' }, 503);
-    let r = await wb.raw('POST', '/auth/tokens/create', {}, null); if (r.status !== 200) r = await wb.raw('POST', '/openapi/auth/token/create', {}, null);
-    if (r.status !== 200 || !r.data || !r.data.token) return json({ error: 'webull', message: 'Webull didn’t start the login (status ' + r.status + '): ' + String((r.data && (r.data.message || r.data.msg)) || r.data || '').slice(0, 120) }, 502);
-    await vput(env, 'trtoken', { token: r.data.token, expires: r.data.expires, status: r.data.status || 'PENDING' }); OWNACC = null;
+    const r = await wb.raw('POST', '/auth/tokens/create', {}, null); // one try only: Webull locks the key after 5 failed logins
+    if (r.status !== 200 || !r.data || !r.data.token) if (r.data && r.data.error_code === 'VERIFY_FAILURE_EXCEED_LIMIT') return json({ error: 'webull', message: 'Webull has paused logins for this API key after too many unapproved attempts. Wait for it to reset, then tap Connect once.' }, 502);
+    return json({ error: 'webull', message: 'Webull didn’t start the login (status ' + r.status + '): ' + String((r.data && (r.data.message || r.data.msg)) || r.data || '').slice(0, 120) }, 502);
+    const nt = { token: r.data.token, expires: r.data.expires, status: r.data.status || 'PENDING' }; await vput(env, 'trtoken', nt); await vput(env, 'token', nt); await vput(env, 'tokstate', { status: nt.status, created: Date.now(), http: 200 }); WBOK.t = 0; OWNACC = null; // one approved login serves prices and accounts
     return json({ ok: true, status: r.data.status, message: r.data.status === 'NORMAL' ? 'Connected.' : 'Open the Webull app and approve the API login, then come back.' });
   }
   if (url.pathname === '/api/owner/accounts') {
@@ -1152,10 +1153,11 @@ async function ownerRoutes(url, req, env) {
     if (OWNACC && Date.now() - OWNACC.t < 30000) return json(OWNACC.v);
     const wb = new Webull(env); if (!wb.ready) return json({ error: 'no_webull', message: 'Webull keys aren’t set on the server.' }, 503);
     // account routes need a session token (x-access-token) that you approve once in the Webull app; market data doesn't, so it's kept separately
-    let tk = (await vget(env, 'trtoken').catch(() => null)) || (await vget(env, 'token').catch(() => null));
+    const t1 = await vget(env, 'trtoken').catch(() => null), t2 = await vget(env, 'token').catch(() => null);
+    let tk = [t1, t2].find((t) => t && t.status === 'NORMAL') || t1 || t2;
     if (!tk || !tk.token) return json({ need: 'connect', message: 'Connect Webull once: tap Connect, then approve the login in your Webull app.' }, 200, { 'cache-control': 'no-store' });
     if (tk.status !== 'NORMAL') { let c = await wb.raw('POST', '/auth/tokens/check', {}, null, tk.token); if (c.status !== 200) c = await wb.raw('POST', '/auth/tokens/check', {}, { token: tk.token });
-      if (c.status === 200 && c.data && c.data.status) { tk = Object.assign({}, tk, { status: c.data.status, expires: c.data.expires || tk.expires }); await vput(env, 'trtoken', tk); }
+      if (c.status === 200 && c.data && c.data.status) { tk = Object.assign({}, tk, { status: c.data.status, expires: c.data.expires || tk.expires }); await vput(env, 'trtoken', tk); if (tk.status === 'NORMAL') { await vput(env, 'token', tk); await vput(env, 'tokstate', { status: 'NORMAL', checked: Date.now(), http: 200 }); WBOK.t = 0; } }
       if (tk.status !== 'NORMAL') return json({ need: /PENDING|WAIT|INIT/i.test(tk.status || '') ? 'approve' : 'connect', status: tk.status, message: /PENDING|WAIT|INIT/i.test(tk.status || '') ? 'Waiting for you to approve the login in the Webull app.' : 'The Webull login expired. Tap Connect to approve a new one.' }, 200, { 'cache-control': 'no-store' }); }
     const token = tk.token;
     const list = (p) => (Array.isArray(p) ? p : (p && (p.data || p.list || p.accounts || p.holdings || p.positions || p.items || p.result)) || []);
