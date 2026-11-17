@@ -236,7 +236,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     if (!c0.ready) return card('<div style="position:relative">' + kick('Portfolio') + (S.loaded && S.err.q ? '<div class="err">Prices aren’t loading right now, so balances can’t be worked out. Retrying every 30 seconds.</div>' : skel(4)) + '</div>', 'padding:16px 20px 12px;margin-top:12px');
     const cards = [{ a: all.a, c: c0 }].concat(ACCTS.length > 1 ? ACCTS.map((a) => ({ a, c: acctCalc(a) })) : []);
     const idx = Math.min(S.acct, cards.length - 1), a = cards[idx].a, c = cards[idx].c;
-    const tf = TF.find((x) => x[0] === S.tf) || TF[0];
+    const tf = TF[0]; // today only: Webull has no balance history, and past values from today's holdings would be made up
     let ser, amt, pc;
     if (tf[1] === 0) { ser = c.series; amt = c.day; pc = c.dayPct; }
     else { ser = tfSeries(a, tf[1], c.val); const base = ser ? ser[0] : null; amt = base ? c.val - base : null; pc = base ? (c.val / base - 1) * 100 : null; }
@@ -248,7 +248,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       '<div class="pt2b">' + (dot > 0 ? m.slice(0, dot) + '<small>' + m.slice(dot) + '</small>' : m) + '</div>' +
       '<div class="pt2p ' + (amt == null ? '' : amt >= 0 ? 'u' : 'd') + '">' + (amt == null ? 'Loading ' + tf[2] + '…' : (amt >= 0 ? '▲ ' : '▼ ') + chg(amt).replace(/^[+−-]/, '') + ' · ' + pct(Math.abs(pc)).replace(/^[+−-]/, '') + ' ' + tf[2]) + '</div>' +
       areaChart(ser, (amt || 0) >= 0) +
-      '<div class="pt2t" role="tablist">' + TF.map((x) => '<button role="tab" aria-selected="' + (x[0] === tf[0]) + '" class="' + (x[0] === tf[0] ? 'on' : '') + '" data-tf="' + x[0] + '">' + x[0] + '</button>').join('') + '</div>',
+      '',
       'padding:14px 16px 14px;margin-top:8px', 'pglass pt2');
   }
   D.addEventListener('click', (e) => { const t = e.target.closest && e.target.closest('[data-acctmenu],[data-acct],[data-tf]'); if (!t) { if (S.amenu && !(e.target.closest && e.target.closest('.amenu'))) { S.amenu = false; render(); } return; } e.preventDefault(); e.stopPropagation();
