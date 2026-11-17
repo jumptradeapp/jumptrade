@@ -1,0 +1,32 @@
+name: Refresh 13F holdings
+on:
+  schedule:
+    - cron: '17 */4 1-20 2,5,8,11 *'   # filing season: every 4 hours, days 1-20 of Feb, May, Aug, Nov
+    - cron: '41 13 * * 0'               # rest of the year: weekly (late filers, amendments)
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Rebuild every fund even if nothing new was filed'
+        type: boolean
+        default: false
+permissions:
+  contents: write
+concurrency: { group: f13, cancel-in-progress: false }
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - name: Pull the latest 13F filings from SEC EDGAR
+        run: python tools/update_13f.py ${{ inputs.force && '--force' || '' }}
+      - name: Commit if anything changed
+        run: |
+          if git diff --quiet -- web/funds.json tools/cusip_tickers.json; then echo "No new filings"; exit 0; fi
+          git config user.name "jumptrade-bot"
+          git config user.email "bot@jumptrade.app"
+          git add web/funds.json tools/cusip_tickers.json
+          git commit -m "13F: refresh fund holdings from SEC EDGAR"
+          git pull --rebase origin main && git push
