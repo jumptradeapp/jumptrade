@@ -596,7 +596,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     if (!S.funds) body = rowsBox(skel(5), 'padding:14px');
     else if (S.funds.err) body = rowsBox('<div class="err">Funds aren’t loading right now. Try again in a minute.</div>');
     else {
-      const F = (S.funds.funds || []).filter((f) => f.h && f.h.length); const cats = Array.from(new Set(F.map((f) => f.cat).filter(Boolean)));
+      const qv0 = (q) => { const m = /Q(\d) (\d{4})/.exec(q || ''); return m ? +m[2] * 4 + +m[1] : 0; }; const qMax = (S.funds.funds || []).reduce((m, f) => Math.max(m, qv0(f.period)), 0);
+      const F = (S.funds.funds || []).filter((f) => f.h && f.h.length && qv0(f.period) >= qMax - 2); const cats = Array.from(new Set(F.map((f) => f.cat).filter(Boolean)));
       const CN = { value: 'Value', growth: 'Growth', activist: 'Activist', macro: 'Macro', quant: 'Quant', tech: 'Tech', hedge: 'Hedge funds', tiger: 'Tiger cubs' };
       const list = F.filter((f) => S.fcat === 'all' || f.cat === S.fcat);
       const qv = (q) => { const m = /Q(\d) (\d{4})/.exec(q || ''); return m ? +m[2] * 4 + +m[1] : 0; }; const lastQ = F.reduce((m, f) => (qv(f.period) > qv(m) ? f.period : m), ''); const onLast = F.filter((f) => f.period === lastQ).length;
