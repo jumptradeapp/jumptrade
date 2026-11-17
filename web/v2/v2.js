@@ -85,8 +85,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const IDX = ['SPY', 'QQQ', 'DIA', 'IWM'];
 
   function snap(list) {
-    return call('get_stock_snapshot', { symbols: list.join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: false }).then((p) => {
-      (Array.isArray(p) ? p : []).forEach((x) => { if (!x || !x.symbol) return; const price = +x.price || +x.close; if (!isFinite(price) || !price) return; let c = parseFloat(x.change); if (!isFinite(c)) c = x.pre_close ? price - x.pre_close : 0; let pc = parseFloat(x.change_ratio) * 100; if (!isFinite(pc)) pc = price - c ? c / (price - c) * 100 : 0; (S.qx = S.qx || {})[x.symbol] = x; S.q[x.symbol] = { price, chg: c, pct: pc, name: x.name && x.name !== x.symbol ? x.name : '' }; /* the backup feed has no names: let the symbol list supply them */ });
+    return call('get_stock_snapshot', { symbols: list.join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: true }).then((p) => {
+      (Array.isArray(p) ? p : []).forEach((x) => { if (!x || !x.symbol) return; let price = +x.price || +x.close; if (!isFinite(price) || !price) return; if ((+x.extend_hour_last_price || +x.ovn_price) && +x.pre_close && isFinite(parseFloat(x.change))) price = +x.pre_close + parseFloat(x.change); /* after the close Webull's price is the last extended trade; the session close is pre_close + change */ let c = parseFloat(x.change); if (!isFinite(c)) c = x.pre_close ? price - x.pre_close : 0; let pc = parseFloat(x.change_ratio) * 100; if (!isFinite(pc)) pc = price - c ? c / (price - c) * 100 : 0; (S.qx = S.qx || {})[x.symbol] = x; S.q[x.symbol] = { price, chg: c, pct: pc, name: x.name && x.name !== x.symbol ? x.name : '' }; /* the backup feed has no names: let the symbol list supply them */ });
       S.t.q = Date.now(); S.err.q = null;
     });
   }
@@ -145,7 +145,24 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const BRK = /\b(halt(ed|s)?|FDA|Fed(eral Reserve)?|rate (hike|cut)|resign(s|ed|ation)?|steps down|ousted|acquir(e|es|ed|ing)|acquisition|merger|buyout|takeover|bankrupt(cy)?|chapter 11|guidance|recall|SEC (charges|probe)|investigation|lawsuit|plunge[sd]?|soar(s|ed)|tariff|export (ban|rule|curbs?)|CPI|jobs report|beats?|miss(es|ed)?)\b/i;
   const isBreaking = (n) => { const ms = typeof n.publish_time === 'number' ? (n.publish_time < 1e12 ? n.publish_time * 1000 : n.publish_time) : Date.parse(n.publish_time); if (!isFinite(ms)) return false; const age = (Date.now() - ms) / 60000; return age >= 0 && (age < 45 || (age < 180 && BRK.test(dec(n.title || '')))); };
   const act = (icon, t, s, href) => '<a class="card act" href="' + href + '"><span class="ibx">' + ic(icon, 28, 2.1) + '</span><span class="tx"><b>' + t + '</b><small>' + s + '</small></span><span class="chv">' + ic('chev', 22, 2.4) + '</span></a>';
-  const q = (s) => { const x = S.q[s]; if (!x) return '<span class="q"><b>—</b><small>&nbsp;</small></span>'; return '<span class="q"><b>' + money(x.price) + '</b><small class="' + cls(x.chg) + '">' + chg(x.chg) + '<i>' + pct(x.pct) + '</i></small></span>'; };
+  // sun = pre-market, moon = after hours / overnight: the extra price line under any regular price
+  const SUN = '<svg class="sIc" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#F2C27A" stroke-width="2.4" stroke-linecap="round" aria-label="Pre-market"><circle cx="12" cy="12" r="4.2" fill="#F2C27A"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7L7 17M17 7l1.7-1.7"/></svg>';
+  const MOON = (k) => '<svg class="sIc" width="12" height="12" viewBox="0 0 24 24" aria-label="' + (k === 'overnight' ? 'Overnight' : 'After hours') + '"><path fill="#B58CFF" d="M20.5 14.6A9 9 0 0 1 9.4 3.5a.7.7 0 0 0-.9-.8A9.5 9.5 0 1 0 21.3 15.5a.7.7 0 0 0-.8-.9z"/></svg>';
+  function extQ(sym) {
+    const x = S.qx && S.qx[sym]; if (!x) return null; const n = (v) => { const f = parseFloat(v); return isFinite(f) ? f : null; };
+    const ss = session(); let k = ss === 'Pre-market' ? 'pre' : ss === 'After hours' ? 'after' : ss === 'Overnight' ? 'overnight' : ss === 'Market closed' ? 'closed' : 'regular';
+    if (k === 'regular') return null;
+    const reg = S.q[sym] ? S.q[sym].price : null;
+    if (k === 'overnight' && !(+x.ovn_price)) k = 'after';
+    if (k === 'closed') { if (+x.ovn_price && n(x.ovn_change) != null) k = 'overnight'; else if (+x.extend_hour_last_price && +x.extend_hour_last_price !== reg) k = /^PRE/.test(x.market_state || '') ? 'pre' : 'after'; else return null; }
+    if (k === 'overnight') return +x.ovn_price ? { k, price: +x.ovn_price, chg: n(x.ovn_change), pct: n(x.ovn_change_ratio) == null ? null : n(x.ovn_change_ratio) * 100 } : null;
+    if (!+x.extend_hour_last_price) return null;
+    const price = +x.extend_hour_last_price; let chg = n(x.extend_hour_change), pc = n(x.extend_hour_change_ratio) == null ? null : n(x.extend_hour_change_ratio) * 100;
+    if (chg == null) { const ref = k === 'after' ? reg : (+x.close || +x.pre_close || null); if (ref) { chg = price - ref; pc = chg / ref * 100; } }
+    return { k, price, chg, pct: pc };
+  }
+  const extHTML = (sym) => { const e = extQ(sym); if (!e || !isFinite(e.price)) return ''; const up = (e.chg || 0) >= 0; return '<small class="wxt">' + (e.k === 'pre' ? SUN : MOON(e.k)) + '<u>' + pxs(e.price) + '</u>' + (e.chg == null ? '' : '<span class="' + (up ? 'up' : 'dn') + '">' + (up ? '+' : '−') + Math.abs(e.pct || 0).toFixed(2) + '%</span>') + '</small>'; };
+  const q = (s) => { const x = S.q[s]; if (!x) return '<span class="q"><b>—</b><small>&nbsp;</small></span>'; return '<span class="q"><b>' + money(x.price) + '</b><small class="' + cls(x.chg) + '">' + chg(x.chg) + '<i>' + pct(x.pct) + '</i></small>' + extHTML(s) + '</span>'; };
   const srow = (s, minh) => { const x = S.q[s]; return '<a class="row" href="#stock/' + encodeURIComponent(s) + '" style="min-height:' + minh + 'px">' + tl(s, 38) + '<span class="nm"><b>' + E(s) + '</b><small>' + E(nameOf(s)) + '</small></span><span style="flex:none">' + sp(s, !x || x.chg >= 0) + '</span>' + q(s) + '</a>'; };
   // amber = needs your attention: earnings for a stock you hold, within the next 7 days
   const earnTag = (sym) => { if (!Array.isArray(S.earn)) return ''; const t0 = etNow(); t0.setHours(0, 0, 0, 0); const e = S.earn.find((x) => x && x.symbol === sym && x.date && Date.parse(x.date + 'T12:00:00') >= t0.getTime() && Date.parse(x.date + 'T12:00:00') - t0.getTime() < 7 * 864e5); if (!e) return '';
@@ -380,9 +397,9 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   let qSeq = 0, qApplied = 0;
   function fastSnap(list) {
     const my = ++qSeq;
-    return call('get_stock_snapshot', { symbols: list.join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: false }).then((p) => {
+    return call('get_stock_snapshot', { symbols: list.join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: true }).then((p) => {
       qApplied = Math.max(qApplied, my); /* per-symbol trade_time below stops an older answer overwriting a newer price */
-      (Array.isArray(p) ? p : []).forEach((x) => { if (!x || !x.symbol) return; const price = +x.price || +x.close; if (!isFinite(price) || !price) return; const tt = +x.trade_time || 0; const old = S.q[x.symbol]; if (old && old.tt && tt && tt < old.tt) return; let c = parseFloat(x.change); if (!isFinite(c)) c = x.pre_close ? price - x.pre_close : 0; let pc = parseFloat(x.change_ratio) * 100; if (!isFinite(pc)) pc = price - c ? c / (price - c) * 100 : 0; (S.qx = S.qx || {})[x.symbol] = x; S.q[x.symbol] = { price, chg: c, pct: pc, name: x.name && x.name !== x.symbol ? x.name : (old && old.name) || '', tt }; });
+      (Array.isArray(p) ? p : []).forEach((x) => { if (!x || !x.symbol) return; let price = +x.price || +x.close; if (!isFinite(price) || !price) return; if ((+x.extend_hour_last_price || +x.ovn_price) && +x.pre_close && isFinite(parseFloat(x.change))) price = +x.pre_close + parseFloat(x.change); const tt = +x.trade_time || 0; const old = S.q[x.symbol]; if (old && old.tt && tt && tt < old.tt) return; let c = parseFloat(x.change); if (!isFinite(c)) c = x.pre_close ? price - x.pre_close : 0; let pc = parseFloat(x.change_ratio) * 100; if (!isFinite(pc)) pc = price - c ? c / (price - c) * 100 : 0; (S.qx = S.qx || {})[x.symbol] = x; S.q[x.symbol] = { price, chg: c, pct: pc, name: x.name && x.name !== x.symbol ? x.name : (old && old.name) || '', tt }; });
       S.t.q = Date.now(); S.err.q = null;
     });
   }
@@ -888,7 +905,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   setInterval(() => { if (!D.hidden && route().v === 'today') { const s = D.querySelector('.app2 .sub'); if (s) s.textContent = dateLine(); } }, 30000);
 
   S.qx = S.qx || {};
-  window.V2 = { AT, I, S, call, fastSnap, E, dec, ic, tl, qv, px, pct, cls, head, backbar, topbar, lab, act, rowsBox, snapNote, chipsHTML, skel, nameOf, getJ, render: () => render(), route, toast,
+  window.V2 = { extHTML, AT, I, S, call, fastSnap, E, dec, ic, tl, qv, px, pct, cls, head, backbar, topbar, lab, act, rowsBox, snapNote, chipsHTML, skel, nameOf, getJ, render: () => render(), route, toast,
     setupOf, loadSetup, SETUP, sp, sparks, whyText, nfmt, pxs, sgn, agoL, ago2, shortD, wl, HOLD_SYMS, IDX, ACCTS, curSess, BL, DEMO, anRow, loadAnalyst, snapAn, ratW, stockScreen, canLoad };
   if (window.V2X && V2X.init) V2X.init();
   render();

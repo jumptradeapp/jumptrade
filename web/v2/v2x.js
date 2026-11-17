@@ -161,7 +161,7 @@
   }
   function wRow(s, sug) {
     const x = V().S.q[s]; const up = !x || (x.chg || 0) >= 0;
-    const q = x && isFinite(x.price) ? '<span class="q"><b>' + V().pxs(x.price) + '</b><small class="' + (up ? 'up' : 'dn') + '">' + (up ? '+' : '−') + '$' + Math.abs(x.chg || 0).toFixed(Math.abs(x.chg || 0) < 1 ? (Math.abs(x.chg || 0) < 0.1 ? 4 : 2) : 2) + '<i>' + V().pct(x.pct) + '</i></small></span>' : '<span class="q"><b>—</b><small>&nbsp;</small></span>';
+    const q = x && isFinite(x.price) ? '<span class="q"><b>' + V().pxs(x.price) + '</b><small class="' + (up ? 'up' : 'dn') + '">' + (up ? '+' : '−') + '$' + Math.abs(x.chg || 0).toFixed(Math.abs(x.chg || 0) < 1 ? (Math.abs(x.chg || 0) < 0.1 ? 4 : 2) : 2) + '<i>' + V().pct(x.pct) + '</i></small>' + (V().extHTML ? V().extHTML(s) : '') + '</span>' : '<span class="q"><b>—</b><small>&nbsp;</small></span>';
     return '<div class="row wrow"><a class="wlnk" href="#stock/' + encodeURIComponent(s) + '">' + V().tl(s, 38) + '<span class="nm"><b>' + E(s) + '</b><small>' + E(V().nameOf(s)) + '</small></span><span style="flex:none">' + V().sp(s, up, 56, 26) + '</span>' + q + '</a>' +
       (sug ? '<button class="xrm" style="color:#93C0F6" data-wadd="' + E(s) + '" aria-label="Add ' + E(s) + '">+</button>' : '<button class="xrm" data-wrm="' + E(s) + '" aria-label="Remove ' + E(s) + '">✕</button>') + '</div>';
   }

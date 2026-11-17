@@ -780,3 +780,5 @@ html body .pzi small{display:block!important;font-size:12px!important}html body 
 .brk{display:inline-block;vertical-align:2px;margin-right:6px;padding:0 6px;height:17px;line-height:17px;border-radius:5px;background:rgba(242,180,90,.16);color:#F2B45A;font-size:10.5px;font-weight:700;letter-spacing:.02em}
 html[data-x2t="light"] .brk{background:#FDF0DC;color:#B45309}
 html .lab .labt,html[data-x2t] .lab .labt{margin-left:0!important;color:inherit!important;font-size:inherit!important;font-weight:inherit!important;letter-spacing:inherit!important}
+
+.wxt{display:flex!important;align-items:center;justify-content:flex-end;gap:4px;font-size:11.5px!important;margin-top:2px;color:var(--fg2)}.wxt u{text-decoration:none;color:var(--fg2)}.wxt .sIc{flex:none}
