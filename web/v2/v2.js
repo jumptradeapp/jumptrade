@@ -91,7 +91,10 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     });
   }
   function sparks(list) { return call('get_sparks', { symbols: list.join(',') }).then((p) => { Object.keys(p || {}).forEach((k) => { if (p[k] && p[k].c) { S.spark[k] = p[k].c; S.pc[k] = p[k].pc; } }); }); }
-  function bars(list) { return call('get_stock_bars', { symbols: list, timespan: 'D', count: 300 }).then((p) => { ((p && p.result) || []).forEach((r) => { S.bars[r.symbol] = (r.result || []).map((b) => +b.close); }); }); }
+  function bars(list) { // daily closes, newest first; Webull takes 20 symbols per call and needs the category (ETFs retried as US_ETF)
+    const one = (L, cat) => call('get_stock_bars', { symbols: L, category: cat, timespan: 'D', count: 300 }).then((p) => { ((p && p.result) || []).forEach((r) => { const c = (r.result || []).map((b) => +b.close).filter((x) => x > 0); if (c.length) S.bars[r.symbol] = c; }); }).catch(() => {});
+    const parts = []; for (let i = 0; i < list.length; i += 20) parts.push(list.slice(i, i + 20));
+    return Promise.all(parts.map((L) => one(L, 'US_STOCK'))).then(() => { const miss = list.filter((x) => !S.bars[x]); if (!miss.length) return; const p2 = []; for (let i = 0; i < miss.length; i += 20) p2.push(miss.slice(i, i + 20)); return Promise.all(p2.map((L) => one(L, 'US_ETF'))); }); }
   // if the quote call fails, price what we can from the sparkline call (last 5-minute close vs previous close) so cards never wait forever
   function fillFromSparks() {
     Object.keys(S.spark).forEach((k) => { if (S.q[k] && !S.q[k].approx) return; const c = S.spark[k], pc = +S.pc[k]; const price = c && c.length ? +c[c.length - 1] : NaN; if (!isFinite(price) || !price || !isFinite(pc) || !pc) return; S.q[k] = { price, chg: price - pc, pct: (price - pc) / pc * 100, name: '', approx: 1 }; });
@@ -207,10 +210,15 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const lsg = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } };
   S.acct = +lsg('jt.acct', '0') || 0; S.tf = lsg('jt.tf', '1D'); S.amenu = false;
   const TF = [['1D', 0, 'today'], ['1W', 5, 'past week'], ['1M', 21, 'past month'], ['3M', 63, 'past 3 months'], ['1Y', 252, 'past year']];
+  let tfAsk = 0;
   function tfSeries(a, n, val) {
-    const ks = Object.keys(a.pos); if (!ks.length) return null; const out = [];
-    for (const k of ks) { const b = S.bars[k]; if (!b || b.length <= n) return null; }
-    for (let k = n; k >= 1; k--) out.push(ks.reduce((t, s) => t + a.pos[s][0] * S.bars[s][k], a.cash));
+    const ks = Object.keys(a.pos); if (!ks.length) return null;
+    const have = ks.filter((k) => S.bars[k] && S.bars[k].length > 1);
+    if (have.length < ks.length && Date.now() - tfAsk > 15000) { tfAsk = Date.now(); bars(ks.filter((k) => !S.bars[k])).then(render).catch(() => {}); }
+    if (!have.length) return null;
+    const N = Math.min(n, Math.max.apply(null, have.map((k) => S.bars[k].length - 1))); if (N < 1) return null;
+    const px = (s, k) => { const b = S.bars[s]; if (!b) return S.q[s] ? S.q[s].price : 0; return b[Math.min(k, b.length - 1)]; }; // a stock with a shorter history (recent IPO) counts at its earliest close
+    const out = []; for (let k = N; k >= 1; k--) out.push(ks.reduce((t, s) => t + a.pos[s][0] * px(s, k), a.cash));
     out.push(val); return out;
   }
   function areaChart(v, up) {
