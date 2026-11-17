@@ -919,3 +919,11 @@ a:focus-visible,button:focus-visible,[role="button"]:focus-visible,.chip:focus-v
 h1,h2{text-wrap:balance}
 .segn{display:inline-block;width:7px;height:7px;border-radius:50%;background:#F2B45A;margin-left:6px;vertical-align:2px}
 .lgl p{margin:0 0 10px;line-height:22px;font-size:15px}.lgl p:last-child{margin:0}
+
+/*visual fixes: calm heat tiles, nav labels, pressed states*/
+html body .ht{border:1px solid rgba(147,192,246,.10)!important;color:#EAF2FB!important}html body .ht b.up{color:var(--up)!important}html body .ht b.dn{color:var(--dn)!important}
+html body .ni span{display:block!important;font-size:10.5px!important;font-weight:600!important;font-family:inherit!important;line-height:12px}html body .ni{width:62px!important;height:54px!important;border-radius:18px!important;gap:3px!important}
+.row,.chip,.xbtn,.ni,.seg a,.seg span,.fbc,.hcard,.card.act,button{transition:transform .12s cubic-bezier(.25,1,.5,1),background-color .12s ease,opacity .12s ease}
+.row:active,.chip:active,.xbtn:active,.ni:active,.seg a:active,.seg span:active,.fbc:active,.hcard:active,.card.act:active,.fsort button:active,.ptog:active{transform:scale(.97);opacity:.88}
+@media (prefers-reduced-motion:reduce){.row,.chip,.xbtn,.ni{transition:none}.row:active,.chip:active,.xbtn:active,.ni:active{transform:none}}
+.fsort button{border:1px solid var(--hair)!important;border-radius:999px!important;padding:6px 12px!important;min-height:32px!important}.fsort button.on{border-color:transparent!important}

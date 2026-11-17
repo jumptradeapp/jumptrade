@@ -103,6 +103,14 @@ export async function authRoutes(url, req, env, ctx, H) {
   }
   if (p === '/api/auth/logout' && req.method === 'POST') { const w = await who(); if (w) await vput(env, 'sess_' + w.tokHash, null); return json({ ok: true }, 200, { 'set-cookie': 'jt_s=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax' }); }
 
+  // delete your own account: removes your profile, synced lists and settings, sessions and the built portfolios you shared (the owner account can't delete itself)
+  if (p === '/api/auth/delete' && req.method === 'POST') { const w = await who(); if (!w) return json({ error: 'auth' }, 401); if (w.u.owner) return json({ error: 'owner', message: 'The owner account can’t be deleted from the app.' }, 400);
+    const uid = w.u.uid; const U = (await vget(env, 'users')) || {}; const u = U[uid];
+    if (u && u.sync) { const k = 'sy_' + Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(u.sync)))).slice(0, 16).map((b) => b.toString(16).padStart(2, '0')).join(''); await vput(env, k, null); }
+    delete U[uid]; await vput(env, 'users', U); await vput(env, 'sess_' + w.tokHash, null);
+    const P = (await vget(env, 'pap_all')) || []; await vput(env, 'pap_all', P.filter((x) => x.uid !== uid));
+    return json({ ok: true }, 200, { 'set-cookie': 'jt_s=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax' }); }
+
   // ----- owner only -----
   const w = await who(); if (!w || !w.u.owner) return json({ error: 'auth' }, 401);
   const { U } = w;

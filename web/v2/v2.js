@@ -700,7 +700,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const HEAT = ['#0A142A', '#0F253F', '#173B63', '#22508F', '#2E66B5', '#4A86D6', '#6FA6EC'].map((h) => [1, 3, 5].map((k) => parseInt(h.slice(k, k + 2), 16)));
   const heatAt = (t) => { t = Math.max(0, Math.min(1, t)) * (HEAT.length - 1); const i = Math.min(HEAT.length - 2, Math.floor(t)), f = t - i; const c = HEAT[i].map((v, k) => Math.round(v + (HEAT[i + 1][k] - v) * f)); return c; };
   const heatT = (p, all) => { const a = Math.abs(p), mx = Math.max.apply(null, all.map(Math.abs)) || 1; const rk = all.filter((z) => Math.abs(z) < a).length / Math.max(1, all.length - 1); return 0.12 + 0.88 * (0.5 * a / mx + 0.5 * rk); };
-  const heatStyle = (p, all) => { const c = heatAt(heatT(p, all)); const lum = (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255; return 'background:rgb(' + c.join(',') + ');color:' + (lum > 0.55 ? '#0A142A' : '#EAF2FB') + (lum > 0.55 ? ';--hs:#0A142A' : ''); };
+  // calm heat tiles: dark base, a green or red wash whose strength follows the size of the move
+  const heatStyle = (p, all) => { const mx = Math.max.apply(null, all.map((x) => Math.abs(x))) || 1; const a = (0.05 + 0.27 * Math.min(1, Math.abs(p) / mx)).toFixed(3); return 'background:' + (Math.abs(p) < 0.005 ? 'rgba(20,40,70,.55)' : p > 0 ? 'rgba(82,224,106,' + a + ')' : 'rgba(255,100,96,' + a + ')'); };
   function whatsHot() {
     loadThemes(); const T2 = themeRows();
     if (!T2) return ''; if (!T2.length) return '';
@@ -711,7 +712,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const ix = '<div class="ixg">' + IDX.map((s) => { const x = S.q[s]; return '<a class="card ixc" href="#stock/' + s + '"><span class="mini" style="color:var(--fg2)">' + E(NM[s] || s) + '</span><b>' + (x ? px(x.price) : '—') + '</b><small class="' + (x ? cls(x.pct) : '') + '">' + (x ? chg(x.chg) + ' <i>' + pct(x.pct) + '</i>' : '&nbsp;') + '</small></a>'; }).join('') + '</div>';
     const T2 = themeRows();
     const heat = !T2 ? rowsBox(skel(4), 'padding:14px') : !T2.length ? rowsBox('<div class="err">Theme prices aren’t loading right now.</div>') :
-      '<div class="heat">' + T2.map((t, _i, A) => '<a class="ht' + (t.pct >= 0 ? ' hp' : '') + '" href="#markets/theme/' + E(t.id) + '" style="' + heatStyle(t.pct, A.map((z) => z.pct)) + '"><span>' + E(t.name) + '</span><b>' + (Math.abs(t.pct) < 0.005 ? '' : t.pct > 0 ? '▲ +' : '▼ −') + Math.abs(t.pct).toFixed(2) + '%</b></a>').join('') + '</div><p class="note">Each tile is the average move today of the stocks in that theme (live). Lighter = bigger move, darker = calmer; ▲/▼ shows the direction.</p>';
+      '<div class="heat">' + T2.map((t, _i, A) => '<a class="ht' + (t.pct >= 0 ? ' hp' : '') + '" href="#markets/theme/' + E(t.id) + '" style="' + heatStyle(t.pct, A.map((z) => z.pct)) + '"><span>' + E(t.name) + '</span><b class="' + (Math.abs(t.pct) < 0.005 ? '' : t.pct > 0 ? 'up' : 'dn') + '">' + (Math.abs(t.pct) < 0.005 ? '' : t.pct > 0 ? '+' : '−') + Math.abs(t.pct).toFixed(2) + '%</b></a>').join('') + '</div><p class="note">Each tile is the average move today of the stocks in that theme (live). Stronger color = bigger move.</p>';
     let rot = '';
     if (!S.rot) rot = rowsBox(skel(4), 'padding:14px');
     else if (S.rot.err || !S.rot[S.rotW]) rot = rowsBox('<div class="err">Money-flow data isn’t available right now.</div>');
@@ -979,6 +980,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const tsc = render.h === location.hash ? Array.from(app.querySelectorAll('.mvt')).map((t) => [t.scrollTop, t.scrollLeft]) : [];
     const hk = D.getElementById('hcar'); const hKeep = hk && lastV === r.v ? hk.scrollLeft : null;
     gid = 0; let html = (VIEW[r.v] || today)();
+    // subpages: the big heading already names the page, so the back bar shows only the arrow
+    { const tb = /<b class="tbt">([\s\S]*?)<\/b>/.exec(html), h1 = /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(html); if (tb && h1) { const a = tb[1].replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').trim(), b = h1[1].replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').trim(); if (a && a === b) html = html.replace(tb[0], '<b class="tbt"></b>'); } }
     if (r.v !== 'today' && VIEW[r.v]) { const m = /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(html); const bi = html.indexOf('<span class="brand">'); if (m && bi >= 0) { const t = m[1].replace(/<[^>]+>/g, '').trim(); const be = html.indexOf('</span>', bi) + 7; html = html.slice(0, bi) + '<b class="ttl">' + t + '</b>' + html.slice(be); html = html.replace(m[0], ''); } } if (lastV !== r.v) app.innerHTML = html; else morph(app, html);
     app.querySelectorAll('.mvt').forEach((t, i) => { if (tsc[i]) { t.scrollTop = tsc[i][0]; t.scrollLeft = tsc[i][1]; } }); render.h = location.hash;
     let navOn = { today: 0, movers: 1, radar: 1, stock: 1, markets: 2, mtheme: 2, earnings: 2, portfolio: 4, funds: 4, fund: 4 }[r.v]; if (navOn == null && window.V2X) navOn = V2X.nav[r.v];
