@@ -816,7 +816,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     loadUA(); loadRadar(); const L = alertList();
     const body = !S.ua && !S.run ? rowsBox(skel(5), 'padding:14px') : L.length ? rowsBox(L.map((a) => '<a class="row" href="#stock/' + encodeURIComponent(a.s) + '"><span class="aic">' + ic(AIC[a.k] || 'bell', 18, 2.1) + '</span><span class="nm"><b style="font-size:15.5px">' + a.h + '</b><small>' + E(a.sub) + '</small></span><span class="mini">' + (a.k === 'flow' ? ago(a.t) : 'now') + '</span></a>').join('')) : rowsBox('<div class="err">All quiet. Nothing on your list has moved 3% or more, no earnings in the next two days and no big volume spikes.</div>');
     return '<div class="wrap">' + backbar('Alerts', '#today') + head('Alerts', 'From live prices, the earnings calendar, big trades and the radar') + '<div style="margin-top:12px">' + body + '</div>' +
-      '<p class="note">Your watchlist and holdings moving 3%+, the S&amp;P or Nasdaq moving 1%+, earnings within two days, big block trades ($5M+, or any on your list) and high radar scores. To get these on your phone, turn on alerts in Settings.</p></div>';
+      '<p class="note">Your watchlist and holdings moving 3%+, the S&amp;P or Nasdaq moving 1%+, earnings within two days, big block trades ($5M+, or any on your list) and high radar scores. <a href="#alertset">Change what shows here or get these on your phone</a>.</p></div>';
   }
   const alertCount = () => { try { return alertList().length; } catch (e) { return 0; } };
 

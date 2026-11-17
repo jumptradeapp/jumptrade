@@ -1032,3 +1032,17 @@ html,body{touch-action:pan-x pan-y;overscroll-behavior:none;-webkit-text-size-ad
 input,select,textarea{font-size:16px!important}
 /* bottom nav sits higher, at a comfortable thumb height (above the home bar on iPhone) */
 @media (max-width:1023px){.nav{bottom:max(24px,env(safe-area-inset-bottom,0px))!important}body{padding-bottom:calc(140px + env(safe-area-inset-bottom,0px))!important}.toast{bottom:calc(132px + env(safe-area-inset-bottom,0px))!important}}
+/* Alerts settings */
+.xalc{padding:4px 14px}
+.xalr{display:flex;align-items:center;gap:12px;min-height:56px;padding:10px 0;border-top:1px solid rgba(140,180,215,.12)}
+.xalc>.xalr:first-child{border-top:0}
+.xalr .nm{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.xalr .nm b{font-size:15px;font-weight:600}.xalr .nm small{font-size:12.5px;color:#9FB3C8;line-height:1.35;white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
+.xalr .xbtn{flex:none}
+.xchips{display:flex;flex-wrap:wrap;gap:8px;padding:0 0 12px}
+.xchips .chip{min-height:38px;min-width:52px;justify-content:center}
+.xchips .chip.on{background:#5B9BEA;border-color:#5B9BEA;color:#04101F}
+.xtg{flex:none;position:relative;width:52px;height:32px;border-radius:999px;border:0;background:rgba(140,180,215,.22);cursor:pointer;transition:background .18s}
+.xtg i{position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#E9F1F7;transition:transform .18s cubic-bezier(.25,1,.5,1)}
+.xtg.on{background:#5B9BEA}.xtg.on i{transform:translateX(20px)}
+.xtg:focus-visible,.xchips .chip:focus-visible{outline:2px solid #9CCBFF;outline-offset:2px}
+html[data-x2t="light"] .xalr{border-color:#E3EAF3}html[data-x2t="light"] .xalr .nm small{color:#5A6B80}html[data-x2t="light"] .xtg{background:#D5DFEA}

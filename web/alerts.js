@@ -8,7 +8,9 @@
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const standalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
   const supported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
-  const syms = () => { try { const v = JSON.parse(localStorage.getItem('jt.webwl') || 'null'); if (v) return [...new Set(Object.values(v).flat())]; } catch (e) {} return []; };
+  const syms = () => { const out = []; try { const v = JSON.parse(localStorage.getItem('jt.webwl') || 'null'); if (v) out.push(...Object.values(v).flat()); } catch (e) {} // every list you made, plus the older watchlist
+    try { const l = JSON.parse(localStorage.getItem('jt.lists') || 'null'); if (l && Array.isArray(l.lists)) l.lists.forEach((x) => out.push(...(x.syms || []))); } catch (e) {}
+    try { if (window.V2 && V2.HOLD_SYMS) out.push(...V2.HOLD_SYMS); } catch (e) {} return [...new Set(out.filter((x) => typeof x === 'string' && x))]; };
   const b2u = (s) => { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; const r = atob(s); return Uint8Array.from(r, (c) => c.charCodeAt(0)); };
   let reg = null;
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').then((r) => { reg = r; sync(); }).catch(() => {});
@@ -93,7 +95,14 @@
     document.body.appendChild(el); requestAnimationFrame(() => el.classList.add('in')); paint();
   }
   function close() { if (!el) return; const e = el; el = null; msg = ''; e.classList.remove('in'); setTimeout(() => e.remove(), 220); }
-  window.ALERTS = { open, close };
+  // the new design draws its own Alerts screen (#alertset) from this API; the old sheet stays for the classic app
+  async function state() { const sup = supported(); const perm = sup ? Notification.permission : 'unsupported'; let sub = null; try { if (sup) { if (!reg) reg = await navigator.serviceWorker.getRegistration(); sub = reg ? await reg.pushManager.getSubscription() : null; } } catch (e) {} return { supported: sup, perm, on: perm === 'granted' && !!sub, ios: isIOS, standalone: standalone(), n: syms().length }; }
+  const rerender = () => { if (window.V2 && V2.render) V2.render(); };
+  const _say = say; say = function (k, x) { _say(k, x); rerender(); };
+  async function test() { const s = await currentSub().catch(() => null); if (!s) { msg = 'This device isn’t signed up yet. Tap Turn on first.'; rerender(); return; } msg = 'Sending…'; rerender();
+    try { const r = await fetch('/api/push/test', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ endpoint: s.endpoint }) }); const j = await r.json().catch(() => ({})); msg = j.ok ? 'Test sent. It should arrive in a few seconds.' : j.error === 'not subscribed' ? 'The server doesn’t have this device. Turn alerts off and on again.' : 'The test didn’t send. Try again in a minute.'; } catch (e) { msg = 'Couldn’t reach the server.'; } rerender(); }
+  window.ALERTS = { open: () => { if (window.V2) location.hash = 'alertset'; else open(); }, close, state, T, prefs: () => P, set: (k, v) => { P[k] = v; save(P); syncSoon(); }, removePrice: (i) => { P.prices.splice(i, 1); save(P); syncSoon(); },
+    enable: () => { msg = ''; return enable().then(rerender); }, disable: () => disable().then(() => { msg = ''; rerender(); }), test, msg: () => msg };
   addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
 
   // bell button in the top bar of every page, left of Search
