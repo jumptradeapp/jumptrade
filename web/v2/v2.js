@@ -224,13 +224,21 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const out = []; for (let k = N; k >= 1; k--) out.push(ks.reduce((t, s) => t + a.pos[s][0] * px(s, k), a.cash));
     out.push(val); return out;
   }
-  function areaChart(v, up) {
+  function areaChart(v, up, base) {
     if (!v || v.length < 2) return '<div class="pt2c pt2e"></div>';
-    const W = 300, H = 72, mn = Math.min.apply(null, v), mx = Math.max.apply(null, v), r = mx - mn || 1;
-    const pts = v.map((y, i) => [(i / (v.length - 1)) * W, 6 + (1 - (y - mn) / r) * (H - 12)]);
+    const ok = base > 0, W = 300, H = 72, mn = Math.min.apply(null, ok ? v.concat([base]) : v), mx = Math.max.apply(null, ok ? v.concat([base]) : v), r = mx - mn || 1;
+    const Y = (y) => 6 + (1 - (y - mn) / r) * (H - 12);
+    const pts = v.map((y, i) => [(i / (v.length - 1)) * W, Y(y)]);
     const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
-    const last = pts[pts.length - 1]; void up;
-    return '<svg class="pt2c" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="pt2f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7BB3FF" stop-opacity=".30"/><stop offset="1" stop-color="#7BB3FF" stop-opacity="0"/></linearGradient></defs><path d="' + d + ' L' + W + ' ' + H + ' L0 ' + H + 'Z" fill="url(#pt2f)"/><path d="' + d + '" fill="none" stroke="#8FC0FF" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/><circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="3.5" fill="#fff" class="pt2d"/></svg>';
+    const last = pts[pts.length - 1], b = Y(ok ? base : v[0]).toFixed(1); void up;
+    const NS = ' vector-effect="non-scaling-stroke"';
+    const grid = [0.25, 0.5, 0.75].map((f) => '<line x1="0" x2="' + W + '" y1="' + (H * f).toFixed(1) + '" y2="' + (H * f).toFixed(1) + '" stroke="rgba(187,215,249,.07)" stroke-width="1"' + NS + '/>').join('') + [0.25, 0.5, 0.75].map((f) => '<line y1="0" y2="' + H + '" x1="' + (W * f) + '" x2="' + (W * f) + '" stroke="rgba(187,215,249,.05)" stroke-width="1"' + NS + '/>').join('');
+    return '<div class="pt2c pt2w"><svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="pt2f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5E9BE8" stop-opacity=".30"/><stop offset=".35" stop-color="#0B2550" stop-opacity=".55"/><stop offset="1" stop-color="#020A16" stop-opacity=".85"/></linearGradient></defs>' + grid +
+      '<path d="' + d + ' L' + W + ' ' + H + ' L0 ' + H + 'Z" fill="url(#pt2f)"/>' +
+      '<line x1="0" x2="' + W + '" y1="' + b + '" y2="' + b + '" stroke="rgba(187,215,249,.45)" stroke-width="1" stroke-dasharray="2 3"' + NS + '/>' +
+      '<path d="' + d + '" fill="none" stroke="#8FC0FF" stroke-opacity=".22" stroke-width="5"' + NS + ' stroke-linejoin="round"/>' +
+      '<path d="' + d + '" fill="none" stroke="#BBD7F9" stroke-width="1.5"' + NS + ' stroke-linejoin="miter"/></svg>' +
+      '<i class="pt2d" style="left:' + (last[0] / W * 100).toFixed(2) + '%;top:' + (last[1] / H * 100).toFixed(2) + '%"></i></div>';
   }
   const T0 = Date.now();
   // what you own: a small ring of your biggest positions plus cash, with the top names listed beside it
@@ -259,10 +267,10 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const name = idx === 0 ? 'All accounts' : a.name;
     const menu = cards.length > 1 ? '<button class="acct2" data-acctmenu="1" aria-haspopup="listbox" aria-expanded="' + S.amenu + '"><i></i>' + E(name) + ic('chev', 14, 2.4) + '</button>' : '<span class="acct2 solo"><i></i>' + E(name) + '</span>';
     const list = S.amenu ? '<div class="amenu" role="listbox">' + cards.map((x, k) => '<button role="option" aria-selected="' + (k === idx) + '" data-acct="' + k + '"><i></i><span class="am-n"><b>' + E(k === 0 ? 'All accounts' : x.a.name) + '</b><small>' + E(x.a.sub || '') + '</small></span><span class="am-v"><b>' + money(x.c.val) + '</b><small class="' + cls(x.c.dayPct) + '">' + pct(x.c.dayPct) + '</small></span>' + (k === idx ? '<em>✓</em>' : '<em></em>') + '</button>').join('') + '</div>' : '';
-    return card('<div class="pt2h"><span class="pt2k">Portfolio</span>' + menu + '<a class="pt2go" href="#portfolio' + (idx ? '/' + idx : '') + '" aria-label="Open portfolio">' + ic('chev', 20, 2.2) + '</a></div>' + list +
+    return card('<div class="pt2h"><a class="pt2k" href="#portfolio' + (idx ? '/' + idx : '') + '">Portfolio</a>' + menu + '<a class="pt2go" href="#portfolio' + (idx ? '/' + idx : '') + '" aria-label="Open portfolio">' + ic('chev', 20, 2.2) + '</a></div>' + list +
       '<div class="pt2b">' + (dot > 0 ? m.slice(0, dot) + '<small>' + m.slice(dot) + '</small>' : m) + '</div>' +
       '<div class="pt2p ' + (amt == null ? '' : amt >= 0 ? 'u' : 'd') + '">' + (amt == null ? 'Loading ' + tf[2] + '…' : (amt >= 0 ? '▲ ' : '▼ ') + chg(amt).replace(/^[+−-]/, '') + ' · ' + pct(Math.abs(pc)).replace(/^[+−-]/, '') + ' ' + tf[2]) + '</div>' +
-      areaChart(ser, (amt || 0) >= 0) + mixRow(c) +
+      areaChart(ser, (amt || 0) >= 0, c.val - c.day) + mixRow(c) +
       '<button class="ptog' + (S.pOpen ? ' on' : '') + '" data-ptog="1" aria-expanded="' + !!S.pOpen + '"><span>Top performers today</span><i>' + ic('chev', 16, 2.4) + '</i></button>' + (S.pOpen ? '<div class="rows" style="padding:0!important">' + (c.top.length ? perf(c.top, 3, 60) : '<div class="err">No stock holdings in this account.</div>') + '</div>' : ''),
       'padding:14px 16px 14px;margin-top:8px', 'pglass pt2');
   }
