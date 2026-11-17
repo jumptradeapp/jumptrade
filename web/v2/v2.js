@@ -210,7 +210,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     return { title: verb + lead, desc: d };
   }
   function pulse() {
-    const t = pulseText(); const ix = [['SPY', 'S&P 500'], ['QQQ', 'Nasdaq'], ['IWM', 'Russell 2000']];
+    const t = pulseText(); const ix = [['SPY', 'S&P 500'], ['QQQ', 'Nasdaq'], ['IWM', 'Russell']];
     return card('<div class="pzh"><span class="pzk">' + ic('activity', 16, 2.2) + 'Market pulse</span></div>' + (t ? '<p class="pzl">' + E(t.title) + '</p>' : '') +
       '<div class="pzi">' + ix.map((x) => { const q = S.q[x[0]]; return '<div><small>' + x[1] + '</small><b class="' + (q ? cls(q.pct) : '') + '">' + (q ? pct(q.pct) : '—') + '</b></div>'; }).join('') + '</div>', 'padding:14px 16px;margin-top:14px', 'pulse2', 'a', ' href="' + (V2_STAGE >= 2 ? '#markets' : '#sectors') + '"');
   }
