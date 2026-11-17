@@ -3,7 +3,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
 /* jumptrade. v2 shell (stage 1): Today + Portfolio, built to match the design mocks in all_pages_v2.
    Real data comes from this site's existing server (/api/tool via shim.js, same tools the classic app uses).
    Brokerage accounts are NOT wired on the web server yet (worker/index.js keeps account tools off on purpose),
-   so every account number below is demo data and is labelled that way on screen. */
+   so the public site shows no accounts until a brokerage is connected. */
 (function () {
   'use strict';
   const D = document;
@@ -65,14 +65,9 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   let SYMN = null; const needNames = () => { if (SYMN || !(window.JT_AUTH && JT_AUTH.ready && (JT_AUTH.user || !JT_AUTH.locked))) return; SYMN = {}; fetch('/symbols.json').then((r) => { if (!r.ok) throw r.status; return r.json(); }).then((j) => { j.forEach((r) => { SYMN[r[0]] = r[1]; }); render(); }).catch(() => { setTimeout(() => { SYMN = null; }, 30000); }); };
   const nameOf = (s) => NM[s] || (S.q[s] && S.q[s].name ? S.q[s].name.replace(/,? (Inc|Corporation|Corp|Holdings|Ltd|plc|Co)\.?$/i, (m) => m.replace('Corporation', 'Corp.')) : '') || (SYMN && SYMN[s]) || (needNames(), s); /* house rule: always show a company name; the ticker is the last resort while the list loads */
 
-  // ---------- demo brokerage accounts (labelled DEMO DATA everywhere they show) ----------
-  // Quantities, cost and cash are made up. Prices are live from the price feed, so the totals move like a real account.
-  const ACCTS = [
-    { name: 'Individual', sub: 'Webull ···4821', cash: 2180, pos: { NVDA: [42, 118.4], PLTR: [30, 112.1], AAPL: [20, 207.8], TSLA: [12, 352.0], OKLO: [40, 58.2], SOFI: [120, 16.9] } },
-    { name: 'Roth IRA', sub: 'Webull ···7730', cash: 820, pos: { HIMS: [60, 36.5], RKLB: [70, 31.2], AVGO: [10, 248.0], MSFT: [6, 402.5] } },
-    { name: 'Traditional IRA', sub: 'Webull ···1195', cash: 410, pos: { NVDA: [8, 131.0], MSFT: [2, 415.0], WMT: [25, 88.3] } },
-  ];
-  // the owner's real Webull accounts (owner session only; everyone else keeps the demo, labelled)
+  // ---------- brokerage accounts ----------
+  const ACCTS = []; // no made-up accounts: empty until a real brokerage is connected (the owner's private copy fills this in)
+  // the owner's real Webull accounts (owner session only; everyone else sees $0 and no positions)
   let REAL = false; window.V2REAL = () => REAL;
   const HOLD_SYMS = Array.from(new Set(ACCTS.reduce((a, x) => a.concat(Object.keys(x.pos)), [])));
 
@@ -142,7 +137,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   }
 
   // ---------- building blocks (same markup as the mock generator) ----------
-  const DEMO_ = '<span class="demo">Demo data</span>'; let DEMO = DEMO_;
+  const DEMO_ = ''; let DEMO = '';
   const kick = (t, st) => '<div class="kick" style="' + (st || '') + '">' + t + '</div>';
   const card = (x, st, c, tag, attrs) => '<' + (tag || 'div') + ' class="card ' + (c || '') + '" style="' + (st || '') + '"' + (attrs || '') + '>' + x + '</' + (tag || 'div') + '>';
   const rowsBox = (x, st) => '<div class="card rows" style="padding:2px 14px;' + (st || '') + '">' + x + '</div>';
@@ -178,7 +173,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const topbar = () => '<div class="top tc"><a class="ib" href="#menu" aria-label="All pages">' + ic('menu') + '</a><span class="brand"><img src="/v2/img/jump-lockup.svg?v=1" alt="jumptrade." width="129" height="26"></span><div class="acts">' + (REAL || !/^(today|portfolio)$/.test(route().v) ? '' : DEMO) + (V2_STAGE >= 3 ? '<a class="ib" href="#alerts" aria-label="Alerts">' + ic('bell') + (alertCount() ? '<em class="bdot"></em>' : '') + '</a>' : '<a class="ib" href="#calendar" aria-label="Alerts and events">' + ic('bell') + '<em class="bdot"></em></a>') + '</div></div>';
   const backbar = (title, href) => '<div class="top"><div style="display:flex;align-items:center;gap:6px;min-width:0"><a class="ib" style="margin-left:-10px" href="' + href + '" aria-label="Back">' + ic('back', 22) + '</a><b class="tbt">' + title + '</b></div><div class="acts">' + (REAL || route().v !== 'connect' ? '' : DEMO) + '</div></div>';
   const head = (t, sub) => { const p = t.lastIndexOf(' '); return '<h1>' + (p > 0 ? t.slice(0, p) + ' <em>' + t.slice(p + 1) + '</em>' : '<em>' + t + '</em>') + '</h1>' + (sub ? '<p class="sub">' + sub + '</p>' : ''); };
-  const sh = (t, link, href, icon) => '<div class="sh"><h2><span class="shi">' + ic(icon || 'layers', 16) + '</span>' + t + '</h2>' + (link ? '<a href="' + href + '">' + link + ic('arrow', 14, 2.2) + '</a>' : '') + '</div>';
+  const sh = (t, link, href, icon, th) => '<div class="sh"><h2><span class="shi">' + ic(icon || 'layers', 16) + '</span>' + ((th || href) && (th || href) !== '#hold' && (th || href) !== '#edit' ? '<a class="sht" href="' + (th || href) + '">' + t + '</a>' : t) + '</h2>' + (link ? '<a href="' + href + '">' + link + ic('arrow', 14, 2.2) + '</a>' : '') + '</div>';
   const counter = (icn, label, n, sub) => '<div class="card ctr"><div class="ctrh"><span class="ctri">' + ic(icn, 15) + '</span>' + label + '</div><div class="ctrb"><b>' + n + '</b><span>' + sub + '</span></div></div>';
   const swoosh = () => ''; // the swoop is Today's signature only
 
@@ -203,7 +198,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   function portOne(a, c, i, n) {
     const strip = [['Today', c.dayPct], ['1 week', c.w1], ['1 month', c.m1]].map((x) => '<div><span>' + x[0] + '</span><b class="' + (x[1] == null ? '' : cls(x[1])) + '">' + (x[1] == null ? '—' : pct(x[1])) + '</b></div>').join('');
     const label = i === 0 ? 'Portfolio' : a.name;
-    return card('<div class="ptop" style="position:relative"><div style="display:flex;align-items:center;min-width:0">' + kick(E(label), 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%') + '<span class="mini" style="margin-left:10px;color:var(--fg2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + E(a.sub) + (REAL ? '' : ' · demo') + '</span><a href="#portfolio' + (i ? '/' + i : '') + '" aria-label="Open portfolio" style="margin-left:auto;flex:none">' + ic('chev', 22, 2.2) + '</a></div>' +
+    return card('<div class="ptop" style="position:relative"><div style="display:flex;align-items:center;min-width:0">' + kick(E(label), 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%') + '<span class="mini" style="margin-left:10px;color:var(--fg2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + E(a.sub) + '' + '</span><a href="#portfolio' + (i ? '/' + i : '') + '" aria-label="Open portfolio" style="margin-left:auto;flex:none">' + ic('chev', 22, 2.2) + '</a></div>' +
       '<div style="display:flex;align-items:center;gap:14px;margin-top:8px"><div style="flex:none"><div style="font-size:31px;line-height:40px;font-weight:600">' + money(c.val) + '</div><div class="' + cls(c.day) + '" style="font-size:16px;font-weight:500;margin-top:2px">' + chg(c.day) + '<span style="margin-left:10px">' + pct(c.dayPct) + '</span></div></div>' +
       '<div class="pchart" style="flex:1;min-width:0;height:58px;display:flex;justify-content:flex-end">' + mtn(c.series, 120, 58, c.val - c.day, c.day >= 0) + '</div></div>' +
       '<button class="ptog' + (S.pOpen ? ' on' : '') + '" data-ptog="1" aria-expanded="' + !!S.pOpen + '"><span>Top performers today</span><i>' + ic('chev', 16, 2.4) + '</i></button>' + (S.pOpen ? '<div class="rows" style="padding:0!important">' + (c.top.length ? perf(c.top, 3, 60) : '<div class="err">No stock holdings in this account.</div>') + '</div>' : '') +
@@ -255,6 +250,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   }
   function portCard() {
     if (window.JT_PRIV && !REAL && Date.now() - T0 < 25000) { setTimeout(render, 1500); return card('<div style="position:relative">' + kick('Portfolio') + '<div class="mini" style="margin:6px 0 10px;color:var(--fg2)">Loading your Webull accounts…</div>' + skel(3) + '</div>', 'padding:16px 20px 14px;margin-top:8px', 'pglass pt2'); } // private copy: never flash the demo accounts before the real ones arrive
+    if (!ACCTS.length && !(window.JT_PRIV && Date.now() - T0 < 25000)) return card('<div class="pt2h"><a class="pt2k" href="#portfolio">Portfolio</a><span class="acct2 solo"><i></i>No brokerage connected</span><a class="pt2go" href="#portfolio" aria-label="Open portfolio">' + ic('chev', 20, 2.2) + '</a></div><div class="pt2b">$0<small>.00</small></div><a class="pt2p pt2cn" href="#connect">Connect a brokerage to see your balance</a><div class="pt2gap"></div>', 'margin-top:12px', 'pglass pt2');
     const all = allCalc(); const c0 = all.c;
     if (!c0.ready) return card('<div style="position:relative">' + kick('Portfolio') + (S.loaded && S.err.q ? '<div class="err">Prices aren’t loading right now, so balances can’t be worked out. Retrying every 30 seconds.</div>' : skel(4)) + '</div>', 'padding:16px 20px 12px;margin-top:12px');
     const cards = [{ a: all.a, c: c0 }].concat(ACCTS.length > 1 ? ACCTS.map((a) => ({ a, c: acctCalc(a) })) : []);
@@ -341,7 +337,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     if (S.earn == null) return '';
     const today = etNow(); today.setHours(0, 0, 0, 0);
     const up = S.earn.filter((e) => e && e.date && Date.parse(e.date + 'T12:00:00') >= today.getTime()).sort((a, b) => a.date.localeCompare(b.date))[0];
-    if (!up) return act('cal', 'No upcoming earnings', 'For your watchlist and demo holdings', V2_STAGE >= 2 ? '#earnings' : '#calendar');
+    if (!up) return act('cal', 'No upcoming earnings', 'For your watchlist and holdings', V2_STAGE >= 2 ? '#earnings' : '#calendar');
     const d = new Date(up.date + 'T12:00:00'); const days = Math.floor((d - today) / 864e5); /* d is noon, today is midnight */
     const when = days === 0 ? 'today' : days === 1 ? 'tomorrow' : days < 7 ? d.toLocaleDateString('en-US', { weekday: 'long' }) : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     return act('cal', E(up.symbol) + ' earnings ' + when, (up.eps_estimate != null ? 'EPS estimate $' + (+up.eps_estimate).toFixed(2) : 'Date confirmed') + ' · ' + E(nameOf(up.symbol) || up.symbol) + (HOLD_SYMS.indexOf(up.symbol) >= 0 && (wl() || []).indexOf(up.symbol) < 0 ? ' · demo holding' : ''), V2_STAGE >= 2 ? '#earnings' : '#calendar');
@@ -395,17 +391,17 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const c = cur.c; const totalVal = all.c.val;
     const ct = '<div style="display:flex;gap:10px;margin-top:14px">' + counter('trend', 'Total gain', c.ready ? (c.gain >= 0 ? '+' : '−') + money(Math.abs(c.gain), 0) : '—', c.ready ? (c.gainPct >= 0 ? '+' : '−') + Math.abs(c.gainPct).toFixed(1) + '%' : '') + counter('dollar', 'Cash', money(c.cash, 0), on === 0 ? Math.round(c.cash / (totalVal || 1) * 100) + '% of total' : Math.round(c.cash / (c.val || 1) * 100) + '% of account') + '</div>';
     const hl = c.rows.slice().sort((x, y) => y.mv - x.mv).slice(0, S.allHold ? 99 : 5).map((r) => r.sym);
-    const hd = sh('Holdings · ' + E(cur.a.name), c.rows.length > 5 ? (S.allHold ? 'Show less' : 'View all') : '', '#hold', 'layers') + (hl.length ? rowsBox(hl.map((s) => srow(s, 64)).join('')) : rowsBox(skel(4), 'padding:14px'));
-    const link = '<a class="card act" style="margin-top:12px" href="#connect"><span class="ibx">' + tl('BULL', 30) + '</span><span class="tx"><b>Webull accounts</b><small>' + ACCTS.length + ' linked (demo) · add or manage</small></span><span class="chv">' + ic('chev', 22, 2.4) + '</span></a>';
+    const hd = sh('Holdings · ' + E(cur.a.name), c.rows.length > 5 ? (S.allHold ? 'Show less' : 'View all') : '', '#hold', 'layers') + (hl.length ? rowsBox(hl.map((s) => srow(s, 64)).join('')) : c.ready || !ACCTS.length ? rowsBox('<div class="err">No positions. <a href="#connect">Connect a brokerage</a> to see your holdings.</div>', 'padding:14px') : rowsBox(skel(4), 'padding:14px'));
+    const link = '<a class="card act" style="margin-top:12px" href="#connect"><span class="ibx">' + tl('BULL', 30) + '</span><span class="tx"><b>Webull accounts</b><small>' + (ACCTS.length ? ACCTS.length + ' linked · add or manage' : 'None connected yet') + '</small></span><span class="chv">' + ic('chev', 22, 2.4) + '</span></a>';
     return swoosh() + '<div class="wrap">' + topbar() + head('Portfolio', 'Your accounts &amp; model portfolios') + seg + car + ct + hd + link + '</div>';
   }
   function connect() {
     const all = allCalc();
-    const acc = rowsBox(ACCTS.map((a, i) => { const c = acctCalc(a); return '<a class="row" href="#portfolio/' + (i + 1) + '" style="min-height:74px!important">' + tl('BULL', 40) + '<span class="nm"><b>' + E(a.name) + '</b><small>' + E(a.sub) + (REAL ? '' : ' · demo') + '</small></span><span class="q"><b>' + (c.ready ? money(c.val) : '—') + '</b><small class="' + cls(c.day) + '">' + (c.ready ? chg(c.day) + '<i>' + pct(c.dayPct) + '</i>' : '') + '</small></span></a>'; }).join(''));
+    const acc = rowsBox(ACCTS.map((a, i) => { const c = acctCalc(a); return '<a class="row" href="#portfolio/' + (i + 1) + '" style="min-height:74px!important">' + tl('BULL', 40) + '<span class="nm"><b>' + E(a.name) + '</b><small>' + E(a.sub) + '' + '</small></span><span class="q"><b>' + (c.ready ? money(c.val) : '—') + '</b><small class="' + cls(c.day) + '">' + (c.ready ? chg(c.day) + '<i>' + pct(c.dayPct) + '</i>' : '') + '</small></span></a>'; }).join(''));
     return '<div class="wrap">' + backbar('Webull accounts', '#portfolio') + head('Connect Webull accounts', 'Read-only. We see balances and holdings, never place trades.') +
       '<div class="card" style="padding:16px 18px;margin-top:16px;display:flex;align-items:center;gap:12px">' + tl('BULL', 44) + '<div style="flex:1"><div class="kick" style="font-size:11.5px;letter-spacing:.18em">All accounts</div><div style="font-size:26px;line-height:34px;font-weight:600">' + (all.c.ready ? money(all.c.val) : '—') + '</div><div class="' + cls(all.c.day) + '" style="font-size:14px">' + (all.c.ready ? chg(all.c.day) + '<span style="margin-left:8px">' + pct(all.c.dayPct) + '</span>' : '&nbsp;') + '</div></div>' + (REAL ? '' : DEMO) + '</div>' +
-      sh('Linked accounts', 'Edit', '#edit', 'link') + acc +
-      '<div style="margin-top:14px"><button type="button" class="btn pri" id="addAcct" style="width:100%">' + ic('plus', 18, 2.1) + 'Connect another Webull account</button></div>' +
+      (ACCTS.length ? sh('Linked accounts', 'Edit', '#edit', 'link') + acc : '') +
+      '<div style="margin-top:14px"><button type="button" class="btn pri" id="addAcct" style="width:100%">' + ic('plus', 18, 2.1) + '' + (ACCTS.length ? 'Connect another Webull account' : 'Connect a Webull account') + '</button></div>' +
       '<div class="card" style="padding:14px 16px;margin-top:12px;display:flex;gap:12px;align-items:flex-start"><span class="ctri" style="width:30px;height:30px;flex:none">' + ic('shield', 16) + '</span><div style="font-size:13.5px;line-height:20px;color:#D5DEE8">Sign in on Webull to approve read-only access. Each account appears as its own card; the first card always adds them all up.</div></div></div>';
   }
 
@@ -659,8 +655,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
         card(R.map((r) => '<div class="rbar"><span class="rbn">' + E(r[0]) + '</span><span class="rbt"><i class="' + (r[1] >= 0 ? 'p' : 'n') + '" style="width:' + (Math.abs(r[1]) / mx * 50).toFixed(1) + '%"></i></span><b class="' + cls(r[1]) + '">' + (r[1] >= 0 ? '+' : '−') + Math.abs(r[1]).toFixed(1) + '%</b></div>').join(''), 'padding:12px 14px;margin-top:10px') +
         (S.rot.lead ? '<p class="note">Leading: ' + S.rot.lead.map(E).join(', ') + ' · Lagging: ' + (S.rot.lag || []).map(E).join(', ') + '</p>' : ''); }
     return swoosh() + '<div class="wrap">' + topbar() + head('Markets', 'Themes, indexes and where money is moving') + pxAge() + ix +
-      sh('Themes today', 'Earnings week', '#earnings', 'grid') + heat + sh('Money flow', '', '', 'activity') + rot +
-      lab('target', 'Your next moves') + moves() + earnCard() + act('target', 'Analyst calls', 'Upgrades, downgrades and price-target changes', '#analysts') + act('cal', 'Earnings week', 'Who reports this week, beat or miss', '#earnings') + (V2_STAGE >= 3 ? act('bank', 'Follow the money', 'Big options bets, Congress trades, short interest', '#money') : '') + '</div>';
+      sh('Themes today', 'Earnings week', '#earnings', 'grid', '#sectors') + heat + sh('Money flow', '', '', 'activity', '#money') + rot +
+      lab('target', 'Your next moves', '', '#ideas') + moves() + earnCard() + act('target', 'Analyst calls', 'Upgrades, downgrades and price-target changes', '#analysts') + act('cal', 'Earnings week', 'Who reports this week, beat or miss', '#earnings') + (V2_STAGE >= 3 ? act('bank', 'Follow the money', 'Big options bets, Congress trades, short interest', '#money') : '') + '</div>';
   }
   function themeScreen(id) {
     loadThemes(); const t = (S.themes || []).find((x) => x.id === id);
@@ -709,7 +705,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     loadUA(); loadRadar(); const L = alertList();
     const body = !S.ua && !S.run ? rowsBox(skel(5), 'padding:14px') : L.length ? rowsBox(L.map((a) => '<a class="row" href="#stock/' + encodeURIComponent(a.s) + '"><span class="aic">' + ic(AIC[a.k] || 'bell', 18, 2.1) + '</span><span class="nm"><b style="font-size:15.5px">' + a.h + '</b><small>' + E(a.sub) + '</small></span><span class="mini">' + (a.k === 'flow' ? ago(a.t) : 'now') + '</span></a>').join('')) : rowsBox('<div class="err">All quiet. Nothing on your list has moved 3% or more, no earnings in the next two days and no big volume spikes.</div>');
     return '<div class="wrap">' + backbar('Alerts', '#today') + head('Alerts', 'From live prices, the earnings calendar, big trades and the radar') + '<div style="margin-top:12px">' + body + '</div>' +
-      '<p class="note">Your watchlist and demo holdings moving 3%+, the S&amp;P or Nasdaq moving 1%+, earnings within two days, big block trades ($5M+, or any on your list) and high radar scores. To get these on your phone, turn on alerts in Settings.</p></div>';
+      '<p class="note">Your watchlist and holdings moving 3%+, the S&amp;P or Nasdaq moving 1%+, earnings within two days, big block trades ($5M+, or any on your list) and high radar scores. To get these on your phone, turn on alerts in Settings.</p></div>';
   }
   const alertCount = () => { try { return alertList().length; } catch (e) { return 0; } };
 
@@ -852,7 +848,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       const an = S.an.feed; const rows = an && an.p && an.p.data;
       body = chipsHTML(F, S.anF, 'data-anf') + (!an || (!rows && !an.err) ? rowsBox(skel(6), 'padding:14px;margin-top:10px') : an.err ? rowsBox('<div class="err">Yahoo is refusing the analyst-history request from our data feed right now, so there’s nothing live to show (we don’t show old calls as new). Retrying every minute. The Weekly roundup tab has the saved list.</div>', 'margin-top:10px') :
         (rows.filter(keep).length ? rowsBox(rows.filter(keep).slice(0, 80).map((a) => anRow(a, true)).join(''), 'margin-top:10px') : rowsBox('<div class="err">No matching calls in the last 7 days.</div>', 'margin-top:10px'))) +
-        '<p class="note">Last 7 days for your watchlist, your demo holdings and ' + AN_UNI.length + ' large caps. Source: Yahoo Finance analyst history' + (an && an.t ? ', checked ' + ago2(an.t) : '') + '. Yahoo doesn’t give analyst names or note links.' + (an && an.p && an.p.failed && an.p.failed.length ? ' ' + an.p.failed.length + ' tickers didn’t load this time (' + E(an.p.failed.slice(0, 6).join(', ')) + (an.p.failed.length > 6 ? '…' : '') + '); retrying in a minute.' : '') + '</p>';
+        '<p class="note">Last 7 days for your watchlist, your holdings and ' + AN_UNI.length + ' large caps. Source: Yahoo Finance analyst history' + (an && an.t ? ', checked ' + ago2(an.t) : '') + '. Yahoo doesn’t give analyst names or note links.' + (an && an.p && an.p.failed && an.p.failed.length ? ' ' + an.p.failed.length + ' tickers didn’t load this time (' + E(an.p.failed.slice(0, 6).join(', ')) + (an.p.failed.length > 6 ? '…' : '') + '); retrying in a minute.' : '') + '</p>';
     } else {
       const W = S.ratW; const L = W && W.ratings;
       const act = { upgrade: 'Upgrade', downgrade: 'Downgrade', initiate: 'Initiate', target_raise: 'Maintain', target_cut: 'Maintain', reiterate: 'Reiterate', maintain: 'Maintain' };
@@ -939,7 +935,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   }
   D.addEventListener('click', (e) => {
     const go = e.target.closest('[data-go]'); if (go && !e.target.closest('a')) { location.hash = go.dataset.go; return; }
-    if (e.target.closest('#addAcct') || e.target.closest('a[href="#edit"]')) { e.preventDefault(); toast('Linking real Webull accounts comes next. These accounts are demo data for now.'); return; }
+    if (e.target.closest('#addAcct') || e.target.closest('a[href="#edit"]')) { e.preventDefault(); toast('Linking Webull accounts is coming soon.'); return; }
     let b;
     if ((b = e.target.closest('[data-mvsort]'))) { const k = b.dataset.mvsort; const so = S.mv.sort; S.mv.sort = so && so.k === k ? (so.d === 'desc' ? { k, d: 'asc' } : null) : { k, d: k === 'sym' || k === 'tag' ? 'asc' : 'desc' }; render(); return; }
     if ((b = e.target.closest('[data-mvx]')) && !e.target.closest('a')) { const k = S.mv.sess + ':' + b.dataset.mvx; S.mvOpen[k] = !S.mvOpen[k]; render(); return; }
