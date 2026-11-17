@@ -364,7 +364,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   }
   // top gainers on Today: the 5 biggest movers right now (pre-market, regular or after hours)
   S.tg = null; S.tgT = 0;
-  function loadTG() { if (S.tgBusy || Date.now() - S.tgT < 20000) return; S.tgBusy = 1; S.tgT = Date.now(); const ss = curSess(); const rank = ss === 'pre' ? 'PRE_MARKET' : ss === 'after' ? 'AFTER_MARKET' : 'DAY_1';
+  function loadTG() { if (S.tgSess && S.tgSess !== curSess()) { S.tgT = 0; S.tg = null; } if (S.tgBusy || Date.now() - S.tgT < 20000) return; S.tgSess = curSess(); S.tgBusy = 1; S.tgT = Date.now(); const ss = curSess(); const rank = ss === 'pre' ? 'PRE_MARKET' : ss === 'after' ? 'AFTER_MARKET' : 'DAY_1';
     call('get_gainers_losers', { category: 'US_STOCK', rank_type: rank, sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '20', page_index: '1' }).then((p) => { S.tg = ((p && p.data) || []).filter((x) => x && x.symbol && /^[A-Z.]{1,6}$/.test(x.symbol) && +x.price >= 0.5).slice(0, 5); const ns = S.tg.map((x) => x.symbol).filter((x) => !S.spark[x]); if (ns.length) sparks(ns).then(render).catch(() => {}); }).catch(() => { S.tg = S.tg || []; }).then(() => { S.tgBusy = 0; render(); }); }
   function tgRows() {
     loadTG(); if (!S.tg) return rowsBox(skel(4), 'padding:14px'); if (!S.tg.length) return rowsBox('<div class="err">No movers in the feed right now.</div>');
@@ -372,7 +372,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   }
   function today() {
     return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="hero ptile">' + RIB + portCard() + '</div>' + pulse() +
-      lab('news', 'Top news', 'All news', '#news') + newsRows() + lab('trend', 'Top gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + '</div>';
+      lab('news', 'Top news', 'All news', '#news') + newsRows() + lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + '</div>';
   }
 
   // ---------- Portfolio ----------
