@@ -28,7 +28,14 @@
     tool('get_account_list', {}).then((p) => { const L = arr(p).filter((a) => a.account_class !== 'CRYPTO'); if (!L.length) return;
       return Promise.all(L.map((a) => Promise.all([tool('get_account_positions', { account_id: a.account_id }).catch(() => []), tool('get_account_balance', { account_id: a.account_id }).catch(() => null)]).then((r) => {
         const pos = {}; arr(r[0]).forEach((x) => { const s = x.symbol || (x.instrument && x.instrument.symbol); const q = +x.quantity || 0; if (!s || !/^[A-Z.]{1,6}$/.test(s) || !q) return; if (x.instrument_type && !/EQUITY|ETF|STOCK/i.test(x.instrument_type)) return; pos[s] = [(pos[s] ? pos[s][0] : 0) + q, q ? (+x.cost || 0) / q : 0]; });
-        return { name: a.account_label || a.account_class_mapping || 'Account', sub: 'Webull ···' + String(a.account_id).slice(-4), cash: +((r[1] || {}).total_cash_balance) || 0, pos };
+        const acct = { name: a.account_label || a.account_class_mapping || 'Account', sub: 'Webull ···' + String(a.account_id).slice(-4), cash: +((r[1] || {}).total_cash_balance) || 0, pos };
+        // Webull's positions list sometimes comes back empty for an account that clearly holds stock (market value > 0).
+        // Rebuild the holdings from filled orders: net shares bought minus sold, average buy price as cost.
+        if (!Object.keys(pos).length && +((r[1] || {}).total_market_value) > 0) return tool('get_order_history', { account_id: a.account_id, page_size: '100' }).then((h) => {
+          const net = {}; arr(h).forEach((g) => (g.orders || [g]).forEach((o) => { if (o.status !== 'FILLED' || (o.instrument_type && !/EQUITY/i.test(o.instrument_type))) return; const sym = o.symbol, q = +o.filled_quantity || 0, px = +o.filled_price || 0; if (!sym || !q) return;
+            const n = net[sym] = net[sym] || { q: 0, bq: 0, bc: 0 }; if (o.side === 'BUY') { n.q += q; n.bq += q; n.bc += q * px; } else n.q -= q; }));
+          Object.keys(net).forEach((sym) => { const n = net[sym]; if (n.q > 0.0001) pos[sym] = [n.q, n.bq ? n.bc / n.bq : 0]; }); acct.rebuilt = true; return acct; }).catch(() => acct);
+        return acct;
       }))).then((A) => { if (!window.V2 || !A.some((a) => Object.keys(a.pos).length)) return; const V = window.V2;
         V.ACCTS.splice(0, V.ACCTS.length, ...A); V.HOLD_SYMS.splice(0, V.HOLD_SYMS.length, ...Array.from(new Set(A.reduce((x, a) => x.concat(Object.keys(a.pos)), []))));
         if (window.V2SETREAL) V2SETREAL(true); V.fastSnap(V.HOLD_SYMS).then(() => V.sparks(V.HOLD_SYMS).catch(() => {})).then(() => V.bars && V.bars(V.HOLD_SYMS).catch(() => {})).then(V.render).catch(V.render); V.render(); });
@@ -47,5 +54,5 @@
       const add = now.filter((s) => was.indexOf(s) < 0), rm = was.filter((s) => now.indexOf(s) < 0);
       if (add.length) tool('add_watchlist_instruments', { watchlist_id: WL, symbols: add, category: 'US_STOCK' }).catch(() => {}); if (rm.length) tool('remove_watchlist_instruments', { watchlist_id: WL, symbols: rm, category: 'US_STOCK' }).catch(() => {}); } catch (e) {} }
     return RAW.call(this, k, val); };
-  (function wait(n) { if (window.V2 && window.claude && window.claude.use) { loadAccounts(); loadWatch(); setInterval(() => { if (!document.hidden) loadAccounts(); }, 300000); return; } if (n < 100) setTimeout(() => wait(n + 1), 200); })(0);
+  (function wait(n) { if (window.V2 && window.claude && window.claude.use) { loadAccounts(); loadWatch(); setInterval(() => { if (!document.hidden) loadAccounts(); }, 60000); return; } if (n < 100) setTimeout(() => wait(n + 1), 200); })(0);
 })();
