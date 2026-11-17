@@ -85,6 +85,10 @@ def infotable(cik, acc):
         r = rows.setdefault(cu, {'name': t('nameOfIssuer'), 'cls': t('titleOfClass'), 'v': 0.0, 'sh': 0.0})
         r['v'] += v; r['sh'] += sh
         el.clear()
+    # a few filers still report value in thousands; implied share prices give it away
+    px = sorted(r['v'] / r['sh'] for r in rows.values() if r['sh'] > 0 and r['v'] > 0)
+    if px and px[len(px) // 2] < 0.5:
+        for r in rows.values(): r['v'] *= 1000
     return rows, base
 
 SUFFIX = re.compile(r'\b(INC|CORP|CORPORATION|CO|COMPANY|LTD|LIMITED|PLC|LLC|LP|L P|N V|NV|SA|S A|AG|SE|HOLDINGS?|GROUP|THE|CLASS|CL|COM|NEW|DEL|ADR|ADS|SPONSORED|ORD|SHS)\b')
