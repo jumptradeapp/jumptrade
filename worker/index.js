@@ -869,14 +869,16 @@ export class Vault {
   }
 }
 
-async function wbRoutes(url, env) {
+// owner-only pages: your signed-in owner session, or the diagnostics key sent in an X-JT-Key header. Never a key in the URL (URLs land in logs and history).
+async function ownerOrKey(req, env) {
+  const ses = await sessionFrom(req, env, vget).catch(() => null); if (ses && ses.u && ses.u.owner) return true;
+  const k = req.headers.get('x-jt-key') || ''; if (!k) return false;
+  const hx = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(k)))].map((x) => x.toString(16).padStart(2, '0')).join('');
+  return hx === 'ca6353c852d6726d83a72504e80cf4860e5ac4c8d585b9d9cdb5465a9fec4439';
+}
+async function wbRoutes(url, env, req) {
   const wb = new Webull(env);
-  if (url.pathname.indexOf('/api/wb/') === 0) { // owner-only diagnostics: locked behind a key whose hash is all that lives in code
-    const k = url.searchParams.get('k') || '';
-    const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(k));
-    const hx = [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
-    if (hx !== 'ca6353c852d6726d83a72504e80cf4860e5ac4c8d585b9d9cdb5465a9fec4439') return new Response('Not found', { status: 404 });
-  }
+  if (url.pathname.indexOf('/api/wb/') === 0 && !(await ownerOrKey(req, env))) return new Response('Not found', { status: 404 }); // owner-only diagnostics
   if (url.pathname === '/api/wb/probe') { // try each environment / algorithm / key order and report what Webull accepts
     const out = [];
     for (const host of ['api.webull.com', 'api.sandbox.webull.com']) for (const algo of ['HMAC-SHA1', 'HMAC-SHA256']) for (const swap of [false, 'nodash']) {
@@ -1527,8 +1529,7 @@ export default {
         const ip = req.headers.get('cf-connecting-ip') || '?', day = new Date().toISOString().slice(0, 10), rk = 'fbr_' + day + '_' + ip.replace(/[^0-9a-f.:]/gi, '');
         const n = +((await vget(env, rk)) || 0); if (n >= 20) return json({ error: { code: 'limit' } }, 429); await vput(env, rk, n + 1);
         const L = (await vget(env, 'fb')) || []; L.unshift({ t: Date.now(), kind: KINDS.indexOf(String(b.kind)) >= 0 ? String(b.kind) : 'other', name: String(b.name || '').slice(0, 40), page: String(b.page || '').slice(0, 40), ua: String(req.headers.get('user-agent') || '').slice(0, 160), text }); await vput(env, 'fb', L.slice(0, 500)); ctx.waitUntil(notifyOwner(env, { title: 'New feedback' + (L[0].name ? ' from ' + L[0].name : '') + ' · ' + (L[0].kind === 'bug' ? 'Bug' : L[0].kind === 'idea' ? 'Idea' : 'Feel & navigation'), body: text.slice(0, 140), url: '/#admin', tag: 'jt-admin' })); return json({ ok: true }); }
-      const k = url.searchParams.get('k') || ''; const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(k)); const hx = [...new Uint8Array(d)].map((x) => x.toString(16).padStart(2, '0')).join('');
-      if (hx !== 'ca6353c852d6726d83a72504e80cf4860e5ac4c8d585b9d9cdb5465a9fec4439') return new Response('Not found', { status: 404 });
+      if (!(await ownerOrKey(req, env))) return new Response('Not found', { status: 404 });
       const L = (await vget(env, 'fb')) || []; const E = (x) => String(x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
       return new Response('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>jumptrade feedback</title><body style="font:15px -apple-system,system-ui;background:#0A0E15;color:#ECEBE8;margin:0;padding:16px"><h2 style="margin:0 0 12px">Beta feedback · ' + L.length + '</h2>' + L.map((x) => '<div style="padding:12px 14px;margin-bottom:10px;border-radius:12px;background:#141C2B"><div style="font-size:12px;color:#9AA6B6;margin-bottom:6px"><b style="color:' + (x.kind === 'bug' ? '#FF8A8A' : x.kind === 'idea' ? '#5EE0A0' : '#9CC0FF') + '">' + E(String(x.kind).toUpperCase()) + '</b> · ' + new Date(x.t).toLocaleString('en-US', { timeZone: 'America/New_York' }) + (x.name ? ' · ' + E(x.name) : '') + (x.page ? ' · on ' + E(x.page) : '') + '</div><div style="white-space:pre-wrap;line-height:1.45">' + E(x.text) + '</div></div>').join('') + '</body>', { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } }); }
     if (url.pathname.indexOf('/api/ai') === 0) { const r = await aiRoutes(url, req, env); if (r) return r; }
@@ -1538,7 +1539,7 @@ export default {
     if (url.pathname === '/api/newsdiag') { const out = await Promise.all(FEEDS.map(async (f) => { const t0 = Date.now(); try { const r = await fetch(f[1], { headers: { 'user-agent': NUA, accept: 'application/rss+xml, text/xml' } }); const x = await r.text(); const a = await rss(f[1], f[0]); return f[0] + ': http ' + r.status + ', ' + x.length + ' bytes, ' + a.length + ' items, newest ' + (a[0] ? a.map((n) => n.publish_time).sort().pop() : '-') + ', ' + (Date.now() - t0) + 'ms'; } catch (e) { return f[0] + ': error ' + e.message; } })); return new Response('build news2\n' + out.join('\n'), { headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } }); }
     if (url.pathname === '/api/wbon') return json({ on: !!new Webull(env).ready }); // public yes/no only: is the Webull feed configured
     if (url.pathname === '/api/wbstate') { const s = (await vget(env, 'tokstate')) || {}; const cr = (await vget(env, 'cron')) || {}; const ck = (await vget(env, 'tokcheck')) || {}; const tk = (await vget(env, 'token')) || {}; return json({ token_status: tk.status || null, check_http: ck.http || null, check_msg: ck.body && (ck.body.msg || ck.body.message || ck.body.error_code || ck.body.status) || null, upkeep: cr.t ? new Date(cr.t).toISOString() : null, keys: cr.ready == null ? null : cr.ready, status: s.status || 'none', http: s.http || null, code: s.code || null, created: s.created ? new Date(s.created).toISOString() : null, checked: s.checked ? new Date(s.checked).toISOString() : null }); }
-    if (url.pathname.startsWith('/api/wb/')) { const r = await wbRoutes(url, env); if (r) return r; }
+    if (url.pathname.startsWith('/api/wb/')) { const r = await wbRoutes(url, env, req); if (r) return r; }
     if (url.pathname === '/api/selftest') return json(await selftest());
     if (url.pathname === '/api/ovncheck') { // public, no account data: does the price feed return 24-hour-market fields?
       const r = await wbCall(env, 'get_stock_snapshot', { symbols: 'POAS,PLCE,NVDA,SMCI', category: 'US_STOCK', extend_hour_required: true, overnight_required: true }).catch((e) => ({ err: String(e) }));
