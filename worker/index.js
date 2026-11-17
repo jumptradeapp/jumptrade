@@ -6,6 +6,7 @@
 import { Webull } from './webull.js';
 import { makeVapid, sendPush, PUSHLAST } from './push.js';
 import { authRoutes, sessionFrom, KINDS } from './auth.js';
+import { buildBrief, sendMail, dailyBrief } from './brief.js';
 // Every outside request gets a deadline so one slow source can't hang a whole response.
 const fetch = (u, o = {}) => globalThis.fetch(u, o.signal ? o : { ...o, signal: AbortSignal.timeout(o.timeoutMs || (/api\.anthropic\.com/.test(String(u)) ? 25000 : 8000)) });
 
@@ -1108,6 +1109,22 @@ async function aiCall(env, system, user, maxTokens) {
   const a = t.indexOf('{'), b = t.lastIndexOf('}'); if (a < 0 || b <= a) throw new Error('ai no json');
   return JSON.parse(t.slice(a, b + 1));
 }
+const aiKey = (env) => { if (!env.ANTHROPIC_API_KEY) { const k = Object.keys(env).find((x) => x.trim().toUpperCase() === 'ANTHROPIC_API_KEY'); if (k) env.ANTHROPIC_API_KEY = String(env[k]).trim(); } return !!env.ANTHROPIC_API_KEY; };
+const BH = { wbCall: (...a) => wbCall(...a), aiCall: (...a) => aiCall(...a), vget: (...a) => vget(...a), vput: (...a) => vput(...a), vlease: (...a) => vlease(...a), etNow: () => etNow() };
+// owner-only email controls: who gets the brief, and a "send a test now" button in Admin
+async function mailRoutes(url, req, env) {
+  const w = await sessionFrom(req, env, vget).catch(() => null); if (!w || !w.u.owner) return json({ error: 'auth' }, 401);
+  const keyOn = !!(env.RESEND_API_KEY || Object.keys(env).find((x) => x.trim().toUpperCase() === 'RESEND_API_KEY'));
+  if (url.pathname === '/api/admin/mail' && req.method === 'GET') return json({ to: (await vget(env, 'mail_to')) || [], last: (await vget(env, 'brief_last')) || null, key: keyOn, ai: aiKey(env) });
+  let b = {}; try { b = JSON.parse((await req.text()).slice(0, 4000)); } catch (e) {}
+  if (url.pathname === '/api/admin/mail' && req.method === 'POST') { const to = (Array.isArray(b.to) ? b.to : []).map((x) => String(x).trim().toLowerCase()).filter((x) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x)).slice(0, 20); await vput(env, 'mail_to', to); return json({ ok: true, to }); }
+  if (url.pathname === '/api/admin/mail/test' && req.method === 'POST') {
+    const to = (await vget(env, 'mail_to')) || []; if (!to.length) return json({ ok: false, error: 'Add an email address first.' }, 400);
+    aiKey(env); const m = await buildBrief(env, BH); m.subject = '[Test] ' + m.subject; const r = await sendMail(env, to, m);
+    return json({ ok: r.ok, error: r.error, subject: m.subject, ai: m.ai, n: m.n, to: to.length });
+  }
+  return null;
+}
 // ---------- jumptrade newsdesk: short analysis pieces written from real data ----------
 // Breaking pieces when something happens (a big real mover, market-moving headline, earnings reaction, a hard market swing),
 // plus five fixed briefs a day. Max 25 a day. Every piece is written ONLY from the data passed in, and labeled AI-assisted.
@@ -1383,7 +1400,7 @@ async function feedWatch(env) {
 }
 let UPK = 0;
 export default {
-  async scheduled(ev, env, ctx) { CUR_ENV = env; const m = new Date().getUTCMinutes(); ctx.waitUntil(vput(env, 'cronbeat', { t: Date.now(), build: 'b2' }).catch(() => {})); /* proof the every-minute job is running */ { const n = etNow(); const live = !/Sat|Sun|Hol/.test(n.wd) && n.hm >= 230 && n.hm < 1210; if (live || m % 10 === 0) ctx.waitUntil(precompute(env, ctx).then((r) => vput(env, 'prerun', { t: Date.now(), r })).catch(() => {})); } if (m % 10 === 0) ctx.waitUntil(wbUpkeep(env).catch(() => {})); { const n3 = etNow(); if (!/Sat|Sun|Hol/.test(n3.wd) && (n3.hm === 1000 || n3.hm === 1030)) ctx.waitUntil((async () => { let k = await vget(env, 'cronkey').catch(() => null); if (!k) { k = [...crypto.getRandomValues(new Uint8Array(24))].map((b) => b.toString(16).padStart(2, '0')).join(''); await vput(env, 'cronkey', k); } await fetch('https://jumptrade.app/x/rotnow?cron=1&k=' + k); })().catch(() => {})); /* its own run, so it has its own request budget */ } if (m % 5 === 2) ctx.waitUntil(feedWatch(env).catch(() => {})); if (m % 3 === 1) ctx.waitUntil(newsdesk(env, ctx).catch(() => {})); if (m % 3 === 0) ctx.waitUntil(moverScan(env, ctx).catch(() => {})); { const n2 = etNow(); if (n2.hm === 247) ctx.waitUntil(vault(env).then((v) => v && v.fetch('https://v/sweep')).catch(() => {})); } ctx.waitUntil(runAlerts(env, ctx).then((r) => vput(env, 'alertrun', Object.assign({ t: Date.now() }, r))).catch((e) => vput(env, 'alertrun', { t: Date.now(), error: String(e && e.message || e) }))); },
+  async scheduled(ev, env, ctx) { CUR_ENV = env; const m = new Date().getUTCMinutes(); ctx.waitUntil(vput(env, 'cronbeat', { t: Date.now(), build: 'b2' }).catch(() => {})); /* proof the every-minute job is running */ { const n = etNow(); const live = !/Sat|Sun|Hol/.test(n.wd) && n.hm >= 230 && n.hm < 1210; if (live || m % 10 === 0) ctx.waitUntil(precompute(env, ctx).then((r) => vput(env, 'prerun', { t: Date.now(), r })).catch(() => {})); } if (m % 10 === 0) ctx.waitUntil(wbUpkeep(env).catch(() => {})); { const n3 = etNow(); if (!/Sat|Sun|Hol/.test(n3.wd) && (n3.hm === 1000 || n3.hm === 1030)) ctx.waitUntil((async () => { let k = await vget(env, 'cronkey').catch(() => null); if (!k) { k = [...crypto.getRandomValues(new Uint8Array(24))].map((b) => b.toString(16).padStart(2, '0')).join(''); await vput(env, 'cronkey', k); } await fetch('https://jumptrade.app/x/rotnow?cron=1&k=' + k); })().catch(() => {})); /* its own run, so it has its own request budget */ } if (m % 5 === 2) ctx.waitUntil(feedWatch(env).catch(() => {})); if (m % 3 === 1) ctx.waitUntil(newsdesk(env, ctx).catch(() => {})); { const nb = etNow(); if (nb.hm >= 525 && nb.hm <= 540) ctx.waitUntil((aiKey(env), dailyBrief(env, BH)).catch(() => {})); } if (m % 3 === 0) ctx.waitUntil(moverScan(env, ctx).catch(() => {})); { const n2 = etNow(); if (n2.hm === 247) ctx.waitUntil(vault(env).then((v) => v && v.fetch('https://v/sweep')).catch(() => {})); } ctx.waitUntil(runAlerts(env, ctx).then((r) => vput(env, 'alertrun', Object.assign({ t: Date.now() }, r))).catch((e) => vput(env, 'alertrun', { t: Date.now(), error: String(e && e.message || e) }))); },
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     CUR_ENV = env;
@@ -1413,6 +1430,7 @@ export default {
       if (req.method === 'PUT' || req.method === 'POST') { const txt = await req.text(); if (txt.length > 40000) return json({ error: { code: 'too_big' } }, 413); let b; try { b = JSON.parse(txt); } catch (e) { return json({ error: { code: 'bad_request' } }, 400); }
         if (!b || typeof b.data !== 'object') return json({ error: { code: 'bad_request' } }, 400); const cur = await vget(env, k); if (cur && cur.t > (+b.t || 0)) return json(cur); await vput(env, k, { t: +b.t || Date.now(), data: b.data }); return json({ ok: true, t: +b.t }); }
     }
+    if (url.pathname.indexOf('/api/admin/mail') === 0) { const r = await mailRoutes(url, req, env); if (r) return r; }
     if (url.pathname.indexOf('/api/auth/') === 0 || url.pathname.indexOf('/api/admin/') === 0) { const r = await authRoutes(url, req, env, ctx, { vget, vput, json, subId, notifyOwner: (m) => notifyOwner(env, m), lease: (k, ms) => vlease(env, k, ms), release: (k, id) => vrelease(env, k, id) }); if (r) return r; }
     if (url.pathname === '/api/moverwhy') { const W = (await vget(env, 'mwhy')) || { m: {} }; const m = {}; Object.entries(W.m || {}).forEach((e) => { const v = e[1]; m[e[0]] = { v: v.v, kind: v.kind, h: v.h, fresh: v.fresh || null, seen: v.seen }; }); return json({ payload: { t: W.t || 0, session: W.session, m } }); }
     if (url.pathname === '/api/jtnews') { const L = (await vget(env, 'jtnews')) || []; const id = url.searchParams.get('id'); if (id) { const a = L.find((x) => x.id === id); return a ? json({ payload: a }) : json({ error: 'not found' }, 404); } return json({ payload: L.slice(0, 60).map((a) => ({ id: a.id, t: a.t, kind: a.kind, tag: a.tag, title: a.title, dek: a.dek, tickers: a.tickers })) }); }
