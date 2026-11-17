@@ -290,6 +290,22 @@ const FEEDS = [
   ['Benzinga', 'https://www.benzinga.com/feed'],
   ['Google News', 'https://news.google.com/rss/search?q=stock+market+when:1d&hl=en-US&gl=US&ceid=US:en'],
   ['Fed', 'https://www.federalreserve.gov/feeds/press_all.xml'],
+  ['Motley Fool', 'https://www.fool.com/feeds/index.aspx'],
+  ['Fox Business', 'https://moxie.foxbusiness.com/google-publisher/markets.xml'],
+  ['Business Insider', 'https://markets.businessinsider.com/rss/news'],
+  ['TheStreet', 'https://www.thestreet.com/.rss/full/'],
+  ['Forbes', 'https://www.forbes.com/money/feed/'],
+  ['Financial Times', 'https://www.ft.com/markets?format=rss'],
+  ['Barron\u2019s', 'https://www.barrons.com/xml/rss/3_7510.xml'],
+  ['Zacks', 'https://www.zacks.com/rss/rss_news.php'],
+  ['Kiplinger', 'https://www.kiplinger.com/feeds/all'],
+  ['Bloomberg', 'https://news.google.com/rss/search?q=site:bloomberg.com+markets+when:1d&hl=en-US&gl=US&ceid=US:en'],
+  ['Reuters', 'https://news.google.com/rss/search?q=site:reuters.com+markets+OR+stocks+when:1d&hl=en-US&gl=US&ceid=US:en'],
+  ['AP', 'https://news.google.com/rss/search?q=site:apnews.com+stocks+OR+markets+OR+economy+when:1d&hl=en-US&gl=US&ceid=US:en'],
+  ['CNN Business', 'https://news.google.com/rss/search?q=site:cnn.com+markets+OR+stocks+when:1d&hl=en-US&gl=US&ceid=US:en'],
+  ['Axios', 'https://news.google.com/rss/search?q=site:axios.com+markets+when:1d&hl=en-US&gl=US&ceid=US:en'],
+  ['Investor\u2019s Business Daily', 'https://news.google.com/rss/search?q=site:investors.com+stocks+when:1d&hl=en-US&gl=US&ceid=US:en'],
+  ['Morningstar', 'https://news.google.com/rss/search?q=site:morningstar.com+stocks+when:1d&hl=en-US&gl=US&ceid=US:en'],
 ];
 T.search_news = async (i) => {
   const kw = i.keyword || i.query || '';
