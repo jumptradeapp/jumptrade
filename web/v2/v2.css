@@ -702,3 +702,4 @@ html[data-x2t="light"] .pzi>div{background:#F3F6FA;border-color:#E1E8F1}
 .wsum2{padding:14px 0 12px;border-bottom:1px solid var(--hair)}.wsum2 b{display:block;font-size:15px;font-weight:600}.wsum2 small{display:block;font-size:13px;color:var(--fg2);margin-top:3px}
 html[data-x2t="light"] .hero .card.pglass{margin-top:0}
 html body .card.pulse2{display:flex!important;flex-direction:column!important;align-items:stretch!important}.pulse2>.pzh,.pulse2>.pzi{width:100%}
+.pzl{font-size:16px;line-height:22px;font-weight:600;letter-spacing:-.01em;margin-top:6px}
