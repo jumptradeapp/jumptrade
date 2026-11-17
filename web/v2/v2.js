@@ -411,7 +411,12 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
         rowsBox(L.map((n) => { const sym = (n.related_symbols || []).find((x) => /^[A-Z]{1,5}$/.test(x)); return '<a class="row nw" href="' + E(n.url) + '" target="_blank" rel="noopener" style="min-height:66px">' + (sym ? tl(sym, 34) : '<span style="color:#5B9BEA;flex:none">' + ic('news', 22) + '</span>') + '<span class="nm"><b style="font-size:14.5px;line-height:19px">' + E(dec(n.title)) + '</b><small>' + E(n.source || '') + (ago(n.publish_time) ? ' · ' + ago(n.publish_time) : '') + '</small></span></a>'; }).join('')); }
     return lab('bank', 'Filings &amp; approvals', k === 'f13' || k === 'stake' ? 'All funds' : '', '#funds') + '<div style="margin:2px 0 10px">' + chipsHTML(tabs, k, 'data-fil') + '</div>' + body;
   }
+  // desktop (1024px+): Today in two columns, left = your money and the news, right = the market right now and your watchlist
+  const DESK = window.matchMedia ? matchMedia('(min-width:1024px)') : { matches: false };
+  try { DESK.addEventListener('change', () => render()); } catch (e) {}
   function today() {
+    if (DESK.matches) return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="dk2"><div class="dkL"><div class="hero ptile">' + RIB + portCard() + '</div>' +
+      lab('news', 'Top news', 'All news', '#news') + newsRows() + filingsTile() + '</div><div class="dkR">' + pulse() + lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + '</div></div></div>';
     return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="hero ptile">' + RIB + portCard() + '</div>' + pulse() +
       lab('news', 'Top news', 'All news', '#news') + newsRows() + filingsTile() + lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + '</div>';
   }
