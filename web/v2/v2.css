@@ -860,3 +860,4 @@ html[data-x2t] .hero+*{margin-top:14px!important}
 .pt2 .ptog{margin-top:10px!important;width:100%}
 /* keep the page locked: no sideways drift or rubber-band wobble */
 html,body{overflow-x:hidden;max-width:100%;overscroll-behavior:none}.app2,.wrap{overflow-x:clip}
+html body .top.tc .brand img{height:26px!important;width:auto!important}
