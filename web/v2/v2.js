@@ -903,7 +903,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       (!an || (!rows && !an.err) ? rowsBox(skel(3), 'padding:14px') : an.err ? anFallback(sym) : rows.length ? rowsBox(rows.slice(0, S.anAll ? 40 : 6).map((a) => anRow(a, false)).join('')) + (rows.length > 6 && !S.anAll ? '<p class="note"><a href="#" id="anall" style="color:' + BL.b2 + '">Show all ' + rows.length + ' calls</a></p>' : '') : rowsBox('<div class="err">No analyst actions in the last 90 days.</div>')) +
       (an && an.t ? '<p class="note">Source: Yahoo Finance analyst history, checked ' + ago2(an.t) + '. Implied upside uses the live price.</p>' : '') +
       (window.V2X && V2X.stockExtras ? V2X.stockExtras(sym) : '') +
-      '<a class="card act" href="/classic.html#s=' + encodeURIComponent(sym) + '"><span class="ibx">' + ic('link', 26, 2.1) + '</span><span class="tx"><b>Classic stock page</b><small>The original JumpTrade view of this stock</small></span>' + ic('chev', 20) + '</a></div>';
+      '</div>';
   }
 
   // ---------- analyst feed ----------

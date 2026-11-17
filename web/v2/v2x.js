@@ -104,25 +104,27 @@
   function LS() { let v = lsGet('jt.lists', null); if (!v || !Array.isArray(v.lists) || !v.lists.length) { v = { active: 'app:main', lists: [{ id: 'app:main', name: 'My list', syms: window.JT_PRIV ? [] : wlOld() }], fresh: !!window.JT_PRIV }; lsSet('jt.lists', v); } return v; }
   function allLists() {
     const v = LS(); const out = v.lists.map((l) => ({ id: l.id, name: l.name, src: 'app', syms: l.syms || [] }));
+    { const H = (V() && V().HOLD_SYMS) || []; if (H.length) out.unshift({ id: 'hold', name: 'Your positions', src: 'hold', syms: H.slice() }); }
     (window.JT_WB || []).forEach((w) => out.push({ id: 'wb:' + w.id, name: w.name, src: 'webull', syms: w.syms }));
     const j = file('/models.json'); if (j && j.models) j.models.filter((m) => (m.positions || []).length).forEach((m) => out.push({ id: 'model:' + m.id, name: m.name, src: 'model', syms: (m.positions || []).map((p) => p.etf || p.s || p.symbol).filter(Boolean) }));
     (lsGet('jt.builtl', []) || []).forEach((b) => out.push({ id: 'built:' + b.id, name: b.name, src: 'built', syms: b.syms || [] }));
     return out;
   }
-  function activeList() { const v = LS(); const L = allLists(); if (v.fresh && window.JT_WB && JT_WB.length) { const c = JT_WB.find((w) => /core/i.test(w.name)) || JT_WB[0]; v.active = 'wb:' + c.id; delete v.fresh; lsSet('jt.lists', v); } return L.find((l) => l.id === v.active) || L[0]; }
+  // opens on your current holdings every time the app starts (when you have any); picking another list holds for the rest of the visit
+  function activeList() { const v = LS(); const L = allLists(); if (!st.lpPicked) { const h = L.find((l) => l.id === 'hold'); if (h) return h; } if (v.fresh && window.JT_WB && JT_WB.length) { const c = JT_WB.find((w) => /core/i.test(w.name)) || JT_WB[0]; v.active = 'wb:' + c.id; delete v.fresh; lsSet('jt.lists', v); } return L.find((l) => l.id === v.active) || L[0]; }
   function mirror(syms) { const o = lsGet('jt.webwl', {}) || {}; o.mine = syms || []; lsSet('jt.webwl', o); try { localStorage.setItem('jt.wlown', '1'); } catch (e) {} } // older parts of the app (alerts, news) read this
   function wlFull() { const l = activeList(); if (l.src === 'webull' && !l.syms && window.JT_WBLOAD) { JT_WBLOAD(l.id.slice(3)).then(() => { mirror((activeList().syms || [])); R(); }).catch(() => {}); return []; } return (l.syms || []).slice(); }
   function wlSave(L) { const l = activeList(); const v = LS();
     if (l.src === 'app') { const it = v.lists.find((x) => x.id === l.id); it.syms = L; lsSet('jt.lists', v); }
     else if (l.src === 'webull') { if (window.JT_WBSET) JT_WBSET(l.id.slice(3), L); }
-    else { V().toast('This list follows its model and can’t be edited. Make your own list to change it.'); return false; }
+    else { V().toast(l.src === 'hold' ? 'Your positions come from your brokerage. Make your own list to add stocks.' : 'This list follows its model and can’t be edited. Make your own list to change it.'); return false; }
     mirror(L); return true; }
-  function setActive(id) { const v = LS(); v.active = id; delete v.fresh; lsSet('jt.lists', v); mirror(wlFull()); R(); }
+  function setActive(id) { st.lpPicked = true; if (id === 'hold') { mirror(wlFull()); R(); return; } const v = LS(); v.active = id; delete v.fresh; lsSet('jt.lists', v); mirror(wlFull()); R(); }
   function newList(name) { name = String(name || '').trim().slice(0, 30); if (!name) return; const v = LS(); const id = 'app:' + Date.now().toString(36); v.lists.push({ id, name, syms: [] }); v.active = id; delete v.fresh; lsSet('jt.lists', v); mirror([]); R(); V().toast('Created “' + name + '”'); }
   function listPicker(full) {
     const L = allLists(), a = activeList(); const grp = (src, lab) => { const g = L.filter((l) => l.src === src); return g.length ? '<optgroup label="' + lab + '">' + g.map((l) => '<option value="' + E(l.id) + '"' + (l.id === a.id ? ' selected' : '') + '>' + E(l.name) + '</option>').join('') + '</optgroup>' : ''; };
-    const tag = { app: 'In app', webull: 'Webull', model: 'Model', built: 'Built portfolio' }[a.src];
-    return '<div class="lpk"><label class="lpsel"><span>' + E(a.name) + '</span><em>' + tag + '</em>' + ic('chev', 14, 2.4) + '<select data-lpick aria-label="Choose a watchlist">' + grp('app', 'In-app lists') + grp('webull', 'Webull lists') + grp('model', 'Model portfolios') + grp('built', 'Portfolios you built') + '<option value="__new">+ New list…</option></select></label>' +
+    const tag = { hold: 'Holdings', app: 'In app', webull: 'Webull', model: 'Model', built: 'Built portfolio' }[a.src];
+    return '<div class="lpk"><label class="lpsel"><span>' + E(a.name) + '</span><em>' + tag + '</em>' + ic('chev', 14, 2.4) + '<select data-lpick aria-label="Choose a watchlist">' + grp('hold', 'Your positions') + grp('app', 'In-app lists') + grp('webull', 'Webull lists') + grp('model', 'Model portfolios') + grp('built', 'Portfolios you built') + '<option value="__new">+ New list…</option></select></label>' +
       (full && a.src === 'app' && a.id !== 'app:main' ? '<button class="lpx" data-lpdel="' + E(a.id) + '">Delete list</button>' : '') + '</div>';
   }
   const inWl = (s) => wlFull().indexOf(s) >= 0;
@@ -178,7 +180,7 @@
   // one easy line per stock (logo, ticker + company, today's chart, price with $ and % change), live prices, swipe-free remove.
   st.wsort = lsGet('jt.wsort', 'move'); const wSpk = {};
   function watchScreen() {
-    const L = wlFull(); st.vis = L; quotes(L); const AL = activeList(); const RO = AL.src === 'model' || AL.src === 'built';
+    const L = wlFull(); st.vis = L; quotes(L); const AL = activeList(); const RO = AL.src === 'model' || AL.src === 'built' || AL.src === 'hold';
     const SUG = ['NVDA', 'AAPL', 'MSFT', 'TSLA', 'AMD', 'PLTR', 'AMZN', 'META', 'GOOGL', 'AVGO'];
     const add = listPicker(true) + (RO ? '' : '<div class="xadd"><input id="xwa" class="xin" placeholder="Add a ticker, e.g. NVDA" autocapitalize="characters" autocomplete="off" spellcheck="false"><button class="xbtn" data-wadd="#xwa">Add</button></div>');
     if (!L.length) { st.vis = SUG; quotes(SUG);

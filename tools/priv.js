@@ -44,7 +44,9 @@
         hits.forEach((h) => { const x = M[h.s]; if (x) { h.mc = +x.market_value || 0; h.n = x.name || ''; } });
         return { at: Date.now(), today, days: days.map((d) => ({ d, tiles: hits.filter((h) => h.d === d).sort((a, b) => b.mc - a.mc).slice(0, 16) })), src: 'Webull earnings calendar', note: 'About 120 of the biggest US companies. Beat/miss = reported EPS vs the estimate.' }; }); });
     EWP.catch(() => { EWP = null; }); return EWP; }
-  window.privTool = function (t, input) {
+  // every private-copy answer gets the same 20-second limit as direct calls, so one slow Webull request can't hang a page
+  window.privTool = function (t, input) { input = input || {}; const r = privInner(t, input); return r && typeof r.then === 'function' ? Promise.race([r, new Promise((_, no) => setTimeout(() => no({ code: 'timeout' }), 20000))]) : r; };
+  function privInner(t, input) {
     if (t === 'get_sparks') { const all = String(input.symbols || '').split(',').filter(Boolean).slice(0, 80); if (!all.length) return Promise.resolve({}); const parts = []; for (let k = 0; k < all.length; k += 20) parts.push(all.slice(k, k + 20)); return Promise.all(parts.map((syms) => sparkPart(syms).catch(() => ({})))).then((r) => Object.assign({}, ...r)); }
     if (t === '__never') { const syms = [];
       return tool('get_stock_bars', { symbols: syms, category: 'US_STOCK', timespan: 'M5', count: 78 }).then((p) => { const out = {}; ((p && p.result) || []).forEach((r) => { const b = (r.result || []).slice().reverse(); if (!b.length) return; const day = String(b[b.length - 1].time || '').slice(0, 10); const d = b.filter((x) => String(x.time || '').slice(0, 10) === day); out[r.symbol] = { c: d.map((x) => +x.close) }; }); return out; }); }
@@ -54,6 +56,12 @@
     if (t === 'get_stock_earnings_calendar' && input.symbols) { const list = String(input.symbols).split(',').filter((x) => /^[A-Z.]{1,6}$/.test(x)).slice(0, 30); const today = new Date().toISOString().slice(0, 10);
       return Promise.all(list.map((s) => tool(t, { symbol: s, category: 'US_STOCK' }).then((r) => { const L = arr(r).filter((x) => x.expected_publish_date); if (!L.length) return null; const up = L.filter((x) => x.expected_publish_date >= today).sort((a, b) => a.expected_publish_date.localeCompare(b.expected_publish_date))[0] || L[L.length - 1];
         return { symbol: s, date: up.expected_publish_date, eps_estimate: +up.eps_est || null }; }).catch(() => null))).then((r) => r.filter(Boolean)); }
+    // the price chart: the private copy may only use get_stock_bars, so ask for one symbol and return its bars in the single-stock shape
+    if (t === 'get_stock_bars_single') return tool('get_stock_bars', { symbols: [input.symbol], category: input.category || 'US_STOCK', timespan: input.timespan, count: input.count, trading_sessions: input.trading_sessions })
+      .then((p) => { const r = ((p && p.result) || []).find((x) => x.symbol === input.symbol) || ((p && p.result) || [])[0]; return (r && r.result) || []; });
+    // per-stock lookups need a category; the public server fills it in (ETFs retried as US_ETF)
+    if (/^get_(company_profile|analyst_target_price|analyst_rating|stock_forecast_eps|stock_earnings_calendar|income_statement|financial_indicators|stock_capital_flow)$/.test(t) && input && input.symbol && !input.category) {
+      const a = Object.assign({ category: 'US_STOCK' }, input); return tool(t, a).then((r) => (r == null || (Array.isArray(r) && !r.length) ? tool(t, Object.assign({}, a, { category: 'US_ETF' })).catch(() => r) : r)); }
     // Webull needs a category for sectors; the public server fills it in
     if ((t === 'get_market_sectors' || t === 'get_market_sectors_detail') && !input.category) return tool(t, Object.assign({ category: 'US_STOCK' }, input));
     // price history: at most 20 stocks per request, so split bigger asks and join the answers
@@ -71,7 +79,7 @@
   // logos: the private copy's bundled logo set (lg2 shards)
   const LOGO = {}, SH = {};
   window.privLogo = function (sym) { if (LOGO[sym]) return LOGO[sym]; const fc = window.JT_FUNDCO && JT_FUNDCO[sym]; if (fc) { const d = window.privLogo(fc); if (d) return (LOGO[sym] = d); } const b = sym.charAt(1); const c = (/^[A-Z]/.test(sym) ? sym[0] : '_') + (!b || b < 'H' ? '1' : b < 'P' ? '2' : '3');
-    if (!SH[c]) { SH[c] = 1; of('lg2/' + c + '.json').then((r) => r.json()).then((j) => { Object.keys(j).forEach((k) => { const dk = j[k].charAt(0) === '!', b = dk ? j[k].slice(1) : j[k]; LOGO[k] = { dark: dk, u: 'data:image/' + (/^iVBOR/.test(b) ? 'png' : /^\/9j\//.test(b) ? 'jpeg' : /^PHN2|^PD94/.test(b) ? 'svg+xml' : 'webp') + ';base64,' + b }; }); if (window.V2) V2.render(); }).catch(() => {}); }
+    if (!SH[c]) { SH[c] = 1; of('lg2/' + c + '.json?v=2').then((r) => r.json()).then((j) => { Object.keys(j).forEach((k) => { const dk = j[k].charAt(0) === '!', b = dk ? j[k].slice(1) : j[k]; LOGO[k] = { dark: dk, u: 'data:image/' + (/^iVBOR/.test(b) ? 'png' : /^\/9j\//.test(b) ? 'jpeg' : /^PHN2|^PD94/.test(b) ? 'svg+xml' : 'webp') + ';base64,' + b }; }); if (window.V2) V2.render(); }).catch(() => {}); }
     return null; };
   // your real Webull accounts
   function loadAccounts() {
