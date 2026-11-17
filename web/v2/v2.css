@@ -765,3 +765,13 @@ html body .card.pt2 .amenu{position:absolute!important;z-index:30!important}
 /* page title in the header on every page except Today */
 .top.tc .ttl{position:absolute;left:50%;transform:translateX(-50%);font-size:17px;font-weight:650;letter-spacing:-.015em;white-space:nowrap;max-width:60%;overflow:hidden;text-overflow:ellipsis}
 .top.tc+.sub{margin-top:2px}
+/* market pulse: clean grid */
+html body .pulse2 .hbar{margin:14px 0 0!important;max-width:none!important}
+html body .pulse2 .hbl{margin-top:7px!important}
+html body .pzi{display:grid!important;grid-template-columns:repeat(3,1fr);gap:0!important;margin-top:12px!important}
+html body .pzi>div{display:block!important;padding:0 0 0 12px!important;border-left:1px solid var(--hair)!important}
+html body .pzi>div:first-child{padding-left:0!important;border-left:0!important}
+html body .pzi small{display:block!important;font-size:12px!important}html body .pzi b{display:block!important;font-size:16px!important;margin-top:1px!important}
+.pzl{margin-top:2px!important}
+/* a touch more room under the logo */
+.hero .pt2{margin-top:14px!important}
