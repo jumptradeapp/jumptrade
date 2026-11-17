@@ -53,10 +53,12 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   // ---------- logos: the app's own logo set (/lg), then the server's backup (/api/logo), then initials ----------
   let LG = null; fetch('/lg/index.json').then((r) => r.json()).then((j) => { LG = j; render(); }).catch(() => { LG = {}; });
   window.v2LogoErr = function (img) { const t = img.parentNode; if (!t) return; if (img.dataset.alt) { const a = img.dataset.alt; img.dataset.alt = ''; img.src = a; return; } t.classList.remove('wt'); t.innerHTML = '<span class="mono2" style="font-size:' + Math.round(t.offsetWidth * 0.34) + 'px">' + E(t.dataset.s.slice(0, 2)) + '</span>'; };
+  // funds without their own logo show the fund company's (iShares → BlackRock, SPDR → State Street, Invesco, Schwab, JPMorgan)
+  const FUNDCO = window.JT_FUNDCO = {IVV:'BLK',IWM:'BLK',IEF:'BLK',TLT:'BLK',SGOV:'BLK',AGG:'BLK',EFA:'BLK',EEM:'BLK',IEMG:'BLK',IBIT:'BLK',ETHA:'BLK',SOXX:'BLK',IGV:'BLK',ITA:'BLK',ICLN:'BLK',IAU:'BLK',SLV:'BLK',TIP:'BLK',LQD:'BLK',HYG:'BLK',SHY:'BLK',MTUM:'BLK',QUAL:'BLK',USMV:'BLK',IJR:'BLK',IJH:'BLK',EWJ:'BLK',EWZ:'BLK',FXI:'BLK',IYR:'BLK',IYW:'BLK',SPY:'STT',GLD:'STT',GLDM:'STT',DIA:'STT',XLK:'STT',XLF:'STT',XLE:'STT',XLV:'STT',XLY:'STT',XLP:'STT',XLI:'STT',XLU:'STT',XLB:'STT',XLRE:'STT',XLC:'STT',KRE:'STT',XBI:'STT',XOP:'STT',XME:'STT',XHB:'STT',XRT:'STT',SPLG:'STT',BIL:'STT',JNK:'STT',MDY:'STT',SPYG:'STT',SPYV:'STT',QQQ:'IVZ',QQQM:'IVZ',SPMO:'IVZ',DBC:'IVZ',DBA:'IVZ',RSP:'IVZ',SPLV:'IVZ',IGPT:'IVZ',TAN:'IVZ',PBW:'IVZ',SCHD:'SCHW',SCHG:'SCHW',SCHX:'SCHW',SCHB:'SCHW',SCHF:'SCHW',SCHA:'SCHW',SCHH:'SCHW',SCHE:'SCHW',JEPI:'JPM',JEPQ:'JPM',JPST:'JPM'};
   function tl(sym, s) {
     if (sym === 'BULL') return '<span class="tl" style="width:' + s + 'px;height:' + s + 'px"><img src="/v2/img/webull.png" alt="Webull" style="width:' + Math.round(s * 0.7) + 'px;height:' + Math.round(s * 0.7) + 'px"></span>';
-    const inSet = LG && sym in LG; const light = inSet && LG[sym] !== 1; // 1 = logo drawn for a dark background
-    const src = inSet ? '/lg/' + encodeURIComponent(sym) + '.webp' : '/api/logo/' + encodeURIComponent(sym);
+    const lsym = !(LG && sym in LG) && FUNDCO[sym] && LG && FUNDCO[sym] in LG ? FUNDCO[sym] : sym; const inSet = LG && lsym in LG; const light = inSet && LG[lsym] !== 1; // 1 = logo drawn for a dark background
+    const src = inSet ? '/lg/' + encodeURIComponent(lsym) + '.webp' : '/api/logo/' + encodeURIComponent(sym);
     return '<span class="tl' + (light ? ' wt' : '') + '" data-s="' + E(sym) + '" style="width:' + s + 'px;height:' + s + 'px"><img alt="" loading="lazy" src="' + src + '"' + (inSet ? ' data-alt="/api/logo/' + encodeURIComponent(sym) + '"' : '') + ' onerror="v2LogoErr(this)" style="width:' + Math.round(s * 0.7) + 'px;height:' + Math.round(s * 0.7) + 'px"></span>';
   }
 
@@ -631,7 +633,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     call('get_stock_snapshot', { symbols: all.join(','), category: 'US_STOCK', extend_hour_required: false, overnight_required: false }).then((p) => { const m = {}; (Array.isArray(p) ? p : []).forEach((x) => { if (x && x.symbol && isFinite(+x.change_ratio)) m[x.symbol] = { pct: +x.change_ratio * 100, price: +x.price, chg: +x.change, name: x.name }; }); S.tq = { t: Date.now(), m }; })
       .catch(() => { S.tq = S.tq || { t: Date.now(), m: {}, err: 1 }; }).then(() => { S.tqLoading = 0; render(); });
   }
-  function loadRot() { if (S.rot || S.rotLoading) return; S.rotLoading = 1; getJ('/rotation.json').then((j) => { S.rot = j; render(); }).catch(() => { S.rot = { err: 1 }; render(); }); }
+  function loadRot() { if (S.rot || S.rotLoading) return; S.rotLoading = 1; getJ('/rotation.json').then((j) => { S.rot = j; if (j && j.r1 && !S.rotPicked) S.rotW = 'r1'; render(); }).catch(() => { S.rot = { err: 1 }; render(); }); }
   setInterval(() => { if (!D.hidden && canLoad() && /today|markets/.test(route().v)) loadThemes(); }, 60000);
   function themeRows() { if (!S.themes || !S.tq) return null; return S.themes.map((t) => { const v = (t.names || []).map((n) => S.tq.m[n[0]]).filter(Boolean); return { id: t.id, name: t.name, n: v.length, pct: v.length ? v.reduce((a, x) => a + x.pct, 0) / v.length : null }; }).filter((x) => x.pct != null).sort((a, b) => b.pct - a.pct); }
   // blue heat: brighter swoop blue for up, deep slate blue for down, intensity by size; the sign is in the text, not the hue family
@@ -655,11 +657,11 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     if (!S.rot) rot = rowsBox(skel(4), 'padding:14px');
     else if (S.rot.err || !S.rot[S.rotW]) rot = rowsBox('<div class="err">Money-flow data isn’t available right now.</div>');
     else { const R = Object.entries(S.rot[S.rotW]).sort((a, b) => b[1] - a[1]); const mx = Math.max.apply(null, R.map((r) => Math.abs(r[1]))) || 1;
-      rot = snapNote('Money flow snapshot · as of the ' + E(shortD(S.rot.asOf)) + ' close. Rebuilt after each close.') + chipsHTML([['r5', '5 days'], ['r20', '20 days']], S.rotW, 'data-rotw') +
+      rot = snapNote('Money flow snapshot · as of the ' + E(shortD(S.rot.asOf)) + ' close. Rebuilt after each close.') + chipsHTML([['r1', 'Day'], ['r5', 'Week'], ['r20', 'Month']].filter((c) => S.rot[c[0]]), S.rotW, 'data-rotw') +
         card(R.map((r) => '<div class="rbar"><span class="rbn">' + E(r[0]) + '</span><span class="rbt"><i class="' + (r[1] >= 0 ? 'p' : 'n') + '" style="width:' + (Math.abs(r[1]) / mx * 50).toFixed(1) + '%"></i></span><b class="' + cls(r[1]) + '">' + (r[1] >= 0 ? '+' : '−') + Math.abs(r[1]).toFixed(1) + '%</b></div>').join(''), 'padding:12px 14px;margin-top:10px') +
         (S.rot.lead ? '<p class="note">Leading: ' + S.rot.lead.map(E).join(', ') + ' · Lagging: ' + (S.rot.lag || []).map(E).join(', ') + '</p>' : ''); }
     return swoosh() + '<div class="wrap">' + topbar() + head('Markets', 'Themes, indexes and where money is moving') + pxAge() + ix +
-      sh('Themes today', 'Earnings week', '#earnings', 'grid', '#sectors') + heat + sh('Money flow', '', '', 'activity', '#money') + rot +
+      sh('Themes today', 'All themes', '#sectors', 'grid', '#sectors') + heat + sh('Money flow', '', '', 'activity', '#money') + rot +
       lab('target', 'Your next moves', '', '#ideas') + moves() + earnCard() + act('target', 'Analyst calls', 'Upgrades, downgrades and price-target changes', '#analysts') + act('cal', 'Earnings week', 'Who reports this week, beat or miss', '#earnings') + (V2_STAGE >= 3 ? act('bank', 'Follow the money', 'Big options bets, Congress trades, short interest', '#money') : '') + '</div>';
   }
   function themeScreen(id) {

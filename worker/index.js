@@ -1291,7 +1291,7 @@ async function rotationJob(env, ctx) {
   ROT_THEMES.forEach((t) => { const idx = [1]; for (let k = 1; k < days.length; k++) { const v = t[2].map((s) => C[s] && C[s][days[k]] && C[s][days[k - 1]] ? C[s][days[k]] / C[s][days[k - 1]] - 1 : null).filter((x) => x != null && Math.abs(x) < 0.6); idx.push(idx[k - 1] * (1 + (v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0))); } TI[t[1]] = idx; });
   const N = days.length - 1, r = (n, k) => Math.round((TI[n][N] / TI[n][N - k] - 1) * 1000) / 10;
   const old = await (async () => { try { const a = await env.ASSETS.fetch('https://jumptrade.app/rotation.json'); return await a.json(); } catch (e) { return null; } })() || {};
-  const r5 = {}, r20 = {}; Object.keys(TI).forEach((n) => { r5[n] = r(n, 5); r20[n] = r(n, 20); });
+  const r1 = {}, r5 = {}, r20 = {}; Object.keys(TI).forEach((n) => { r1[n] = r(n, 1); r5[n] = r(n, 5); r20[n] = r(n, 20); });
   const byR20 = Object.keys(TI).sort((a, b) => r20[b] - r20[a]);
   const G = old.groups || { ai: [], safe: [] }; const grp = (L, a, b) => { const v = L.filter((n) => TI[n]).map((n) => TI[n][b] / TI[n][a] - 1); return v.length ? v.reduce((x, y) => x + y, 0) / v.length : 0; };
   const wk = []; for (let e = N; e - 5 >= 0 && wk.length < 12; e -= 5) wk.unshift([days[e].slice(5), Math.round((grp(G.ai, e - 5, e) - grp(G.safe, e - 5, e)) * 1000) / 10]);
@@ -1300,7 +1300,7 @@ async function rotationJob(env, ctx) {
     const sma10 = x.slice(N - 9).reduce((a, b) => a + b, 0) / 10, r63 = N >= 63 ? x[N] / x[N - 63] - 1 : 0, med = r20[byR20[Math.floor(byR20.length / 2)]];
     const v = r63 >= 0.10 ? 'buy' : r20[t[1]] < med ? 'wait' : 'watch'; const h = oldD[t[0]] || {};
     return { id: t[0], name: t[1], off, v, hn: h.hn || 0, hwin: h.hwin || 0, havg: h.havg || 0, above10: x[N] > sma10 }; }).filter(Boolean).sort((a, b) => a.off - b.off).slice(0, 12);
-  const out = Object.assign({}, old, { asOf: days[N], r5, r20, wk, lead: byR20.slice(0, 3), lag: byR20.slice(-3).reverse(), dips, built: Date.now() });
+  const out = Object.assign({}, old, { asOf: days[N], r1, r5, r20, wk, lead: byR20.slice(0, 3), lag: byR20.slice(-3).reverse(), dips, built: Date.now() });
   await vput(env, 'rotation', out); return { ok: true, asOf: days[N], n: Object.keys(C).length, diag: diag.slice(0, 3) };
 }
 async function freshTool(tool, input, ctx, env) { const r = await runTool(tool, input, ctx, env, true); const j = await r.json().catch(() => ({})); return j.payload; }

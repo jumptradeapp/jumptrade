@@ -28,7 +28,7 @@
   };
   // logos: the private copy's bundled logo set (lg2 shards)
   const LOGO = {}, SH = {};
-  window.privLogo = function (sym) { if (LOGO[sym]) return LOGO[sym]; const b = sym.charAt(1); const c = (/^[A-Z]/.test(sym) ? sym[0] : '_') + (!b || b < 'H' ? '1' : b < 'P' ? '2' : '3');
+  window.privLogo = function (sym) { if (LOGO[sym]) return LOGO[sym]; const fc = window.JT_FUNDCO && JT_FUNDCO[sym]; if (fc) { const d = window.privLogo(fc); if (d) return (LOGO[sym] = d); } const b = sym.charAt(1); const c = (/^[A-Z]/.test(sym) ? sym[0] : '_') + (!b || b < 'H' ? '1' : b < 'P' ? '2' : '3');
     if (!SH[c]) { SH[c] = 1; of('lg2/' + c + '.json').then((r) => r.json()).then((j) => { Object.keys(j).forEach((k) => { const dk = j[k].charAt(0) === '!', b = dk ? j[k].slice(1) : j[k]; LOGO[k] = { dark: dk, u: 'data:image/' + (/^iVBOR/.test(b) ? 'png' : /^\/9j\//.test(b) ? 'jpeg' : /^PHN2|^PD94/.test(b) ? 'svg+xml' : 'webp') + ';base64,' + b }; }); if (window.V2) V2.render(); }).catch(() => {}); }
     return null; };
   // your real Webull accounts
