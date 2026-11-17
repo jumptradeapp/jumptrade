@@ -80,7 +80,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const IDX = ['SPY', 'QQQ', 'DIA', 'IWM'];
 
   function snap(list) {
-    return call('get_stock_snapshot', { symbols: list.join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: true }).then((p) => {
+    const ovn = session() === 'Overnight'; return call('get_stock_snapshot', Object.assign({ symbols: list.join(','), category: 'US_STOCK', extend_hour_required: true }, ovn ? { overnight_required: true } : {})).then((p) => {
       (Array.isArray(p) ? p : []).forEach((x) => { if (!x || !x.symbol) return; let price = +x.price || +x.close; if (!isFinite(price) || !price) return; if ((+x.extend_hour_last_price || +x.ovn_price) && +x.pre_close && isFinite(parseFloat(x.change))) price = +x.pre_close + parseFloat(x.change); /* after the close Webull's price is the last extended trade; the session close is pre_close + change */ let c = parseFloat(x.change); if (!isFinite(c)) c = x.pre_close ? price - x.pre_close : 0; let pc = parseFloat(x.change_ratio) * 100; if (!isFinite(pc)) pc = price - c ? c / (price - c) * 100 : 0; (S.qx = S.qx || {})[x.symbol] = x; S.q[x.symbol] = { price, chg: c, pct: pc, name: x.name && x.name !== x.symbol ? x.name : '' }; /* the backup feed has no names: let the symbol list supply them */ });
       S.t.q = Date.now(); S.err.q = null;
     });
@@ -364,7 +364,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   }
   // top gainers on Today: the 5 biggest movers right now (pre-market, regular or after hours)
   S.tg = null; S.tgT = 0;
-  function loadTG() { if (S.tgSess && S.tgSess !== curSess()) { S.tgT = 0; S.tg = null; } if (S.tgBusy || Date.now() - S.tgT < 20000) return; S.tgSess = curSess(); S.tgBusy = 1; S.tgT = Date.now(); const ss = curSess(); const rank = ss === 'pre' ? 'PRE_MARKET' : ss === 'after' ? 'AFTER_MARKET' : 'DAY_1';
+  function loadTG() { if (S.tgSess && S.tgSess !== curSess()) { S.tgT = 0; S.tg = null; } if (S.tgBusy || Date.now() - S.tgT < 6000) return; S.tgSess = curSess(); S.tgBusy = 1; S.tgT = Date.now(); const ss = curSess(); const rank = ss === 'pre' ? 'PRE_MARKET' : ss === 'after' ? 'AFTER_MARKET' : 'DAY_1';
     call('get_gainers_losers', { category: 'US_STOCK', rank_type: rank, sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '20', page_index: '1' }).then((p) => { S.tg = ((p && p.data) || []).filter((x) => x && x.symbol && /^[A-Z.]{1,6}$/.test(x.symbol) && +x.price >= 0.5).slice(0, 5); const ns = S.tg.map((x) => x.symbol).filter((x) => !S.spark[x]); if (ns.length) sparks(ns).then(render).catch(() => {}); }).catch(() => { S.tg = S.tg || []; }).then(() => { S.tgBusy = 0; render(); }); }
   function tgRows() {
     loadTG(); if (!S.tg) return rowsBox(skel(4), 'padding:14px'); if (!S.tg.length) return rowsBox('<div class="err">No movers in the feed right now.</div>');
@@ -446,9 +446,12 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     });
   }
   const visibleSyms = () => { const r = route(); let L = IDX.slice(); if (window.V2X && V2X.syms) L = L.concat(V2X.syms(r) || []); if (r.v === 'today' || r.v === 'portfolio') L = L.concat(HOLD_SYMS, wlSyms(), (S.tg || []).map((x) => x.symbol)); if (r.v === 'fund' && S.fundSel) L = L.concat(S.fundSel); if (r.v === 'mtheme' && S.themeSel) L = L.concat(S.themeSel); if (r.v === 'money' && S.moneySyms) L = L.concat(S.moneySyms); if (r.v === 'earnings' && S.earnSyms) L = L.concat(S.earnSyms); if (r.v === 'stock') L.push(r.id); return Array.from(new Set(L)).slice(0, 120); };
-  setInterval(() => { if (D.hidden || !canLoad()) return; if (V2_STAGE < 3 && Date.now() - (S.t.q || 0) < 29000) return; const r = route(); if (r.v === 'movers' || r.v === 'radar' || r.v === 'ask' || r.v === 'alerts') return; fastSnap(visibleSyms()).then(() => { if (!touching) render(); }).catch((e) => { S.err.q = e; }); }, 5000);
-  setInterval(() => { const el = D.getElementById('pxage'); if (el && S.t.q) el.textContent = 'Prices refresh every 5s · updated ' + ago2(S.t.q); }, 1000);
-  const pxAge = () => V2_STAGE < 3 ? '' : '<p class="pxage" id="pxage">' + (S.t.q ? 'Prices refresh every 5s · updated ' + ago2(S.t.q) : 'Loading prices…') + '</p>';
+  // live prices: ask again as soon as the last answer lands (at most every ~1.5s), so prices track the market instead of waiting on a fixed 5s timer
+  (function pxLoop() { const t0 = Date.now(); const next = () => setTimeout(pxLoop, Math.max(300, 1500 - (Date.now() - t0)));
+    if (D.hidden || !canLoad()) return setTimeout(pxLoop, 1500); const r = route(); if (r.v === 'movers' || r.v === 'radar' || r.v === 'ask' || r.v === 'alerts') return setTimeout(pxLoop, 1500);
+    fastSnap(visibleSyms()).then(() => { if (!touching) render(); }).catch((e) => { S.err.q = e; }).then(next); })();
+  setInterval(() => { const el = D.getElementById('pxage'); if (el && S.t.q) el.textContent = 'Live · updated ' + ago2(S.t.q); }, 1000);
+  const pxAge = () => V2_STAGE < 3 ? '' : '<p class="pxage" id="pxage">' + (S.t.q ? 'Live · updated ' + ago2(S.t.q) : 'Loading prices…') + '</p>';
 
   // ---------- (1)+(2) Movers ----------
   const MV_SESS = [['pre', 'Pre-market'], ['day', 'Regular'], ['after', 'After hours']];
@@ -469,7 +472,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       if (need.length) call('get_mover_why', { symbols: need.slice(0, 6).join(',') }).then((w) => { Object.keys(w || {}).forEach((s) => { S.why[s] = Object.assign({ t: Date.now() }, w[s]); }); render(); }).catch(() => {});
     }).catch((e) => { S.mv.data[k] = Object.assign(S.mv.data[k] || { rows: null }, { err: e, t: Date.now() }); });
   }
-  setInterval(() => { if (!D.hidden && canLoad() && route().v === 'movers') loadMovers().then(() => { if (!touching) render(); }); }, 10000);
+  setInterval(() => { if (!D.hidden && canLoad() && route().v === 'movers' && !S.mvBusy) { S.mvBusy = 1; loadMovers().then(() => { if (!touching) render(); }).catch(() => {}).then(() => { S.mvBusy = 0; }); } }, 4000);
   const WHYC = { real: BL.b3, news: BL.b2, warn: BL.b4, nonews: 'var(--fg3)', unknown: 'var(--fg3)' };
   const whyLine2 = (s) => { const w = S.why[s]; if (!w) return '<small class="why" style="color:var(--fg3)">Checking the news…</small>'; const c = WHYC[w.v] || BL.b2; return '<small class="why" style="color:' + c + '"><i style="background:' + c + '"></i>' + (w.v === 'warn' ? 'Careful · ' : '') + E(w.kind) + (w.h && w.h.title ? '<span> · ' + E(dec(w.h.title)) + '</span>' : '') + '</small>'; };
   // TradingView-style screener table: dense rows, sticky header + pinned symbol column, sortable, tap a row for the catalyst
