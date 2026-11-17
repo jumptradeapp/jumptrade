@@ -1502,6 +1502,15 @@ export default {
         const res = new Response(buf, { headers: Object.assign({ 'content-type': ct.split(';')[0].trim().toLowerCase(), 'cache-control': 'public, max-age=86400' }, IMG_SAFE) }); ctx.waitUntil(caches.default.put(ck, res.clone())); return res;
       } catch (e) { return miss(); }
     }
+    if (url.pathname.indexOf('/api/flogo/') === 0) { // fund firm logos: the firm website's icon (Google's favicon service, then DuckDuckGo)
+      const d = decodeURIComponent(url.pathname.slice(11)).toLowerCase(); if (!/^[a-z0-9-]{2,40}(\.[a-z0-9-]{2,20}){1,2}$/.test(d)) return new Response('', { status: 404 });
+      const ck = new Request('https://cache.jumptrade/flogo/' + d); const hit = await caches.default.match(ck); if (hit) return hit;
+      for (const src of ['https://www.google.com/s2/favicons?domain=' + d + '&sz=128', 'https://icons.duckduckgo.com/ip3/' + d + '.ico']) {
+        try { const r = await fetch(src, { headers: { 'user-agent': NUA }, cf: { cacheTtl: 604800 } }); const ct = r.headers.get('content-type') || '';
+          if (r.ok && (IMG_OK.test(ct) || /icon/.test(ct))) { const buf = await r.arrayBuffer(); if (buf.byteLength > 200) { const res = new Response(buf, { headers: Object.assign({ 'content-type': /icon/.test(ct) ? 'image/x-icon' : ct.split(';')[0].trim().toLowerCase(), 'cache-control': 'public, max-age=604800', 'access-control-allow-origin': '*' }, IMG_SAFE) }); ctx.waitUntil(caches.default.put(ck, res.clone())); return res; } } } catch (e) {}
+      }
+      const miss = new Response('', { status: 404, headers: { 'cache-control': 'public, max-age=86400' } }); ctx.waitUntil(caches.default.put(ck, miss.clone())); return miss;
+    }
     if (url.pathname.indexOf('/api/logo/') === 0) { // backup logos for tickers missing from the built-in set
       const sym = decodeURIComponent(url.pathname.slice(10)).toUpperCase().replace(/[^A-Z.\-]/g, '').slice(0, 6);
       const ck = new Request('https://cache.jumptrade/logo/' + sym); const hit = await caches.default.match(ck); if (hit) return hit;

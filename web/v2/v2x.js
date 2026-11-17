@@ -204,10 +204,11 @@
   function newsScreen() {
     const k = NEWSK.find((x) => x[0] === st.nk) || NEWSK[1]; let d;
     if (k[0] === 'mine') { const L = (wlFull().length ? wlFull() : V().HOLD_SYMS).slice(0, 6); d = once('news:mine:' + L.join(','), 300, () => L.reduce((p, s) => p.then((acc) => V().call('get_stock_news', { symbol: s }).then((r) => acc.concat((r && r.data) || [])).catch(() => acc)), Promise.resolve([])).then((a) => { const seen = {}; return { data: a.filter((n) => n && n.title && !seen[n.title] && (seen[n.title] = 1)).sort((x, y) => Date.parse(y.publish_time) - Date.parse(x.publish_time)).slice(0, 40), L: L }; })); }
-    else d = once('news:' + k[2], 300, () => V().call('search_news', { keyword: k[2] }));
+    else if (k[0] === 'market' && V().S.news && V().S.news.length) d = { data: V().S.news };
+    else d = once('news:' + k[2], 120, () => V().call('search_news', { keyword: k[2] }).then((r) => ({ data: ((r && r.data) || []).slice().sort((x, y) => Date.parse(y.publish_time) - Date.parse(x.publish_time)) })));
     const items = d && !d.err ? (d.data || []).filter((n) => n && n.title && n.url).slice(0, 40) : null;
     const body = !d ? V().rowsBox(V().skel(6), 'padding:14px') : d.err ? V().rowsBox(errB('News isn’t loading right now. Try again in a minute.')) : !items.length ? V().rowsBox(errB('No stories in the last 36 hours for this topic.')) : newsList(items);
-    return wrap(V().topbar() + V().head('News', k[0] === 'mine' ? 'Latest on ' + (d && d.L ? d.L.join(', ') : 'your stocks') : 'Latest from Yahoo Finance, Nasdaq and other public feeds') +
+    return wrap(V().topbar() + V().head('News', k[0] === 'mine' ? 'Latest on ' + (d && d.L ? d.L.join(', ') : 'your stocks') : 'Latest market headlines, newest first') +
       '<div style="margin-top:12px">' + V().chipsHTML(NEWSK.map((x) => [x[0], x[1]]), st.nk, 'data-xnk') + '</div><div style="margin-top:10px">' + body + '</div>' + note('Headlines open the original article. Last 36 hours.'));
   }
 
@@ -256,7 +257,9 @@
   }
 
   // ---------- model portfolios ----------
-  const cg = (o) => (o && o.cagr != null ? sgnP(+o.cagr, 1) : '—');
+  const cg = (o) => (o && o.cagr != null ? '<span class="' + cl(+o.cagr) + '">' + sgnP(+o.cagr, 1) + '</span>' : '—');
+  const ddc = (o) => (o && o.mdd != null ? '<span class="dn">−' + Math.abs(o.mdd).toFixed(0) + '%</span>' : '—');
+  const SPC = '#FFC48A'; // S&P 500 line on model charts: light orange
   function modelsScreen(id) {
     const j = file('/models.json'), n = file('/models_now.json'); if (!j) return wrap(V().backbar('Models', '#portfolio') + V().rowsBox(V().skel(6), 'padding:14px'));
     if (j.err || !j.models) return wrap(V().backbar('Models', '#portfolio') + V().rowsBox(errB('The models file didn’t load.')));
@@ -265,8 +268,8 @@
       const cv = (m.curve || []).map((p) => ({ c: +p[1] })); const sp = (m.curve || []).map((p) => +p[2]);
       const yrs = (m.years || []).slice(-8).reverse();
       return wrap(V().backbar(E(m.name), '#models') + V().head(m.name, E(m.tag || '')) + '<p class="sub" style="margin-top:6px">' + E(m.line || '') + '</p>' +
-        (cv.length > 2 ? card(chart(cv, { h: 150, lines: [{ v: sp, c: 'rgba(187,215,249,.55)', n: 'S&P 500', dash: 1 }] }) + '<small class="xcap">Growth of $1 since ' + E((m.curve[0] || [])[0] || '') + ' (backtest, then live)</small>') : '') +
-        '<div class="lab">Returns per year</div>' + tbl('mst', [['k', 'Period', (r) => '<span class="sn"><b>' + r.k + '</b></span>'], ['m', 'Model', (r) => '<b>' + cg(r.m) + '</b>'], ['s', 'S&amp;P', (r) => cg(r.s)], ['dd', 'Worst drop', (r) => (r.m && r.m.mdd != null ? r.m.mdd.toFixed(0) + '%' : '—')], ['sh', 'Sharpe', (r) => (r.m && r.m.sharpe != null ? r.m.sharpe.toFixed(2) : '—')]],
+        (cv.length > 2 ? card(chart(cv, { h: 150, lines: [{ v: sp, c: SPC }] }) + '<small class="xcap"><i class="lgd" style="background:#9CCBFF"></i>' + E(m.name) + ' <i class="lgd" style="background:' + SPC + ';margin-left:10px"></i>S&amp;P 500 · growth of $1 since ' + E((m.curve[0] || [])[0] || '') + ' (backtest, then live)</small>') : '') +
+        '<div class="lab">Returns per year</div>' + tbl('mst', [['k', 'Period', (r) => '<span class="sn"><b>' + r.k + '</b></span>'], ['m', 'Model', (r) => '<b>' + cg(r.m) + '</b>'], ['s', 'S&amp;P', (r) => cg(r.s)], ['dd', 'Worst drop', (r) => ddc(r.m)], ['sh', 'Sharpe', (r) => (r.m && r.m.sharpe != null ? r.m.sharpe.toFixed(2) : '—')]],
           [{ k: 'Backtest', m: m.bt, s: m.btSpy }, { k: 'Live', m: m.live, s: m.liveSpy }, { k: 'Full', m: m.full, s: m.fullSpy }], { short: 1 }) +
         (yrs.length ? '<div class="lab">By calendar year</div>' + tbl('myr', [['y', 'Year', (r) => '<span class="sn"><b>' + r[0] + '</b></span>'], ['m', 'Model', (r) => '<b class="' + cl(r[1]) + '">' + sgnP(r[1], 1) + '</b>'], ['s', 'S&amp;P', (r) => '<span class="' + cl(r[2]) + '">' + sgnP(r[2], 1) + '</span>']], yrs, { short: 1 }) : '') +
         '<div class="lab">Positions now · ' + (m.lev ? m.lev + '× leverage' : 'no leverage') + '</div>' + (syms.length ? tbl('mpos', qcols().concat([['w', 'Weight', (r) => (r.w * 100).toFixed(1) + '%', (r) => r.w], ['cls', 'Group', (r) => E(r.cls || ''), (r) => r.cls || '']]), pos.map((p) => ({ s: p.etf, n: p.name, w: +p.w, cls: p.cls })), { href: (r) => '#stock/' + r.s, def: { k: 'w', d: 'desc' } }) : V().rowsBox(errB('No positions listed.'))) +
@@ -275,7 +278,7 @@
         V().snapNote('Model data as of ' + E(j.asof || '—') + '. Backtests are hypothetical and not a promise of future returns. ETFs shown stand in for the futures the model trades.'));
     }
     return wrap(V().topbar() + V().head('Model portfolios', 'Rules-based models, tested since the 1990s') + segP('#models') + '<div style="margin-top:10px"></div>' + V().snapNote('Snapshot as of ' + E(j.asof || '—') + '. Backtested returns are hypothetical.') +
-      tbl('models', [['nm', 'Model', (r) => '<span class="xdot" style="background:' + E(r.color || '#5B9BEA') + '"></span><span class="sn"><b>' + E(r.name) + '</b><small>' + E(r.tag || '') + '</small></span>', (r) => r.name], ['bt', 'Backtest/yr', (r) => '<b>' + cg(r.bt) + '</b>', (r) => (r.bt || {}).cagr], ['sp', 'S&amp;P/yr', (r) => cg(r.btSpy), (r) => (r.btSpy || {}).cagr], ['lv', 'Live/yr', (r) => cg(r.live), (r) => (r.live || {}).cagr], ['dd', 'Worst drop', (r) => (r.bt && r.bt.mdd != null ? r.bt.mdd.toFixed(0) + '%' : '—'), (r) => (r.bt || {}).mdd], ['lev', 'Leverage', (r) => (r.lev ? r.lev + '×' : '1×'), (r) => r.lev || 1]], j.models, { href: (r) => '#models/' + r.id, short: 1 }) +
+      tbl('models', [['nm', 'Model', (r) => '<span class="xdot" style="background:' + E(r.color || '#5B9BEA') + '"></span><span class="sn"><b>' + E(r.name) + '</b><small>' + E(r.tag || '') + '</small></span>', (r) => r.name], ['bt', 'Backtest/yr', (r) => '<b>' + cg(r.bt) + '</b>', (r) => (r.bt || {}).cagr], ['sp', 'S&amp;P/yr', (r) => cg(r.btSpy), (r) => (r.btSpy || {}).cagr], ['lv', 'Live/yr', (r) => cg(r.live), (r) => (r.live || {}).cagr], ['dd', 'Worst drop', (r) => ddc(r.bt), (r) => (r.bt || {}).mdd], ['lev', 'Leverage', (r) => (r.lev ? r.lev + '×' : '1×'), (r) => r.lev || 1]], j.models, { href: (r) => '#models/' + r.id, short: 1 }) +
       note('Tap a model for its chart, yearly returns, positions and rules.'));
   }
   const segP = (on) => '<div class="seg" style="margin-top:12px">' + [['My account', '#portfolio'], ['Models', '#models'], ['Mine', '#build'], ['Funds', '#funds']].map((x) => '<a class="' + (x[1] === on ? 'on' : '') + '" href="' + x[1] + '">' + x[0] + '</a>').join('') + '</div>';

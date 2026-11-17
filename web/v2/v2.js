@@ -104,7 +104,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       snap(all).catch((e) => { S.err.q = e; }),
       sparks(all).catch(() => {}),
       bars(HOLD_SYMS).catch(() => {}),
-      call('search_news', { keyword: 'stock market' }).then((p) => { S.news = (p && p.data) || []; }).catch((e) => { S.err.news = e; S.news = S.news || []; }),
+      loadNews(),
       call('get_market_sectors', {}).then((p) => { S.sectors = Array.isArray(p) ? p : []; }).catch(() => { S.sectors = []; }),
       call('get_playbook', {}).then((p) => { S.setups = (p && p.data) || []; }).catch(() => { S.setups = []; }),
       call('get_stock_earnings_calendar', { symbols: Array.from(new Set(wlSyms().concat(HOLD_SYMS))).join(',') }).then((p) => { S.earn = Array.isArray(p) ? p : []; }).catch(() => { S.earn = []; }),
@@ -112,6 +112,16 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     jobs.forEach((j) => j.then(render));
     Promise.all(jobs).then(() => { fillFromSparks(); loading = 0; S.loaded = Date.now(); render(); });
   }
+  // headlines: Webull's live market feeds (SPY, QQQ) plus the general market search, newest first, refreshed every minute
+  function loadNews() {
+    const arrN = (p) => (p && (p.data || p.list)) || (Array.isArray(p) ? p : []);
+    return Promise.all([call('get_stock_news', { symbol: 'SPY' }), call('get_stock_news', { symbol: 'QQQ' }), call('search_news', { keyword: 'stock market' })].map((pr) => pr.then(arrN).catch(() => null)))
+      .then((R) => { if (R.every((r) => r == null)) throw new Error('news'); const seen = {}; const L = [];
+        [].concat(...R.filter(Boolean)).forEach((x) => { const k = x && (x.news_id || x.url); if (!k || seen[k]) return; seen[k] = 1; L.push(x); });
+        L.sort((a, b) => (Date.parse(b.publish_time) || 0) - (Date.parse(a.publish_time) || 0)); S.news = L; S.err.news = null; })
+      .catch((e) => { S.err.news = e; S.news = S.news || []; });
+  }
+  setInterval(() => { if (!D.hidden && canLoad() && S.news) loadNews().then(render); }, 60000);
   const canLoad = () => !!(window.JT_AUTH && JT_AUTH.ready && (JT_AUTH.user || !JT_AUTH.locked));
   // (the 30-second price poll was replaced by the 5-second fastSnap poll further down)
   setInterval(() => { if (!D.hidden && canLoad()) load(); }, 5 * 60000);
@@ -176,7 +186,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const backbar = (title, href) => '<div class="top"><div style="display:flex;align-items:center;gap:6px;min-width:0"><a class="ib" style="margin-left:-10px" href="' + href + '" aria-label="Back">' + ic('back', 22) + '</a><b class="tbt">' + title + '</b></div><div class="acts">' + (REAL || route().v !== 'connect' ? '' : DEMO) + '</div></div>';
   const head = (t, sub) => { const p = t.lastIndexOf(' '); return '<h1>' + (p > 0 ? t.slice(0, p) + ' <em>' + t.slice(p + 1) + '</em>' : '<em>' + t + '</em>') + '</h1>' + (sub ? '<p class="sub">' + sub + '</p>' : ''); };
   const sh = (t, link, href, icon, th) => '<div class="sh"><h2><span class="shi">' + ic(icon || 'layers', 16) + '</span>' + ((th || href) && (th || href) !== '#hold' && (th || href) !== '#edit' ? '<a class="sht" href="' + (th || href) + '">' + t + '</a>' : t) + '</h2>' + (link ? '<a href="' + href + '">' + link + ic('arrow', 14, 2.2) + '</a>' : '') + '</div>';
-  const counter = (icn, label, n, sub) => '<div class="card ctr"><div class="ctrh"><span class="ctri">' + ic(icn, 15) + '</span>' + label + '</div><div class="ctrb"><b>' + n + '</b><span>' + sub + '</span></div></div>';
+  const counter = (icn, label, n, sub, k) => '<div class="card ctr"><div class="ctrh"><span class="ctri">' + ic(icn, 15) + '</span>' + label + '</div><div class="ctrb"><b' + (k ? ' class="' + k + '"' : '') + '>' + n + '</b><span' + (k ? ' class="' + k + '"' : '') + '>' + sub + '</span></div></div>';
   const swoosh = () => ''; // the swoop is Today's signature only
 
   // ---------- time + market session (Eastern) ----------
@@ -308,7 +318,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     return list.filter((x) => x && x.title && /^https:\/\//i.test(x.url || '')).map((x) => { const t = dec(x.title); let sc = 0;
       const rel = (x.related_symbols || []).some((s) => mine.indexOf(s) >= 0) || nm.some(([s, w]) => new RegExp('\\b(' + s + '|' + w.replace(/[^\w]/g, '') + ')\\b', 'i').test(t)); if (rel) sc += 4;
       if (BRK.test(t)) sc += 2; if (TIER.test(x.source || x.source_name || '')) sc += 1.5; if (x.image) sc += 0.5; if (FLUFF.test(t)) sc -= 4;
-      const ms = Date.parse(x.publish_time); const age = isFinite(ms) ? (now - ms) / 3600000 : 24; sc -= Math.min(age, 24) / 6;
+      const ms = Date.parse(x.publish_time); const age = isFinite(ms) ? (now - ms) / 3600000 : 24; sc -= Math.min(age, 24) / 2;
       return [sc, x]; }).sort((a, b) => b[0] - a[0]).slice(0, n).map((y) => y[1]);
   }
   function newsRows() {
@@ -391,7 +401,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const seg = '<div style="margin-top:12px"><div class="seg">' + SEG.map((x, i) => '<a class="' + (i === 0 ? 'on' : '') + '" href="' + x[1] + '">' + x[0] + '</a>').join('') + '</div></div>';
     const car = '<div class="car" id="car">' + cards.map((x, i) => acctCard(i, x.a, x.c)).join('') + '<span class="spacer"></span></div><div class="dots" id="dots">' + cards.map((_, i) => '<i class="' + (i === on ? 'on' : '') + '"></i>').join('') + '</div>';
     const c = cur.c; const totalVal = all.c.val;
-    const ct = '<div style="display:flex;gap:10px;margin-top:14px">' + counter('trend', 'Total gain', c.ready ? (c.gain >= 0 ? '+' : '−') + money(Math.abs(c.gain), 0) : '—', c.ready ? (c.gainPct >= 0 ? '+' : '−') + Math.abs(c.gainPct).toFixed(1) + '%' : '') + counter('dollar', 'Cash', money(c.cash, 0), on === 0 ? Math.round(c.cash / (totalVal || 1) * 100) + '% of total' : Math.round(c.cash / (c.val || 1) * 100) + '% of account') + '</div>';
+    const ct = '<div style="display:flex;gap:10px;margin-top:14px">' + counter('trend', 'Total gain', c.ready ? (c.gain >= 0 ? '+' : '−') + money(Math.abs(c.gain), 0) : '—', c.ready ? (c.gainPct >= 0 ? '+' : '−') + Math.abs(c.gainPct).toFixed(1) + '%' : '', c.ready && c.gain ? cls(c.gain) : '') + counter('dollar', 'Cash', money(c.cash, 0), on === 0 ? Math.round(c.cash / (totalVal || 1) * 100) + '% of total' : Math.round(c.cash / (c.val || 1) * 100) + '% of account') + '</div>';
     const hl = c.rows.slice().sort((x, y) => y.mv - x.mv).slice(0, S.allHold ? 99 : 5).map((r) => r.sym);
     const hd = sh('Holdings · ' + E(cur.a.name), c.rows.length > 5 ? (S.allHold ? 'Show less' : 'View all') : '', '#hold', 'layers') + (hl.length ? rowsBox(hl.map((s) => srow(s, 64)).join('')) : c.ready || !ACCTS.length ? rowsBox('<div class="err">No positions. <a href="#connect">Connect a brokerage</a> to see your holdings.</div>', 'padding:14px') : rowsBox(skel(4), 'padding:14px'));
     const link = '<a class="card act" style="margin-top:12px" href="#connect"><span class="ibx">' + tl('BULL', 30) + '</span><span class="tx"><b>Webull accounts</b><small>' + (ACCTS.length ? ACCTS.length + ' linked · add or manage' : 'None connected yet') + '</small></span><span class="chv">' + ic('chev', 22, 2.4) + '</span></a>';
@@ -545,6 +555,11 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   S.funds = null; S.fcat = 'all'; S.fbars = {};
   function loadFunds() { if (S.funds || S.fundsLoading) return; S.fundsLoading = 1; getJ('/funds.json').then((j) => { S.funds = j; render(); }).catch(() => { S.fundsLoading = 0; S.funds = { err: 1 }; render(); }); }
   const FCH = { new: 'NEW', added: 'ADDED', reduced: 'TRIMMED', unchanged: 'HELD' };
+  // fund logos: a public parent's stock logo (@TICKER), else the firm's own website icon via the server; initials if neither loads
+  const FDOM = {"berkshire-hathaway":"@BRKB","pershing-square":"pershingsquareholdings.com","baupost-group":"baupost.com","third-point":"thirdpoint.com","greenlight-capital":"greenlightcapital.com","tiger-global-management":"tigerglobal.com","coatue-management":"coatue.com","viking-global-investors":"vikingglobal.com","lone-pine-capital":"lonepinecapital.com","soros-fund-management":"soros.com","icahn-enterprises":"@IEP","elliott-investment-management":"elliottmgmt.com","starboard-value":"starboardvalue.com","altimeter-capital":"altimeter.com","renaissance-technologies":"rentec.com","citadel-advisors":"citadel.com","aqr-capital-management":"aqr.com","millennium-management":"mlp.com","two-sigma-investments":"twosigma.com","point72-asset-management":"point72.com","tci-fund-management":"tcifund.com","gotham-asset-management":"gothamfunds.com","d1-capital-partners":"d1capital.com","bridgewater-associates":"bridgewater.com","ark-investment-management":"ark-invest.com","whale-rock-capital":"whalerockcapital.com","polen-capital":"polencapital.com","maverick-capital":"maverickcap.com","egerton-capital":"egertoncapital.com","durable-capital-partners":"durablecapital.com","oaktree-capital-management":"oaktreecapital.com","ruane-cunniff-goldfarb":"ruanecunniff.com","valueact-capital":"valueact.com","glenview-capital":"glenviewcapital.com","akre-capital-management":"akrecapital.com","sachem-head-capital":"sachemhead.com","trian-fund-management":"trianpartners.com","dragoneer-investment-group":"dragoneer.com","paulson-co":"paulsonco.com","lansdowne-partners":"lansdownepartners.com","southeastern-asset-management":"southeasternasset.com","jana-partners":"janapartners.com","fairholme-capital":"fairholmefunds.com","engaged-capital":"engagedcapital.com","mantle-ridge":"mantleridge.com","d-e-shaw-co":"deshaw.com","situational-awareness-lp":"situational-awareness.com","eminence-capital":"eminencecapital.com","scion-asset-management":"scionasset.com"};
+  const fundMark = (f, size) => { const ini = E((f.fund || '?').replace(/[^A-Za-z ]/g, '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()); const d = FDOM[f.slug];
+    if (d && d[0] === '@') return tl(d.slice(1), size || 40);
+    return '<span class="fmono"' + (size ? ' style="width:' + size + 'px;height:' + size + 'px"' : '') + '>' + (d && !window.JT_PRIV ? '<img alt="" loading="lazy" src="' + '/api/flogo/' + d + '" onerror="this.remove()">' : '') + '<i>' + ini + '</i></span>'; };
   function fundsScreen() {
     loadFunds();
     const seg = '<div style="margin-top:12px"><div class="seg">' + SEG.map((x) => '<a class="' + (x[1] === '#funds' ? 'on' : '') + '" href="' + x[1] + '">' + x[0] + '</a>').join('') + '</div></div>';
@@ -559,7 +574,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       body = snapNote('13F filings · ' + onLast + ' of ' + F.length + ' funds have filed ' + E(lastQ || 'last quarter') + (S.funds.updated ? ' · checked with the SEC ' + E(shortD(S.funds.updated.slice(0, 10))) : '') + '. Updates automatically as new filings come in; prices are live.') +
         '<div style="margin-top:10px">' + chipsHTML([['all', 'All ' + F.length]].concat(cats.map((c) => [c, (CN[c] || c.charAt(0).toUpperCase() + c.slice(1)) + ' ' + F.filter((f) => f.cat === c).length])), S.fcat, 'data-fcat') + '</div>' +
         rowsBox(list.map((f) => { const nw = f.h.filter((h) => h[3] === 'new').length;
-          return '<a class="row" href="#fund/' + encodeURIComponent(f.slug) + '" style="min-height:76px!important;align-items:center"><span class="fmono">' + E((f.fund || '?').replace(/[^A-Za-z ]/g, '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()) + '</span><span class="nm"><b>' + E(f.fund) + '</b><small>' + E(f.manager || '') + '</small><small style="color:var(--fg3)">' + E(f.period || '') + ' · ' + big$(f.total) + ' · ' + (f.n || f.h.length) + ' positions' + (nw ? ' · <span style="color:' + BL.b3 + '">' + nw + ' new</span>' : '') + '</small></span><span class="tags">' + f.h.slice(0, 2).map((h) => '<span class="tag2">' + E(h[0]) + ' ' + (+h[2]).toFixed(0) + '%</span>').join('') + '</span></a>'; }).join(''), 'margin-top:10px');
+          return '<a class="row" href="#fund/' + encodeURIComponent(f.slug) + '" style="min-height:76px!important;align-items:center">' + fundMark(f) + '<span class="nm"><b>' + E(f.fund) + '</b><small>' + E(f.manager || '') + '</small><small style="color:var(--fg3)">' + E(f.period || '') + ' · ' + big$(f.total) + ' · ' + (f.n || f.h.length) + ' positions' + (nw ? ' · <span style="color:' + BL.b3 + '">' + nw + ' new</span>' : '') + '</small></span><span class="tags">' + f.h.slice(0, 2).map((h) => '<span class="tag2">' + E(h[0]) + ' ' + (+h[2]).toFixed(0) + '%</span>').join('') + '</span></a>'; }).join(''), 'margin-top:10px');
     }
     return swoosh() + '<div class="wrap">' + topbar() + head('Portfolio', 'Copy what the big funds own') + seg + '<div style="margin-top:12px">' + body + '</div></div>';
   }
@@ -591,7 +606,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     if (!S.fundSel || S.fundSel.join() !== syms.join()) { S.fundSel = syms; fastSnap(syms.concat(['SPY'])).then(render).catch(() => {}); }
     loadFundBars(f);
     const hs = f.h.slice().sort((a, b) => b[2] - a[2]).slice(0, S.allFund ? 99 : 10);
-    return '<div class="wrap">' + backbar(E(f.fund), '#funds') + '<h1 style="font-size:26px;line-height:32px">' + E(f.fund) + '</h1><p class="sub">' + E(f.manager || '') + '</p>' +
+    return '<div class="wrap">' + backbar(E(f.fund), '#funds') + '<div style="display:flex;align-items:center;gap:14px;margin-top:4px">' + fundMark(f, 52) + '<div style="min-width:0"><h1 style="font-size:26px;line-height:32px">' + E(f.fund) + '</h1><p class="sub" style="margin-top:2px">' + E(f.manager || '') + '</p></div></div>' +
       snapNote('13F for ' + E(f.period) + ', filed ' + E(shortD(f.filed)) + ' · ' + big$(f.total) + ' reported · ' + (f.n || f.h.length) + ' positions. Holdings are a dated snapshot; prices are live.') +
       fundCopy(f) + sh('Top holdings', f.h.length > 10 ? (S.allFund ? 'Show less' : 'View all ' + f.h.length) : '', '#fundall', 'layers') +
       rowsBox(hs.map((h) => { const s = h[0], x = S.q[s]; return '<a class="row" href="#stock/' + encodeURIComponent(s) + '">' + tl(s, 38) + '<span class="nm"><b>' + E(s) + ' <span class="tag2" style="margin-left:4px">' + (FCH[h[3]] || 'HELD') + '</span></b><small>' + E(nameOf(s) !== s ? nameOf(s) : h[1]) + ' · ' + (+h[2]).toFixed(1) + '% of fund</small></span>' + (x ? qv(x.price, x.chg, x.pct) : qv(null)) + '</a>'; }).join('')) +
