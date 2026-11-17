@@ -787,3 +787,13 @@ html body .top.tc .brand img{height:22px!important;width:auto!important}
 .nw .thumb img.ph{opacity:0;transition:opacity .25s ease-out}.nw .thumb img.ph.on{opacity:1}
 .pt2 .pt2c{margin-bottom:2px}
 html body .top.tc .ttl{font-size:23px!important;font-weight:650!important;letter-spacing:-.02em!important}
+
+.ptr{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 8px);z-index:60;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#BBD7F9;background:rgba(14,32,58,.92);border:1px solid rgba(170,205,255,.22);box-shadow:0 6px 18px rgba(0,0,0,.4);opacity:0;transform:translate(-50%,-44px);pointer-events:none;transition:opacity .15s}
+.ptr.ready{color:#fff}.ptr.spin svg{animation:ptrs .8s linear infinite}@keyframes ptrs{to{transform:rotate(360deg)}}
+html[data-x2t="light"] .ptr{background:#fff;color:#1F5FB8;border-color:#DCE5F0;box-shadow:0 6px 18px rgba(16,40,80,.18)}
+html,body{overscroll-behavior-y:contain}
+@media (prefers-reduced-motion:reduce){.ptr.spin svg{animation-duration:2s}}
+
+.mix{display:flex;align-items:center;gap:14px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(200,225,255,.12)}
+.mixr{flex:none}.mixl{display:flex;flex-wrap:wrap;gap:6px 14px;min-width:0}
+.mixl span{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#AEC0D8!important;white-space:nowrap}.mixl i{width:8px;height:8px;border-radius:50%;flex:none}.mixl b{color:#fff!important;font-weight:600}.mixl .mixm{color:#8FA4BF!important}

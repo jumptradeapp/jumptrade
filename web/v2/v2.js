@@ -233,6 +233,18 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     return '<svg class="pt2c" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="pt2f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7BB3FF" stop-opacity=".30"/><stop offset="1" stop-color="#7BB3FF" stop-opacity="0"/></linearGradient></defs><path d="' + d + ' L' + W + ' ' + H + ' L0 ' + H + 'Z" fill="url(#pt2f)"/><path d="' + d + '" fill="none" stroke="#8FC0FF" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/><circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="3.5" fill="#fff" class="pt2d"/></svg>';
   }
   const T0 = Date.now();
+  // what you own: a small ring of your biggest positions plus cash, with the top names listed beside it
+  function mixRow(c) {
+    const tot = c.val || 0; if (!tot || !c.rows || !c.rows.length) return '';
+    const rows = c.rows.slice().sort((x, y) => y.mv - x.mv); const COL = ['#BBD7F9', '#7BB0F2', '#4F8FDE', '#2E66B5'];
+    const top = rows.slice(0, 3).map((r, i) => ({ k: r.sym, v: r.mv, c: COL[i] })); const rest = rows.slice(3).reduce((a, r) => a + r.mv, 0);
+    const seg = top.concat(rest > 0 ? [{ k: 'Other', v: rest, c: COL[3] }] : [], c.cash > 0 ? [{ k: 'Cash', v: c.cash, c: '#5E6E86' }] : []);
+    const R = 15, C = 2 * Math.PI * R; let off = 0;
+    const ring = '<svg class="mixr" viewBox="0 0 40 40" width="52" height="52" aria-hidden="true"><g transform="rotate(-90 20 20)">' + seg.map((x) => { const f = x.v / tot, L = Math.max(0, f * C - 1.2); const o = '<circle cx="20" cy="20" r="' + R + '" fill="none" stroke="' + x.c + '" stroke-width="5.5" stroke-dasharray="' + L.toFixed(2) + ' ' + C.toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '"/>'; off += f * C; return o; }).join('') + '</g></svg>';
+    const pc = (v) => Math.round(v / tot * 100) + '%';
+    const leg = top.map((x) => '<span><i style="background:' + x.c + '"></i>' + E(x.k) + ' <b>' + pc(x.v) + '</b></span>').join('') + (c.cash > 0 ? '<span><i style="background:#5E6E86"></i>Cash <b>' + pc(c.cash) + '</b></span>' : '') + (rows.length > 3 ? '<span class="mixm">+ ' + (rows.length - 3) + ' more</span>' : '');
+    return '<div class="mix">' + ring + '<div class="mixl">' + leg + '</div></div>';
+  }
   function portCard() {
     if (window.JT_PRIV && !REAL && Date.now() - T0 < 25000) { setTimeout(render, 1500); return card('<div style="position:relative">' + kick('Portfolio') + '<div class="mini" style="margin:6px 0 10px;color:var(--fg2)">Loading your Webull accounts…</div>' + skel(3) + '</div>', 'padding:16px 20px 14px;margin-top:8px', 'pglass pt2'); } // private copy: never flash the demo accounts before the real ones arrive
     const all = allCalc(); const c0 = all.c;
@@ -250,8 +262,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     return card('<div class="pt2h">' + menu + '<a class="pt2go" href="#portfolio' + (idx ? '/' + idx : '') + '" aria-label="Open portfolio">' + ic('chev', 20, 2.2) + '</a></div>' + list +
       '<div class="pt2b">' + (dot > 0 ? m.slice(0, dot) + '<small>' + m.slice(dot) + '</small>' : m) + '</div>' +
       '<div class="pt2p ' + (amt == null ? '' : amt >= 0 ? 'u' : 'd') + '">' + (amt == null ? 'Loading ' + tf[2] + '…' : (amt >= 0 ? '▲ ' : '▼ ') + chg(amt).replace(/^[+−-]/, '') + ' · ' + pct(Math.abs(pc)).replace(/^[+−-]/, '') + ' ' + tf[2]) + '</div>' +
-      areaChart(ser, (amt || 0) >= 0) +
-      '',
+      areaChart(ser, (amt || 0) >= 0) + mixRow(c),
       'padding:14px 16px 14px;margin-top:8px', 'pglass pt2');
   }
   D.addEventListener('click', (e) => { const t = e.target.closest && e.target.closest('[data-acctmenu],[data-acct],[data-tf]'); if (!t) { if (S.amenu && !(e.target.closest && e.target.closest('.amenu'))) { S.amenu = false; render(); } return; } e.preventDefault(); e.stopPropagation();
@@ -855,6 +866,18 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   function route() { const r = route0(); return (ST[r.v] || 0) > V2_STAGE ? { v: 'today' } : r; }
   let lastV = null, carI = 0;
   let touching = 0, pend = 0;
+  // pull down to refresh: a single circle arrow follows your finger, spins while everything reloads
+  (function () {
+    const ARR = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>';
+    let ptr = null, y0 = null, dy = 0, busy = false; const MAX = 90, GO = 64;
+    const el = () => { if (!ptr) { ptr = D.createElement('div'); ptr.className = 'ptr'; ptr.innerHTML = ARR; D.body.appendChild(ptr); } return ptr; };
+    const set = (d, spin) => { const p = el(); const k = Math.min(1, d / GO); p.style.transform = 'translate(-50%,' + (Math.min(d, MAX) - 44) + 'px) rotate(' + (spin ? 0 : k * 300) + 'deg)'; p.style.opacity = d > 4 ? Math.min(1, .3 + k) : 0; p.classList.toggle('spin', !!spin); p.classList.toggle('ready', k >= 1); };
+    D.addEventListener('touchstart', (e) => { if (busy || window.scrollY > 0 || D.scrollingElement.scrollTop > 0 || e.touches.length !== 1 || (e.target.closest && e.target.closest('.hcar,.mvt,.chips,.sheet,input,textarea'))) { y0 = null; return; } y0 = e.touches[0].clientY; dy = 0; }, { passive: true });
+    D.addEventListener('touchmove', (e) => { if (y0 == null) return; dy = (e.touches[0].clientY - y0) * 0.55; if (dy <= 0 || window.scrollY > 0) { if (ptr) set(0); return; } set(dy); }, { passive: true });
+    D.addEventListener('touchend', () => { if (y0 == null) return; y0 = null; if (dy < GO) { set(0); return; }
+      busy = true; set(GO, true); S.t.q = 0; loading = 0; S.news = S.news || []; const done = () => { busy = false; set(0); render(); };
+      Promise.race([Promise.all([new Promise((r) => { load(); setTimeout(r, 600); const w = setInterval(() => { if (!loading) { clearInterval(w); r(); } }, 200); }), fastSnap(visibleSyms()).catch(() => {})]), new Promise((r) => setTimeout(r, 8000))]).then(done, done); }, { passive: true });
+  })();
   D.addEventListener('touchstart', (e) => { if (e.target.closest && e.target.closest('#car')) touching = 1; }, { passive: true });
   D.addEventListener('touchcancel', () => { touching = 0; if (pend) { pend = 0; render(); } }, { passive: true });
   D.addEventListener('touchend', () => { if (touching) setTimeout(() => { touching = 0; if (pend) { pend = 0; render(); } }, 700); }, { passive: true });
