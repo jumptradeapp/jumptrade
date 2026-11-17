@@ -447,9 +447,10 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   }
   const visibleSyms = () => { const r = route(); let L = IDX.slice(); if (window.V2X && V2X.syms) L = L.concat(V2X.syms(r) || []); if (r.v === 'today' || r.v === 'portfolio') L = L.concat(HOLD_SYMS, wlSyms(), (S.tg || []).map((x) => x.symbol)); if (r.v === 'fund' && S.fundSel) L = L.concat(S.fundSel); if (r.v === 'mtheme' && S.themeSel) L = L.concat(S.themeSel); if (r.v === 'money' && S.moneySyms) L = L.concat(S.moneySyms); if (r.v === 'earnings' && S.earnSyms) L = L.concat(S.earnSyms); if (r.v === 'stock') L.push(r.id); return Array.from(new Set(L)).slice(0, 120); };
   // live prices: ask again as soon as the last answer lands (at most every ~1.5s), so prices track the market instead of waiting on a fixed 5s timer
-  (function pxLoop() { const t0 = Date.now(); const next = () => setTimeout(pxLoop, Math.max(300, 1500 - (Date.now() - t0)));
+  function pxLoop() { const t0 = Date.now(); const next = () => setTimeout(pxLoop, Math.max(300, 1500 - (Date.now() - t0)));
     if (D.hidden || !canLoad()) return setTimeout(pxLoop, 1500); const r = route(); if (r.v === 'movers' || r.v === 'radar' || r.v === 'ask' || r.v === 'alerts') return setTimeout(pxLoop, 1500);
-    fastSnap(visibleSyms()).then(() => { if (!touching) render(); }).catch((e) => { S.err.q = e; }).then(next); })();
+    try { fastSnap(visibleSyms()).then(() => { if (!touching) render(); }).catch((e) => { S.err.q = e; }).then(next); } catch (e) { next(); } }
+  setTimeout(pxLoop, 2000);
   setInterval(() => { const el = D.getElementById('pxage'); if (el && S.t.q) el.textContent = 'Live · updated ' + ago2(S.t.q); }, 1000);
   const pxAge = () => V2_STAGE < 3 ? '' : '<p class="pxage" id="pxage">' + (S.t.q ? 'Live · updated ' + ago2(S.t.q) : 'Loading prices…') + '</p>';
 
