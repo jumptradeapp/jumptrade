@@ -1018,6 +1018,9 @@ async function wbUpkeepRun(env) {
     await vput(env, 'tokcheck', { http: r.status, body: typeof r.data === 'string' ? r.data.slice(0, 200) : r.data, t: Date.now() });
     await vput(env, 'token', { ...tok, status, expires: (r.data && r.data.expires) || tok.expires });
     await vput(env, 'tokstate', { ...st, status, checked: now, http: r.status });
+    if (r.status === 200 && status === 'NORMAL') { const exp = +((r.data && r.data.expires) || tok.expires || 0); // one heads-up push about a day before the login runs out
+      if (exp && exp - now < 36 * 3600000 && exp > now) { const w = await vget(env, 'tokwarn').catch(() => null); const tag = String(tok.token).slice(0, 8);
+        if (!w || w.tag !== tag) { await notifyOwner(env, { title: 'Webull login expires soon', body: 'Live prices and your accounts need a fresh Webull login by ' + new Date(exp).toLocaleString('en-US', { timeZone: 'America/New_York', weekday: 'short', hour: 'numeric', minute: '2-digit' }) + ' ET. Open jumptrade, tap Connect on the portfolio card, and enter the code Webull texts you.', url: '/#portfolio', tag: 'jt-admin' }); await vput(env, 'tokwarn', { tag, t: now }); } } }
     if (r.status === 200 && status !== 'INVALID' && status !== 'EXPIRED') return { status };
   }
   // never create a login on a timer: each unapproved one counts as a failed verification, and 5 lock the key. New logins start only from Connect in owner mode.
@@ -1175,7 +1178,7 @@ async function ownerRoutes(url, req, env) {
         const cost = +x.cost || (+x.cost_price || +x.avg_cost || 0) * q; pos[sym] = [(pos[sym] ? pos[sym][0] : 0) + q, q ? cost / q : 0]; });
       return { name: a.account_label || a.account_class_mapping || 'Account', sub: 'Webull ···' + String(a.account_id).slice(-4), cash: +(bal.total_cash_balance || bal.cash_balance || 0) || 0, mv: +(bal.total_market_value || 0) || 0, pos, posStatus: rp.status };
     }));
-    const v = { at: Date.now(), accounts: out }; OWNACC = { t: Date.now(), v }; return json(v, 200, { 'cache-control': 'no-store' });
+    const v = { at: Date.now(), accounts: out, tokExp: +tk.expires || null }; OWNACC = { t: Date.now(), v }; return json(v, 200, { 'cache-control': 'no-store' });
   }
   return json({ error: 'bad_request' }, 400);
 }

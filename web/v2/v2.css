@@ -1030,3 +1030,5 @@ html[data-x2t="light"] .xsug{background:#fff;border-color:rgba(31,95,184,.25)}ht
 /* app feel: no pinch/double-tap zoom, no rubber-band pull, inputs big enough that iOS doesn't zoom on focus */
 html,body{touch-action:pan-x pan-y;overscroll-behavior:none;-webkit-text-size-adjust:100%}
 input,select,textarea{font-size:16px!important}
+/* bottom nav sits higher, at a comfortable thumb height (above the home bar on iPhone) */
+@media (max-width:1023px){.nav{bottom:max(24px,env(safe-area-inset-bottom,0px))!important}body{padding-bottom:calc(140px + env(safe-area-inset-bottom,0px))!important}.toast{bottom:calc(132px + env(safe-area-inset-bottom,0px))!important}}

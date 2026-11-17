@@ -15,7 +15,7 @@ UA = {'User-Agent': 'JumpTrade admin@survyr.ai', 'Accept-Encoding': 'gzip'}
 FORCE = '--force' in sys.argv
 ONLY = [a.split('=', 1)[1] for a in sys.argv if a.startswith('--only=')]
 # CIKs for funds whose funds.json sources don't name the manager page
-CIK_FIX = {'third-point': 1040273, 'greenlight-capital': 1079114, 'tiger-global-management': 1167483, 'coatue-management': 1135730,
+CIK_FIX = {'balyasny-asset-management': 1218710, 'perceptive-advisors': 1224962, 'gates-foundation-trust': 1166559, 'third-point': 1040273, 'greenlight-capital': 1079114, 'tiger-global-management': 1167483, 'coatue-management': 1135730,
            'viking-global-investors': 1103804, 'lone-pine-capital': 1061165, 'tci-fund-management': 1647251, 'srs-investment-management': 1503174,
            'egerton-capital': 1581811, 'abrams-capital': 1358706, 'cantillon-capital': 1279936, 'eminence-capital': 1107310}
 # funds that file under a different entity name today; looked up on EDGAR by name

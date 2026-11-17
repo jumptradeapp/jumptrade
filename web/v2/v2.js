@@ -960,6 +960,18 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     return rowsBox('<div class="err">Recent upgrades and downgrades didn’t load. Retrying in a minute.</div>') +
       (L.length ? snapNote('From the saved weekly roundup, ' + E(W.week || '') + ' (snapshot, not live).') + rowsBox(L.map((r) => anRow(snapAn(r), false)).join(''), 'margin-top:8px') : '');
   }
+  // Your position (only when your own brokerage accounts are loaded in owner mode): shares, cost, value and gain across accounts
+  function myPos(sym, q) {
+    const L = ACCTS.filter((a) => a.pos && a.pos[sym]); if (!L.length) return '';
+    let sh = 0, cost = 0; L.forEach((a) => { const [n, b] = a.pos[sym]; sh += +n || 0; cost += (+n || 0) * (+b || 0); });
+    if (!sh) return ''; const avg = cost / sh, p = q && q.price, mv = p ? p * sh : null, g = mv != null ? mv - cost : null, gp = g != null && cost ? g / cost * 100 : null, day = q && q.chg != null ? q.chg * sh : null;
+    const cell = (k, v, c) => '<div class="fct"><small>' + k + '</small><b' + (c ? ' class="' + c + '"' : '') + '>' + v + '</b></div>';
+    return lab('layers', 'Your position', '', '') + '<div class="card mypos" style="padding:12px 14px"><div class="fgrid" style="margin:0">' +
+      cell('Shares', (sh % 1 ? sh.toFixed(4).replace(/0+$/, '') : sh.toLocaleString())) + cell('Avg cost', pxs(avg)) +
+      cell('Market value', mv != null ? money(mv) : '—') + cell('Total gain', g != null ? (g >= 0 ? '+' : '') + money(g) + ' (' + pct(gp) + ')' : '—', g != null ? cls(g) : '') +
+      cell('Today', day != null ? (day >= 0 ? '+' : '') + money(day) : '—', day != null ? cls(day) : '') + cell('Accounts', L.length === 1 ? E(L[0].name) : L.length + ' accounts') +
+      '</div>' + (L.length > 1 ? '<small class="note" style="display:block;margin-top:8px">' + L.map((a) => E(a.name) + ': ' + (+a.pos[sym][0]).toLocaleString() + ' sh @ ' + pxs(a.pos[sym][1])).join(' · ') + '</small>' : '') + '</div>';
+  }
   function stockScreen(sym) {
     const sess = curSess(); loadSetup([sym], sess); fastSnap([sym]).then(() => {}).catch(() => {}); loadAnalyst([sym], 90, 'one:' + sym);
     if (!S.tgt[sym]) { S.tgt[sym] = { loading: 1 }; call('get_analyst_target_price', { symbol: sym }).then((t) => { S.tgt[sym] = { t: Date.now(), d: t }; }).catch(() => { S.tgt[sym] = { err: 1 }; }).then(render); }
@@ -984,7 +996,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     loadAnGraphs(sym); const rN = S.rat[sym] && S.rat[sym].d ? ((num(S.rat[sym].d.number)) || null) : null;
     const tgtCard = anTarget(tg, cur, rN || (tg && tg.analyst_count)) + anMix(S.rat[sym]) + anEps(S.eps[sym]);
     return '<div class="wrap">' + backbar(E(sym), 'javascript:history.back()') +
-      '<div class="sth">' + tl(sym, 48) + '<div class="nm"><h1 style="margin:0">' + E(sym) + '</h1><small>' + E(nameOf(sym)) + '</small></div>' + (q ? qv(q.price, q.chg, q.pct) : qv(null)) + '</div>' + (window.V2X && V2X.stockTop ? V2X.stockTop(sym) : '') +
+      '<div class="sth">' + tl(sym, 48) + '<div class="nm"><h1 style="margin:0">' + E(sym) + '</h1><small>' + E(nameOf(sym)) + '</small></div>' + (q ? qv(q.price, q.chg, q.pct) : qv(null)) + '</div>' + (window.V2X && V2X.stockTop ? V2X.stockTop(sym) : '') + myPos(sym, q) +
       ((function () { try { return JSON.parse(localStorage.getItem('jt.v2mode') || '"pro"') === 'simple'; } catch (e) { return false; } })() ? '' : lab('radar', 'Setup', '', '') + (x && x.tag ? setupBox(sym, sess) : x ? '<p class="note">No setup read for this session.</p>' : rowsBox(skel(2), 'padding:14px')) + facts +
       '<p class="note">Updates through the trading day. Float and short interest are reported twice a month. A rules-based read, not advice.</p>') +
       lab('news', 'Why it’s moving', '', '') + '<div class="card" style="padding:12px 14px"><small class="why" style="white-space:normal;color:' + w.c + '">' + E(w.t) + '</small>' + (w.h && w.h.url ? '<a class="srcl" href="' + E(w.h.url) + '" target="_blank" rel="noopener">Open the article</a>' : '') + '</div>' +

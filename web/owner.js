@@ -17,7 +17,7 @@
     V.fastSnap(V.HOLD_SYMS).then(() => V.sparks && V.sparks(V.HOLD_SYMS).catch(() => {})).then(() => V.bars && V.bars(V.HOLD_SYMS)).catch(() => {}).then(R);
   }
   function load() {
-    return api('/api/owner/accounts').then((j) => { if (j.need) { O.err = null; O.need = j; R(); if (j.need === 'approve') setTimeout(() => { if (O.need) load(); }, 5000); return; } O.need = null; O.err = null; O.accounts = j.accounts || []; apply(O.accounts); R(); })
+    return api('/api/owner/accounts').then((j) => { if (j.need) { O.err = null; O.need = j; R(); if (j.need === 'approve') setTimeout(() => { if (O.need) load(); }, 5000); return; } O.need = null; O.err = null; O.tokExp = j.tokExp || null; if (O.tokExp && O.tokExp - Date.now() < 3 * 864e5 && window.V2 && V2.toast) { try { const k = 'jt.tokwarn', d = new Date().toDateString(); if (localStorage.getItem(k) !== d) { localStorage.setItem(k, d); V2.toast('Webull login expires ' + new Date(O.tokExp).toLocaleDateString('en-US', { weekday: 'short' }) + '. Renew it in Settings.'); } } catch (e) {} } O.accounts = j.accounts || []; apply(O.accounts); R(); })
       .catch((e) => { if (e && e.error === 'locked') { O.state = Object.assign({}, O.state, { unlocked: false }); } else O.err = (e && e.message) || 'Your accounts didn’t load.'; R(); });
   }
   function check() {
