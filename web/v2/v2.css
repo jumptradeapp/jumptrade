@@ -668,3 +668,25 @@ html body .card.pglass .ptog *{background:none!important;border:0!important;colo
 html[data-x2t="light"] .nav{background:linear-gradient(180deg,#123563,#0B2244)!important;border:0!important;box-shadow:0 10px 26px rgba(11,34,68,.32)!important}
 html[data-x2t="light"] .ni{color:rgba(255,255,255,.72)!important}
 html[data-x2t="light"] .ni.on{background:linear-gradient(180deg,#E6F1FF,#C4DEFF)!important;box-shadow:none!important}html[data-x2t="light"] .ni.on,html[data-x2t="light"] .ni.on *{color:#0B2244!important}
+
+/* sharpen: one typeface, calmer weights, one radius scale, no decoration */
+html body,html body *:not(svg):not(svg *){font-family:Inter,system-ui,-apple-system,sans-serif!important}
+html body h1{font-size:28px!important;line-height:34px!important;font-weight:650!important;letter-spacing:-.025em!important}
+html[data-x2t] body h1 em,html body h1 em{color:inherit!important}
+html body h2,html body .lab,html body .sh h2{font-weight:600!important;letter-spacing:-.015em!important}
+html body .tmk{font-weight:600!important;letter-spacing:-.02em!important}
+html body .nm b,html body .q b{font-weight:600!important;font-size:16px!important;letter-spacing:-.01em}
+html body .nm small,html body .q small{font-size:12.5px!important}
+html body .q small{font-weight:500!important}
+html body .kick{font-weight:600!important;letter-spacing:-.005em!important;text-transform:none!important}
+html body .glass .pane{display:none!important}
+html body .glass [style*="font-size:21px"]{font-size:19px!important;font-weight:600!important;letter-spacing:-.02em}
+html body .card{border-radius:16px!important}html body .inner,html body .strip,html body .ptog,html body .ptop{border-radius:12px!important}
+html body .xbtn,html body .btn,html body .xin,html body .xsrch,html body .seg{border-radius:10px!important}html body .seg span,html body .seg a{border-radius:8px!important}
+html body .chip{border-radius:999px!important}
+html body .seg span.on,html body .seg a.on,html body .chip.on,html body .btn.pri,html body .xbtn,html body .bdot,html body .dot{box-shadow:none!important}
+html body .card:not(.pglass){box-shadow:none!important}
+html[data-x2t="light"] body .card:not(.pglass){box-shadow:0 1px 2px rgba(16,40,80,.05)!important}
+html body .rows .row+.row{border-top-color:var(--hair)!important}
+html body .tl{border-radius:10px!important}
+html body .sub{font-size:14px!important}
