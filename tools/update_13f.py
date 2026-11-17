@@ -6,7 +6,7 @@ latest 13F-HR, and if it is newer than what funds.json has, it rebuilds the top
 holdings, the quarter-over-quarter changes (new / added / reduced / unchanged) and
 the exits by comparing share counts with the previous quarter's filing.
 """
-import json, re, sys, time, datetime, urllib.request, urllib.error, xml.etree.ElementTree as ET, gzip, io, os
+import json, re, sys, time, datetime, urllib.request, urllib.parse, urllib.error, xml.etree.ElementTree as ET, gzip, io, os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FUNDS = os.path.join(ROOT, 'web', 'funds.json')
@@ -18,6 +18,14 @@ ONLY = [a.split('=', 1)[1] for a in sys.argv if a.startswith('--only=')]
 CIK_FIX = {'third-point': 1040273, 'greenlight-capital': 1079114, 'tiger-global-management': 1167483, 'coatue-management': 1135730,
            'viking-global-investors': 1103804, 'lone-pine-capital': 1061165, 'tci-fund-management': 1647251, 'srs-investment-management': 1503174,
            'egerton-capital': 1581811, 'abrams-capital': 1358706, 'cantillon-capital': 1279936, 'eminence-capital': 1107310}
+# funds that file under a different entity name today; looked up on EDGAR by name
+CIK_NAME = {'greenlight-capital': 'DME Capital Management'}
+NAMES = json.load(open(os.path.join(ROOT, 'tools', 'fund_names.json'))) if os.path.exists(os.path.join(ROOT, 'tools', 'fund_names.json')) else {'names': {}, 'byname': {}}
+
+def cik_by_name(name):
+    raw = get('https://www.sec.gov/cgi-bin/browse-edgar?company=%s&type=13F-HR&dateb=&owner=include&count=40&action=getcompany&output=atom' % urllib.parse.quote(name), js=False).decode('utf-8', 'replace')
+    m = re.search(r'<cik>0*(\d+)</cik>', raw) or re.search(r'CIK=0*(\d+)', raw)
+    return int(m.group(1)) if m else None
 
 _last = [0.0]
 def get(url, js=True, tries=3):
@@ -107,13 +115,18 @@ def map_tickers(cus, rows, cache, sec_titles):
     for c in cus:  # fallback: match the issuer name to SEC's ticker list
         if c in cache: continue
         n = norm(rows[c]['name'])
-        if n in sec_titles: cache[c] = sec_titles[n]
+        if n in NAMES['byname']: cache[c] = NAMES['byname'][n]
+        elif n in sec_titles: cache[c] = sec_titles[n]
 
 TK2T = {}
 def label(tk, r):
     m = re.search(r'\bCL(?:ASS)?\s*([A-C])\b', r['cls'].upper())
+    if tk and tk in NAMES['names']: return NAMES['names'][tk]
     t = TK2T.get(tk) if tk else None
-    if t and not t.isupper(): return t + (' (Class %s)' % m.group(1) if m else '')
+    if t:
+        t = re.sub(r'\s*/[A-Z]{2,3}/?\s*$', '', t).strip()
+        if t.isupper(): t = nicename(t, '')
+        return t + (' (Class %s)' % m.group(1) if m and '(Class' not in t else '')
     return nicename(r['name'], r['cls'])
 
 def build(f, cur, prev, meta, cache, sec_titles):
@@ -150,7 +163,10 @@ def main():
     changed = []; problems = []
     for i, f in enumerate(data['funds']):
         if ONLY and f['slug'] not in ONLY: continue
-        cik = f.get('cik') or CIK_FIX.get(f['slug'])
+        cik = CIK_FIX.get(f['slug']) or f.get('cik')
+        if f['slug'] in CIK_NAME:
+            try: cik = cik_by_name(CIK_NAME[f['slug']]) or cik
+            except Exception as e: problems.append('%s: name lookup failed %s' % (f['slug'], e))
         if not cik:
             m = next((re.search(r'manager/0*(\d+)', u) for u in f.get('src', []) if 'manager/' in u), None)
             cik = int(m.group(1)) if m else None
@@ -159,6 +175,9 @@ def main():
             name, fl = filings(int(cik)); ps = pick(fl)
             if not ps: problems.append(f['slug'] + ': no 13F-HR'); continue
             last = ps[0]
+            qn = lambda q: (lambda m: int(m.group(2)) * 4 + int(m.group(1)) if m else 0)(re.match(r'Q(\d) (\d{4})', q or ''))
+            if qn(qlabel(last['period'])) < qn(f.get('period')):
+                problems.append('%s: EDGAR latest is %s, older than the %s already shown - kept (check the CIK %s)' % (f['slug'], qlabel(last['period']), f.get('period'), cik)); continue
             if not FORCE and f.get('acc') == last['acc']: continue
             if not FORCE and qlabel(last['period']) == f.get('period') and last['filed'] <= f.get('filed', ''): 
                 f['cik'] = int(cik); continue
