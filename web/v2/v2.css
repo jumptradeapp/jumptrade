@@ -844,3 +844,19 @@ html[data-x2t="midnight"] .hero .pglass .ptop{padding:13px 16px 12px!important}
 html[data-x2t="midnight"] .hero .card.pglass.pt2{padding:6px 4px 4px!important}
 html[data-x2t="midnight"] .hero .card.pglass.pt2{padding:4px 2px 2px!important}
 html[data-x2t] .hero .card.pglass{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+/* uniform rhythm on Today: one gap between sections, one gap under titles, one row height, one card padding */
+html[data-x2t] .hero{padding-bottom:12px!important}
+html[data-x2t] .hero+*{margin-top:14px!important}
+.app2 .wrap>.lab{margin:18px 0 8px!important;height:auto!important}
+.app2 .wrap>.lab+.card{margin-top:0!important}
+.app2 .wrap>.card:not(.pglass){border-radius:16px!important}
+.app2 .wrap>.card.rows{padding:2px 14px!important}
+.app2 .wrap>.card.pulse2{padding:12px 14px!important}
+.app2 .wrap>.card.rows .row{min-height:64px!important}
+.app2 .wrap>.card.rows .row.nw{min-height:72px!important}
+.app2 .wrap>.card.rows .wsum2{padding:12px 0 10px}
+
+.pt2k{font-size:14px;font-weight:600;color:#fff;margin-right:10px}.pt2h .acct2{margin-right:auto}
+.pt2 .ptog{margin-top:10px!important;width:100%}
+/* keep the page locked: no sideways drift or rubber-band wobble */
+html,body{overflow-x:hidden;max-width:100%;overscroll-behavior:none}.app2,.wrap{overflow-x:clip}
