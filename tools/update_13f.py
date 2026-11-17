@@ -173,12 +173,19 @@ def main():
         if f['slug'] in CIK_NAME:
             try: cik = cik_by_name(CIK_NAME[f['slug']]) or cik
             except Exception as e: problems.append('%s: name lookup failed %s' % (f['slug'], e))
+        if not cik and f.get('edgar_name'):  # newly added funds: find the filer on EDGAR by its registered name
+            try:
+                cik = cik_by_name(f['edgar_name'])
+                if cik: f['cik'] = int(cik)
+            except Exception as e: problems.append('%s: name lookup failed %s' % (f['slug'], e))
         if not cik:
             m = next((re.search(r'manager/0*(\d+)', u) for u in f.get('src', []) if 'manager/' in u), None)
             cik = int(m.group(1)) if m else None
         if not cik: problems.append(f['slug'] + ': no CIK'); continue
         try:
             name, fl = filings(int(cik)); ps = pick(fl)
+            if f.get('edgar_name') and f['edgar_name'].split()[0].lower().strip('.&') not in name.lower():
+                problems.append('%s: EDGAR name lookup found %s (CIK %s), not the right filer - skipped' % (f['slug'], name, cik)); f.pop('cik', None); continue
             if not ps: problems.append(f['slug'] + ': no 13F-HR'); continue
             last = ps[0]
             qn = lambda q: (lambda m: int(m.group(2)) * 4 + int(m.group(1)) if m else 0)(re.match(r'Q(\d) (\d{4})', q or ''))
