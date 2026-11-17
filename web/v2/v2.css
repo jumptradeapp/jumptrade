@@ -927,3 +927,6 @@ html body .ni span{display:block!important;font-size:10.5px!important;font-weigh
 .row:active,.chip:active,.xbtn:active,.ni:active,.seg a:active,.seg span:active,.fbc:active,.hcard:active,.card.act:active,.fsort button:active,.ptog:active{transform:scale(.97);opacity:.88}
 @media (prefers-reduced-motion:reduce){.row,.chip,.xbtn,.ni{transition:none}.row:active,.chip:active,.xbtn:active,.ni:active{transform:none}}
 .fsort button{border:1px solid var(--hair)!important;border-radius:999px!important;padding:6px 12px!important;min-height:32px!important}.fsort button.on{border-color:transparent!important}
+
+/*desktop stopgap until the full desktop layout: keep the phone layout centered and readable*/
+@media (min-width:900px){html body .app2>.wrap,html body #app>.wrap,html body .wrap{max-width:760px;margin-left:auto;margin-right:auto}}

@@ -1542,6 +1542,6 @@ export default {
     if (url.pathname === '/api/session') { const s2 = await session(true); return json({ cookie: !!s2.cookie, crumb: !!s2.crumb }); }
     if (url.pathname === '/api/tool' && req.method === 'POST') { const tx = await req.text().catch(() => ''); if (tx.length > 65536) return json({ error: { code: 'too_big' } }, 413); let b = {}; try { b = JSON.parse(tx); } catch (e) {} return runTool(b.tool, b.input, ctx, env); }
     if (url.pathname.startsWith('/api/')) return json({ error: { code: 'bad_request', message: 'Unknown endpoint' } }, 404);
-    return env.ASSETS.fetch(req);
+    { const r = await env.ASSETS.fetch(req); if (r.ok && url.searchParams.has('v') && /\.(js|css|png|jpg|svg|webp|woff2?)$/.test(url.pathname)) { const h = new Headers(r.headers); h.set('cache-control', 'public, max-age=31536000, immutable'); return new Response(r.body, { status: r.status, headers: h }); } return r; } // versioned files never change: cache a year
   },
 };

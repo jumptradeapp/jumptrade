@@ -980,6 +980,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const tsc = render.h === location.hash ? Array.from(app.querySelectorAll('.mvt')).map((t) => [t.scrollTop, t.scrollLeft]) : [];
     const hk = D.getElementById('hcar'); const hKeep = hk && lastV === r.v ? hk.scrollLeft : null;
     gid = 0; let html = (VIEW[r.v] || today)();
+    { const tm = /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(html) || /<b class="tbt">([^<]+)<\/b>/.exec(html); const tt = tm ? tm[1].replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').trim() : ''; D.title = r.v === 'today' || !tt ? 'jumptrade' : tt + ' · jumptrade'; }
     // subpages: the big heading already names the page, so the back bar shows only the arrow
     { const tb = /<b class="tbt">([\s\S]*?)<\/b>/.exec(html), h1 = /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(html); if (tb && h1) { const a = tb[1].replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').trim(), b = h1[1].replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').trim(); if (a && a === b) html = html.replace(tb[0], '<b class="tbt"></b>'); } }
     if (r.v !== 'today' && VIEW[r.v]) { const m = /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(html); const bi = html.indexOf('<span class="brand">'); if (m && bi >= 0) { const t = m[1].replace(/<[^>]+>/g, '').trim(); const be = html.indexOf('</span>', bi) + 7; html = html.slice(0, bi) + '<b class="ttl">' + t + '</b>' + html.slice(be); html = html.replace(m[0], ''); } } if (lastV !== r.v) app.innerHTML = html; else morph(app, html);
