@@ -149,12 +149,16 @@
     if (F['#funds']) F['#funds'] = [F['#funds'][0], 'Big funds (13F)', '#funds', 'What 70+ funds own and just bought'];
     if (F['#ask']) F['#ask'] = [F['#ask'][0], 'Ask Jump', '#ask', F['#ask'][3]];
     if (F['#ideas']) F['#ideas'] = [F['#ideas'][0], 'Trade ideas', '#ideas', 'Runners, dip buys, leaders and value in one place'];
-    const G = [['Ideas', ['#ideas', '#live', '#ask']], ['Big money', ['#funds', '#analysts', '#money/options', '#flow', '#insiders', '#buzz']], ['The market', ['#news', '#earnings', '#calendar', '#ipos', '#sectors']],
-      ['Portfolios', ['#mine', '#models', '#analyzer', '#record']], ['Tools', ['#compare', '#calc', '#journal', '#patterns', '#strategies', '#research'], 1], ['You', ['#alerts', '#settings', '#account', '#feedback', '#getapp']]];
+    F['#money/options'] = ['dollar', 'Big money', '#money/options', 'Options bets, Congress trades, shorts, block trades, insiders'];
+    F['#calendar'] = ['cal', 'Calendar', '#calendar', 'Catalysts, earnings and IPOs'];
+    F['#markets'] = ['grid', 'Markets', '#markets', 'Indexes, themes, money flow and sectors'];
+    F['#mine'] = ['pie', 'Built portfolios', '#mine', 'Paper portfolios you and others built'];
+    const G = [['Find ideas', ['#ideas', '#ask']], ['Follow the money', ['#funds', '#money/options', '#analysts']], ['The market', ['#news', '#calendar', '#markets']],
+      ['Portfolios', ['#mine', '#models', '#analyzer', '#record']], ['Tools', ['#live', '#compare', '#calc', '#journal', '#patterns', '#strategies', '#research'], 1], ['You', ['#alerts', '#settings']]];
     return G.map((g) => [g[0], g[1].map((h) => F[h]).filter(Boolean), g[2]]); })();
   X.MENU = MENU;
   function menuScreen() {
-    return wrap(V().backbar('All pages', '#today') + V().head('All pages', 'Everything beyond the tabs below') +
+    return wrap(V().backbar('All pages', '#today') + V().head('All pages', 'Everything in jumptrade') +
       '<a class="xsrch" href="#search">' + ic('search2', 18) + '<span>Search stocks, ETFs and pages</span></a>' +
       MENU.map((g) => { const rows = '<div class="card rows xmenu">' + g[1].map((m) => '<a class="row" href="' + m[2] + '"><span class="aic">' + ic(m[0], 18, 2.1) + '</span><span class="nm"><b>' + m[1] + '</b><small>' + m[3] + '</small></span><span class="chv">' + ic('chev', 18, 2.4) + '</span></a>').join('') + '</div>';
         return g[2] ? '<details class="xmd"><summary class="lab xml">' + g[0] + ' <small>' + g[1].length + '</small></summary>' + rows + '</details>' : '<div class="lab xml">' + g[0] + '</div>' + rows; }).join(''));
@@ -256,7 +260,7 @@
     return wrap(V().backbar('Calendar', '#menu') + V().head('Calendar', 'Catalysts and earnings dates') +
       (j && !j.err ? V().snapNote('Snapshot from ' + E(((j.earnings || {}).generated) || 'the last build') + '. Dates can move; check the company’s release.') : '') +
       '<div style="margin-top:10px">' + V().chipsHTML([['all', 'All'], ['earn', 'Earnings'], ['cat', 'Catalysts']], st.ck, 'data-xck') + '</div>' +
-      V().act('cal', 'Earnings this week, live', 'Day-by-day from Nasdaq’s calendar', '#earnings') +
+
       '<div style="margin-top:6px">' + body + '</div>' + offB('Live economic calendar not connected', 'The snapshot above includes the major macro dates. A live, always-current economic calendar comes from Webull, which isn’t connected yet.'));
   }
 
@@ -642,7 +646,7 @@
   const grd = (v) => (v >= 67 ? 'A' : v >= 50 ? 'B' : v >= 34 ? 'C' : 'D');
   const scCol = (s) => (s >= 58 ? '#5FBF8F' : s > 42 ? '#BBD7F9' : '#E07A7A');
   X.stockExtras = function (sym) {
-    const mode = lsGet('jt.v2mode', 'pro'); const b = bars(sym, 'D', 260); const ib = bars(sym, 'M5', 200); const t = b && !b.err ? tech(b) : null; const dp = b && !b.err && window.DIP ? DIP.analyze(sym, b) : null;
+    const mode = 'pro'; const b = bars(sym, 'D', 260); const ib = bars(sym, 'M5', 200); const t = b && !b.err ? tech(b) : null; const dp = b && !b.err && window.DIP ? DIP.analyze(sym, b) : null;
     const q = V().S.q[sym]; const fc0 = perSym('get_stock_forecast_eps', sym, 43200); const sn = fillSnap(qx(sym), fc0 && !fc0.err ? fc0 : null, t); const price = q ? q.price : t ? t.p : null; const vw = ib && !ib.err ? vwapOf(ib) : null; if (t && price) t.p = price;
     let h = '';
     // technicals
@@ -742,16 +746,15 @@
     const th = lsGet('jt.v2theme', 'midnight'), md = lsGet('jt.v2mode', 'pro'), at = V().AT();
     const opt = (attr, on, L) => '<div class="card rows">' + L.map((x) => '<button class="row xopt' + (x[0] === on ? ' on' : '') + '" ' + attr + '="' + x[0] + '"><span class="nm"><b>' + x[1] + '</b><small>' + x[2] + '</small></span><span class="xrad"></span></button>').join('') + '</div>';
     const num = (k, l, v, suf) => '<label class="xf"><span>' + l + '</span><span class="xfi"><input class="xin" data-xat="' + k + '" inputmode="decimal" value="' + E(String(v)) + '">' + (suf ? '<i>' + suf + '</i>' : '') + '</span></label>';
-    return wrap(V().backbar('Settings', '#menu') + V().head('Settings', 'Look, mode, alerts and app') +
+    const owner = window.JT_OWN && JT_OWN.state && JT_OWN.state.unlocked;
+    return wrap(V().backbar('Settings', '#menu') + V().head('Settings', '') +
       '<div class="lab">Appearance</div><div class="seg xthm">' + THEMES.map((x) => '<button type="button" class="' + (x[0] === th ? 'on' : '') + '" data-xtheme="' + x[0] + '">' + x[1] + '</button>').join('') + '</div>' +
-      '<div class="lab">Mode</div>' + opt('data-xmode', md, [['simple', 'Simple', 'Price, chart, ratings and red flags only'], ['pro', 'Pro', 'Adds technicals, levels, plan and patterns']]) +
-      '<div class="lab">Alerts</div>' + V().act('bell', 'Alerts', window.ALERTS ? 'Phone notifications and the Alerts page' : 'What shows on the Alerts page', '#alertset') +
+      '<div class="lab">Notifications</div>' + V().act('bell', 'Alerts', window.ALERTS ? 'Phone notifications, price alerts and the Alerts page' : 'What shows on the Alerts page', '#alertset') +
+      (owner ? '<div class="lab">Your Webull accounts</div>' + card('<p class="xp">Unlocked on this device for up to 12 hours.' + (JT_OWN.tokExp ? ' Webull login good until ' + E(new Date(JT_OWN.tokExp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })) + '.' : '') + '</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="xbtn ghost" data-own="lock">Lock now</button>' + (JT_OWN.tokExp ? '<button class="xbtn ghost" data-own="connect">Renew Webull login</button>' : '') + '</div><small class="xp">Renewing texts you a code and replaces the current login.</small>') : '') +
+      '<div class="lab">Account</div>' + V().act('shield', 'Account & connections', window.JT_PRIV ? 'Data sources and connections' : 'Sign-in, devices, Webull and data sources', '#account') + V().act('plus', 'Get the app', 'Add jumptrade to your home screen', '#getapp') + V().act('msg', 'Send feedback', 'Report a bug or suggest an idea', '#feedback') +
+      (window.JT_AUTH && JT_AUTH.user && !JT_AUTH.user.owner && !window.JT_PRIV ? card('<p class="xp">Deleting your account removes your name, watchlists, settings and the portfolios you shared. It can’t be undone.</p><button class="xbtn pdel' + (st.adel ? ' on' : '') + '" data-adel="1">' + (st.adel ? 'Tap again to delete your account' : 'Delete my account') + '</button>') : '') +
       '<div class="lab">About</div><div class="card rows"><a class="row" href="#privacy"><span class="nm"><b>Privacy</b><small>What’s kept and who can see it</small></span></a><a class="row" href="#terms"><span class="nm"><b>Terms</b><small>Not investment advice, data accuracy, paper portfolios</small></span></a></div>' +
-      (window.JT_OWN && JT_OWN.state && JT_OWN.state.unlocked ? '<div class="lab">Your accounts</div>' + card('<p class="xp">Your Webull accounts are unlocked on this device for up to 12 hours.</p>' + (JT_OWN.tokExp ? '<p class="xp">Webull login good until ' + E(new Date(JT_OWN.tokExp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })) + '. Renewing sends a code to your phone and replaces the current login.</p>' : '') + '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="xbtn ghost" data-own="lock">Lock now</button>' + (JT_OWN.tokExp ? '<button class="xbtn ghost" data-own="connect">Renew Webull login</button>' : '') + '</div>') : '') +
-      (window.JT_AUTH && JT_AUTH.user && !JT_AUTH.user.owner && !window.JT_PRIV ? '<div class="lab">Account</div>' + card('<p class="xp">Deleting your account removes your name, watchlists, settings and the portfolios you shared. It can’t be undone.</p><button class="xbtn pdel' + (st.adel ? ' on' : '') + '" data-adel="1">' + (st.adel ? 'Tap again to delete your account' : 'Delete my account') + '</button>') : '') +
-      '<div class="lab">Sync &amp; devices</div>' + offB(window.JT_PRIV ? 'Saved in this copy' : 'Follows your account', window.JT_PRIV ? 'Your lists and settings are saved in this private copy.' : 'Your watchlists, journal and settings follow your account on every device you sign in on.') +
-      '<div class="lab">More</div>' + V().act('plus', 'Get the app', 'Add jumptrade to your home screen', '#getapp') + V().act('msg', 'Send feedback', 'Report a bug or suggest an idea', '#feedback') + V().act('shield', 'Account & connections', 'Sign-in, Webull and AI status', '#account') +
-      card('<p class="xp">jumptrade. Market data from public feeds (Yahoo Finance, Nasdaq, NasdaqTrader). Snapshot files are dated where shown. Nothing here is financial advice; setups, ratings and checks are rules-based reads.</p>'));
+      note('jumptrade. ' + (window.JT_PRIV ? 'Your lists and settings are saved in this private copy.' : 'Your watchlists and settings follow your account on every device you sign in on.') + ' Market data from public feeds; snapshot files are dated where shown. Nothing here is financial advice.'));
   }
   function accountScreen() {
     const A = window.JT_AUTH || {}; const wb = once('wbst', 300, () => fetch('/api/wbon', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : { on: false }))); const ai = once('aist', 300, () => fetch('/api/ai/status', { credentials: 'same-origin' }).then((r) => r.json()));

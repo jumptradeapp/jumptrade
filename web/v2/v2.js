@@ -505,6 +505,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     msg: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
     down: '<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+    gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
   });
   const V2_STAGE = 3; // staged rollout on the preview: 1 = Movers, Ask Jump, Funds; 2 = + radar, Markets, earnings; 3 = + alerts, follow the money, 5-second prices
   const ST = { radar: 2, markets: 2, mtheme: 2, earnings: 2, alerts: 3, money: 3 };
@@ -836,8 +837,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
         return '<a class="row" href="#stock/' + encodeURIComponent(r.ticker) + '">' + tl(r.ticker, 38) + '<span class="nm"><b>' + E(r.ticker) + ' <span class="' + (r.action === 'buy' ? 'up' : r.action === 'sell' ? 'dn' : '') + '" style="font-size:12px;font-weight:700;letter-spacing:.06em">' + E(String(r.action || '').toUpperCase()) + '</span></b><small>' + E(r.name) + ' (' + E(r.party) + ', ' + E(r.chamber) + ') · ' + E(r.amount) + '</small><small style="color:' + BL.b3 + '">' + E(nameOf(r.ticker)) + ' · traded ' + E(shortD(r.traded)) + ', filed ' + E(shortD(r.filed)) + '</small></span>' + (x ? qv(x.price, x.chg, x.pct) : qv(null)) + '</a>'; }).join(''), 'margin-top:10px');
     else { const mx = Math.max.apply(null, j.rows.map((r) => r.si)) || 1; body = snapNote('Snapshot · ' + E(shortD(j.updated)) + '. ' + E(j.note || '') ) + rowsBox(j.rows.slice(0, 40).map((r) => { const x = S.q[r.ticker];
         return '<a class="row" href="#stock/' + encodeURIComponent(r.ticker) + '">' + tl(r.ticker, 38) + '<span class="nm"><b>' + E(r.ticker) + '</b><small>' + E(r.name || nameOf(r.ticker)) + '</small><span class="sibar"><i style="width:' + (r.si / mx * 100).toFixed(0) + '%"></i></span><small style="color:' + BL.b3 + '">' + (+r.si).toFixed(1) + '% of float sold short</small></span>' + (x ? qv(x.price, x.chg, x.pct) : qv(null)) + '</a>'; }).join(''), 'margin-top:10px'); }
-    return '<div class="wrap">' + backbar('Follow the money', '#today') + head('Follow the money', 'Big options bets, Congress trades and short interest') +
-      '<div style="margin-top:12px"><div class="seg">' + tabs.map((x) => '<a class="' + (x[0] === k ? 'on' : '') + '" href="#money/' + x[0] + '">' + x[1] + '</a>').join('') + '</div></div><div style="margin-top:12px">' + body + '</div></div>';
+    return '<div class="wrap">' + backbar('Big money', '#today') + head('Big money', 'Options bets, Congress trades, short interest, block trades and insiders') +
+      '<div style="margin-top:12px">' + body + '</div></div>';
   }
 
   // ---------- setup tags + catalyst + per-ticker facts (Movers, radar, stock page) ----------
@@ -925,7 +926,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       const tick = (v, lab, cls, up) => '<g class="' + cls + '"><line x1="' + X(v).toFixed(1) + '" x2="' + X(v).toFixed(1) + '" y1="' + (up ? 22 : 30) + '" y2="' + (up ? 30 : 40) + '"/><text x="' + Math.min(318, Math.max(22, X(v))).toFixed(1) + '" y="' + (up ? 16 : 54) + '" text-anchor="middle">' + lab + '</text></g>';
       range = '<svg class="anrg" viewBox="0 0 340 62" role="img" aria-label="Analyst targets from ' + pxs(lo) + ' to ' + pxs(hi) + ', average ' + pxs(mean) + (cur ? ', price now ' + pxs(cur) : '') + '">' +
         '<rect x="' + X(lo).toFixed(1) + '" y="26" width="' + (X(hi) - X(lo)).toFixed(1) + '" height="8" rx="4" class="bar"/>' +
-        '<text x="' + X(lo).toFixed(1) + '" y="54" class="end" text-anchor="start">Low ' + pxs(lo) + '</text><text x="' + X(hi).toFixed(1) + '" y="54" class="end" text-anchor="end">High ' + pxs(hi) + '</text>' +
+        (X(hi) - X(lo) > 150 ? '<text x="' + X(lo).toFixed(1) + '" y="54" class="end" text-anchor="start">Low ' + pxs(lo) + '</text><text x="' + X(hi).toFixed(1) + '" y="54" class="end" text-anchor="end">High ' + pxs(hi) + '</text>' : '<text x="' + Math.min(250, Math.max(90, (X(lo) + X(hi)) / 2)).toFixed(1) + '" y="54" class="end" text-anchor="middle">Range ' + pxs(lo) + ' – ' + pxs(hi) + '</text>') +
         tick(mean, 'Avg ' + pxs(mean), 'avg', true) + (cur ? '<circle cx="' + X(cur).toFixed(1) + '" cy="30" r="6" class="now"/><text x="' + Math.min(318, Math.max(22, X(cur))).toFixed(1) + '" y="16" text-anchor="middle" class="nowt">' + (Math.abs(X(cur) - X(mean)) < 70 ? '' : 'Now ' + pxs(cur)) + '</text>' : '') + '</svg>';
     }
     return '<div class="card anc"><div class="ancH"><div><small>Street target' + (n ? ' · ' + n + ' analysts' : '') + '</small><b>' + pxs(mean) + '</b></div>' +
@@ -996,15 +997,15 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     loadAnGraphs(sym); const rN = S.rat[sym] && S.rat[sym].d ? ((num(S.rat[sym].d.number)) || null) : null;
     const tgtCard = anTarget(tg, cur, rN || (tg && tg.analyst_count)) + anMix(S.rat[sym]) + anEps(S.eps[sym]);
     return '<div class="wrap">' + backbar(E(sym), 'javascript:history.back()') +
-      '<div class="sth">' + tl(sym, 48) + '<div class="nm"><h1 style="margin:0">' + E(sym) + '</h1><small>' + E(nameOf(sym)) + '</small></div>' + (q ? qv(q.price, q.chg, q.pct) : qv(null)) + '</div>' + (window.V2X && V2X.stockTop ? V2X.stockTop(sym) : '') + myPos(sym, q) +
-      ((function () { try { return JSON.parse(localStorage.getItem('jt.v2mode') || '"pro"') === 'simple'; } catch (e) { return false; } })() ? '' : lab('radar', 'Setup', '', '') + (x && x.tag ? setupBox(sym, sess) : x ? '<p class="note">No setup read for this session.</p>' : rowsBox(skel(2), 'padding:14px')) + facts +
+      '<div class="sth">' + tl(sym, 48) + '<div class="nm"><h1 style="margin:0">' + E(sym) + '</h1><small>' + E(nameOf(sym)) + '</small></div>' + (q ? qv(q.price, q.chg, q.pct) : qv(null)) + '</div>' + '<div class="stg2"><div class="stL">' + (window.V2X && V2X.stockTop ? V2X.stockTop(sym) : '') + myPos(sym, q) +
+      (false ? '' : lab('radar', 'Setup', '', '') + (x && x.tag ? setupBox(sym, sess) : x ? '<p class="note">No setup read for this session.</p>' : rowsBox(skel(2), 'padding:14px')) + facts +
       '<p class="note">Updates through the trading day. Float and short interest are reported twice a month. A rules-based read, not advice.</p>') +
-      lab('news', 'Why it’s moving', '', '') + '<div class="card" style="padding:12px 14px"><small class="why" style="white-space:normal;color:' + w.c + '">' + E(w.t) + '</small>' + (w.h && w.h.url ? '<a class="srcl" href="' + E(w.h.url) + '" target="_blank" rel="noopener">Open the article</a>' : '') + '</div>' +
+      '</div><div class="stR">' + lab('news', 'Why it’s moving', '', '') + '<div class="card" style="padding:12px 14px"><small class="why" style="white-space:normal;color:' + w.c + '">' + E(w.t) + '</small>' + (w.h && w.h.url ? '<a class="srcl" href="' + E(w.h.url) + '" target="_blank" rel="noopener">Open the article</a>' : '') + '</div>' +
       lab('activity', 'Analyst ratings', 'All calls', '#analysts') + tgtCard +
       (window.JT_PRIV && an && an.err ? '' : !an || (!rows && !an.err) ? rowsBox(skel(3), 'padding:14px') : an.err ? anFallback(sym) : rows.length ? rowsBox(rows.slice(0, S.anAll ? 40 : 6).map((a) => anRow(a, false)).join('')) + (rows.length > 6 && !S.anAll ? '<p class="note"><a href="#" id="anall" style="color:' + BL.b2 + '">Show all ' + rows.length + ' calls</a></p>' : '') : rowsBox('<div class="err">No analyst actions in the last 90 days.</div>')) +
       (an && an.t ? '<p class="note">Source: Yahoo Finance analyst history, checked ' + ago2(an.t) + '. Implied upside uses the live price.</p>' : '') +
       (window.V2X && V2X.stockExtras ? V2X.stockExtras(sym) : '') +
-      '</div>';
+      '</div></div></div>';
   }
 
   // ---------- analyst feed ----------
@@ -1089,9 +1090,23 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     { const tm = /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(html) || /<b class="tbt">([^<]+)<\/b>/.exec(html); const tt = tm ? tm[1].replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').trim() : ''; D.title = r.v === 'today' || !tt ? 'jumptrade' : tt + ' · jumptrade'; }
     // subpages: the big heading already names the page, so the back bar shows only the arrow
     { const tb = /<b class="tbt">([\s\S]*?)<\/b>/.exec(html), h1 = /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(html); if (tb && h1) { const a = tb[1].replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').trim(), b = h1[1].replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').trim(); if (a && a === b) html = html.replace(tb[0], '<b class="tbt"></b>'); } }
+    { const GRP = [
+        [['#calendar', 'Catalysts', 'xcalendar'], ['#earnings', 'Earnings', 'earnings'], ['#ipos', 'IPOs', 'xipos']],
+        [['#money/options', 'Options', 'money:options money:'], ['#money/congress', 'Congress', 'money:congress'], ['#money/shorts', 'Shorts', 'money:shorts'], ['#flow', 'Block trades', 'xflow'], ['#insiders', 'Insiders', 'xinsiders'], ['#buzz', 'Buzz', 'xbuzz']],
+        [['#ideas', 'All ideas', 'xideas'], ['#radar', 'Runners', 'radar'], ['#dips', 'Dip buys', 'xdips'], ['#leaders', 'Leaders', 'xleaders'], ['#value', 'Value', 'xvalue']],
+        [['#markets', 'Overview', 'markets'], ['#sectors', 'Sectors', 'xsectors']]];
+      const key = r.v === 'money' ? 'money:' + (r.id || '') : r.v; const g = GRP.find((G) => G.some((t) => t[2].split(' ').indexOf(key) >= 0));
+      if (g && !(r.v === 'xinsiders' && r.id)) { const ti = html.indexOf('<div class="top'); const te = ti >= 0 ? html.indexOf('</div></div>', ti) : -1;
+        if (te > 0) html = html.slice(0, te + 12) + '<div class="gtabs" role="tablist">' + g.map((t) => { const on = t[2].split(' ').indexOf(key) >= 0; return '<a role="tab" class="gt' + (on ? ' on' : '') + '" href="' + t[0] + '"' + (on ? ' aria-selected="true"' : '') + '>' + t[1] + '</a>'; }).join('') + '</div>' + html.slice(te + 12); } }
     if (r.v !== 'today' && VIEW[r.v]) { const m = /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(html); const bi = html.indexOf('<span class="brand">'); if (m && bi >= 0) { const t = m[1].replace(/<[^>]+>/g, '').trim(); const be = html.indexOf('</span>', bi) + 7; html = html.slice(0, bi) + '<b class="ttl">' + t + '</b>' + html.slice(be); html = html.replace(m[0], ''); } } if (lastV !== r.v) app.innerHTML = html; else morph(app, html);
     app.querySelectorAll('.mvt').forEach((t, i) => { if (tsc[i]) { t.scrollTop = tsc[i][0]; t.scrollLeft = tsc[i][1]; } }); render.h = location.hash;
     let navOn = { today: 0, movers: 1, radar: 1, stock: 1, markets: 2, mtheme: 2, earnings: 2, portfolio: 4, funds: 4, fund: 4 }[r.v]; if (navOn == null && window.V2X) navOn = V2X.nav[r.v];
+    if (DESK.matches) { // desktop: a full sidebar with search, every section, and settings at the bottom
+      const MORE = [['zap', 'Trade ideas', '#ideas', 'xideas radar xdips xleaders xvalue'], ['news', 'News', '#news', 'xnews'], ['cal', 'Calendar', '#calendar', 'xcalendar earnings xipos'], ['bank', 'Funds & 13Fs', '#funds', 'funds fund'], ['activity', 'Analyst calls', '#analysts', 'analysts'], ['dollar', 'Big money', '#money/options', 'money xflow xinsiders xbuzz'], ['bell', 'Alerts', '#alerts', 'alerts'], ['grid', 'Tools', '#menu', 'xmenu xcompare xcalc xjournal xpatterns xstrategies xresearch xlive xrecord xanalyzer xask ask']];
+      const mainOn = { today: 0, movers: 1, markets: 2, mtheme: 2, xsectors: 2, xsearch: -1, xwatch: 3, portfolio: 4, connect: 4, xmine: 4, xbuild: 4, xmodels: 4, xanalyzer: 4, xjournal: 4 }[r.v];
+      const item = (x, on) => '<a class="ni' + (on ? ' on' : '') + '" href="' + x[2] + '"' + (on ? ' aria-current="page"' : '') + '>' + ic(x[0], 20, 2.0) + '<span>' + x[1] + '</span>' + (x[1] === 'Alerts' && alertCount() ? '<em class="nbadge">' + alertCount() + '</em>' : '') + '</a>';
+      morph(nav, '<a class="nsrch" href="#search">' + ic('search2', 17, 2.2) + '<span>Search stocks</span><kbd>/</kbd></a>' + NAVI.map((x, i) => item(x, i === mainOn)).join('') + '<div class="nsep">Explore</div>' + MORE.map((x) => item(x, x[3].split(' ').indexOf(r.v) >= 0)).join('') + '<div class="nfill"></div>' + item(['gear', 'Settings', '#settings'], /^x(settings|alertset|account|feedback|getapp|privacy|terms)$/.test(r.v)));
+    } else
     morph(nav, NAVI.map((x, i) => '<a class="ni' + (i === navOn ? ' on' : '') + '" href="' + x[2] + '" aria-label="' + x[1] + '"' + (i === navOn ? ' aria-current="page"' : '') + '>' + ic(x[0], 21, 2.0) + '<span>' + x[1] + '</span></a>').join(''));
     nav.style.display = r.v === 'connect' ? 'none' : '';
     if (!D.querySelector('.scrim')) { const s = D.createElement('div'); s.className = 'scrim'; D.body.insertBefore(s, nav); }
@@ -1140,6 +1155,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   // keyboard: tappable spans and chips act like buttons (focusable, Enter/Space)
   (function () { let q = 0; const fix = () => { q = 0; D.querySelectorAll('[role="button"]:not([tabindex])').forEach((el) => { el.tabIndex = 0; }); };
     try { new MutationObserver(() => { if (!q) q = requestAnimationFrame(fix); }).observe(D.body, { childList: true, subtree: true }); } catch (e) {}
+    D.addEventListener('keydown', (e) => { const tg = e.target && e.target.tagName; if ((e.key === '/' || (e.key === 'k' && (e.metaKey || e.ctrlKey))) && !/INPUT|TEXTAREA|SELECT/.test(tg || '')) { e.preventDefault(); location.hash = 'search'; setTimeout(() => { const q = D.getElementById('xq'); if (q) q.focus(); }, 80); } });
     D.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.getAttribute && e.target.getAttribute('role') === 'button' && e.target.tagName !== 'BUTTON') { e.preventDefault(); e.target.click(); } }); })();
   try { history.scrollRestoration = 'manual'; } catch (e) {} // every page opens at the top, even going back
   window.addEventListener('hashchange', () => { touching = 0; pend = 0; if (D.activeElement && D.activeElement.blur) D.activeElement.blur(); render(); });
