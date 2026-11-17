@@ -1112,6 +1112,31 @@ async function aiCall(env, system, user, maxTokens) {
 const aiKey = (env) => { if (!env.ANTHROPIC_API_KEY) { const k = Object.keys(env).find((x) => x.trim().toUpperCase() === 'ANTHROPIC_API_KEY'); if (k) env.ANTHROPIC_API_KEY = String(env[k]).trim(); } return !!env.ANTHROPIC_API_KEY; };
 const BH = { wbCall: (...a) => wbCall(...a), aiCall: (...a) => aiCall(...a), vget: (...a) => vget(...a), vput: (...a) => vput(...a), vlease: (...a) => vlease(...a), etNow: () => etNow() };
 // owner-only email controls: who gets the brief, and a "send a test now" button in Admin
+// invite requests from the landing page: list, send an invite (creates the link and emails it), dismiss. Owner only.
+async function inviteReqRoutes(url, req, env) {
+  const w = await sessionFrom(req, env, vget).catch(() => null); if (!w || !w.u.owner) return json({ error: 'auth' }, 401);
+  const R = (await vget(env, 'invite_req')) || [];
+  if (req.method === 'GET') return json({ list: R.slice(0, 200).map((x) => ({ t: x.t, name: x.name, email: x.email, note: x.note, status: x.status || 'new', invited: x.invited || null, mailed: x.mailed })) });
+  let b = {}; try { b = JSON.parse((await req.text()).slice(0, 2000)); } catch (e) {}
+  const r = R.find((x) => x.email.toLowerCase() === String(b.email || '').toLowerCase()); if (!r) return json({ error: 'not_found' }, 404);
+  if (url.pathname === '/api/admin/invreq/dismiss') { r.status = 'dismissed'; await vput(env, 'invite_req', R); return json({ ok: true }); }
+  if (url.pathname === '/api/admin/invreq/send') {
+    const a = crypto.getRandomValues(new Uint8Array(18)); const code = btoa(String.fromCharCode(...a)).replace(/[^A-Za-z0-9]/g, 'z').slice(0, 24);
+    const h = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code)))).map((x) => x.toString(16).padStart(2, '0')).join('').slice(0, 16);
+    const I = (await vget(env, 'invites')) || {}; I[h] = { label: r.name + ' (requested)', created: Date.now(), exp: Date.now() + 14 * 864e5 }; await vput(env, 'invites', I);
+    const link = 'https://jumptrade.app/#invite=' + code; const nm = String(r.name).replace(/[<>&"]/g, '');
+    const html = '<!doctype html><html><body style="margin:0;background:#ffffff;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#0B1B33"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;padding:28px 22px"><tr><td>' +
+      '<div style="background:#04122A;border-radius:14px;padding:18px 20px"><img src="https://jumptrade.app/v2/img/email-logo.png" alt="jumptrade" height="33" style="display:block;height:33px"></div>' +
+      '<h1 style="font-size:24px;margin:26px 0 8px">You’re in, ' + nm + '.</h1><p style="font-size:16px;line-height:24px;margin:0 0 20px;color:#33445C">Here’s your invite to the jumptrade beta: live movers and why they’re moving, what the big funds just bought, and paper portfolios you can track.</p>' +
+      '<a href="' + link + '" style="display:inline-block;background:#1E4F94;color:#ffffff;text-decoration:none;font-weight:600;font-size:16px;padding:14px 22px;border-radius:12px">Join jumptrade</a>' +
+      '<p style="font-size:13px;line-height:19px;color:#6B7A90;margin:22px 0 0">The link works once, for you, and expires in two weeks. On iPhone, open it in Safari, then Share → Add to Home Screen.</p><p style="font-size:12px;color:#8A97A8;margin:18px 0 0">Market data for research. Not investment advice.</p></td></tr></table></body></html>';
+    const text = 'You’re in, ' + nm + '. Join the jumptrade beta: ' + link + '\nThe link works once and expires in two weeks.';
+    const m = await sendMail(env, [r.email], { subject: 'Your jumptrade invite', html, text }).catch((e) => ({ ok: false, error: String(e) }));
+    r.status = 'invited'; r.invited = Date.now(); r.mailed = !!m.ok; await vput(env, 'invite_req', R);
+    return json({ ok: true, mailed: !!m.ok, mailError: m.ok ? null : m.error, link });
+  }
+  return json({ error: 'bad_request' }, 400);
+}
 async function mailRoutes(url, req, env) {
   const w = await sessionFrom(req, env, vget).catch(() => null); if (!w || !w.u.owner) return json({ error: 'auth' }, 401);
   const keyOn = !!(env.RESEND_API_KEY || Object.keys(env).find((x) => x.trim().toUpperCase() === 'RESEND_API_KEY'));
@@ -1469,6 +1494,7 @@ export default {
       if (req.method === 'PUT' || req.method === 'POST') { const txt = await req.text(); if (txt.length > 40000) return json({ error: { code: 'too_big' } }, 413); let b; try { b = JSON.parse(txt); } catch (e) { return json({ error: { code: 'bad_request' } }, 400); }
         if (!b || typeof b.data !== 'object') return json({ error: { code: 'bad_request' } }, 400); const cur = await vget(env, k); if (cur && cur.t > (+b.t || 0)) return json(cur); await vput(env, k, { t: +b.t || Date.now(), data: b.data }); return json({ ok: true, t: +b.t }); }
     }
+    if (url.pathname.indexOf('/api/admin/invreq') === 0) return inviteReqRoutes(url, req, env);
     if (url.pathname.indexOf('/api/admin/mail') === 0) { const r = await mailRoutes(url, req, env); if (r) return r; }
     if (url.pathname.indexOf('/api/auth/') === 0 || url.pathname.indexOf('/api/admin/') === 0) { const r = await authRoutes(url, req, env, ctx, { vget, vput, json, subId, notifyOwner: (m) => notifyOwner(env, m), lease: (k, ms) => vlease(env, k, ms), release: (k, id) => vrelease(env, k, id) }); if (r) return r; }
     if (url.pathname === '/api/moverwhy') { const W = (await vget(env, 'mwhy')) || { m: {} }; const m = {}; Object.entries(W.m || {}).forEach((e) => { const v = e[1]; m[e[0]] = { v: v.v, kind: v.kind, h: v.h, fresh: v.fresh || null, seen: v.seen }; }); return json({ payload: { t: W.t || 0, session: W.session, m } }); }

@@ -132,7 +132,7 @@
   D.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-lpdel]'); if (!b) return; const v = LS(); const it = v.lists.find((x) => x.id === b.dataset.lpdel); if (!it || !confirm('Delete “' + it.name + '”?')) return; v.lists = v.lists.filter((x) => x.id !== it.id); v.active = 'app:main'; lsSet('jt.lists', v); mirror(wlFull()); R(); });
 
   // ---------- menu: every page, grouped like the classic menu ----------
-  const MENU = [
+  const MENU0 = [
     ['Main', [['home', 'Today', '#today', 'Your day at a glance'], ['trend', 'Top movers', '#movers', 'Biggest % moves, live'], ['star', 'Watchlist', '#watch', 'Your list, every stock'], ['search2', 'Search', '#search', 'Any US stock or ETF']]],
     ['Find trade ideas', [['zap', 'All ideas', '#ideas', 'Runners, dips and leaders together'], ['radar', 'Runners', '#radar', 'Stocks starting to run'], ['activity', 'Live analysis', '#live', 'Technicals for any ticker'], ['down', 'Dip buys', '#dips', 'Strong stocks pulling back'], ['flame', 'Leaders', '#leaders', 'Near highs, above key averages'], ['scale', 'Value', '#value', 'Cheap vs. earnings and targets'], ['layers', 'Build a portfolio', '#build', 'From a theme and an amount']]],
     ['Follow the big money', [['dollar', 'Money flow', '#flow', 'Big block trades today'], ['shield', 'Insiders', '#insiders', 'Execs buying and selling (SEC Form 4)'], ['target', 'Unusual options', '#money/options', 'Large options bets'], ['bank', 'Congress trades', '#money/congress', 'What lawmakers traded'], ['down', 'Short interest', '#money/shorts', 'Most-shorted stocks'], ['msg', 'Analyst ratings', '#analysts', 'Upgrades, downgrades, targets'], ['flame', 'Buzz', '#buzz', 'What traders are talking about']]],
@@ -140,12 +140,22 @@
     ['Go deeper', [['pie', 'Model portfolios', '#models', 'Rules-based ETF models'], ['target', 'Track record', '#record', 'How past picks did'], ['news', 'Research', '#research', 'Long reads'], ['scale', 'Compare', '#compare', 'Two stocks side by side'], ['activity', 'Pattern guide', '#patterns', 'Chart and candle patterns'], ['dollar', 'Position sizer', '#calc', 'Shares from your risk'], ['info', 'Trade journal', '#journal', 'Log trades, see your stats'], ['grid', 'Portfolio analyzer', '#analyzer', 'Mix, risk and overlap'], ['refresh', 'Strategies', '#strategies', 'Systematic strategies'], ['spark', 'Ask JumpTrade', '#ask', 'Questions in plain English']]],
     ['You', [['pie', 'Portfolio', '#portfolio', 'Accounts and holdings'], ['bell', 'Alerts', '#alerts', 'What moved, and alert settings'], ['shield', 'Account', '#account', 'Sign-in and connections'], ['menu', 'Settings', '#settings', 'Look, mode, alerts, app'], ['msg', 'Send feedback', '#feedback', 'Bugs and ideas'], ['plus', 'Get the app', '#getapp', 'Add JumpTrade to your home screen'], ['link', 'Classic app', '/classic.html#home', 'The original JumpTrade']]],
   ];
+  // the menu, trimmed: the five bottom-tab pages aren't repeated here, near-duplicates live inside All ideas, and small tools fold away
+  const MENU = (function () { const F = {}; MENU0.forEach((g) => g[1].forEach((m) => { F[m[2]] = m; }));
+    F['#mine'] = ['pie', 'Built portfolios', '#mine', 'Paper portfolios everyone has built'];
+    F['#money/options'] = ['bank', 'Follow the money', '#money/options', 'Big options bets, Congress trades, short interest'];
+    if (F['#funds']) F['#funds'] = [F['#funds'][0], 'Big funds (13F)', '#funds', 'What 70+ funds own and just bought'];
+    if (F['#ask']) F['#ask'] = [F['#ask'][0], 'Ask Jump', '#ask', F['#ask'][3]];
+    if (F['#ideas']) F['#ideas'] = [F['#ideas'][0], 'Trade ideas', '#ideas', 'Runners, dip buys, leaders and value in one place'];
+    const G = [['Ideas', ['#ideas', '#live', '#ask']], ['Big money', ['#funds', '#analysts', '#money/options', '#flow', '#insiders', '#buzz']], ['The market', ['#news', '#earnings', '#calendar', '#ipos', '#sectors']],
+      ['Portfolios', ['#mine', '#models', '#analyzer', '#record']], ['Tools', ['#compare', '#calc', '#journal', '#patterns', '#strategies', '#research'], 1], ['You', ['#alerts', '#settings', '#account', '#feedback', '#getapp']]];
+    return G.map((g) => [g[0], g[1].map((h) => F[h]).filter(Boolean), g[2]]); })();
   X.MENU = MENU;
   function menuScreen() {
-    return wrap(V().backbar('All pages', '#today') + V().head('All pages', 'Everything in JumpTrade') +
+    return wrap(V().backbar('All pages', '#today') + V().head('All pages', 'Everything beyond the tabs below') +
       '<a class="xsrch" href="#search">' + ic('search2', 18) + '<span>Search stocks, ETFs and pages</span></a>' +
-      MENU.map((g) => '<div class="lab xml">' + g[0] + '</div><div class="card rows xmenu">' + g[1].map((m) => '<a class="row" href="' + m[2] + '"><span class="aic">' + ic(m[0], 18, 2.1) + '</span><span class="nm"><b>' + m[1] + '</b><small>' + m[3] + '</small></span><span class="chv">' + ic('chev', 18, 2.4) + '</span></a>').join('') + '</div>').join('') +
-      note('Every page in one place.'));
+      MENU.map((g) => { const rows = '<div class="card rows xmenu">' + g[1].map((m) => '<a class="row" href="' + m[2] + '"><span class="aic">' + ic(m[0], 18, 2.1) + '</span><span class="nm"><b>' + m[1] + '</b><small>' + m[3] + '</small></span><span class="chv">' + ic('chev', 18, 2.4) + '</span></a>').join('') + '</div>';
+        return g[2] ? '<details class="xmd"><summary class="lab xml">' + g[0] + ' <small>' + g[1].length + '</small></summary>' + rows + '</details>' : '<div class="lab xml">' + g[0] + '</div>' + rows; }).join(''));
   }
 
   // ---------- search ----------
@@ -156,7 +166,7 @@
     const U = q.toUpperCase(), lq = q.toLowerCase(); const ex = [], pre = [], nmh = [];
     j.forEach((r) => { if (r[0] === U) ex.push(r); else if (r[0].indexOf(U) === 0) pre.push(r); else if (String(r[1]).toLowerCase().indexOf(lq) >= 0) nmh.push(r); });
     const L = ex.concat(pre.sort((a, b) => a[0].length - b[0].length), nmh).slice(0, 30);
-    const pages = []; MENU.forEach((g) => g[1].forEach((m) => { if (m[1].toLowerCase().indexOf(lq) >= 0 || m[3].toLowerCase().indexOf(lq) >= 0) pages.push(m); }));
+    const pages = []; MENU0.forEach((g) => g[1].forEach((m) => { if (m[1].toLowerCase().indexOf(lq) >= 0 || m[3].toLowerCase().indexOf(lq) >= 0) pages.push(m); }));
     return (L.length ? '<div class="lab">Stocks &amp; ETFs</div><div class="card rows">' + L.map((r) => '<a class="row" href="#stock/' + encodeURIComponent(r[0]) + '" data-xrec="' + E(r[0]) + '">' + V().tl(r[0], 30) + '<span class="nm"><b>' + E(r[0]) + '</b><small>' + E(r[1]) + (r[2] ? ' · ' + E(r[2]) : '') + '</small></span><span class="chv">' + ic('chev', 18, 2.4) + '</span></a>').join('') + '</div>' : '') +
       (pages.length ? '<div class="lab">Pages</div><div class="card rows">' + pages.slice(0, 6).map((m) => '<a class="row" href="' + m[2] + '"><span class="aic">' + ic(m[0], 18, 2.1) + '</span><span class="nm"><b>' + m[1] + '</b><small>' + m[3] + '</small></span></a>').join('') + '</div>' : '') +
       (!L.length && !pages.length ? V().rowsBox(errB('Nothing matches “' + E(q) + '”.')) : '');

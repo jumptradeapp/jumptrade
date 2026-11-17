@@ -123,7 +123,7 @@
     const w = D.getElementById('jtAdmin'); if (!w) return; const d = AD.data;
     const cnt = d ? { activity: d.act.filter((a) => isNew(a.t)).length, testers: d.users.filter((u) => !u.owner).length, feedback: d.feedback.length, invites: d.invites.filter((i) => !i.used && !i.off).length } : {};
     const newFb = d ? d.feedback.filter((f) => isNew(f.t)).length : 0;
-    const tabs = [['activity', 'Activity', cnt.activity || ''], ['testers', 'Testers', cnt.testers || ''], ['feedback', 'Feedback', newFb || cnt.feedback || ''], ['invites', 'Invites', ''], ['errors', 'Errors', (d.errors || []).filter((x) => isNew(x.t)).length || ''], ['emails', 'Emails', '']];
+    const tabs = [['activity', 'Activity', cnt.activity || ''], ['testers', 'Testers', cnt.testers || ''], ['feedback', 'Feedback', newFb || cnt.feedback || ''], ['requests', 'Requests', AD.reqs && AD.reqs.list ? AD.reqs.list.filter((x) => x.status === 'new').length || '' : ''], ['invites', 'Invites', ''], ['errors', 'Errors', (d.errors || []).filter((x) => isNew(x.t)).length || ''], ['emails', 'Emails', '']];
     let body = '';
     if (!d) body = AD.err ? '<div class="empty"><b>Couldn’t load</b><span>Check your connection.</span></div>' : '<div class="skel" style="height:60vh"></div>';
     else if (AD.tab === 'activity') body = d.act.length ? '<div class="adList">' + d.act.map((a) => '<div class="adRow' + (isNew(a.t) ? ' nw' : '') + '"><i class="adI ' + (/^(join|device|visit)$/.test(a.type) ? a.type : '') + '"></i><span><b>' + esc2(a.name) + '</b> ' + (a.type === 'join' ? 'joined the beta' : a.type === 'device' ? 'added a device' : 'opened the app') + (a.dev ? ' · ' + esc2(a.dev) : '') + '</span><small>' + ago(a.t) + '</small></div>').join('') + '</div>' : '<div class="empty"><b>No activity yet</b><span>Send an invite from the Invites tab.</span></div>';
@@ -132,6 +132,13 @@
         '<div class="adStats"><div><b>' + u.visits + '</b><span>visits</span></div><div><b>' + u.week + '</b><span>this week</span></div><div><b>' + u.activeDays + '</b><span>days used</span></div></div>' +
         '<div class="adUm">Joined ' + when(u.created) + (u.devs.length ? ' · ' + esc2(u.devs.join(', ')) : '') + (u.inv ? ' · invite “' + esc2(u.inv) + '”' : '') + '</div>' +
         '<button class="adBtn ghost" data-adu="' + u.uid + '" data-off="' + (u.off ? 0 : 1) + '">' + (u.off ? 'Turn access back on' : 'Turn off access') + '</button></div>').join('') + '</div>' : '<div class="empty"><b>No testers yet</b><span>Create an invite and send it to someone.</span></div>'; }
+    else if (AD.tab === 'requests') { const Q = AD.reqs; if (!Q) { api('/api/admin/invreq').then((r) => { AD.reqs = r; paintAdmin(); }).catch(() => { AD.reqs = { err: 1 }; paintAdmin(); }); body = '<div class="skel" style="height:40vh"></div>'; }
+      else if (Q.err) body = '<div class="empty"><b>Couldn’t load</b><span>Check your connection.</span></div>';
+      else if (!Q.list.length) body = '<div class="empty"><b>No requests yet</b><span>People who ask for an invite on the landing page show up here.</span></div>';
+      else body = '<div class="adList">' + Q.list.map((x) => '<div class="adF' + (x.status === 'new' ? ' nw' : '') + '"><div class="adFm"><b class="k ' + (x.status === 'invited' ? 'idea' : x.status === 'dismissed' ? 'other' : 'ux') + '">' + (x.status === 'invited' ? 'Invited' : x.status === 'dismissed' ? 'Dismissed' : 'New') + '</b><span>' + esc2(x.name) + ' · ' + ago(x.t) + '</span></div>' +
+        '<p><b>' + esc2(x.email) + '</b>' + (x.note ? '<br>' + esc2(x.note) : '') + (x.status === 'invited' ? '<br><small>' + (x.mailed ? 'Invite emailed ' : 'Invite created ') + ago(x.invited) + '</small>' : '') + '</p>' +
+        (x.status === 'new' ? '<div style="display:flex;gap:8px;margin-top:8px"><button class="adBtn" data-adrq="' + esc2(x.email) + '">Send invite</button><button class="adBtn ghost" data-adrqx="' + esc2(x.email) + '">Dismiss</button></div>' : '') +
+        (AD.reqOut && AD.reqOut[x.email] ? '<p class="adOut">' + AD.reqOut[x.email] + '</p>' : '') + '</div>').join('') + '</div>'; }
     else if (AD.tab === 'emails') { const M = AD.mail; if (!M) { api('/api/admin/mail').then((r) => { AD.mail = r; paintAdmin(); }).catch(() => { AD.mail = { err: 1 }; paintAdmin(); }); body = '<div class="skel" style="height:40vh"></div>'; }
       else if (M.err) body = '<div class="empty"><b>Couldn’t load</b><span>Check your connection.</span></div>';
       else body = '<div class="adSet"><div class="adSetR"><span><b>Morning brief</b><small>Sent market days at 8:45 AM ET from JUMPTRADE &lt;brief@jumptrade.app&gt;.' + (M.key ? '' : ' Email is off: add RESEND_API_KEY in Cloudflare.') + (M.ai ? '' : ' Write-ups are off: no AI key set.') + '</small></span></div></div>' +
@@ -151,6 +158,10 @@
     const t = e.target;
     if (t.closest('[data-adx]')) return closeAdmin();
     const tb = t.closest('[data-adt]'); if (tb) { AD.tab = tb.dataset.adt; return paintAdmin(); }
+    const rq = t.closest('[data-adrq]'); if (rq) { const em = rq.dataset.adrq; rq.disabled = true; rq.textContent = 'Sending…';
+      api('/api/admin/invreq/send', { email: em }).then((r) => { AD.reqOut = AD.reqOut || {}; AD.reqOut[em] = r.mailed ? 'Invite emailed.' : 'Email didn’t send (' + esc2(r.mailError || 'no email key') + '). Send this link yourself: ' + esc2(r.link); if (!r.mailed && navigator.clipboard) navigator.clipboard.writeText(r.link).catch(() => {}); return api('/api/admin/invreq'); })
+        .then((r) => { AD.reqs = r; paintAdmin(); }).catch(() => { rq.disabled = false; rq.textContent = 'Send invite'; }); return; }
+    const rx = t.closest('[data-adrqx]'); if (rx) { api('/api/admin/invreq/dismiss', { email: rx.dataset.adrqx }).then(() => api('/api/admin/invreq')).then((r) => { AD.reqs = r; paintAdmin(); }); return; }
     if (t.closest('[data-adinv]')) { const lab = (D.getElementById('adLabel') || {}).value || ''; api('/api/admin/invite', { label: lab.trim() }).then((r) => {
       const out = D.getElementById('adOut'); out.innerHTML = '<div class="adLink"><code>' + esc2(r.link) + '</code><div class="adLinkB"><button class="adBtn" data-adshare="' + esc2(r.link) + '">Send it</button><button class="adBtn ghost" data-adcopy="' + esc2(r.link) + '">Copy</button></div><small>Works once, for one person. They’ll type their name and be in.</small></div>';
       api('/api/admin/summary').then((d) => { AD.data = d; const keep = out.innerHTML; paintAdmin(); const o2 = D.getElementById('adOut'); if (o2) o2.innerHTML = keep; }); }).catch(() => alert('Couldn’t create an invite.')); return; }

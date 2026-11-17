@@ -326,7 +326,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   }
   function newsRows() {
     if (S.news == null) return rowsBox(skel(4), 'padding:14px');
-    const L = topNews(S.news, 5);
+    const L = topNews(S.news, 4);
     if (!L.length) return rowsBox('<div class="err">Headlines aren’t loading right now. Try again in a minute.</div>');
     return rowsBox(L.map((n) => {
       const sym = window.NTH && NTH.tk ? NTH.tk(n) : null; const light = sym && LG && sym in LG && LG[sym] !== 1;
@@ -386,7 +386,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     return rowsBox(S.tg.map((x) => { const lq = curSess() === 'day' ? S.q[x.symbol] : null; const p = lq && lq.pct != null ? lq.pct : +x.change_ratio * 100, pr = lq && lq.price ? lq.price : +x.price, c = lq && lq.chg != null ? lq.chg : isFinite(+x.change) ? +x.change : pr - pr / (1 + p / 100); return '<a class="row" href="#stock/' + encodeURIComponent(x.symbol) + '" style="min-height:62px">' + tl(x.symbol, 36) + '<span class="nm"><b>' + E(x.symbol) + '</b><small>' + E(x.name || nameOf(x.symbol)) + '</small></span><span style="flex:none">' + sp(x.symbol, p >= 0, 52, 24) + '</span><span class="q"><b>' + pxs(pr) + '</b><small class="' + cls(p) + '">' + (c >= 0 ? '+' : '−') + '$' + Math.abs(c).toFixed(Math.abs(c) < 1 ? 2 : 2) + '<i>' + pct(p) + '</i></small></span></a>'; }).join(''));
   }
   // ---------- Filings & approvals (Today): 13F buying, big stakes, FDA & trial news, deals ----------
-  S.fil = 'f13'; S.filN = {};
+  S.fil = 'news'; S.filN = {};
   const recentDay = (d, n) => d && (Date.now() - Date.parse(d + 'T12:00:00')) / 864e5 <= n;
   const updPill = (d) => '<span class="upd">Updated ' + E(shortD(d)) + '</span>';
   const FILQ = { fda: [['FDA approval', /\b(FDA|approv(al|es|ed)|clearance|complete response|CRL|PDUFA|breakthrough designation|fast track)\b/i], ['Phase 3 trial results', /\bphase (1|2|3|i{1,3})\b|\btrial\b|\btopline\b/i]],
@@ -399,9 +399,10 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     F.forEach((f) => f.h.forEach((h) => { if (!/^[A-Z.]{1,6}$/.test(h[0]) || (h[3] !== 'new' && h[3] !== 'added')) return; (M[h[0]] = M[h[0]] || { s: h[0], n: h[1], f: [], nw: 0 }).f.push(f.fund.split(/ (Capital|Management|Investment|Asset|Group|Global|Associates|Advisors|Partners|Fund|Investors|& Co|Family)\b/)[0]); if (h[3] === 'new') M[h[0]].nw++; }));
     return { F, L: Object.values(M).sort((a, b) => b.f.length - a.f.length || b.nw - a.nw).slice(0, n || 5) }; }
   function filingsTile() {
-    loadFunds(); const k = S.fil; const tabs = [['f13', '13F filings'], ['stake', 'Big stakes'], ['fda', 'FDA & trials'], ['deals', 'Deals']];
+    loadFunds(); const k = S.fil; const tabs = [['news', 'News'], ['f13', '13F filings'], ['stake', 'Big stakes'], ['fda', 'FDA & trials'], ['deals', 'Deals']];
     let body = '';
-    if (k === 'f13') { if (!S.funds) body = rowsBox(skel(3), 'padding:14px'); else { const b = fundBuys(); const last = b.F.reduce((m, f) => (f.filed > m ? f.filed : m), '');
+    if (k === 'news') body = newsRows();
+    else if (k === 'f13') { if (!S.funds) body = rowsBox(skel(3), 'padding:14px'); else { const b = fundBuys(); const last = b.F.reduce((m, f) => (f.filed > m ? f.filed : m), '');
       body = !b.F.length ? rowsBox('<div class="err">No new 13F filings in the last 10 days.</div>') : '<p class="filh">' + updPill(last) + b.F.length + ' funds filed their ' + E(b.F[0].period) + ' 13F. Most bought:</p>' + rowsBox(b.L.map((x) => { const q = S.q[x.s];
         return '<a class="row" href="#stock/' + encodeURIComponent(x.s) + '" style="min-height:62px">' + tl(x.s, 34) + '<span class="nm"><b>' + E(x.s) + ' <small style="display:inline;color:var(--fg2)">· ' + x.f.length + ' fund' + (x.f.length > 1 ? 's' : '') + (x.nw ? ', ' + x.nw + ' new' : '') + '</small></b><small>' + E(x.f.slice(0, 3).join(', ') + (x.f.length > 3 ? ' +' + (x.f.length - 3) : '')) + '</small></span>' + (q ? '<span class="q"><b>' + px(q.price) + '</b><small class="' + cls(q.pct) + '">' + pct(q.pct) + '</small></span>' : '') + '</a>'; }).join('')); } }
     else if (k === 'stake') { const L = ((S.funds && S.funds.dg) || []).slice().sort((a, b) => b.filed.localeCompare(a.filed)).slice(0, 5);
@@ -409,16 +410,15 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     else { loadFil(k); const c = S.filN[k]; const L = c && c.L ? c.L.slice(0, 5) : null;
       body = !c || (!L && !c.err) ? rowsBox(skel(3), 'padding:14px') : c.err ? rowsBox('<div class="err">These headlines aren’t loading right now.</div>') : !L.length ? rowsBox('<div class="err">Nothing new in the last few days.</div>') :
         rowsBox(L.map((n) => { const sym = (n.related_symbols || []).find((x) => /^[A-Z]{1,5}$/.test(x)); return '<a class="row nw" href="' + E(n.url) + '" target="_blank" rel="noopener" style="min-height:66px">' + (sym ? tl(sym, 34) : '<span style="color:#5B9BEA;flex:none">' + ic('news', 22) + '</span>') + '<span class="nm"><b style="font-size:14.5px;line-height:19px">' + E(dec(n.title)) + '</b><small>' + E(n.source || '') + (ago(n.publish_time) ? ' · ' + ago(n.publish_time) : '') + '</small></span></a>'; }).join('')); }
-    return lab('bank', 'Filings &amp; approvals', k === 'f13' || k === 'stake' ? 'All funds' : '', '#funds') + '<div style="margin:2px 0 10px">' + chipsHTML(tabs, k, 'data-fil') + '</div>' + body;
+    return lab('news', 'What’s happening', k === 'news' ? 'All news' : k === 'f13' || k === 'stake' ? 'All funds' : '', k === 'news' ? '#news' : '#funds') + '<div style="margin:2px 0 10px">' + chipsHTML(tabs, k, 'data-fil') + '</div>' + body;
   }
   // desktop (1024px+): Today in two columns, left = your money and the news, right = the market right now and your watchlist
   const DESK = window.matchMedia ? matchMedia('(min-width:1024px)') : { matches: false };
   try { DESK.addEventListener('change', () => render()); } catch (e) {}
   function today() {
-    if (DESK.matches) return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="dk2"><div class="dkL"><div class="hero ptile">' + RIB + portCard() + '</div>' +
-      lab('news', 'Top news', 'All news', '#news') + newsRows() + filingsTile() + '</div><div class="dkR">' + pulse() + lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + '</div></div></div>';
+    if (DESK.matches) return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="dk2"><div class="dkL"><div class="hero ptile">' + RIB + portCard() + '</div>' + filingsTile() + '</div><div class="dkR">' + pulse() + lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + '</div></div></div>';
     return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="hero ptile">' + RIB + portCard() + '</div>' + pulse() +
-      lab('news', 'Top news', 'All news', '#news') + newsRows() + filingsTile() + lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + '</div>';
+      lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + filingsTile() + '</div>';
   }
 
   // ---------- Portfolio ----------
