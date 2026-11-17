@@ -1412,7 +1412,7 @@ export default {
     // ---------- public landing page: a small live teaser and invite requests (no sign-in) ----------
     if (url.pathname === '/api/public/teaser') {
       const ck = new Request('https://cache.jumptrade/teaser'); const hit = await caches.default.match(ck); if (hit) return hit;
-      const et = etNow(); const m = et.hm; const rank = m < 570 ? 'PRE_MARKET' : m >= 960 ? 'AFTER_MARKET' : '1d';
+      const et = etNow(); const m = et.hm; const rank = m < 570 ? 'PRE_MARKET' : m >= 960 ? 'AFTER_MARKET' : 'DAY_1';
       let movers = []; try { const p = await cachedTool('get_gainers_losers', { category: 'US_STOCK', rank_type: rank, sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '30', page_index: '1' }, ctx, env);
         movers = ((p && p.data) || []).filter((x) => x && /^[A-Z.]{1,6}$/.test(x.symbol) && +x.price >= 1 && (+x.volume || 0) >= 100000).slice(0, 5).map((x) => ({ s: x.symbol, n: String(x.name || '').slice(0, 40), pct: Math.round(+x.change_ratio * 1000) / 10 })); } catch (e) {}
       let buys = [], filed = null, nf = 0; try { const r = await env.ASSETS.fetch(new Request('https://jumptrade.app/funds.json')); const j = await r.json(); const F = (j.funds || []).filter((f) => f.filed && Date.now() - Date.parse(f.filed + 'T12:00:00Z') < 21 * 864e5); nf = F.length; filed = F.reduce((a, f) => (f.filed > a ? f.filed : a), '');
