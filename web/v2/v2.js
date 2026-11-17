@@ -140,7 +140,10 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const kick = (t, st) => '<div class="kick" style="' + (st || '') + '">' + t + '</div>';
   const card = (x, st, c, tag, attrs) => '<' + (tag || 'div') + ' class="card ' + (c || '') + '" style="' + (st || '') + '"' + (attrs || '') + '>' + x + '</' + (tag || 'div') + '>';
   const rowsBox = (x, st) => '<div class="card rows" style="padding:2px 14px;' + (st || '') + '">' + x + '</div>';
-  const lab = (icon, t, link, href) => '<div class="lab"><span class="lic">' + ic(icon, 15, 2.4) + '</span>' + t + (link ? '<a href="' + href + '">' + link + ' →</a>' : '') + '</div>';
+  const lab = (icon, t, link, href) => '<div class="lab"><span class="lic">' + ic(icon, 15, 2.4) + '</span>' + (href ? '<a class="labt" href="' + href + '">' + t + '</a>' : t) + (link ? '<a href="' + href + '">' + link + ' →</a>' : '') + '</div>';
+  // "Breaking": under 45 minutes old, or under 3 hours old and about a market-moving event
+  const BRK = /\b(halt(ed|s)?|FDA|Fed(eral Reserve)?|rate (hike|cut)|resign(s|ed|ation)?|steps down|ousted|acquir(e|es|ed|ing)|acquisition|merger|buyout|takeover|bankrupt(cy)?|chapter 11|guidance|recall|SEC (charges|probe)|investigation|lawsuit|plunge[sd]?|soar(s|ed)|tariff|export (ban|rule|curbs?)|CPI|jobs report|beats?|miss(es|ed)?)\b/i;
+  const isBreaking = (n) => { const ms = typeof n.publish_time === 'number' ? (n.publish_time < 1e12 ? n.publish_time * 1000 : n.publish_time) : Date.parse(n.publish_time); if (!isFinite(ms)) return false; const age = (Date.now() - ms) / 60000; return age >= 0 && (age < 45 || (age < 180 && BRK.test(dec(n.title || '')))); };
   const act = (icon, t, s, href) => '<a class="card act" href="' + href + '"><span class="ibx">' + ic(icon, 28, 2.1) + '</span><span class="tx"><b>' + t + '</b><small>' + s + '</small></span><span class="chv">' + ic('chev', 22, 2.4) + '</span></a>';
   const q = (s) => { const x = S.q[s]; if (!x) return '<span class="q"><b>—</b><small>&nbsp;</small></span>'; return '<span class="q"><b>' + money(x.price) + '</b><small class="' + cls(x.chg) + '">' + chg(x.chg) + '<i>' + pct(x.pct) + '</i></small></span>'; };
   const srow = (s, minh) => { const x = S.q[s]; return '<a class="row" href="#stock/' + encodeURIComponent(s) + '" style="min-height:' + minh + 'px">' + tl(s, 38) + '<span class="nm"><b>' + E(s) + '</b><small>' + E(nameOf(s)) + '</small></span><span style="flex:none">' + sp(s, !x || x.chg >= 0) + '</span>' + q(s) + '</a>'; };
@@ -255,7 +258,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       const sym = window.NTH && NTH.tk ? NTH.tk(n) : null; const light = sym && LG && sym in LG && LG[sym] !== 1;
       const ph = '<img class="ph" alt="" loading="lazy" src="/api/nimg?v=2&u=' + encodeURIComponent(n.url) + '&s=' + encodeURIComponent(sym || '') + '&t=' + encodeURIComponent(dec(n.title).slice(0, 140)) + '" onload="this.parentNode.classList.remove(\'wt\')" onerror="this.remove()">';
       const fb = sym ? tl(sym, 44) : '<span style="color:#5B9BEA">' + ic('news', 26) + '</span>'; // no article photo: the company logo, or a news icon
-      return '<a class="row nw" href="' + E(n.url) + '" target="_blank" rel="noopener" style="min-height:84px!important"><span class="thumb' + (light ? ' wt' : '') + '">' + fb + ph + '</span><span class="nm"><b>' + E(dec(n.title)) + '</b><small style="margin-top:3px">' + E(dec(n.source || n.source_name || '')) + (ago(n.publish_time) ? ' · ' + ago(n.publish_time) : '') + '</small></span></a>';
+      return '<a class="row nw" href="' + E(n.url) + '" target="_blank" rel="noopener" style="min-height:84px!important"><span class="thumb' + (light ? ' wt' : '') + '">' + fb + ph + '</span><span class="nm"><b>' + (isBreaking(n) ? '<span class="brk">Breaking</span>' : '') + E(dec(n.title)) + '</b><small style="margin-top:3px">' + E(dec(n.source || n.source_name || '')) + (ago(n.publish_time) ? ' · ' + ago(n.publish_time) : '') + '</small></span></a>';
     }).join(''));
   }
   function watchRows() {
