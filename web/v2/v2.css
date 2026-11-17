@@ -782,3 +782,5 @@ html[data-x2t="light"] .brk{background:#FDF0DC;color:#B45309}
 html .lab .labt,html[data-x2t] .lab .labt{margin-left:0!important;color:inherit!important;font-size:inherit!important;font-weight:inherit!important;letter-spacing:inherit!important}
 
 .wxt{display:flex!important;align-items:center;justify-content:flex-end;gap:4px;font-size:11.5px!important;margin-top:2px;color:var(--fg2)}.wxt u{text-decoration:none;color:var(--fg2)}.wxt .sIc{flex:none}
+
+html body .top.tc .brand img{height:22px!important;width:auto!important}
