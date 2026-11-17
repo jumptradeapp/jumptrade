@@ -867,9 +867,57 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const ratW = () => { if (!S.ratW) { S.ratW = { loading: 1 }; getJ('/ratings.json').then((j) => { S.ratW = j; }).catch(() => { S.ratW = { err: 1 }; }).then(render); } return S.ratW; };
   const snapAn = (r) => { const act = { upgrade: 'Upgrade', downgrade: 'Downgrade', initiate: 'Initiate', reiterate: 'Reiterate' }; const fr = r.from_rating, to = r.to_rating;
     return { s: r.ticker, t: Date.parse(r.date + 'T12:00:00'), firm: r.firm, action: act[r.action] || 'Maintain', from: fr && fr !== to ? fr : null, to, rdir: r.action === 'upgrade' ? 'up' : r.action === 'downgrade' ? 'down' : 'flat', ptFrom: r.old_target, ptTo: r.new_target }; };
+  // ---------- analyst section: target vs price (with the dollar gap), target range, rating mix, EPS beats ----------
+  S.rat = {}; S.eps = {};
+  const num = (v) => (v == null || v === '' || !isFinite(+v) ? null : +v);
+  function loadAnGraphs(sym) {
+    if (!S.rat[sym]) { S.rat[sym] = { loading: 1 }; call('get_analyst_rating', { symbol: sym }).then((d) => { S.rat[sym] = { d }; }).catch(() => { S.rat[sym] = { err: 1 }; }).then(render); }
+    if (!S.eps[sym]) { S.eps[sym] = { loading: 1 }; call('get_stock_forecast_eps', { symbol: sym }).then((d) => { S.eps[sym] = { d: Array.isArray(d) ? d : (d && d.data) || [] }; }).catch(() => { S.eps[sym] = { err: 1 }; }).then(render); }
+  }
+  const money2 = (v) => (v == null ? '—' : (v < 0 ? '−' : '') + '$' + Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+  function anTarget(tg, cur, n) {
+    const mean = num(tg && tg.mean), lo = num(tg && tg.low), hi = num(tg && tg.high), med = num(tg && tg.median);
+    if (!mean) return '';
+    const gap = cur ? mean - cur : null, gp = cur ? (mean / cur - 1) * 100 : null;
+    let range = '';
+    if (lo && hi && hi > lo) {
+      const mn = Math.min(lo, cur || lo) * 0.97, mx = Math.max(hi, cur || hi) * 1.03, X = (v) => 12 + (v - mn) / (mx - mn) * 316;
+      const tick = (v, lab, cls, up) => '<g class="' + cls + '"><line x1="' + X(v).toFixed(1) + '" x2="' + X(v).toFixed(1) + '" y1="' + (up ? 22 : 30) + '" y2="' + (up ? 30 : 40) + '"/><text x="' + Math.min(318, Math.max(22, X(v))).toFixed(1) + '" y="' + (up ? 16 : 54) + '" text-anchor="middle">' + lab + '</text></g>';
+      range = '<svg class="anrg" viewBox="0 0 340 62" role="img" aria-label="Analyst targets from ' + pxs(lo) + ' to ' + pxs(hi) + ', average ' + pxs(mean) + (cur ? ', price now ' + pxs(cur) : '') + '">' +
+        '<rect x="' + X(lo).toFixed(1) + '" y="26" width="' + (X(hi) - X(lo)).toFixed(1) + '" height="8" rx="4" class="bar"/>' +
+        '<text x="' + X(lo).toFixed(1) + '" y="54" class="end" text-anchor="start">Low ' + pxs(lo) + '</text><text x="' + X(hi).toFixed(1) + '" y="54" class="end" text-anchor="end">High ' + pxs(hi) + '</text>' +
+        tick(mean, 'Avg ' + pxs(mean), 'avg', true) + (cur ? '<circle cx="' + X(cur).toFixed(1) + '" cy="30" r="6" class="now"/><text x="' + Math.min(318, Math.max(22, X(cur))).toFixed(1) + '" y="16" text-anchor="middle" class="nowt">' + (Math.abs(X(cur) - X(mean)) < 70 ? '' : 'Now ' + pxs(cur)) + '</text>' : '') + '</svg>';
+    }
+    return '<div class="card anc"><div class="ancH"><div><small>Street target' + (n ? ' · ' + n + ' analysts' : '') + '</small><b>' + pxs(mean) + '</b></div>' +
+      (gap != null ? '<div class="ancG ' + (gap >= 0 ? 'up' : 'dn') + '"><b>' + (gap >= 0 ? '+' : '−') + money2(Math.abs(gap)).replace('−', '') + '</b><small>' + sgn(gp) + ' from ' + pxs(cur) + '</small></div>' : '') + '</div>' + range +
+      (med ? '<small class="ancN">Median target ' + pxs(med) + '. The bar runs from the lowest to the highest target' + (cur ? '; the white dot is today’s price.' : '.') + '</small>' : '') + '</div>';
+  }
+  function anMix(r) {
+    if (!r || r.loading) return ''; if (r.err || !r.d) return '';
+    const d = r.d, sb = num(d.strong_buy) || 0, b = num(d.buy) || 0, h = num(d.hold) || 0, s = (num(d.sell) || 0) + (num(d.strong_sell) || 0) + (num(d.under_perform) || 0), n = sb + b + h + s; if (!n) return '';
+    const P = [['Strong buy', sb, 'mx-sb'], ['Buy', b, 'mx-b'], ['Hold', h, 'mx-h'], ['Sell', s, 'mx-s']];
+    return '<div class="card anc"><div class="ancH"><div><small>Analyst ratings · ' + n + ' firms</small><b>' + Math.round((sb + b) / n * 100) + '% say buy</b></div></div>' +
+      '<div class="mixb" role="img" aria-label="' + P.map((x) => x[0] + ' ' + x[1]).join(', ') + '">' + P.filter((x) => x[1]).map((x) => '<i class="' + x[2] + '" style="flex:' + x[1] + '"></i>').join('') + '</div>' +
+      '<div class="mixl">' + P.map((x) => '<span><i class="' + x[2] + '"></i>' + x[0] + ' <b>' + x[1] + '</b></span>').join('') + '</div></div>';
+  }
+  function anEps(e) {
+    if (!e || e.loading || e.err) return ''; const L = (e.d || []).filter((x) => num(x.est) != null).slice(-6); if (L.length < 2) return '';
+    const vals = [].concat(...L.map((x) => [num(x.est), num(x.actual)])).filter((v) => v != null); const mx = Math.max.apply(null, vals.concat([0])), mn = Math.min.apply(null, vals.concat([0])); const rg = mx - mn || 1;
+    const W = 340, H = 120, base = 18 + (mx / rg) * (H - 40), bw = (W - 20) / L.length, Y = (v) => base - v / rg * (H - 40);
+    const beats = L.filter((x) => x.reported && num(x.actual) != null); const nb = beats.filter((x) => num(x.actual) >= num(x.est)).length;
+    const bars = L.map((x, i) => { const cx = 10 + bw * i + bw / 2, est = num(x.est), act = num(x.actual), w = Math.min(26, bw * 0.42);
+      const r = (v, cls) => '<rect x="' + (cx - w - 1).toFixed(1) + '" width="' + w.toFixed(1) + '" y="' + Math.min(Y(v), base).toFixed(1) + '" height="' + Math.max(1, Math.abs(Y(v) - base)).toFixed(1) + '" class="' + cls + '"/>';
+      const ra = act != null ? '<rect x="' + (cx + 1).toFixed(1) + '" width="' + w.toFixed(1) + '" y="' + Math.min(Y(act), base).toFixed(1) + '" height="' + Math.max(1, Math.abs(Y(act) - base)).toFixed(1) + '" class="act ' + (act >= est ? 'beat' : 'miss') + '"/>' : '<rect x="' + (cx + 1).toFixed(1) + '" width="' + w.toFixed(1) + '" y="' + Math.min(Y(est), base).toFixed(1) + '" height="' + Math.max(1, Math.abs(Y(est) - base)).toFixed(1) + '" class="next"/>';
+      return r(est, 'est') + ra + '<text x="' + cx.toFixed(1) + '" y="' + (H - 4) + '" text-anchor="middle">Q' + x.fiscal_period + ' ' + String(x.fiscal_year).slice(2) + '</text>'; }).join('');
+    const last = beats[beats.length - 1], nxt = L.find((x) => !x.reported);
+    return '<div class="card anc"><div class="ancH"><div><small>Earnings per share · by fiscal quarter</small><b>' + (beats.length ? 'Beat ' + nb + ' of last ' + beats.length : 'Estimates') + '</b></div>' +
+      (last ? '<div class="ancG ' + (num(last.actual) >= num(last.est) ? 'up' : 'dn') + '"><b>' + (num(last.actual) >= num(last.est) ? '+' : '−') + '$' + Math.abs(num(last.actual) - num(last.est)).toFixed(2) + '</b><small>last quarter vs estimate</small></div>' : '') + '</div>' +
+      '<svg class="aneps" viewBox="0 0 340 120" role="img" aria-label="Earnings per share, estimate and actual, last ' + L.length + ' quarters"><line x1="6" x2="334" y1="' + base.toFixed(1) + '" y2="' + base.toFixed(1) + '" class="zero"/>' + bars + '</svg>' +
+      '<div class="mixl"><span><i class="est"></i>Estimate</span><span><i class="beat"></i>Beat</span><span><i class="miss"></i>Missed</span>' + (nxt ? '<span><i class="next"></i>Next: est. $' + num(nxt.est).toFixed(2) + '</span>' : '') + '</div></div>';
+  }
   function anFallback(sym) {
     const W = ratW(); const L = ((W && W.ratings) || []).filter((r) => r.ticker === sym);
-    return rowsBox('<div class="err">Yahoo is refusing the analyst-history request from our data feed right now, so live calls aren’t shown. Retrying in a minute.</div>') +
+    return rowsBox('<div class="err">Recent upgrades and downgrades didn’t load. Retrying in a minute.</div>') +
       (L.length ? snapNote('From the saved weekly roundup, ' + E(W.week || '') + ' (snapshot, not live).') + rowsBox(L.map((r) => anRow(snapAn(r), false)).join(''), 'margin-top:8px') : '');
   }
   function stockScreen(sym) {
@@ -893,14 +941,15 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       fact('SSR', f.ssr ? 'On' : 'Off', f.ssr || 'short-sale rule') +
       fact('Halts today', f.halt === 'unknown' || f.halt === undefined ? '—' : f.halt ? f.halt.n + '×' : 'None', f.halt === 'unknown' || f.halt === undefined ? 'halt feed didn’t load' : f.halt ? E(f.halt.last.why) + ' ' + E(f.halt.last.time.slice(0, 5)) + ' ET' + (f.halt.last.resumed ? '' : ', still halted') : 'NasdaqTrader halts feed') + '</div>' : (x && x.err ? '<p class="note">Today’s session data isn’t available for ' + E(sym) + ' (' + E(x.err) + ').</p>' : rowsBox(skel(3), 'padding:14px'));
     if (tg) ['mean', 'low', 'high'].forEach((k) => { tg[k] = isFinite(+tg[k]) && +tg[k] > 0 ? +tg[k] : null; });
-    const tgtCard = tg && tg.mean ? '<div class="card tgc"><small>Street target (' + (tg.analyst_count || '?') + ' analysts)</small><div class="tgr"><b>' + pxs(tg.mean) + '</b>' + (cur ? '<span class="' + (tg.mean >= cur ? 'up' : 'dn') + '">' + sgn((tg.mean / cur - 1) * 100) + ' implied</span>' : '') + '</div><small>Low ' + pxs(tg.low) + ' · High ' + pxs(tg.high) + (tg.recommendation ? ' · consensus ' + E(String(tg.recommendation).replace(/_/g, ' ')) : '') + '</small></div>' : '';
+    loadAnGraphs(sym); const rN = S.rat[sym] && S.rat[sym].d ? ((num(S.rat[sym].d.number)) || null) : null;
+    const tgtCard = anTarget(tg, cur, rN || (tg && tg.analyst_count)) + anMix(S.rat[sym]) + anEps(S.eps[sym]);
     return '<div class="wrap">' + backbar(E(sym), 'javascript:history.back()') +
       '<div class="sth">' + tl(sym, 48) + '<div class="nm"><h1 style="margin:0">' + E(sym) + '</h1><small>' + E(nameOf(sym)) + '</small></div>' + (q ? qv(q.price, q.chg, q.pct) : qv(null)) + '</div>' + (window.V2X && V2X.stockTop ? V2X.stockTop(sym) : '') +
       ((function () { try { return JSON.parse(localStorage.getItem('jt.v2mode') || '"pro"') === 'simple'; } catch (e) { return false; } })() ? '' : lab('radar', 'Setup', '', '') + (x && x.tag ? setupBox(sym, sess) : x ? '<p class="note">No setup read for this session.</p>' : rowsBox(skel(2), 'padding:14px')) + facts +
       '<p class="note">Updates through the trading day. Float and short interest are reported twice a month. A rules-based read, not advice.</p>') +
       lab('news', 'Why it’s moving', '', '') + '<div class="card" style="padding:12px 14px"><small class="why" style="white-space:normal;color:' + w.c + '">' + E(w.t) + '</small>' + (w.h && w.h.url ? '<a class="srcl" href="' + E(w.h.url) + '" target="_blank" rel="noopener">Open the article</a>' : '') + '</div>' +
       lab('activity', 'Analyst ratings', 'All calls', '#analysts') + tgtCard +
-      (!an || (!rows && !an.err) ? rowsBox(skel(3), 'padding:14px') : an.err ? anFallback(sym) : rows.length ? rowsBox(rows.slice(0, S.anAll ? 40 : 6).map((a) => anRow(a, false)).join('')) + (rows.length > 6 && !S.anAll ? '<p class="note"><a href="#" id="anall" style="color:' + BL.b2 + '">Show all ' + rows.length + ' calls</a></p>' : '') : rowsBox('<div class="err">No analyst actions in the last 90 days.</div>')) +
+      (window.JT_PRIV && an && an.err ? '' : !an || (!rows && !an.err) ? rowsBox(skel(3), 'padding:14px') : an.err ? anFallback(sym) : rows.length ? rowsBox(rows.slice(0, S.anAll ? 40 : 6).map((a) => anRow(a, false)).join('')) + (rows.length > 6 && !S.anAll ? '<p class="note"><a href="#" id="anall" style="color:' + BL.b2 + '">Show all ' + rows.length + ' calls</a></p>' : '') : rowsBox('<div class="err">No analyst actions in the last 90 days.</div>')) +
       (an && an.t ? '<p class="note">Source: Yahoo Finance analyst history, checked ' + ago2(an.t) + '. Implied upside uses the live price.</p>' : '') +
       (window.V2X && V2X.stockExtras ? V2X.stockExtras(sym) : '') +
       '</div>';
