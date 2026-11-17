@@ -702,8 +702,8 @@
   };
 
   // ---------- settings / account / feedback / app ----------
-  const THEMES = [['midnight', 'Dark', 'The default deep navy'], ['light', 'Light', 'White pages, navy portfolio card'], ['auto', 'Auto', 'Follows your phone: light by day, dark at night'], ['black', 'Pure black', 'True black, easier on OLED batteries'], ['swoop', 'Swoop glow', 'Stronger blue glow behind pages']];
-  const applyTheme = () => { let t = lsGet('jt.v2theme', 'midnight'); if (t === 'auto') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'midnight'; D.documentElement.dataset.x2t = t; const m = D.querySelector('meta[name=theme-color]'); if (m) m.content = t === 'light' ? '#F5F8FC' : '#030A15'; };
+  const THEMES = [['midnight', 'Dark', ''], ['light', 'Light', ''], ['auto', 'Auto', 'Matches your phone']];
+  const applyTheme = () => { let t = lsGet('jt.v2theme', 'midnight'); if (t === 'black' || t === 'swoop') { t = 'midnight'; lsSet('jt.v2theme', t); } if (t === 'auto') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'midnight'; D.documentElement.dataset.x2t = t; const m = D.querySelector('meta[name=theme-color]'); if (m) m.content = t === 'light' ? '#F5F8FC' : '#030A15'; };
   try { matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => { if (lsGet('jt.v2theme', '') === 'auto') applyTheme(); }); } catch (e) {}
   // Alerts settings: phone notifications (what, when, how many) and what the in-app Alerts page shows. Everything saves the moment you tap it.
   st.als = null;
@@ -743,14 +743,14 @@
     const opt = (attr, on, L) => '<div class="card rows">' + L.map((x) => '<button class="row xopt' + (x[0] === on ? ' on' : '') + '" ' + attr + '="' + x[0] + '"><span class="nm"><b>' + x[1] + '</b><small>' + x[2] + '</small></span><span class="xrad"></span></button>').join('') + '</div>';
     const num = (k, l, v, suf) => '<label class="xf"><span>' + l + '</span><span class="xfi"><input class="xin" data-xat="' + k + '" inputmode="decimal" value="' + E(String(v)) + '">' + (suf ? '<i>' + suf + '</i>' : '') + '</span></label>';
     return wrap(V().backbar('Settings', '#menu') + V().head('Settings', 'Look, mode, alerts and app') +
-      '<div class="lab">Appearance</div>' + opt('data-xtheme', th, THEMES) +
+      '<div class="lab">Appearance</div><div class="seg xthm">' + THEMES.map((x) => '<button type="button" class="' + (x[0] === th ? 'on' : '') + '" data-xtheme="' + x[0] + '">' + x[1] + '</button>').join('') + '</div>' +
       '<div class="lab">Mode</div>' + opt('data-xmode', md, [['simple', 'Simple', 'Price, chart, ratings and red flags only'], ['pro', 'Pro', 'Adds technicals, levels, plan and patterns']]) +
-      '<div class="lab">Alerts</div>' + V().act('bell', 'Alerts', (window.ALERTS ? 'Phone notifications and ' : '') + 'what shows on the Alerts page', '#alertset') +
+      '<div class="lab">Alerts</div>' + V().act('bell', 'Alerts', window.ALERTS ? 'Phone notifications and the Alerts page' : 'What shows on the Alerts page', '#alertset') +
       '<div class="lab">About</div><div class="card rows"><a class="row" href="#privacy"><span class="nm"><b>Privacy</b><small>What’s kept and who can see it</small></span></a><a class="row" href="#terms"><span class="nm"><b>Terms</b><small>Not investment advice, data accuracy, paper portfolios</small></span></a></div>' +
       (window.JT_OWN && JT_OWN.state && JT_OWN.state.unlocked ? '<div class="lab">Your accounts</div>' + card('<p class="xp">Your Webull accounts are unlocked on this device for up to 12 hours.</p>' + (JT_OWN.tokExp ? '<p class="xp">Webull login good until ' + E(new Date(JT_OWN.tokExp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })) + '. Renewing sends a code to your phone and replaces the current login.</p>' : '') + '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="xbtn ghost" data-own="lock">Lock now</button>' + (JT_OWN.tokExp ? '<button class="xbtn ghost" data-own="connect">Renew Webull login</button>' : '') + '</div>') : '') +
       (window.JT_AUTH && JT_AUTH.user && !JT_AUTH.user.owner && !window.JT_PRIV ? '<div class="lab">Account</div>' + card('<p class="xp">Deleting your account removes your name, watchlists, settings and the portfolios you shared. It can’t be undone.</p><button class="xbtn pdel' + (st.adel ? ' on' : '') + '" data-adel="1">' + (st.adel ? 'Tap again to delete your account' : 'Delete my account') + '</button>') : '') +
       '<div class="lab">Sync &amp; devices</div>' + offB(window.JT_PRIV ? 'Saved in this copy' : 'Follows your account', window.JT_PRIV ? 'Your lists and settings are saved in this private copy.' : 'Your watchlists, journal and settings follow your account on every device you sign in on.') +
-      '<div class="lab">More</div>' + V().act('plus', 'Get the app', 'Add JumpTrade to your home screen', '#getapp') + V().act('msg', 'Send feedback', 'Report a bug or suggest an idea', '#feedback') + V().act('shield', 'Account & connections', 'Sign-in, Webull and AI status', '#account') +
+      '<div class="lab">More</div>' + V().act('plus', 'Get the app', 'Add jumptrade to your home screen', '#getapp') + V().act('msg', 'Send feedback', 'Report a bug or suggest an idea', '#feedback') + V().act('shield', 'Account & connections', 'Sign-in, Webull and AI status', '#account') +
       card('<p class="xp">jumptrade. Market data from public feeds (Yahoo Finance, Nasdaq, NasdaqTrader). Snapshot files are dated where shown. Nothing here is financial advice; setups, ratings and checks are rules-based reads.</p>'));
   }
   function accountScreen() {

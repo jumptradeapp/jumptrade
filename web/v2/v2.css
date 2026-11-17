@@ -1046,3 +1046,6 @@ input,select,textarea{font-size:16px!important}
 .xtg.on{background:#5B9BEA}.xtg.on i{transform:translateX(20px)}
 .xtg:focus-visible,.xchips .chip:focus-visible{outline:2px solid #9CCBFF;outline-offset:2px}
 html[data-x2t="light"] .xalr{border-color:#E3EAF3}html[data-x2t="light"] .xalr .nm small{color:#5A6B80}html[data-x2t="light"] .xtg{background:#D5DFEA}
+.xthm button{flex:1;border:0;background:none;border-radius:12px;font:inherit;font-size:14px;font-weight:600;color:#DDE8F4;cursor:pointer;min-height:36px}
+.xthm button.on{background:linear-gradient(180deg,#78ACEE,#4F8FDE);color:#0A1A28;font-weight:700}
+html[data-x2t="light"] .xthm button{color:#243248}html[data-x2t="light"] .xthm button.on{color:#fff}
