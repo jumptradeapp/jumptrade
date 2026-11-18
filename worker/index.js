@@ -1052,6 +1052,7 @@ async function wbUpkeepRun(env) {
   if (tok && tok.token) {
     let r = await wb.raw('POST', '/auth/tokens/check', {}, { token: tok.token });
     if (r.status !== 200) { const r2 = await wb.raw('POST', '/auth/tokens/check', {}, null, tok.token); if (r2.status === 200) r = r2; }
+    if (r.status >= 500 || r.status === 429) { await vput(env, 'tokcheck', { http: r.status, body: typeof r.data === 'string' ? r.data.slice(0, 200) : r.data, t: Date.now() }); return { status: tok.status, transient: r.status }; } // Webull hiccup: keep the approved login live instead of dropping everyone to the backup feed for 10 minutes
     const status = (r.data && r.data.status) || (r.status === 200 ? tok.status : 'CHECK_' + r.status);
     await vput(env, 'tokcheck', { http: r.status, body: typeof r.data === 'string' ? r.data.slice(0, 200) : r.data, t: Date.now() });
     await vput(env, 'token', { ...tok, status, expires: (r.data && r.data.expires) || tok.expires });
