@@ -1566,8 +1566,11 @@ async function handleFetch(req, env, ctx) {
       const ip = req.headers.get('cf-connecting-ip') || ''; const day = new Date().toISOString().slice(0, 10); const R = (await vget(env, 'invite_req')) || [];
       if (R.filter((x) => x.ip === ip && x.d === day).length >= 3) return json({ error: { code: 'rate_limited', message: 'You’ve already sent a request today.' } }, 429);
       if (R.some((x) => x.email.toLowerCase() === email.toLowerCase())) return json({ ok: true, dup: true });
+      const today = R.filter((x) => x.d === day).length; // a flood from many addresses can't push real requests out of the list or bury the owner in alerts
+      if (today >= 100) return json({ error: { code: 'rate_limited', message: 'Lots of requests today. Try again tomorrow.' } }, 429);
       R.unshift({ t: Date.now(), d: day, name, email, note, ip }); await vput(env, 'invite_req', R.slice(0, 500));
-      ctx.waitUntil(notifyOwner(env, { title: 'Invite request: ' + name, body: email + (note ? ' · ' + note.slice(0, 80) : ''), url: '/#admin', tag: 'jt-admin' }));
+      if (today < 10) ctx.waitUntil(notifyOwner(env, { title: 'Invite request: ' + name, body: email + (note ? ' · ' + note.slice(0, 80) : ''), url: '/#admin', tag: 'jt-admin' }));
+      else if (today === 10) ctx.waitUntil(notifyOwner(env, { title: 'More invite requests today', body: 'Over 10 today. See them all in Admin → Requests.', url: '/#admin', tag: 'jt-admin' }));
       return json({ ok: true });
     }
     const dataFile = /^\/[a-z_]+\.json$/.test(url.pathname);

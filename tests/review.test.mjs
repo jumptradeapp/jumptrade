@@ -68,3 +68,15 @@ test('the morning email goes to each recipient on their own, never one shared To
   const bad = await brief.sendMail({ RESEND_API_KEY: 'test' }, ['a@example.com', 'b@example.com'], m);
   assert.equal(bad.ok, false); assert.equal(bad.error, 'bad key');
 });
+
+test('invite requests: the per-address and 100-a-day limits hold', async () => {
+  const { env, storage } = makeEnv(); const day = new Date().toISOString().slice(0, 10);
+  storage._m.set('invite_req', Array.from({ length: 99 }, (_, i) => ({ t: Date.now(), d: day, name: 'n' + i, email: 'p' + i + '@example.com', note: '', ip: '10.0.0.' + i })));
+  const ask = (email, ip) => worker.default.fetch(new Request('https://jumptrade.app/api/public/invite', { method: 'POST', headers: { 'cf-connecting-ip': ip }, body: JSON.stringify({ name: 'Ann', email }) }), env, ctx());
+  assert.equal((await ask('new1@example.com', '1.1.1.1')).status, 200);
+  assert.equal((await ask('new2@example.com', '1.1.1.2')).status, 429); // 100 today already
+  assert.equal(storage._m.get('invite_req').length, 100);
+  storage._m.set('invite_req', []);
+  for (let i = 0; i < 3; i++) assert.equal((await ask('x' + i + '@example.com', '2.2.2.2')).status, 200);
+  assert.equal((await ask('x9@example.com', '2.2.2.2')).status, 429); // 3 a day from one address
+});
