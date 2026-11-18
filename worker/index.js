@@ -1545,7 +1545,6 @@ async function handleFetch(req, env, ctx) {
     CUR_ENV = env;
     if (Date.now() - UPK > 600000) { UPK = Date.now(); ctx.waitUntil(wbUpkeep(env).catch(() => {})); }
     if (url.pathname === '/x/rotnow') { const ck0 = await vget(env, 'cronkey').catch(() => null); if (!ck0 || url.searchParams.get('k') !== ck0) return new Response('Not found', { status: 404 }); const last = await vget(env, 'rotrun').catch(() => null); if (last && last.ok && Date.now() - last.t < 600000) return json({ wait: true, last }); const r = await rotationJob(env, ctx).catch((e) => ({ error: String(e && e.message || e) })); await vput(env, 'rotrun', Object.assign({ t: Date.now() }, r)); return json(r); }
-    if (url.pathname === '/rotation.json') { const R = await vget(env, 'rotation').catch(() => null); if (R && R.asOf) return json(R, 200, { 'cache-control': 'public, max-age=600' }); return env.ASSETS.fetch(req); }
     if (req.method === 'OPTIONS') return new Response(null, { status: 204 }); // the app only calls its own server (same origin), so no cross-site access is granted
     // Private beta: while the site is locked, every data endpoint needs a signed-in account (cookie or bearer token).
     // ---------- public landing page: a small live teaser and invite requests (no sign-in) ----------
@@ -1583,6 +1582,7 @@ async function handleFetch(req, env, ctx) {
         }
       }
     }
+    if (url.pathname === '/rotation.json') { const R = await vget(env, 'rotation').catch(() => null); if (R && R.asOf) return json(R, 200, { 'cache-control': 'private, max-age=600' }); } // after the sign-in check like every other data file (it used to be answered before it)
     if (dataFile) { const r = await env.ASSETS.fetch(req); if (!r.ok || /text\/html/.test(r.headers.get('content-type') || '')) return json({ error: { code: 'not_found' } }, 404); return r; } // signed in (or site unlocked): serve the data file; a missing one is a real 404, not the app page
     if (url.pathname === '/api/pap') { // public built portfolios: everyone sees them; signed-in people can add; authors (and the owner) can delete
       const ses = await sessionFrom(req, env, vget).catch(() => null); const me = ses && ses.u;
