@@ -756,7 +756,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const heatAt = (t) => { t = Math.max(0, Math.min(1, t)) * (HEAT.length - 1); const i = Math.min(HEAT.length - 2, Math.floor(t)), f = t - i; const c = HEAT[i].map((v, k) => Math.round(v + (HEAT[i + 1][k] - v) * f)); return c; };
   const heatT = (p, all) => { const a = Math.abs(p), mx = Math.max.apply(null, all.map(Math.abs)) || 1; const rk = all.filter((z) => Math.abs(z) < a).length / Math.max(1, all.length - 1); return 0.12 + 0.88 * (0.5 * a / mx + 0.5 * rk); };
   // calm heat tiles: dark base, a green or red wash whose strength follows the size of the move
-  const heatStyle = (p, all) => { const mx = Math.max.apply(null, all.map((x) => Math.abs(x))) || 1; const a = (0.05 + 0.27 * Math.min(1, Math.abs(p) / mx)).toFixed(3); return 'background:' + (Math.abs(p) < 0.005 ? 'rgba(20,40,70,.55)' : p > 0 ? 'rgba(82,224,106,' + a + ')' : 'rgba(255,100,96,' + a + ')'); };
+  const heatStyle = (p, all) => { const mx = Math.max.apply(null, all.map((x) => Math.abs(x))) || 1; const a = (0.05 + 0.27 * Math.min(1, Math.abs(p) / mx)).toFixed(3); return 'background:' + (Math.abs(p) < 0.005 ? 'rgba(20,40,70,.55)' : p > 0 ? 'rgba(95,191,143,' + a + ')' : 'rgba(224,122,122,' + a + ')'); };
   function whatsHot() {
     loadThemes(); const T2 = themeRows();
     if (!T2) return ''; if (!T2.length) return '';
