@@ -116,7 +116,7 @@ export const CSS = 'a[x-apple-data-detectors],u+#body a,#MessageViewBody a{color
 // The whole email. {{UNSUB}} and {{UNSUB_ALL}} are filled in per recipient when it's sent.
 export function shell(o) {
   const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><meta name="format-detection" content="telephone=no,date=no,address=no,email=no,url=no"><meta name="x-apple-disable-message-reformatting"><title>' + E(o.subject) + '</title><style>' + CSS + '</style></head><body id="body">' +
-    '<div style="display:none;max-height:0;overflow:hidden;opacity:0">' + E(o.pre || '') + '&#8204;&nbsp;&#8204;&nbsp;&#8204;&nbsp;</div><div class="ph"><div class="hd"><img src="' + ORIGIN + '/v2/img/email-logo.png" alt="jumptrade." height="22" style="display:block;height:22px;width:auto;border:0">' +
+    '<div style="display:none;max-height:0;overflow:hidden;opacity:0">' + E(o.pre || '') + '&#8204;&nbsp;&#8204;&nbsp;&#8204;&nbsp;</div><div class="ph"><div class="hd" style="background-color:#0d2a52;background-image:linear-gradient(170deg,#163a6b,#071A36);color:#ffffff"><img src="' + ORIGIN + '/v2/img/email-logo-jt1118.png" alt="jumptrade." width="240" height="44" style="display:block;width:240px;max-width:100%;height:auto;border:0;color:#ffffff;font-size:22px;font-weight:700">' +
     '<div class="kind">' + E(TYPES[o.type].name) + '</div><div class="hdd">' + ND(o.dateLine) + '</div>' + (o.headline ? '<div class="hdt" style="color:#ffffff">' + ND(o.headline) + '</div>' : '') +
     (o.tiles || '') + (o.sub ? '<div class="hdm">' + ND(o.sub) + '</div>' : '') + '</div><div class="body">' + o.cards.filter(Boolean).join('') +
     '<a class="btn" href="' + ORIGIN + '/' + (o.link || '#today') + '" style="color:#ffffff;text-decoration:none">See everything in jumptrade.</a></div>' +
@@ -163,7 +163,8 @@ const whyText = (x, d) => whyText0(whyFor(d.why[x.symbol], x.symbol, nameOf(x, d
 const resLbl = (t) => (t.res === 'beat' ? '<i class="lb b">Beat</i>' : t.res === 'miss' ? '<i class="lb m">Missed</i>' : t.res === 'inline' ? '<i class="lb">In line</i>' : '');
 const epsLine = (t) => (ok(t.eps) && ok(t.est) ? 'Profit $' + (+t.eps).toFixed(2) + ' a share vs $' + (+t.est).toFixed(2) + ' expected' : ok(t.est) ? 'Expected profit $' + (+t.est).toFixed(2) + ' a share' : '');
 // movers worth a line: real trading only (same liquidity check as the app's gainers feed; no price floor)
-export const realMover = (x) => x && x.symbol && +x.price > 0.1 && +x.volume >= 50000 && !/[.\-](WS|W|R|U|RT|WT)$/.test(x.symbol);
+// no price or company-size floor: only skip missing/zero/garbage prices, one-share prints, and warrants/rights/units
+export const realMover = (x) => !!(x && x.symbol && Number.isFinite(+x.price) && +x.price > 0 && !(+x.pre_close <= 0) && +x.volume >= 50000 && !/[.\-](WS|W|R|U|RT|WT)$/.test(x.symbol));
 
 // ---------- Closing recap ----------
 export async function gatherClose(H) {

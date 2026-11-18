@@ -181,3 +181,19 @@ test('scheduled send: once per window, one copy per person with their own unsubs
     const H2 = fakeH(at('2026-11-19T01:10:00Z')); assert.equal((await J.mailJob('ah', env, H2)).skip, 'nobody'); assert.equal(H2._mem.get('mail_last_ah').n, 0);
   } finally { globalThis.fetch = of; }
 });
+
+test('no price or company-size floor: tiny and sub-$1 movers show up; zero/missing prices and one-share prints do not', async () => {
+  assert.equal(M.realMover(q('SVRE', 'SaverOne', 0.0631, 0.02, { market_value: 2e6 })), true);
+  for (const x of [q('ZERO', 'Z', 0, 0), Object.assign(q('NOPX', 'N', 1, 0), { price: null }), Object.assign(q('NANP', 'N', 1, 0), { price: 'abc' }), Object.assign(q('THIN', 'T', 5, 1), { volume: 100 }), q('ABCD.WS', 'Warrant', 0.2, 0.1)]) assert.equal(M.realMover(x), false, x.symbol);
+  const H = fakeH(at('2026-11-18T13:45:00Z')); const base = H.wbCall;
+  H.wbCall = async (e, tool, input) => tool === 'get_gainers_losers' && input.direction === 'DESC'
+    ? { payload: [q('TINY', 'Tiny Micro Corp', 0.4123, 0.15, { market_value: 5e6 }), q('BAD', 'Bad Print Inc', 0, 0, { market_value: 1e9 }), q('ONE', 'One Share Inc', 9, 4, { volume: 1, market_value: 1e9 })] } : base(e, tool, input);
+  const { buildBrief } = await import('../worker/brief.js'); const m = await buildBrief({}, H);
+  assert.match(m.other.html, /Tiny Micro/); assert.match(m.other.html, /\$0\.4123/); assert.doesNotMatch(m.other.html, /Bad Print|One Share/);
+});
+
+test('email header uses the new jumptrade. logo (cache-busted name, alt text, inline header colour)', async () => {
+  const m = await M.buildMail('close', {}, fakeH(at('2026-11-18T21:20:00Z')));
+  assert.match(m.html, /<div class="hd" style="background-color:#0d2a52[^"]*"><img src="https:\/\/jumptrade\.app\/v2\/img\/email-logo-jt1118\.png" alt="jumptrade\." width="240" height="44"/);
+  assert.doesNotMatch(m.html, /email-logo\.png/);
+});

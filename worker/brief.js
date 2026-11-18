@@ -3,7 +3,7 @@
 // Who gets it and when it goes out: see mails.js (the email center). Numbers always come from the data, never from the AI.
 
 const FROM = 'JUMPTRADE <brief@jumptrade.app>';
-import { E, ND, fmtPct, fmtPx, fmtChg, srow, card, bullets, idxTiles, shell, IDX, dateLong, dateShort, hmTxt, shortName, unsubUrl, ORIGIN, MAIL_RE, cleanMail, recipients, loadSubs } from './mails.js';
+import { E, ND, fmtPct, fmtPx, fmtChg, srow, card, bullets, idxTiles, shell, IDX, dateLong, dateShort, hmTxt, shortName, unsubUrl, ORIGIN, MAIL_RE, cleanMail, recipients, loadSubs, realMover } from './mails.js';
 const arr = (p) => (Array.isArray(p) ? p : (p && (p.data || p.list || p.items)) || []);
 const pctOf = (q) => { if (!q) return null; const pre = /PRE|POST|AFTER/i.test(q.trade_status || '') && q.extend_hour_change_ratio != null && q.extend_hour_last_price; const pc = +q.pre_close; const px = pre ? +q.extend_hour_last_price : +q.price;
   return pc > 0 && px > 0 ? (px / pc - 1) * 100 : q.change_ratio != null ? +q.change_ratio * 100 : null; };
@@ -24,8 +24,8 @@ async function gather(env, H) {
     call('get_gainers_losers', { category: 'US_STOCK', rank_type: 'PRE_MARKET', sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '40', page_index: '1' }),
     call('get_gainers_losers', { category: 'US_STOCK', rank_type: 'PRE_MARKET', sort_by: 'CHANGE_RATIO', direction: 'ASC', page_size: '40', page_index: '1' }),
   ]);
-  // real movers only: skip one-share prints and sub-$1 junk
-  const real = (x) => +x.price >= 1 && +x.volume >= 50000 && +x.market_value >= 30e6;
+  // no price or company-size floor (Jason, Nov 18): same guards as the other emails, against missing/zero/garbage prices and one-share prints
+  const real = realMover;
   const up = arr(gUp).filter(real).slice(0, 6), dn = arr(gDn).filter(real).slice(0, 4);
   const mineRows = mine.map((s) => ({ s, q: ms[s], p: pctOf(ms[s]) })).filter((r) => r.p != null).sort((a, b) => Math.abs(b.p) - Math.abs(a.p));
   const focus = [...new Set([...mineRows.slice(0, 6).map((r) => r.s), ...up.slice(0, 4).map((x) => x.symbol), ...dn.slice(0, 2).map((x) => x.symbol)])];
