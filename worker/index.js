@@ -23,6 +23,11 @@ const json = (obj, status = 200, extra = {}) => new Response(JSON.stringify(obj)
 const chunk = (arr, n) => { const out = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
 const safeDecode = (s) => { try { return decodeURIComponent(s); } catch (e) { return ''; } }; // a malformed %-escape is just a bad name, not a crash
 const syms = (s) => (Array.isArray(s) ? s : String(s || '').split(',')).map((x) => String(x).trim().toUpperCase()).filter(Boolean);
+// Landing teaser: no price or volume floor. Drop only missing, zero, or garbage prices and bad tickers.
+export function teaserMovers(rows) {
+  return (rows || []).filter((x) => x && /^[A-Z.]{1,6}$/.test(x.symbol) && +x.price > 0).slice(0, 5)
+    .map((x) => ({ s: x.symbol, n: String(x.name || '').slice(0, 40), pct: Math.round(+x.change_ratio * 1000) / 10 }));
+}
 
 // ---------- Yahoo session (cookie + crumb), cached in memory for the life of the isolate ----------
 let SESSION = null;
@@ -1553,7 +1558,7 @@ async function handleFetch(req, env, ctx) {
       const ck = new Request('https://cache.jumptrade/teaser'); const hit = await caches.default.match(ck); if (hit) return hit;
       const et = etNow(); const rank = rankFor(et);
       let movers = []; try { const p = await cachedTool('get_gainers_losers', { category: 'US_STOCK', rank_type: rank, sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '30', page_index: '1' }, ctx, env);
-        movers = ((p && p.data) || []).filter((x) => x && /^[A-Z.]{1,6}$/.test(x.symbol) && +x.price >= 1 && (+x.volume || 0) >= 100000).slice(0, 5).map((x) => ({ s: x.symbol, n: String(x.name || '').slice(0, 40), pct: Math.round(+x.change_ratio * 1000) / 10 })); } catch (e) {}
+        movers = teaserMovers((p && p.data) || []); } catch (e) {}
       let buys = [], filed = null, nf = 0; try { const r = await env.ASSETS.fetch(new Request('https://jumptrade.app/funds.json')); const j = await r.json(); const F = (j.funds || []).filter((f) => f.filed && Date.now() - Date.parse(f.filed + 'T12:00:00Z') < 21 * 864e5); nf = F.length; filed = F.reduce((a, f) => (f.filed > a ? f.filed : a), '');
         const M = {}, NM = {}; F.forEach((f) => (f.h || []).forEach((h) => { if (/^[A-Z.]{1,6}$/.test(h[0]) && (h[3] === 'new' || h[3] === 'added')) { M[h[0]] = (M[h[0]] || 0) + 1; if (!NM[h[0]] && h[1]) NM[h[0]] = String(h[1]).slice(0, 40); } })); buys = Object.entries(M).sort((a, b) => b[1] - a[1]).slice(0, 5).map((x) => ({ s: x[0], n: x[1], nm: NM[x[0]] || '' })); /* nm: company name (every ticker shows one) */ } catch (e) {}
       const sess = rank === 'PRE_MARKET' ? 'pre' : rank === 'AFTER_MARKET' ? 'after' : 'day';

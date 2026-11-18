@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 
 globalThis.caches = { default: { match: async () => undefined, put: async () => {} } };
 const worker = await import('../worker/index.js');
+const { teaserMovers } = worker;
 const brief = await import('../worker/brief.js');
 
 function memStorage() {
@@ -79,4 +80,34 @@ test('invite requests: the per-address and 100-a-day limits hold', async () => {
   storage._m.set('invite_req', []);
   for (let i = 0; i < 3; i++) assert.equal((await ask('x' + i + '@example.com', '2.2.2.2')).status, 200);
   assert.equal((await ask('x9@example.com', '2.2.2.2')).status, 429); // 3 a day from one address
+});
+
+test('landing teaser keeps cheap and low-volume names and drops garbage prices', () => {
+  const out = teaserMovers([
+    { symbol: 'CHEAP', name: 'Cheap Co', price: 0.12, volume: 1000, change_ratio: 1.165 },
+    { symbol: 'ZERO', name: 'Zero', price: 0, volume: 5e6, change_ratio: 0.5 },
+    { symbol: 'MISS', name: 'Missing', price: null, volume: 5e6, change_ratio: 0.4 },
+    { symbol: 'TOOLONG', name: 'Too long ticker', price: 3, volume: 1e6, change_ratio: 0.9 },
+    { symbol: 'low', name: 'lowercase', price: 3, volume: 1e6, change_ratio: 0.9 },
+    { symbol: 'LOWV', name: 'Low Volume Inc', price: 0.8, volume: 50, change_ratio: 0.8 },
+    { symbol: 'BIG', name: 'Big Co', price: 12, volume: 2e6, change_ratio: 0.2 },
+    { symbol: 'SIXTH', name: 'Sixth', price: 4, volume: 1e6, change_ratio: 0.1 },
+    { symbol: 'SEVEN', name: 'Seventh', price: 5, volume: 1e6, change_ratio: 0.05 },
+    { symbol: 'EIGHT', name: 'Eighth', price: 6, volume: 1e6, change_ratio: 0.02 }
+  ]);
+  assert.deepEqual(out.map((x) => x.s), ['CHEAP', 'LOWV', 'BIG', 'SIXTH', 'SEVEN']);
+  assert.equal(out[0].pct, 116.5);
+  assert.equal(out[0].n, 'Cheap Co');
+  assert.equal(out[1].n, 'Low Volume Inc');
+  assert.equal(teaserMovers(null).length, 0);
+});
+
+test('Today top gainers and the landing teaser have no small-cap price floors', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const v2 = await readFile(new URL('../web/v2/v2.js', import.meta.url), 'utf8');
+  const wk = await readFile(new URL('../worker/index.js', import.meta.url), 'utf8');
+  assert.match(v2, /S\.tg = \(\(p && p\.data\) \|\| \[\]\)\.filter\(\(x\) => x && x\.symbol && \/\^\[A-Z\.\]\{1,6\}\$\/\.test\(x\.symbol\) && \+x\.price > 0\)\.slice\(0, 5\)/);
+  assert.equal(/S\.tg =[\s\S]{0,220}\+x\.price >= 0\.5/.test(v2), false);
+  assert.match(wk, /movers = teaserMovers\(\(p && p\.data\) \|\| \[\]\)/);
+  assert.equal(/\+x\.price >= 1 && \(\+x\.volume \|\| 0\) >= 100000/.test(wk), false);
 });
