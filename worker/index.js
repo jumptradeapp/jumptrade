@@ -82,7 +82,7 @@ function snapOf(q) {
   const ext = pre && q.preMarketPrice ? { p: q.preMarketPrice, c: q.preMarketChange, r: q.preMarketChangePercent }
     : post && q.postMarketPrice ? { p: q.postMarketPrice, c: q.postMarketChange, r: q.postMarketChangePercent } : null;
   return {
-    symbol: q.symbol, name: q.longName || q.shortName || q.symbol,
+    symbol: q.symbol, name: q.longName || q.shortName || '', // never the ticker as the name: the app fills a real company name
     price: num(q.regularMarketPrice), close: num(q.regularMarketPrice), change: num(q.regularMarketChange),
     change_ratio: q.regularMarketChangePercent != null ? q.regularMarketChangePercent / 100 : null,
     open: num(q.regularMarketOpen), high: num(q.regularMarketDayHigh), low: num(q.regularMarketDayLow),
@@ -126,7 +126,7 @@ async function sparkQuotes(list) {
       const price = num(r.price) || num(last); const pc = num(r.previousClose);
       if (!price) return;
       const chg = pc ? price - pc : null;
-      out.push({ symbol: r.symbol, name: r.symbol, price, close: price, change: chg, change_ratio: pc ? chg / pc : null, pre_close: pc, source: 'yahoo-spark' });
+      out.push({ symbol: r.symbol, name: '', price, close: price, change: chg, change_ratio: pc ? chg / pc : null, pre_close: pc, source: 'yahoo-spark' });
     });
   }));
   return out;
@@ -596,7 +596,7 @@ T.get_runners = async (i) => {
     if (nearHi >= 0.97 && pct > 2) { sc += 12; why.push('at the high of day'); } else if (nearHi >= 0.92 && pct > 2) sc += 6;
     if (hi52 && price >= hi52 * 0.98) { sc += 8; why.push('52-week high'); }
     if (pct > 60) sc -= 10; // already extended: less room, more fade risk
-    rows.push({ symbol: s, name: q.shortName || q.longName || s, price, change_ratio: pct / 100, volume: vol, rvol: +rvol.toFixed(1), market_value: cap, score: Math.round(sc), why });
+    rows.push({ symbol: s, name: q.shortName || q.longName || '', price, change_ratio: pct / 100, volume: vol, rvol: +rvol.toFixed(1), market_value: cap, score: Math.round(sc), why });
   }
   rows.sort((a, b) => b.score - a.score);
   const top = rows.slice(0, lim);

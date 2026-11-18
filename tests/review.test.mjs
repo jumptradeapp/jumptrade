@@ -38,3 +38,19 @@ test('a data file the browser already has comes back 304, not 404', async () => 
   const missing = await worker.default.fetch(new Request('https://jumptrade.app/nope.json', { headers: { cookie: 'jt_s=' + tok } }), makeEnv({}, async () => new Response('<html>', { headers: { 'content-type': 'text/html' } })).env, ctx());
   assert.equal(missing.status, 404);
 });
+
+test('the backup price feed never sends the ticker as the company name', async () => {
+  const { env, storage } = makeEnv(); const tok = tester(storage);
+  const call = () => worker.default.fetch(new Request('https://jumptrade.app/api/tool', { method: 'POST', headers: { cookie: 'jt_s=' + tok }, body: JSON.stringify({ tool: 'get_stock_snapshot', input: { symbols: 'ZZQA', category: 'US_STOCK' } }) }), env, ctx());
+  upstream = async (u) => /getcrumb/.test(u) ? new Response('crumb') : /v7\/finance\/quote/.test(u)
+    ? new Response(JSON.stringify({ quoteResponse: { result: [{ symbol: 'ZZQA', regularMarketPrice: 2, regularMarketPreviousClose: 1.5, regularMarketChange: 0.5, regularMarketChangePercent: 33.3, regularMarketTime: 1795000000 }] } }))
+    : new Response('{}', { status: 404 });
+  let j = await (await call()).json(); let row = (Array.isArray(j.payload) ? j.payload : j.payload.data)[0];
+  assert.equal(row.symbol, 'ZZQA'); assert.notEqual(row.name, 'ZZQA');
+  // quote endpoint refused: the no-crumb spark backup is used instead
+  upstream = async (u) => /getcrumb/.test(u) ? new Response('crumb') : /v8\/finance\/spark/.test(u)
+    ? new Response(JSON.stringify({ ZZQB: { close: [1, 2], previousClose: 1.5, fulldayPrice: 2 } })) : new Response('{}', { status: 429 });
+  const r2 = await worker.default.fetch(new Request('https://jumptrade.app/api/tool', { method: 'POST', headers: { cookie: 'jt_s=' + tok }, body: JSON.stringify({ tool: 'get_stock_snapshot', input: { symbols: 'ZZQB', category: 'US_STOCK' } }) }), env, ctx());
+  j = await r2.json(); row = (Array.isArray(j.payload) ? j.payload : j.payload.data)[0];
+  assert.equal(row.symbol, 'ZZQB'); assert.notEqual(row.name, 'ZZQB');
+});
