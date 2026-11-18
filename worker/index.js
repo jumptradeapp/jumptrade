@@ -1584,7 +1584,7 @@ async function handleFetch(req, env, ctx) {
       }
     }
     if (url.pathname === '/rotation.json') { const R = await vget(env, 'rotation').catch(() => null); if (R && R.asOf) return json(R, 200, { 'cache-control': 'private, max-age=600' }); } // after the sign-in check like every other data file (it used to be answered before it)
-    if (dataFile) { const r = await env.ASSETS.fetch(req); if (!r.ok || /text\/html/.test(r.headers.get('content-type') || '')) return json({ error: { code: 'not_found' } }, 404); return r; } // signed in (or site unlocked): serve the data file; a missing one is a real 404, not the app page
+    if (dataFile) { const r = await env.ASSETS.fetch(req); if (r.status === 304) return r; /* the browser's copy is still current (If-None-Match): pass the 304 through, it isn't a missing file */ if (!r.ok || /text\/html/.test(r.headers.get('content-type') || '')) return json({ error: { code: 'not_found' } }, 404); return r; } // signed in (or site unlocked): serve the data file; a missing one is a real 404, not the app page
     if (url.pathname === '/api/pap') { // public built portfolios: everyone sees them; signed-in people can add; authors (and the owner) can delete
       const ses = await sessionFrom(req, env, vget).catch(() => null); const me = ses && ses.u;
       const L = (await vget(env, 'pap_all')) || [];
