@@ -259,7 +259,7 @@
       body = !L.length ? V().rowsBox(errB('Nothing upcoming in this snapshot.')) : Object.keys(by).slice(0, 30).map((d) => '<div class="lab">' + new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + '</div><div class="card rows">' + by[d].map((e) => '<a class="row" href="' + (e.s ? '#stock/' + encodeURIComponent(e.s) : '#calendar') + '">' + (e.s ? V().tl(e.s, 30) : '<span class="aic">' + ic('cal', 18, 2.1) + '</span>') + '<span class="nm"><b>' + E(e.t) + '</b><small>' + E((e.s ? e.s + ' · ' : '') + e.sub) + '</small></span><span class="xtag ' + e.k + '">' + (e.k === 'earn' ? 'Earnings' : 'Catalyst') + '</span></a>').join('') + '</div>').join('');
     }
     return wrap(V().backbar('Calendar', '#menu') + V().head('Calendar', 'Catalysts and earnings dates') +
-      (j && !j.err ? V().snapNote('Snapshot from ' + E(((j.earnings || {}).generated) || 'the last build') + '. Dates can move; check the company’s release.') : '') +
+      (j && !j.err ? V().snapNote((j.generated && (j.earnings || {}).generated && j.generated !== j.earnings.generated ? 'Catalysts snapshot from ' + E(j.generated) + ', earnings dates from ' + E(j.earnings.generated) : 'Snapshot from ' + E(j.generated || (j.earnings || {}).generated || 'the last build')) + '. Dates can move; check the company’s release.') : '') +
       '<div style="margin-top:10px">' + V().chipsHTML([['all', 'All'], ['earn', 'Earnings'], ['cat', 'Catalysts']], st.ck, 'data-xck') + '</div>' +
 
       '<div style="margin-top:6px">' + body + '</div>' + offB('Live economic calendar not connected', 'The snapshot above includes the major macro dates. A live, always-current economic calendar comes from Webull, which isn’t connected yet.'));
