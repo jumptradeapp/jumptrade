@@ -37,7 +37,7 @@
       const a = mv.length ? '<div class="lpCard"><div class="lpH"><span class="lpDot' + (j.closed ? ' off' : '') + '"></span>' + (j.closed ? 'Biggest movers last session' : S[j.sess] || S.day) + '</div><ol class="lpList">' +
         mv.map((x) => '<li><b>' + E(x.s) + '</b><span>' + E(x.n) + '</span><em class="' + (x.pct >= 0 ? 'up' : 'dn') + '">' + pct(x.pct) + '</em></li>').join('') + '</ol></div>' : '';
       const b = (j.buys || []).length ? '<div class="lpCard"><div class="lpH">Big funds just bought<small>' + j.nf + ' funds filed' + (j.filed ? ' through ' + shortD(j.filed) : '') + '</small></div><ol class="lpList">' +
-        j.buys.map((x) => '<li><b>' + E(x.s) + '</b><span>bought or added by</span><em>' + x.n + ' funds</em></li>').join('') + '</ol></div>' : '';
+        j.buys.map((x) => '<li><b>' + E(x.s) + '</b><span>' + E(x.nm || 'bought or added by') + '</span><em>' + x.n + ' funds</em></li>').join('') + '</ol></div>' : '';
       el.innerHTML = a || b ? a + b : '<div class="lpCard"><div class="lpH">Live data is resting right now</div><p class="lpMuted">Check back during market hours.</p></div>';
     }).catch(() => { el.innerHTML = '<div class="lpCard"><div class="lpH">Live data didn’t load</div><p class="lpMuted">Refresh the page to try again.</p></div>'; });
   }
