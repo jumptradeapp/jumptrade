@@ -103,9 +103,19 @@ export async function buildBrief(env, H) { const d = await gather(env, H); const
 export async function sendMail(env, to, m) {
   if (!env.RESEND_API_KEY) { const k = Object.keys(env).find((x) => x.trim().toUpperCase() === 'RESEND_API_KEY'); if (k) env.RESEND_API_KEY = String(env[k]).trim(); }
   if (!env.RESEND_API_KEY) return { ok: false, error: 'no_key' };
-  const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: 'Bearer ' + env.RESEND_API_KEY, 'content-type': 'application/json' },
-    body: JSON.stringify({ from: FROM, to, subject: m.subject, html: m.html, text: m.text, reply_to: 'brief@jumptrade.app', headers: { 'X-Entity-Ref-ID': String(Date.now()) } }) });
-  const j = await r.json().catch(() => ({})); return { ok: r.ok, status: r.status, id: j.id, error: r.ok ? null : (j.message || j.name || 'send failed') };
+  const list = (Array.isArray(to) ? to : [to]).map((x) => String(x).trim()).filter(Boolean);
+  if (!list.length) return { ok: false, error: 'no_recipients' };
+  // one email per recipient (Resend's batch call, up to 100 a call), so nobody sees anyone else's address on the To line
+  const one = (addr) => ({ from: FROM, to: [addr], subject: m.subject, html: m.html, text: m.text, reply_to: 'brief@jumptrade.app', headers: { 'X-Entity-Ref-ID': String(Date.now()) + '-' + addr.length } });
+  const post = (path, body) => fetch('https://api.resend.com' + path, { method: 'POST', headers: { authorization: 'Bearer ' + env.RESEND_API_KEY, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  if (list.length === 1) { const r = await post('/emails', one(list[0])); const j = await r.json().catch(() => ({})); return { ok: r.ok, status: r.status, id: j.id, error: r.ok ? null : (j.message || j.name || 'send failed') }; }
+  const ids = []; let status = 200, error = null;
+  for (let i = 0; i < list.length; i += 100) {
+    const r = await post('/emails/batch', list.slice(i, i + 100).map(one)); const j = await r.json().catch(() => ({}));
+    if (!r.ok) { status = r.status; error = j.message || j.name || 'send failed'; break; }
+    (j.data || []).forEach((x) => ids.push(x && x.id));
+  }
+  return { ok: !error, status, id: ids[0], ids, error };
 }
 
 // 8:45 AM ET on market days, once

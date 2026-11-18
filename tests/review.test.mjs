@@ -54,3 +54,17 @@ test('the backup price feed never sends the ticker as the company name', async (
   j = await r2.json(); row = (Array.isArray(j.payload) ? j.payload : j.payload.data)[0];
   assert.equal(row.symbol, 'ZZQB'); assert.notEqual(row.name, 'ZZQB');
 });
+
+test('the morning email goes to each recipient on their own, never one shared To line', async () => {
+  const sent = [];
+  upstream = async (u, o) => { sent.push({ u, body: JSON.parse(o.body) }); return new Response(JSON.stringify(/batch/.test(u) ? { data: JSON.parse(o.body).map((_, i) => ({ id: 'e' + i })) } : { id: 'e0' })); };
+  const m = { subject: 'Brief', html: '<p>x</p>', text: 'x' };
+  const r = await brief.sendMail({ RESEND_API_KEY: 'test' }, ['a@example.com', 'b@example.com', 'c@example.com'], m);
+  assert.equal(r.ok, true); assert.equal(sent.length, 1); assert.match(sent[0].u, /\/emails\/batch$/);
+  assert.deepEqual(sent[0].body.map((e) => e.to), [['a@example.com'], ['b@example.com'], ['c@example.com']]);
+  sent.length = 0; const one = await brief.sendMail({ RESEND_API_KEY: 'test' }, ['a@example.com'], m);
+  assert.equal(one.ok, true); assert.match(sent[0].u, /\/emails$/); assert.deepEqual(sent[0].body.to, ['a@example.com']);
+  upstream = async () => new Response(JSON.stringify({ message: 'bad key' }), { status: 401 });
+  const bad = await brief.sendMail({ RESEND_API_KEY: 'test' }, ['a@example.com', 'b@example.com'], m);
+  assert.equal(bad.ok, false); assert.equal(bad.error, 'bad key');
+});
