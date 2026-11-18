@@ -6,7 +6,7 @@
 import { Webull } from './webull.js';
 import { makeVapid, sendPush, PUSHLAST } from './push.js';
 import { authRoutes, sessionFrom, KINDS } from './auth.js';
-import { buildBrief, sendMail, dailyBrief } from './brief.js';
+import { buildBrief, sendMail, dailyBrief, briefRecipients, cleanMail } from './brief.js';
 import { etNow, closeOf, ahEndOf, rankFor } from './market.js';
 // Every outside request gets a deadline so one slow source can't hang a whole response.
 const fetch = (u, o = {}) => globalThis.fetch(u, o.signal ? o : { ...o, signal: AbortSignal.timeout(o.timeoutMs || (/api\.anthropic\.com/.test(String(u)) ? 25000 : 8000)) });
@@ -1252,15 +1252,31 @@ async function inviteReqRoutes(url, req, env) {
 async function mailRoutes(url, req, env) {
   const w = await sessionFrom(req, env, vget).catch(() => null); if (!w || !w.u.owner) return json({ error: 'auth' }, 401);
   const keyOn = !!(env.RESEND_API_KEY || Object.keys(env).find((x) => x.trim().toUpperCase() === 'RESEND_API_KEY'));
-  if (url.pathname === '/api/admin/mail' && req.method === 'GET') return json({ to: (await vget(env, 'mail_to')) || [], last: (await vget(env, 'brief_last')) || null, key: keyOn, ai: aiKey(env) });
+  if (url.pathname === '/api/admin/mail' && req.method === 'GET') { const opt = (await vget(env, 'mail_optin')) || {}; const U = w.U || {};
+    return json({ to: (await vget(env, 'mail_to')) || [], subs: Object.keys(opt).filter((k) => opt[k] && opt[k].email).map((k) => ({ email: opt[k].email, name: (U[k] && U[k].name) || '', t: opt[k].t })), all: await briefRecipients(env, vget), last: (await vget(env, 'brief_last')) || null, key: keyOn, ai: aiKey(env) }); }
   let b = {}; try { b = JSON.parse((await req.text()).slice(0, 4000)); } catch (e) {}
-  if (url.pathname === '/api/admin/mail' && req.method === 'POST') { const to = (Array.isArray(b.to) ? b.to : []).map((x) => String(x).trim().toLowerCase()).filter((x) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x)).slice(0, 20); await vput(env, 'mail_to', to); return json({ ok: true, to }); }
+  if (url.pathname === '/api/admin/mail' && req.method === 'POST') { const raw = Array.isArray(b.to) ? b.to : []; const bad = raw.filter((x) => String(x).trim() && !cleanMail(x)).map((x) => String(x).slice(0, 80));
+    const to = Array.from(new Set(raw.map(cleanMail).filter(Boolean))).slice(0, 50); await vput(env, 'mail_to', to); return json({ ok: true, to, bad }); }
   if (url.pathname === '/api/admin/mail/test' && req.method === 'POST') {
-    const to = (await vget(env, 'mail_to')) || []; if (!to.length) return json({ ok: false, error: 'Add an email address first.' }, 400);
+    // a test goes to one address when asked ("send a test to me"), otherwise to everyone on the list
+    const one = b.to != null ? cleanMail(b.to) : ''; if (b.to != null && !one) return json({ ok: false, error: 'That email address doesn’t look right.' }, 400);
+    const to = one ? [one] : await briefRecipients(env, vget); if (!to.length) return json({ ok: false, error: 'Add an email address first.' }, 400);
     aiKey(env); const m = await buildBrief(env, BH); m.subject = '[Test] ' + m.subject; const r = await sendMail(env, to, m);
     return json({ ok: r.ok, error: r.error, subject: m.subject, ai: m.ai, n: m.n, to: to.length });
   }
   return null;
+}
+// anyone signed in can turn the morning email on or off for their own address (one per account); the owner's list is separate
+async function myMailRoute(req, env) {
+  const w = await sessionFrom(req, env, vget).catch(() => null); if (!w || !w.u || !w.u.uid) return json({ error: 'auth' }, 401);
+  const uid = w.u.uid; const opt = (await vget(env, 'mail_optin')) || {};
+  if (req.method === 'GET') { const o = opt[uid]; return json({ on: !!(o && o.email), email: (o && o.email) || '', owner: !!w.u.owner }); }
+  if (req.method !== 'POST') return json({ error: 'bad_request' }, 400);
+  let b = {}; try { b = JSON.parse((await req.text()).slice(0, 2000)); } catch (e) {}
+  if (b.on === false) { delete opt[uid]; await vput(env, 'mail_optin', opt); return json({ ok: true, on: false, email: '' }); }
+  const e = cleanMail(b.email); if (!e) return json({ ok: false, error: 'That email address doesn’t look right.' }, 400);
+  if (!opt[uid] && Object.keys(opt).length >= 500) return json({ ok: false, error: 'The morning email list is full right now.' }, 429);
+  opt[uid] = { email: e, t: Date.now() }; await vput(env, 'mail_optin', opt); return json({ ok: true, on: true, email: e });
 }
 // ---------- jumptrade newsdesk: short analysis pieces written from real data ----------
 // Breaking pieces when something happens (a big real mover, market-moving headline, earnings reaction, a hard market swing),
@@ -1620,6 +1636,7 @@ async function handleFetch(req, env, ctx) {
     if (url.pathname.indexOf('/api/admin/invreq') === 0) return inviteReqRoutes(url, req, env);
     if (url.pathname.indexOf('/api/owner/') === 0) { const r = await ownerRoutes(url, req, env); r.headers.set('cache-control', 'no-store'); return r; }
     if (url.pathname.indexOf('/api/admin/mail') === 0) { const r = await mailRoutes(url, req, env); if (r) return r; }
+    if (url.pathname === '/api/me/mail') { const r = await myMailRoute(req, env); r.headers.set('cache-control', 'no-store'); return r; }
     if (url.pathname.indexOf('/api/auth/') === 0 || url.pathname.indexOf('/api/admin/') === 0) { const r = await authRoutes(url, req, env, ctx, { vget, vput, json, subId, notifyOwner: (m) => notifyOwner(env, m), lease: (k, ms) => vlease(env, k, ms), release: (k, id) => vrelease(env, k, id) }); if (r) return r; }
     if (url.pathname === '/api/moverwhy') { const W = (await vget(env, 'mwhy')) || { m: {} }; const m = {}; Object.entries(W.m || {}).forEach((e) => { const v = e[1]; m[e[0]] = { v: v.v, kind: v.kind, h: v.h, fresh: v.fresh || null, seen: v.seen }; }); return json({ payload: { t: W.t || 0, session: W.session, m } }); }
     if (url.pathname === '/api/jtnews') { const L = (await vget(env, 'jtnews')) || []; const id = url.searchParams.get('id'); if (id) { const a = L.find((x) => x.id === id); return a ? json({ payload: a }) : json({ error: 'not found' }, 404); } return json({ payload: L.slice(0, 60).map((a) => ({ id: a.id, t: a.t, kind: a.kind, tag: a.tag, title: a.title, dek: a.dek, tickers: a.tickers })) }); }

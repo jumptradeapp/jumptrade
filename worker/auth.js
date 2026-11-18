@@ -109,6 +109,7 @@ export async function authRoutes(url, req, env, ctx, H) {
     if (u && u.sync) { const k = 'sy_' + Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(u.sync)))).slice(0, 16).map((b) => b.toString(16).padStart(2, '0')).join(''); await vput(env, k, null); }
     delete U[uid]; await vput(env, 'users', U); await vput(env, 'sess_' + w.tokHash, null);
     const P = (await vget(env, 'pap_all')) || []; await vput(env, 'pap_all', P.filter((x) => x.uid !== uid));
+    const MO = (await vget(env, 'mail_optin')) || {}; if (MO[uid]) { delete MO[uid]; await vput(env, 'mail_optin', MO); } // and off the morning email
     return json({ ok: true }, 200, { 'set-cookie': 'jt_s=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax' }); }
 
   // ----- owner only -----

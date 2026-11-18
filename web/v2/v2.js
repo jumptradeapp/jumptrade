@@ -51,15 +51,24 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
 
 
   // ---------- logos: the app's own logo set (/lg), then the server's backup (/api/logo), then initials ----------
-  let LG = null; fetch('/lg/index.json').then((r) => r.json()).then((j) => { LG = j; render(); }).catch(() => { LG = {}; });
-  window.v2LogoErr = function (img) { const t = img.parentNode; if (!t) return; if (img.dataset.alt) { const a = img.dataset.alt; img.dataset.alt = ''; img.src = a; return; } t.classList.remove('wt'); t.innerHTML = '<span class="mono2" style="font-size:' + Math.round(t.offsetWidth * 0.34) + 'px">' + E(t.dataset.s.slice(0, 2)) + '</span>'; };
+  let LG = null; fetch('/lg/index.json').then((r) => r.json()).then((j) => { LG = j; render(); }).catch(() => { LG = {}; render(); });
+  // which pictures already loaded or failed: a refresh redraws them as they are, so a broken logo isn't asked for again every
+  // 1.5 seconds (it used to flicker between the picture and its initials) and a loaded one doesn't fade in a second time
+  const IMGOK = new Set(), IMGBAD = new Set();
+  window.v2ImgOk = function (img) { IMGOK.add(img.getAttribute('src')); img.classList.add('ok'); };
+  window.v2ImgBad = function (img) { IMGBAD.add(img.getAttribute('src')); img.remove(); };
+  window.v2LogoErr = function (img) { IMGBAD.add(img.getAttribute('src')); const t = img.parentNode; if (!t) return; if (img.dataset.alt) { const a = img.dataset.alt; img.dataset.alt = ''; img.src = a; return; } t.classList.remove('wt'); t.innerHTML = '<span class="mono2" style="font-size:' + Math.round(t.offsetWidth * 0.34) + 'px">' + E(t.dataset.s.slice(0, 2)) + '</span>'; };
   // funds without their own logo show the fund company's (iShares → BlackRock, SPDR → State Street, Invesco, Schwab, JPMorgan)
   const FUNDCO = window.JT_FUNDCO = {IVV:'BLK',IWM:'BLK',IEF:'BLK',TLT:'BLK',SGOV:'BLK',AGG:'BLK',EFA:'BLK',EEM:'BLK',IEMG:'BLK',IBIT:'BLK',ETHA:'BLK',SOXX:'BLK',IGV:'BLK',ITA:'BLK',ICLN:'BLK',IAU:'BLK',SLV:'BLK',TIP:'BLK',LQD:'BLK',HYG:'BLK',SHY:'BLK',MTUM:'BLK',QUAL:'BLK',USMV:'BLK',IJR:'BLK',IJH:'BLK',EWJ:'BLK',EWZ:'BLK',FXI:'BLK',IYR:'BLK',IYW:'BLK',SPY:'STT',GLD:'STT',GLDM:'STT',DIA:'STT',XLK:'STT',XLF:'STT',XLE:'STT',XLV:'STT',XLY:'STT',XLP:'STT',XLI:'STT',XLU:'STT',XLB:'STT',XLRE:'STT',XLC:'STT',KRE:'STT',XBI:'STT',XOP:'STT',XME:'STT',XHB:'STT',XRT:'STT',SPLG:'STT',BIL:'STT',JNK:'STT',MDY:'STT',SPYG:'STT',SPYV:'STT',QQQ:'IVZ',QQQM:'IVZ',SPMO:'IVZ',DBC:'IVZ',DBA:'IVZ',RSP:'IVZ',SPLV:'IVZ',IGPT:'IVZ',TAN:'IVZ',PBW:'IVZ',SCHD:'SCHW',SCHG:'SCHW',SCHX:'SCHW',SCHB:'SCHW',SCHF:'SCHW',SCHA:'SCHW',SCHH:'SCHW',SCHE:'SCHW',JEPI:'JPM',JEPQ:'JPM',JPST:'JPM'};
   function tl(sym, s) {
     if (sym === 'BULL') return '<span class="tl" style="width:' + s + 'px;height:' + s + 'px"><img src="/v2/img/webull.png" alt="Webull" style="width:' + Math.round(s * 0.7) + 'px;height:' + Math.round(s * 0.7) + 'px"></span>';
     const lsym = !(LG && sym in LG) && FUNDCO[sym] && LG && FUNDCO[sym] in LG ? FUNDCO[sym] : sym; const inSet = LG && lsym in LG; const light = inSet && LG[lsym] !== 1; // 1 = logo drawn for a dark background
-    const src = inSet ? '/lg/' + encodeURIComponent(lsym) + '.webp' : '/api/logo/' + encodeURIComponent(sym);
-    return '<span class="tl' + (light ? ' wt' : '') + '" data-s="' + E(sym) + '" style="width:' + s + 'px;height:' + s + 'px"><img alt="" loading="lazy" src="' + src + '"' + (inSet ? ' data-alt="/api/logo/' + encodeURIComponent(sym) + '"' : '') + ' onerror="v2LogoErr(this)" style="width:' + Math.round(s * 0.7) + 'px;height:' + Math.round(s * 0.7) + 'px"></span>';
+    const box = 'data-s="' + E(sym) + '" style="width:' + s + 'px;height:' + s + 'px"';
+    if (!LG) return '<span class="tl" ' + box + '></span>'; // the logo list is still loading: keep the circle, so the picture doesn't swap source a moment later
+    let src = inSet ? '/lg/' + encodeURIComponent(lsym) + '.webp' : '/api/logo/' + encodeURIComponent(sym), alt = inSet ? '/api/logo/' + encodeURIComponent(sym) : '';
+    if (IMGBAD.has(src) && alt) { src = alt; alt = ''; }
+    if (IMGBAD.has(src)) return '<span class="tl" ' + box + '><span class="mono2" style="font-size:' + Math.round(s * 0.34) + 'px">' + E(sym.slice(0, 2)) + '</span></span>';
+    return '<span class="tl' + (light ? ' wt' : '') + '" ' + box + '><img alt="" decoding="async" src="' + src + '"' + (alt ? ' data-alt="' + alt + '"' : '') + (IMGOK.has(src) ? ' class="ok"' : '') + ' onload="v2ImgOk(this)" onerror="v2LogoErr(this)" style="width:' + Math.round(s * 0.7) + 'px;height:' + Math.round(s * 0.7) + 'px"></span>';
   }
 
   // ---------- company names: friendly short names for common tickers, else the name the price feed sends ----------
@@ -185,6 +194,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const d = new Date(e.date + 'T12:00:00'); const days = Math.floor((d - t0) / 864e5); return '<span class="amb"><i></i>Earnings ' + (days === 0 ? 'today' : days === 1 ? 'tomorrow' : d.toLocaleDateString('en-US', { weekday: 'short' })) + '</span>'; };
   const perf = (list, n, minh) => list.slice(0, n).map((r) => { const s = r.sym, x = S.q[s]; return '<a class="row perf" href="#stock/' + encodeURIComponent(s) + '" style="min-height:' + minh + 'px!important;gap:8px">' + tl(s, 30) + '<span class="nm"><b style="font-size:15px">' +E(s) + earnTag(s) + '</b><small style="font-size:11.5px;line-height:15px;white-space:normal">' + E(nameOf(s)) + '</small></span><span style="flex:none">' + sp(s, x.chg >= 0, 40, 24) + '</span><span class="q" style="width:96px;flex:none"><b style="font-size:15px">' + money(x.price) + '</b><small style="font-size:11.5px" class="' + cls(x.chg) + '">' + chg(x.chg) + '<i style="margin-left:5px">' + pct(x.pct) + '</i></small></span></a>'; }).join('');
   const skel = (n) => Array.from({ length: n || 3 }, (_, i) => '<div class="skel" style="width:' + (90 - i * 15) + '%"></div>').join('');
+  // first-load placeholder rows, each as tall as the row that replaces it, so nothing below jumps when the data lands
+  const skelRows = (n, h) => '<div class="card rows" style="padding:2px 14px">' + Array.from({ length: n }, (_, i) => '<div class="row skr" style="min-height:' + h + 'px!important"><div class="skel" style="width:' + (78 - (i % 3) * 14) + '%"></div></div>').join('') + '</div>';
   const topbar = () => '<div class="top tc"><a class="ib" href="#menu" aria-label="All pages">' + ic('menu') + '</a><span class="brand"><img src="/v2/img/jump-lockup.svg?v=4" alt="jumptrade." width="129" height="26"></span><div class="acts">' + (REAL || !/^(today|portfolio)$/.test(route().v) ? '' : DEMO) + (V2_STAGE >= 3 ? '<a class="ib" href="#alerts" aria-label="Alerts">' + ic('bell') + (alertCount() ? '<em class="bdot"></em>' : '') + '</a>' : '<a class="ib" href="#calendar" aria-label="Alerts and events">' + ic('bell') + '<em class="bdot"></em></a>') + '</div></div>';
   const backbar = (title, href) => '<div class="top"><div style="display:flex;align-items:center;gap:6px;min-width:0"><a class="ib" style="margin-left:-10px" href="' + href + '" aria-label="Back">' + ic('back', 22) + '</a><b class="tbt">' + title + '</b></div><div class="acts">' + (REAL || route().v !== 'connect' ? '' : DEMO) + '</div></div>';
   const head = (t, sub) => { const p = t.lastIndexOf(' '); return '<h1>' + (p > 0 ? t.slice(0, p) + ' <em>' + t.slice(p + 1) + '</em>' : '<em>' + t + '</em>') + '</h1>' + (sub ? '<p class="sub">' + sub + '</p>' : ''); };
@@ -313,7 +324,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   }
   function pulse() {
     const t = pulseText(); const ix = [['SPY', 'S&P 500'], ['QQQ', 'Nasdaq'], ['IWM', 'Russell']];
-    return card('<div class="pzh"><span class="pzk">' + ic('activity', 16, 2.2) + 'Market pulse</span><span class="pzt">' + (() => { const d = etNow(); return E(d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })) + ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' ET'; })() + '</span></div>' + (t ? '<p class="pzl">' + E(t.title) + '</p>' : '') +
+    return card('<div class="pzh"><span class="pzk">' + ic('activity', 16, 2.2) + 'Market pulse</span><span class="pzt">' + (() => { const d = etNow(); return E(d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })) + ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' ET'; })() + '</span></div>' + '<p class="pzl">' + (t ? E(t.title) : '&nbsp;') + '</p>' +
       '<div class="pzi">' + ix.map((x) => { const q = S.q[x[0]]; return '<div><small>' + x[1] + '</small><b class="' + (q ? cls(q.pct) : '') + '">' + (q ? pct(q.pct) : '—') + '</b></div>'; }).join('') + '</div>' + '<div class="pzh2">' + hoursBar() + '</div>', 'padding:14px 16px;margin-top:14px', 'pulse2', 'a', ' href="' + (V2_STAGE >= 2 ? '#markets' : '#sectors') + '"');
   }
   // Top news = what matters to you first: your holdings and watchlist, then market-moving events, then big outlets; skips clickbait
@@ -330,14 +341,15 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       return [sc, x]; }).filter((y) => !FLUFF.test(dec(y[1].title))).sort((a, b) => (Date.parse(b[1].publish_time) || 0) - (Date.parse(a[1].publish_time) || 0)).slice(0, n).map((y) => y[1]); // newest first
   }
   function newsRows() {
-    if (S.news == null) return rowsBox(skel(4), 'padding:14px');
+    if (S.news == null) return skelRows(DESK.matches ? 8 : 4, 84);
     const L = topNews(S.news, DESK.matches ? 8 : 4);
     if (!L.length) return rowsBox('<div class="err">Headlines aren’t loading right now. Try again in a minute.</div>');
     return rowsBox(L.map((n) => {
       const sym = window.NTH && NTH.tk ? NTH.tk(n) : null; const light = sym && LG && sym in LG && LG[sym] !== 1;
-      const ph = '<img class="ph" alt="" loading="lazy" src="/api/nimg?v=3&u=' + encodeURIComponent(n.url) + (n.image ? '&i=' + encodeURIComponent(n.image) : '') + '&s=' + encodeURIComponent(sym || '') + '&t=' + encodeURIComponent(dec(n.title).slice(0, 140)) + '" onload="this.classList.add(\'on\');this.parentNode.classList.remove(\'wt\')" onerror="this.remove()">';
+      const phs = '/api/nimg?v=3&u=' + encodeURIComponent(n.url) + (n.image ? '&i=' + encodeURIComponent(n.image) : '') + '&s=' + encodeURIComponent(sym || '') + '&t=' + encodeURIComponent(dec(n.title).slice(0, 140)); const phOk = IMGOK.has(phs);
+      const ph = IMGBAD.has(phs) ? '' : '<img class="ph' + (phOk ? ' on' : '') + '" alt="" loading="lazy" src="' + phs + '" onload="v2ImgOk(this);this.classList.add(\'on\');this.parentNode.classList.remove(\'wt\')" onerror="v2ImgBad(this)">'; /* redraws keep a loaded photo showing (a refresh used to hide it again) */
       const fb = sym ? tl(sym, 44) : '<span style="color:#5B9BEA">' + ic('news', 26) + '</span>'; // no article photo: the company logo, or a news icon
-      return '<a class="row nw" href="' + E(n.url) + '" target="_blank" rel="noopener" style="min-height:84px!important"><span class="thumb' + (light ? ' wt' : '') + '">' + fb + ph + '</span><span class="nm"><b>' + (isBreaking(n) ? '<span class="brk">Breaking</span>' : '') + E(dec(n.title)) + '</b><small style="margin-top:3px">' + E(dec(n.source || n.source_name || '')) + (ago(n.publish_time) ? ' · ' + ago(n.publish_time) : '') + '</small></span></a>';
+      return '<a class="row nw" href="' + E(n.url) + '" target="_blank" rel="noopener" style="min-height:84px!important"><span class="thumb' + (light && !phOk ? ' wt' : '') + '">' + fb + ph + '</span><span class="nm"><b>' + (isBreaking(n) ? '<span class="brk">Breaking</span>' : '') + E(dec(n.title)) + '</b><small style="margin-top:3px">' + E(dec(n.source || n.source_name || '')) + (ago(n.publish_time) ? ' · ' + ago(n.publish_time) : '') + '</small></span></a>';
     }).join(''));
   }
   function watchRows() {
@@ -385,10 +397,10 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   function loadTG() { if (S.tgSess && S.tgSess !== curSess()) { S.tgT = 0; S.tg = null; } if (S.tgBusy || Date.now() - S.tgT < 6000) return; S.tgSess = curSess(); S.tgBusy = 1; S.tgT = Date.now(); const ss = curSess(); const rank = ss === 'pre' ? 'PRE_MARKET' : ss === 'after' ? 'AFTER_MARKET' : 'DAY_1';
     call('get_gainers_losers', { category: 'US_STOCK', rank_type: rank, sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '20', page_index: '1' }).then((p) => { S.tg = ((p && p.data) || []).filter((x) => x && x.symbol && /^[A-Z.]{1,6}$/.test(x.symbol) && +x.price > 0).slice(0, 5); const ns = S.tg.map((x) => x.symbol).filter((x) => !S.spark[x]); if (ns.length) sparks(ns).then(render).catch(() => {}); }).catch(() => { S.tg = S.tg || []; }).then(() => { S.tgBusy = 0; render(); }); }
   function tgRows() {
-    loadTG(); if (!S.tg) return rowsBox(skel(4), 'padding:14px'); if (!S.tg.length) return rowsBox('<div class="err">No movers in the feed right now.</div>');
+    loadTG(); if (!S.tg) return skelRows(5, 62); if (!S.tg.length) return rowsBox('<div class="err">No movers in the feed right now.</div>');
     // live prices can reorder the five: rank by the live % (same order the price column shows) and flash a row that moves up or down
     const L = S.tg.map((x) => { const lq = curSess() === 'day' ? S.q[x.symbol] : null; const p = lq && lq.pct != null ? lq.pct : +x.change_ratio * 100, pr = lq && lq.price ? lq.price : +x.price, c = lq && lq.chg != null ? lq.chg : isFinite(+x.change) ? +x.change : pr - pr / (1 + p / 100); return { x, p, pr, c }; }).sort((a, b) => b.p - a.p);
-    const prev = S.tgRank || {}; S.tgFl = S.tgFl || {}; S.tgRank = {}; L.forEach((r, i) => { const o = prev[r.x.symbol]; if (o != null && o !== i) S.tgFl[r.x.symbol] = { c: i < o ? 'rkup' : 'rkdn', t: Date.now() }; S.tgRank[r.x.symbol] = i; });
+    S.tgFl = S.tgFl || {}; S.tgMv = S.tgMv || {}; rankMoves(S.tgMv, L.map((r) => [r.x.symbol, r.p]), S.tgFl);
     return rowsBox(L.map(({ x, p, pr, c }) => { const f = S.tgFl[x.symbol]; const fl = f && Date.now() - f.t < 650 ? ' ' + f.c : ''; return '<a class="row' + fl + '" href="#stock/' + encodeURIComponent(x.symbol) + '" style="min-height:62px">' + tl(x.symbol, 36) + '<span class="nm"><b>' + E(x.symbol) + '</b><small>' + E(x.name || nameOf(x.symbol)) + '</small></span><span style="flex:none">' + sp(x.symbol, p >= 0, 52, 24) + '</span><span class="q"><b>' + pxs(pr) + '</b><small class="' + cls(p) + '">' + (c >= 0 ? '+' : '−') + '$' + Math.abs(c).toFixed(Math.abs(c) < 1 ? 2 : 2) + '<i>' + pct(p) + '</i></small></span></a>'; }).join(''));
   }
   // ---------- Filings & approvals (Today): 13F buying, big stakes, FDA & trial news, deals ----------
@@ -424,7 +436,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   // "Coming up" tile: earnings dates for your stocks in the next two weeks, plus the newest alerts. Hidden when there's nothing.
   // Recent 13F filings (Today): the funds that just filed, what each newly bought, and the stocks the most funds bought
   function f13Tile() {
-    loadFunds(); if (!S.funds) return lab('bank', 'Recent 13F filings', 'All funds', '#funds') + rowsBox(skel(3), 'padding:14px'); if (S.funds.err) return '';
+    loadFunds(); if (!S.funds) return lab('bank', 'Recent 13F filings', 'All funds', '#funds') + skelRows(5, 64); if (S.funds.err) return '';
     const F = (S.funds.funds || []).filter((f) => f.h && f.h.length && f.filed).sort((a, b) => b.filed.localeCompare(a.filed) || (b.total || 0) - (a.total || 0)); if (!F.length) return '';
     const last = F[0].filed; const fresh = F.filter((f) => recentDay(f.filed, 7)).length; const top = F.slice(0, 5); const fb = fundBuys(8);
     return lab('bank', 'Recent 13F filings', 'All funds', '#funds') + (fresh ? '<p class="filh">' + updPill(last) + fresh + ' funds filed in the last week.</p>' : '') +
@@ -438,7 +450,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   S.cat = null;
   function catTile() {
     if (!S.cat) { S.cat = { loading: 1 }; getJ('/catalysts.json').then((j) => { S.cat = j; render(); }).catch(() => { S.cat = { err: 1 }; render(); }); }
-    if (S.cat.loading || S.cat.err) return '';
+    if (S.cat.loading) return lab('cal', 'Upcoming catalysts', 'Calendar', '#calendar') + skelRows(6, 62); if (S.cat.err) return '';
     const td = etNow(); td.setHours(0, 0, 0, 0); const t0 = td.getTime(); const day = (d) => Math.round((new Date(d + 'T12:00:00').getTime() - t0) / 864e5);
     const mine = new Set(HOLD_SYMS.concat(wlSyms())); const W = { fda: 5, trial: 5, earnings: 3, index: 3, lockup: 2, ipo: 2, macro: 2, event: 1 };
     const L = (S.cat.catalysts || []).filter((c) => c && c.date && c.status !== 'done').map((c) => Object.assign({ dd: day(c.date) }, c)).filter((c) => c.dd >= 0 && c.dd <= 10)
@@ -533,6 +545,14 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   // ---------- live-ish prices (10): fastest honest polling, never stale-over-new ----------
   // There is no streaming feed on the web server (jump.'s LiveHub needs a Finnhub key + its own Durable Object), so visible prices refresh every 5 seconds.
   let qSeq = 0, qApplied = 0;
+  // rows flash only on a real move: a stock that climbed past others because its own % rose (blue-green), or fell back because its
+  // own % dropped (soft red). The rows it passed only slid one place, so they stay still (before, five rows lit up at once).
+  function rankMoves(st, list, fl) {
+    const pr = st.r || null, pp = st.p || {}; const r = {}, p = {}; const now = Date.now();
+    list.forEach((x, i) => { r[x[0]] = i; p[x[0]] = x[1]; if (!pr || pr[x[0]] == null || pr[x[0]] === i || pp[x[0]] == null || !isFinite(x[1])) return;
+      const up = i < pr[x[0]], d = x[1] - pp[x[0]]; if (up ? d > 0 : d < 0) fl[x[0]] = { c: up ? 'rkup' : 'rkdn', t: now }; });
+    st.r = r; st.p = p;
+  }
   function fastSnap(list) {
     const my = ++qSeq;
     return call('get_stock_snapshot', { symbols: list.join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: true }).then((p) => {
@@ -561,9 +581,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const rank = sess === 'pre' ? 'PRE_MARKET' : sess === 'after' ? 'AFTER_MARKET' : 'DAY_1';
     return call('get_gainers_losers', { category: 'US_STOCK', rank_type: rank, sort_by: 'CHANGE_RATIO', direction: dir === 'up' ? 'DESC' : 'ASC', page_size: '30', page_index: '1' }).then((p) => {
       const rows = ((p && p.data) || []).filter((x) => x && x.symbol && /^[A-Z.]{1,6}$/.test(x.symbol)).slice(0, 30);
-      const prev = S.mv.rank[k] || null; const now = {}; rows.forEach((x, i) => { now[x.symbol] = i; });
-      if (prev) rows.forEach((x, i) => { const o = prev[x.symbol]; if (o != null && o !== i) S.mv.flash[x.symbol] = { c: i < o ? 'rkup' : 'rkdn', t: Date.now() }; });
-      S.mv.rank[k] = now; S.mv.data[k] = { rows, t: Date.now() };
+      rankMoves(S.mv.rank[k] = S.mv.rank[k] || {}, rows.map((x) => [x.symbol, +x.change_ratio * 100]), S.mv.flash); S.mv.data[k] = { rows, t: Date.now() };
       const need = rows.slice(25).map((x) => x.symbol).filter((s) => !S.why[s] || Date.now() - S.why[s].t > 300000);
       loadSetup(rows.slice(0, 25).map((x) => x.symbol), sess);
       if (need.length) call('get_mover_why', { symbols: need.slice(0, 6).join(',') }).then((w) => { Object.keys(w || {}).forEach((s) => { S.why[s] = Object.assign({ t: Date.now() }, w[s]); }); render(); }).catch(() => {});
@@ -643,7 +661,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const FDOM = {"berkshire-hathaway":"@BRKB","pershing-square":"pershingsquareholdings.com","baupost-group":"baupost.com","third-point":"thirdpoint.com","greenlight-capital":"greenlightcapital.com","tiger-global-management":"tigerglobal.com","coatue-management":"coatue.com","viking-global-investors":"vikingglobal.com","lone-pine-capital":"lonepinecapital.com","soros-fund-management":"soros.com","icahn-enterprises":"@IEP","elliott-investment-management":"elliottmgmt.com","starboard-value":"starboardvalue.com","altimeter-capital":"altimeter.com","renaissance-technologies":"rentec.com","citadel-advisors":"citadel.com","aqr-capital-management":"aqr.com","millennium-management":"mlp.com","two-sigma-investments":"twosigma.com","point72-asset-management":"point72.com","tci-fund-management":"tcifund.com","gotham-asset-management":"gothamfunds.com","d1-capital-partners":"d1capital.com","bridgewater-associates":"bridgewater.com","ark-investment-management":"ark-invest.com","whale-rock-capital":"whalerockcapital.com","polen-capital":"polencapital.com","maverick-capital":"maverickcap.com","egerton-capital":"egertoncapital.com","durable-capital-partners":"durablecapital.com","oaktree-capital-management":"oaktreecapital.com","ruane-cunniff-goldfarb":"ruanecunniff.com","valueact-capital":"valueact.com","glenview-capital":"glenviewcapital.com","akre-capital-management":"akrecapital.com","sachem-head-capital":"sachemhead.com","trian-fund-management":"trianpartners.com","dragoneer-investment-group":"dragoneer.com","paulson-co":"paulsonco.com","lansdowne-partners":"lansdownepartners.com","southeastern-asset-management":"southeasternasset.com","jana-partners":"janapartners.com","fairholme-capital":"fairholmefunds.com","engaged-capital":"engagedcapital.com","mantle-ridge":"mantleridge.com","d-e-shaw-co":"deshaw.com","situational-awareness-lp":"situational-awareness.com","eminence-capital":"eminencecapital.com","scion-asset-management":"scionasset.com","jane-street-group":"janestreet.com","susquehanna-international-group":"sig.com","balyasny-asset-management":"bamfunds.com","schonfeld-strategic-advisors":"schonfeld.com","exoduspoint-capital":"exoduspoint.com","marshall-wace":"mwam.com","man-group":"man.com","farallon-capital":"faralloncapital.com","baker-bros-advisors":"bakerbrosadvisors.com","ra-capital-management":"racap.com","perceptive-advisors":"perceptivelife.com","avoro-capital":"avorocapital.com","deerfield-management":"deerfield.com","orbimed-advisors":"orbimed.com","atreides-management":"atreidesmgmt.com","greenoaks-capital":"greenoaks.com","baillie-gifford":"bailliegifford.com","fisher-asset-management":"fisherinvestments.com","fundsmith":"fundsmith.co.uk","gates-foundation-trust":"gatesfoundation.org","hudson-bay-capital":"hudsonbaycapital.com"};
   const fundMark = (f, size) => { const ini = E((f.fund || '?').replace(/[^A-Za-z ]/g, '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()); const d = FDOM[f.slug];
     if (d && d[0] === '@') return tl(d.slice(1), size || 40);
-    return '<span class="fmono"' + (size ? ' style="width:' + size + 'px;height:' + size + 'px"' : '') + '>' + (d && !window.JT_PRIV ? '<img alt="" loading="lazy" src="' + '/api/flogo/' + d + '" onerror="this.remove()">' : '') + '<i>' + ini + '</i></span>'; };
+    return '<span class="fmono"' + (size ? ' style="width:' + size + 'px;height:' + size + 'px"' : '') + '>' + (d && !window.JT_PRIV && !IMGBAD.has('/api/flogo/' + d) ? '<img alt="" decoding="async" src="' + '/api/flogo/' + d + '"' + (IMGOK.has('/api/flogo/' + d) ? ' class="ok"' : '') + ' onload="v2ImgOk(this)" onerror="v2ImgBad(this)">' : '') + '<i>' + ini + '</i></span>'; };
   const fstars = () => { try { return JSON.parse(localStorage.getItem('jt.fstar') || '[]') || []; } catch (e) { return []; } };
   function fundsScreen() {
     loadFunds();
@@ -1066,27 +1084,64 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       busy = true; set(GO, true); S.t.q = 0; loading = 0; S.news = S.news || []; const done = () => { busy = false; set(0); render(); };
       Promise.race([Promise.all([new Promise((r) => { load(); setTimeout(r, 600); const w = setInterval(() => { if (!loading) { clearInterval(w); r(); } }, 200); }), fastSnap(visibleSyms()).catch(() => {})]), new Promise((r) => setTimeout(r, 8000))]).then(done, done); }, { passive: true });
   })();
+  // taps vs scrolls: a tile or row only opens on a real tap. If the finger moved more than ~8px, or the page/list was still
+  // scrolling when it touched down (a tap that just stops a fling), the click is dropped. A real tap gets a faint tint after 100ms.
+  (function () {
+    const TAP = 'a,button,[data-go],[role="button"],[data-mvx],tr.mvtr,label,select'; let t0 = null, moved = false, el = null, tm = 0, lastScroll = 0, killUntil = 0;
+    const clear = () => { clearTimeout(tm); if (el) { const e2 = el; setTimeout(() => e2.classList.remove('tapd'), 120); } el = null; };
+    D.addEventListener('scroll', () => { lastScroll = Date.now(); if (t0) { moved = true; clearTimeout(tm); if (el) el.classList.remove('tapd'); el = null; } }, { capture: true, passive: true });
+    D.addEventListener('touchstart', (e) => { if (e.touches.length !== 1) { t0 = null; return; } const t = e.touches[0]; t0 = [t.clientX, t.clientY]; moved = Date.now() - lastScroll < 120; el = null; killUntil = 0; clearTimeout(tm);
+      const hit = e.target.closest && e.target.closest(TAP); if (!hit || moved || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+      const tile = hit.closest('.row,.hcard,.fbc,.fmc,.card.act,a.card,tr.mvtr,.ni') || null; if (tile) tm = setTimeout(() => { if (!moved) { el = tile; tile.classList.add('tapd'); } }, 100); }, { capture: true, passive: true });
+    D.addEventListener('touchmove', (e) => { if (!t0 || moved) return; const t = e.touches[0]; if (Math.abs(t.clientX - t0[0]) > 8 || Math.abs(t.clientY - t0[1]) > 8) { moved = true; clearTimeout(tm); if (el) el.classList.remove('tapd'); el = null; } }, { capture: true, passive: true });
+    D.addEventListener('touchend', () => { if (t0 && moved) killUntil = Date.now() + 600; t0 = null; clear(); }, { capture: true, passive: true });
+    D.addEventListener('touchcancel', () => { t0 = null; moved = false; clear(); }, { capture: true, passive: true });
+    D.addEventListener('click', (e) => { if (Date.now() < killUntil && !(e.target.closest && e.target.closest('input,textarea,select'))) { e.preventDefault(); e.stopImmediatePropagation(); } killUntil = 0; }, true);
+  })();
   D.addEventListener('touchstart', (e) => { if (e.target.closest && e.target.closest('#car')) touching = 1; }, { passive: true });
   D.addEventListener('touchcancel', () => { touching = 0; if (pend) { pend = 0; render(); } }, { passive: true });
   D.addEventListener('touchend', () => { if (touching) setTimeout(() => { touching = 0; if (pend) { pend = 0; render(); } }, 700); }, { passive: true });
   // update the page in place: only what changed is touched, so images, logos and charts don't flash on every refresh
   function morph(el, html) { const t = D.createElement(el.tagName); t.innerHTML = html; patchKids(el, t); }
+  // rows that carry a key (a link's href, data-k, data-mvx) are matched by key, not by position: when a stock moves up the list
+  // its row moves with its logo and chart intact, instead of every row below it being rewritten (logos used to reload and pop)
+  const RMO = window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+  const keyOf = (el) => el.nodeType === 1 ? (el.getAttribute('data-k') || el.getAttribute('data-mvx') || (el.tagName === 'A' && /(^| )(row|fbc|fmc)( |$)/.test(el.className) ? el.getAttribute('href') : null)) : null;
+  function keyed(A, B) { if (B.length < 2 || !A.length) return null; const seen = new Set();
+    for (const n of B) { const k = keyOf(n); if (!k || seen.has(k)) return null; seen.add(k); }
+    const m = new Map(); for (const o of A) { const k = keyOf(o); if (!k || m.has(k)) return null; m.set(k, o); } return m; }
+  const same = (o, n) => o.nodeType === n.nodeType && o.nodeName === n.nodeName && !(o.nodeType === 1 && o.tagName === 'IMG' && o.getAttribute('src') !== n.getAttribute('src'));
+  function patchEl(o, n) {
+    if (o.nodeType === 3 || o.nodeType === 8) { if (o.nodeValue !== n.nodeValue) o.nodeValue = n.nodeValue; return; }
+    if (o.nodeType !== 1) return;
+    if (o === D.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(o.tagName)) return; // never touch the field you're using (an open picker used to snap shut)
+    for (const at of Array.from(o.attributes)) if (!n.hasAttribute(at.name)) o.removeAttribute(at.name);
+    for (const at of Array.from(n.attributes)) if (o.getAttribute(at.name) !== at.value) o.setAttribute(at.name, at.value);
+    if (o.tagName === 'INPUT' || o.tagName === 'TEXTAREA') return;
+    patchKids(o, n);
+  }
   function patchKids(a, b) {
     const A = Array.from(a.childNodes), B = Array.from(b.childNodes);
+    const m = keyed(A, B);
+    if (m) { let ref = a.firstChild;
+      // when the order changes, rows glide to their new place (about 0.2s) instead of jumping
+      const moved = B.some((n, i) => A[i] !== m.get(keyOf(n))); const y0 = moved && !RMO.matches && A.length <= 60 ? new Map(A.map((o) => [o, o.getBoundingClientRect().top])) : null;
+      for (const n of B) { const k = keyOf(n); let o = m.get(k);
+        if (o && same(o, n)) { m.delete(k); patchEl(o, n); } else o = n.cloneNode(true);
+        if (o !== ref) a.insertBefore(o, ref); else ref = ref.nextSibling; }
+      m.forEach((o) => { if (o.parentNode === a) a.removeChild(o); });
+      if (y0) Array.from(a.children).forEach((o) => { const t = y0.get(o); if (t == null) return; const d = t - o.getBoundingClientRect().top; if (Math.abs(d) < 1) return;
+        o.style.transition = 'none'; o.style.transform = 'translateY(' + d.toFixed(1) + 'px)'; requestAnimationFrame(() => { o.style.transition = 'transform .22s cubic-bezier(.22,.61,.36,1)'; o.style.transform = ''; setTimeout(() => { o.style.transition = ''; }, 260); }); });
+      return; }
     for (let i = 0; i < B.length; i++) { const n = B[i], o = A[i];
       if (!o) { a.appendChild(n.cloneNode(true)); continue; }
-      if (o.nodeType !== n.nodeType || o.nodeName !== n.nodeName || (o.nodeType === 1 && o.tagName === 'IMG' && o.getAttribute('src') !== n.getAttribute('src'))) { a.replaceChild(n.cloneNode(true), o); continue; }
-      if (o.nodeType === 3 || o.nodeType === 8) { if (o.nodeValue !== n.nodeValue) o.nodeValue = n.nodeValue; continue; }
-      if (o.nodeType !== 1) continue;
-      for (const at of Array.from(o.attributes)) if (!n.hasAttribute(at.name)) o.removeAttribute(at.name);
-      for (const at of Array.from(n.attributes)) if (o.getAttribute(at.name) !== at.value) o.setAttribute(at.name, at.value);
-      if (o.tagName === 'INPUT' || o.tagName === 'TEXTAREA') continue;
-      patchKids(o, n); }
+      if (!same(o, n)) { a.replaceChild(n.cloneNode(true), o); continue; }
+      patchEl(o, n); }
     for (let i = A.length - 1; i >= B.length; i--) a.removeChild(A[i]);
   }
   function render() {
     if (touching) { pend = 1; return; }
-    { const ae = D.activeElement; if (ae && (ae.id === 'askq' || (ae.classList && ae.classList.contains('xin')))) return; } // don't wipe something being typed
+    { const ae = D.activeElement; if (ae && (ae.id === 'askq' || ae.tagName === 'SELECT' || (ae.classList && ae.classList.contains('xin')))) return; } // don't wipe something being typed
     const app = D.getElementById('app'), nav = D.getElementById('nav'); if (!app) return;
     const r = route(); const car0 = D.getElementById('car'); const keepScroll = car0 && r.v === 'portfolio' && lastV === 'portfolio' ? car0.scrollLeft : null;
     if (r.v === 'portfolio' && lastV !== 'portfolio') carI = r.i;
@@ -1108,14 +1163,14 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       const key = r.v === 'money' ? 'money:' + (r.id || '') : r.v; const g = GRP.find((G) => G.some((t) => t[2].split(' ').indexOf(key) >= 0));
       if (g && !(r.v === 'xinsiders' && r.id)) { const ti = html.indexOf('<div class="top'); const te = ti >= 0 ? html.indexOf('</div></div>', ti) : -1;
         if (te > 0) html = html.slice(0, te + 12) + '<div class="gtabs" role="tablist">' + g.map((t) => { const on = t[2].split(' ').indexOf(key) >= 0; return '<a role="tab" class="gt' + (on ? ' on' : '') + '" href="' + t[0] + '"' + (on ? ' aria-selected="true"' : '') + '>' + t[1] + '</a>'; }).join('') + '</div>' + html.slice(te + 12); } }
-    if (r.v !== 'today' && VIEW[r.v]) { const m = /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(html); const bi = html.indexOf('<span class="brand">'); if (m && bi >= 0) { const t = m[1].replace(/<[^>]+>/g, '').trim(); const be = html.indexOf('</span>', bi) + 7; html = html.slice(0, bi) + '<b class="ttl">' + t + '</b>' + html.slice(be); html = html.replace(m[0], ''); } } if (lastV !== r.v) app.innerHTML = html; else morph(app, html);
+    if (r.v !== 'today' && VIEW[r.v]) { const m = /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(html); const bi = html.indexOf('<span class="brand">'); if (m && bi >= 0) { const t = m[1].replace(/<[^>]+>/g, '').trim(); const be = html.indexOf('</span>', bi) + 7; html = html.slice(0, bi) + '<b class="ttl">' + t + '</b>' + html.slice(be); html = html.replace(m[0], ''); } } if (lastV !== r.v) { app.innerHTML = html; if (lastV) { app.classList.remove('vin'); void app.offsetWidth; app.classList.add('vin'); } } else morph(app, html);
     app.querySelectorAll('.mvt').forEach((t, i) => { if (tsc[i]) { t.scrollTop = tsc[i][0]; t.scrollLeft = tsc[i][1]; } }); render.h = location.hash;
     let navOn = { today: 0, movers: 1, radar: 1, stock: 1, markets: 2, mtheme: 2, earnings: 2, portfolio: 4, funds: 4, fund: 4 }[r.v]; if (navOn == null && window.V2X) navOn = V2X.nav[r.v];
     if (DESK.matches) { // desktop: a full sidebar with search, every section, and settings at the bottom
       const MORE = [['zap', 'Trade ideas', '#ideas', 'xideas radar xdips xleaders xvalue'], ['news', 'News', '#news', 'xnews'], ['cal', 'Calendar', '#calendar', 'xcalendar earnings xipos'], ['bank', 'Funds & 13Fs', '#funds', 'funds fund'], ['activity', 'Analyst calls', '#analysts', 'analysts'], ['dollar', 'Big money', '#money/options', 'money xflow xinsiders xbuzz'], ['bell', 'Alerts', '#alerts', 'alerts'], ['grid', 'Tools', '#menu', 'xmenu xcompare xcalc xjournal xpatterns xstrategies xresearch xlive xrecord xanalyzer xask ask']];
       const mainOn = { today: 0, movers: 1, markets: 2, mtheme: 2, xsectors: 2, xsearch: -1, xwatch: 3, portfolio: 4, connect: 4, xmine: 4, xbuild: 4, xmodels: 4, xanalyzer: 4, xjournal: 4 }[r.v];
       const item = (x, on) => '<a class="ni' + (on ? ' on' : '') + '" href="' + x[2] + '"' + (on ? ' aria-current="page"' : '') + '>' + ic(x[0], 20, 2.0) + '<span>' + x[1] + '</span>' + (x[1] === 'Alerts' && alertCount() ? '<em class="nbadge">' + alertCount() + '</em>' : '') + '</a>';
-      morph(nav, '<a class="nsrch" href="#search">' + ic('search2', 17, 2.2) + '<span>Search stocks</span><kbd>/</kbd></a>' + NAVI.map((x, i) => item(x, i === mainOn)).join('') + '<div class="nsep">Explore</div>' + MORE.map((x) => item(x, x[3].split(' ').indexOf(r.v) >= 0)).join('') + '<div class="nfill"></div>' + item(['gear', 'Settings', '#settings'], /^x(settings|alertset|account|feedback|getapp|privacy|terms)$/.test(r.v)));
+      morph(nav, '<a class="nsrch" href="#search">' + ic('search2', 17, 2.2) + '<span>Search stocks</span><kbd>/</kbd></a>' + NAVI.map((x, i) => item(x, i === mainOn)).join('') + '<div class="nsep">Explore</div>' + MORE.map((x) => item(x, x[3].split(' ').indexOf(r.v) >= 0)).join('') + '<div class="nfill"></div>' + item(['gear', 'Settings', '#settings'], /^x(settings|email|alertset|account|feedback|getapp|privacy|terms)$/.test(r.v)));
     } else
     morph(nav, NAVI.map((x, i) => '<a class="ni' + (i === navOn ? ' on' : '') + '" href="' + x[2] + '" aria-label="' + x[1] + '"' + (i === navOn ? ' aria-current="page"' : '') + '>' + ic(x[0], 21, 2.0) + '<span>' + x[1] + '</span></a>').join(''));
     nav.style.display = r.v === 'connect' ? 'none' : '';

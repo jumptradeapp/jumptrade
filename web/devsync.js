@@ -12,7 +12,9 @@
   const api = (c, body) => fetch('/api/sync?c=' + c, body ? { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}).then((r) => r.json());
   let timer = null, applying = false;
   const push = () => { const c = code(); if (!c) return; const t = Date.now(); set(TK, String(t)); api(c, { t: t, data: snap() }).catch(() => {}); };
-  const apply = (r) => { if (!r || !r.data) return false; applying = true; Object.keys(r.data).forEach((k) => { if (KEYS.indexOf(k) >= 0) set(k, r.data[k]); }); set(TK, String(r.t)); applying = false; return true; };
+  // returns true only if something on this device actually changed (the app reloads to show it); an identical copy is just marked seen,
+  // so opening the app after signing in, or coming back to it, no longer blinks through a full page reload for nothing
+  const apply = (r) => { if (!r || !r.data) return false; applying = true; let ch = false; Object.keys(r.data).forEach((k) => { if (KEYS.indexOf(k) >= 0 && get(k) !== r.data[k]) { set(k, r.data[k]); ch = true; } }); set(TK, String(r.t)); applying = false; return ch; };
   const pull = (first) => { const c = code(); if (!c) return Promise.resolve(); return api(c).then((r) => { const mine = +get(TK) || 0;
       if (r && r.data && (first || r.t > mine)) { if (apply(r)) location.reload(); } else if (!r || !r.data || mine > r.t) push(); }).catch(() => {}); };
   // save a moment after anything synced changes

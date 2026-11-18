@@ -1,3 +1,9 @@
+/* fonts served from jumptrade.app itself (was Google Fonts): no extra connection, preloaded, so text doesn't re-flow a moment after it appears */
+@font-face{font-family:Poppins;font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/Poppins-400-latin.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:Poppins;font-style:normal;font-weight:500;font-display:swap;src:url(/fonts/Poppins-500-latin.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:Poppins;font-style:normal;font-weight:600;font-display:swap;src:url(/fonts/Poppins-600-latin.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:Poppins;font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/Poppins-700-latin.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:Inter;font-style:normal;font-weight:500 700;font-display:swap;src:url(/fonts/Inter-latin.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
 *{box-sizing:border-box;margin:0;padding:0}
 
 
@@ -294,7 +300,7 @@ html.jt-gated body{overflow:hidden}
 .mvt td.fl2 small{display:block;font-size:9.5px;color:var(--fg3);line-height:1}
 .mvt td.up{color:var(--up)}.mvt td.dn{color:var(--dn)}
 .mvt tr.mvtr{cursor:pointer}
-.mvt tr.mvtr:active td{background:rgba(91,155,234,.08)}
+
 .mvt tr.op td{background:rgba(37,89,160,.16)}.mvt tr.op td.sy{background:#13264A}
 .mvt tr.rkup td{animation:rkf-up .6s ease-out}.mvt tr.rkdn td{animation:rkf-dn .6s ease-out}
 @keyframes rkf-up{from{background:rgba(95,191,143,.22)}to{background:transparent}}
@@ -911,7 +917,7 @@ html body .snapb{display:block;background:none!important;border:0!important;box-
 .fstar{flex:none;width:44px;height:44px;border-radius:12px;border:1px solid var(--hair);background:none;color:var(--fg2);font-size:22px;line-height:1}.fstar.on{color:#F2B45A;border-color:rgba(242,180,90,.5)}
 
 /*web interface guidelines*/
-html{color-scheme:dark;-webkit-tap-highlight-color:rgba(143,192,255,.18);touch-action:manipulation}html[data-x2t="light"]{color-scheme:light}
+html{color-scheme:dark;-webkit-tap-highlight-color:transparent;touch-action:manipulation}html[data-x2t="light"]{color-scheme:light}
 a:focus-visible,button:focus-visible,[role="button"]:focus-visible,.chip:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid #8FC0FF!important;outline-offset:2px;border-radius:10px}
 .xin:focus-visible{outline:2px solid #8FC0FF;outline-offset:1px}
 .row:focus-visible{outline-offset:-2px}
@@ -923,9 +929,13 @@ h1,h2{text-wrap:balance}
 /*visual fixes: calm heat tiles, nav labels, pressed states*/
 html body .ht{border:1px solid rgba(147,192,246,.10)!important;color:#EAF2FB!important}html body .ht b.up{color:var(--up)!important}html body .ht b.dn{color:var(--dn)!important}
 html body .ni span{display:block!important;font-size:10.5px!important;font-weight:600!important;font-family:inherit!important;line-height:12px}html body .ni{width:62px!important;height:54px!important;border-radius:18px!important;gap:3px!important}
-.row,.chip,.xbtn,.ni,.seg a,.seg span,.fbc,.hcard,.card.act,button{transition:transform .12s cubic-bezier(.25,1,.5,1),background-color .12s ease,opacity .12s ease}
-.row:active,.chip:active,.xbtn:active,.ni:active,.seg a:active,.seg span:active,.fbc:active,.hcard:active,.card.act:active,.fsort button:active,.ptog:active{transform:scale(.97);opacity:.88}
-@media (prefers-reduced-motion:reduce){.row,.chip,.xbtn,.ni{transition:none}.row:active,.chip:active,.xbtn:active,.ni:active{transform:none}}
+/* tiles and rows stay put under your finger: no shrink or fade when you touch one (a scroll that started on a tile used to make it
+   "press"). A real tap gets a faint tint after ~100ms (v2.js adds .tapd only when the finger hasn't moved). Small buttons keep a light press. */
+.row,.chip,.xbtn,.ni,.seg a,.seg span,.fbc,.fmc,.hcard,.card.act,button{transition:background-color .12s ease}
+.xbtn:active,.chip:active,.fsort button:active{opacity:.85}
+.tapd{background-color:rgba(140,180,215,.08)!important}
+.mvt tr.tapd td{background:rgba(91,155,234,.08)}
+html[data-x2t="light"] .tapd{background-color:rgba(30,80,150,.06)!important}
 .fsort button{border:1px solid var(--hair)!important;border-radius:999px!important;padding:6px 12px!important;min-height:32px!important}.fsort button.on{border-color:transparent!important}
 
 /*desktop stopgap until the full desktop layout: keep the phone layout centered and readable*/
@@ -943,7 +953,7 @@ html body .ni span{display:block!important;font-size:10.5px!important;font-weigh
 .lpBtn,.lpBtn2,.lpRow button{font:600 16px Inter,system-ui,sans-serif;min-height:50px;padding:0 22px;border-radius:14px;cursor:pointer;border:0}
 .lpBtn{background:#9CCBFF;color:#04122A}.lpBtn:hover{background:#B5D8FF}.lpBtn[disabled]{opacity:.6}
 .lpBtn2{background:transparent;color:#DCEBFF;border:1px solid rgba(156,203,255,.35)}.lpBtn2:hover{border-color:rgba(156,203,255,.7)}
-.lpBtn:active,.lpBtn2:active,.lpRow button:active{transform:scale(.97)}
+.lpBtn:active,.lpBtn2:active,.lpRow button:active{opacity:.88}
 .lpCode{margin-top:20px;max-width:420px}.lpCode label{display:block;font-size:14px;color:#AFC4E0;margin-bottom:8px}
 .lpRow{display:flex;gap:8px}.lpRow input,.lpReq input{flex:1;min-width:0;height:50px;border-radius:12px;border:1px solid rgba(156,203,255,.28);background:rgba(8,20,38,.8);color:#EAF3FF;font:500 16px Inter,system-ui,sans-serif;padding:0 14px}
 .lpRow button{background:#9CCBFF;color:#04122A}
@@ -1110,3 +1120,9 @@ html[data-x2t="light"] .eyeb{color:#5A6B80}
 .eyeb{flex:none;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:0;border-radius:12px;background:none;color:#9FB3C8;cursor:pointer}
 .eyeb:hover{color:#E9F1F7;background:rgba(140,180,215,.08)}.eyeb:focus-visible{outline:2px solid #9CCBFF;outline-offset:2px}
 html[data-x2t="light"] .eyeb{color:#5A6B80}
+
+/* solid feel (Nov 18): logos fade in once instead of popping, and never fade again on a refresh; a skeleton row is the same height as the
+   row that replaces it; switching pages fades the new page in quickly */
+.tl img[onload],.fmono img[onload]{opacity:0;transition:opacity .18s ease-out}.tl img[onload].ok,.fmono img[onload].ok{opacity:1}
+.row.skr{border-top:1px solid var(--hair)}.row.skr:first-child{border-top:0}.row.skr .skel{flex:none}
+@media (prefers-reduced-motion:no-preference){.app2.vin{animation:vin .16s ease-out}}@keyframes vin{from{opacity:.4}to{opacity:1}}

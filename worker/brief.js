@@ -90,7 +90,7 @@ function render(d, w) {
     '<table class="ixt" width="100%" cellpadding="0" cellspacing="6" role="presentation"><tr>' + ix + '</tr></table>' + (W.sector ? '<div class="hdm">' + E(W.sector) + '</div>' : '') + '</div><div class="body">' +
     card('What matters today', matters ? '<ul>' + matters + '</ul>' : '') + card('Your stocks', mine) + card('Pre-market movers', mv) + card('Headlines', hl) + card('Deals', deals) + card('Earnings', earn) + card('Coming up', coming) +
     '<a class="btn" href="https://jumptrade.app/#today" style="color:#ffffff;text-decoration:none">See everything in jumptrade.</a></div>' +
-    '<div class="ft">Sent market days at 8:&#8288;45&nbsp;AM ET. Reply to stop, or change emails in the app.<br>Pre-market prices as of the time sent. For information only, not investment advice.</div></div></body></html>';
+    '<div class="ft">Sent market days at 8:&#8288;45&nbsp;AM ET. Turn it off any time in the app: Menu &rsaquo; Settings &rsaquo; Morning email.<br>Pre-market prices as of the time sent. For information only, not investment advice.</div></div></body></html>';
   const tx = (L) => L.filter(Boolean).join('\n');
   const text = tx(['JUMPTRADE morning brief · ' + date, W.headline || '', 'S&P 500 ' + fmtPct(pctOf(d.idx.SPY)) + ' · Nasdaq ' + fmtPct(pctOf(d.idx.QQQ)) + ' · Dow ' + fmtPct(pctOf(d.idx.DIA)) + ' · Russell ' + fmtPct(pctOf(d.idx.IWM)), '',
     ...(W.matters || []).map((m) => '- ' + m.b + ' ' + m.t), '', 'YOUR STOCKS', ...d.mine.slice(0, 5).map((r) => r.s + ' ' + fmtPct(r.p) + ' ' + (yours[r.s] || '')), '', 'PRE-MARKET MOVERS',
@@ -118,12 +118,23 @@ export async function sendMail(env, to, m) {
   return { ok: !error, status, id: ids[0], ids, error };
 }
 
+// who gets the brief: the owner's list ('mail_to') plus everyone who turned it on for themselves in Settings ('mail_optin'),
+// lower-cased, checked and de-duplicated
+export const MAIL_RE = /^[^\s@<>,;"']+@[^\s@<>,;"']+\.[a-z]{2,}$/i;
+export const cleanMail = (x) => { const e = String(x == null ? '' : x).trim().toLowerCase(); return e.length <= 120 && MAIL_RE.test(e) ? e : ''; };
+export async function briefRecipients(env, vget) {
+  const own = (await vget(env, 'mail_to')) || []; const opt = (await vget(env, 'mail_optin')) || {}; const U = (await vget(env, 'users')) || {};
+  const out = []; const seen = new Set();
+  own.concat(Object.keys(opt).filter((k) => U[k] && !U[k].off).map((k) => opt[k] && opt[k].email)) /* removed or switched-off accounts don't get it */.forEach((x) => { const e = cleanMail(x); if (e && !seen.has(e)) { seen.add(e); out.push(e); } });
+  return out.slice(0, 300);
+}
+
 // 8:45 AM ET on market days, once
 export async function dailyBrief(env, H) {
   const now = H.etNow(); if (/Sat|Sun|Hol/.test(now.wd) || now.hm < 525 || now.hm > 540) return;
   const last = await H.vget(env, 'brief_last'); if (last && last.day === now.day) return;
   const L = await H.vlease(env, 'brief_' + now.day, 300000); if (!L.ok) return;
-  const to = ((await H.vget(env, 'mail_to')) || []).filter((x) => /@/.test(x)); if (!to.length) return;
+  const to = await briefRecipients(env, H.vget); if (!to.length) return;
   const m = await buildBrief(env, H); const res = await sendMail(env, to, m);
   await H.vput(env, 'brief_last', { day: now.day, t: Date.now(), subject: m.subject, ok: res.ok, error: res.error, n: to.length, ai: m.ai });
 }
