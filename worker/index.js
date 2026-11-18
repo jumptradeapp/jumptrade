@@ -1182,8 +1182,10 @@ async function ownerRoutes(url, req, env) {
     if (!unlocked) return json({ error: 'locked' }, 403);
     const wb = new Webull(env); if (!wb.ready) return json({ error: 'no_webull', message: 'Webull keys aren’t set on the server.' }, 503);
     const r = await wb.raw('POST', '/auth/tokens/create', {}, null); // one try only: Webull locks the key after 5 failed logins
-    if (r.status !== 200 || !r.data || !r.data.token) if (r.data && r.data.error_code === 'VERIFY_FAILURE_EXCEED_LIMIT') return json({ error: 'webull', message: 'Webull has paused logins for this API key after too many unapproved attempts. Wait for it to reset, then tap Connect once.' }, 502);
-    return json({ error: 'webull', message: 'Webull didn’t start the login (status ' + r.status + '): ' + String((r.data && (r.data.message || r.data.msg)) || r.data || '').slice(0, 120) }, 502);
+    if (r.status !== 200 || !r.data || !r.data.token) { // only a failed start is an error; a returned token falls through and is saved below
+      if (r.data && r.data.error_code === 'VERIFY_FAILURE_EXCEED_LIMIT') return json({ error: 'webull', message: 'Webull has paused logins for this API key after too many unapproved attempts. Wait for it to reset, then tap Connect once.' }, 502);
+      return json({ error: 'webull', message: 'Webull didn’t start the login (status ' + r.status + '): ' + String((r.data && (r.data.message || r.data.msg)) || r.data || '').slice(0, 120) }, 502);
+    }
     const nt = { token: r.data.token, expires: r.data.expires, status: r.data.status || 'PENDING', created: Date.now() }; await vput(env, 'trtoken', nt); await vput(env, 'token', nt); await vput(env, 'tokstate', { status: nt.status, created: Date.now(), http: 200 }); WBOK.t = 0; OWNACC = null; // one approved login serves prices and accounts
     return json({ ok: true, status: r.data.status, message: r.data.status === 'NORMAL' ? 'Connected.' : 'Webull texts you a code. Open the Webull app, tap Check Now on the API login prompt, enter the code, then come back. You have 5 minutes.' });
   }
