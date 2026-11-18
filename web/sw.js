@@ -1,5 +1,5 @@
 /* jumptrade. service worker: push notifications + instant app open (app files cached, live data never cached) */
-const V = 'jt-shell-v12';
+const V = 'jt-shell-v13';
 const SHELL = ['/', '/index.html', '/v2/v2.css', '/v2/v2.js', '/v2/v2x.js', '/shim.js', '/auth.js', '/nthumb.js', '/dip.js', '/val.js', '/icon-192.png', '/apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(V).then((c) => c.addAll(SHELL).catch(() => {}))); self.skipWaiting(); });
@@ -10,6 +10,7 @@ self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) =
 self.addEventListener('fetch', (e) => {
   const u = new URL(e.request.url);
   if (e.request.method !== 'GET' || u.origin !== location.origin || u.pathname.startsWith('/api/')) return;
+  if (/\.json$/.test(u.pathname)) return; // data files (13F funds, ratings, catalysts…) need sign-in and carry their own dates: never keep them on the phone after sign-out, never answer with an old copy
   e.respondWith(caches.open(V).then(async (c) => {
     const net = fetch(e.request, { cache: 'no-cache' }).then((r) => { if (r && r.ok) c.put(e.request, r.clone()); return r; });
     const slow = new Promise((res) => setTimeout(res, 2500)).then(() => c.match(e.request, { ignoreSearch: u.pathname === '/' || u.pathname === '/index.html' }));
