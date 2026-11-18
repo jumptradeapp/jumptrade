@@ -7,6 +7,7 @@ import { Webull } from './webull.js';
 import { makeVapid, sendPush, PUSHLAST } from './push.js';
 import { authRoutes, sessionFrom, KINDS } from './auth.js';
 import { buildBrief, sendMail, dailyBrief } from './brief.js';
+import { etNow, closeOf, ahEndOf, rankFor } from './market.js';
 // Every outside request gets a deadline so one slow source can't hang a whole response.
 const fetch = (u, o = {}) => globalThis.fetch(u, o.signal ? o : { ...o, signal: AbortSignal.timeout(o.timeoutMs || (/api\.anthropic\.com/.test(String(u)) ? 25000 : 8000)) });
 
@@ -1074,10 +1075,6 @@ async function wbUpkeepRun(env) {
 const PDEF = { fresh: true, newsMovers: true, newsGeneral: true, news: true, newsMarket: true, runners: true, runnerMin: 80, move: true, movePct: 5, flow: true, ratings: true, earnings: true, open: false, close: true, quiet: true, cap: 12, prices: [] };
 async function vapidKeys(env) { let v = await vget(env, 'vapid'); if (!v) { v = await makeVapid(); await vput(env, 'vapid', v); } return v; }
 const subId = async (ep) => { const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ep)); return [...new Uint8Array(d)].slice(0, 12).map((b) => b.toString(16).padStart(2, '0')).join(''); };
-function etNow() { const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', weekday: 'short', hourCycle: 'h23' }).formatToParts(new Date()); const g = (t) => (p.find((x) => x.type === t) || {}).value; const day = g('year') + '-' + g('month') + '-' + g('day'); return { day, hm: +g('hour') * 60 + +g('minute'), wd: MKT_HOLIDAYS.has(day) ? 'Hol' : g('weekday'), early: MKT_EARLY.has(day) }; }
-// US market holidays and 1pm early closes (keep in step with web/app.js)
-const MKT_HOLIDAYS = new Set(['2026-11-26', '2026-12-25', '2027-01-01', '2027-01-18', '2027-02-15', '2027-03-26', '2027-05-31', '2027-06-18', '2027-07-05', '2027-09-06', '2027-11-25', '2027-12-24', '2028-01-17', '2028-02-21', '2028-04-14', '2028-05-29', '2028-06-19', '2028-07-04', '2028-09-04', '2028-11-23', '2028-12-25']);
-const MKT_EARLY = new Set(['2026-11-27', '2026-12-24', '2027-11-26', '2028-07-03', '2028-11-24']);
 // push to the owner's devices (new tester, feedback)
 // Every notification leads with a short subject line; the specific headline moves to the first line of the body.
 const SUBJ = { fr: 'Fresh mover', tm: 'Top mover news', ng: 'Market news', run: 'Runner alert', mv: 'Big move', px: 'Price alert', nw: 'Stock news', nm: 'Market news', fl: 'Big money', rt: 'Analyst call', er: 'Earnings', open: 'Market open', close: 'Closing recap', 'jt-admin': 'Beta admin', test: 'Alerts on' };
@@ -1119,7 +1116,7 @@ async function precompute(env, ctx) {
 }
 // ---------- pick log: every "Your move today" pick is recorded, then scored against what the stock did next ----------
 async function logPicks(env, rows) {
-  const now = etNow(); if (/Sat|Sun|Hol/.test(now.wd) || now.hm < 570 || now.hm >= 960) return 0; // regular hours only, so the logged price is a real traded price
+  const now = etNow(); if (/Sat|Sun|Hol/.test(now.wd) || now.hm < 570 || now.hm >= closeOf(now)) return 0; // regular hours only, so the logged price is a real traded price
   const picks = (rows || []).filter((r) => r.signals >= 3 && r.price > 0); if (!picks.length) return 0;
   const log = (await vget(env, 'picklog')) || [];
   const have = new Set(log.filter((x) => x.d === now.day).map((x) => x.s)); let added = 0;
@@ -1285,7 +1282,7 @@ async function newsdesk(env, ctx) {
   try {
     let st = (await vget(env, 'nd_state')) || {}; if (st.day !== now.day) st = { day: now.day, n: 0, seen: Object.fromEntries(Object.entries(st.seen || {}).filter((e) => Date.now() - e[1] < 6 * 3600000)), briefs: {} };
     const list = (await vget(env, 'jtnews')) || []; const add = []; const cap = () => st.n + add.length >= 25;
-    const pre = now.hm < 570, post = now.hm >= 960;
+    const pre = now.hm < 570, post = now.hm >= closeOf(now);
     const rank = pre ? 'PRE_MARKET' : post ? 'AFTER_MARKET' : 'DAY_1';
     const gl = await cachedTool('get_gainers_losers', { category: 'US_STOCK', rank_type: rank, sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '30', page_index: '1' }, ctx, env).catch(() => null);
     const G = (((gl || {}).data) || []).filter((x) => x && x.symbol && /^[A-Z.]{1,6}$/.test(x.symbol));
@@ -1344,7 +1341,7 @@ const MW_KIND = [[/\b(offering|private placement|registered direct|warrants?|at-
   [/\b(miss(es)?|falls short|cuts? (guidance|outlook))/i, 'Earnings miss', 'warn'], [/\b(halt|halted)\b/i, 'Trading halt', 'news'], [/\b(short squeeze|meme|retail traders)\b/i, 'Squeeze / retail', 'news'], [/\b(crypto|bitcoin|treasury strategy)\b/i, 'Crypto pivot', 'news']];
 async function moverScan(env, ctx) {
   const now = etNow(); if (/Sat|Sun|Hol/.test(now.wd) || now.hm < 240 || now.hm > 1200) return;
-  const pre = now.hm < 570, post = now.hm >= 960; const rank = pre ? 'PRE_MARKET' : post ? 'AFTER_MARKET' : 'DAY_1';
+  const pre = now.hm < 570, post = now.hm >= closeOf(now); const rank = pre ? 'PRE_MARKET' : post ? 'AFTER_MARKET' : 'DAY_1';
   const gl = await cachedTool('get_gainers_losers', { category: 'US_STOCK', rank_type: rank, sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '40', page_index: '1' }, ctx, env).catch(() => null);
   const G = ((((gl || {}).data) || []).filter((x) => x && x.symbol && /^[A-Z.]{1,6}$/.test(x.symbol))).slice(0, 30); if (!G.length) return;
   const snap = await cachedTool('get_stock_snapshot', { symbols: G.map((x) => x.symbol).join(','), category: 'US_STOCK', extend_hour_required: true, overnight_required: false }, ctx, env).catch(() => null);
@@ -1442,7 +1439,7 @@ async function cachedTool(tool, input, ctx, env) { const r = await runTool(tool,
 async function runAlerts(env, ctx) {
   const all = (await vget(env, 'subs')) || {}; const ids = Object.keys(all); if (!ids.length) return { subs: 0 };
   const now = etNow(); const weekday = !/Sat|Sun|Hol/.test(now.wd); if (!weekday) return { weekend: true };
-  const pre = now.hm >= 240 && now.hm < 570, reg = now.hm >= 570 && now.hm < 960, post = now.hm >= 960 && now.hm < 1200;
+  const pre = now.hm >= 240 && now.hm < 570, reg = now.hm >= 570 && now.hm < closeOf(now), post = now.hm >= closeOf(now) && now.hm < ahEndOf(now);
   if (!pre && !reg && !post) return { closed: true };
   const vapid = await vapidKeys(env);
   const want = new Set(); if (now.hm >= 975 && now.hm < 977) want.add('SPY'); ids.forEach((id) => { (all[id].syms || []).forEach((s) => want.add(s)); (all[id].prefs.prices || []).forEach((p) => want.add(p.sym)); });
@@ -1554,7 +1551,7 @@ async function handleFetch(req, env, ctx) {
     // ---------- public landing page: a small live teaser and invite requests (no sign-in) ----------
     if (url.pathname === '/api/public/teaser') {
       const ck = new Request('https://cache.jumptrade/teaser'); const hit = await caches.default.match(ck); if (hit) return hit;
-      const et = etNow(); const m = et.hm; const rank = m < 570 ? 'PRE_MARKET' : m >= 960 ? 'AFTER_MARKET' : 'DAY_1';
+      const et = etNow(); const rank = rankFor(et);
       let movers = []; try { const p = await cachedTool('get_gainers_losers', { category: 'US_STOCK', rank_type: rank, sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '30', page_index: '1' }, ctx, env);
         movers = ((p && p.data) || []).filter((x) => x && /^[A-Z.]{1,6}$/.test(x.symbol) && +x.price >= 1 && (+x.volume || 0) >= 100000).slice(0, 5).map((x) => ({ s: x.symbol, n: String(x.name || '').slice(0, 40), pct: Math.round(+x.change_ratio * 1000) / 10 })); } catch (e) {}
       let buys = [], filed = null, nf = 0; try { const r = await env.ASSETS.fetch(new Request('https://jumptrade.app/funds.json')); const j = await r.json(); const F = (j.funds || []).filter((f) => f.filed && Date.now() - Date.parse(f.filed + 'T12:00:00Z') < 21 * 864e5); nf = F.length; filed = F.reduce((a, f) => (f.filed > a ? f.filed : a), '');

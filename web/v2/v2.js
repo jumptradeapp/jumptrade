@@ -194,11 +194,16 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
 
   // ---------- time + market session (Eastern) ----------
   function etNow() { const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })); return d; }
+  // US market holidays and 1 PM early closes (same dates as the server's worker/market.js)
+  const HOLS = { '2026-11-26': 'Thanksgiving', '2026-12-25': 'Christmas', '2027-01-01': 'New Year’s Day', '2027-01-18': 'MLK Day', '2027-02-15': 'Presidents’ Day', '2027-03-26': 'Good Friday', '2027-05-31': 'Memorial Day', '2027-06-18': 'Juneteenth', '2027-07-05': 'Independence Day', '2027-09-06': 'Labor Day', '2027-11-25': 'Thanksgiving', '2027-12-24': 'Christmas' };
+  const HALFD = { '2026-11-27': 1, '2026-12-24': 1, '2027-11-26': 1 };
+  const ymdOf = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   function session() {
     if (typeof window.sessionAt === 'function') { const m = { pre: 'Pre-market', regular: 'Market open', after: 'After hours', overnight: 'Overnight', closed: 'Market closed' }; return m[sessionAt()] || 'Market closed'; }
-    const d = etNow(), wd = d.getDay(), m = d.getHours() * 60 + d.getMinutes();
-    if (wd === 0 || wd === 6) return 'Market closed';
-    return m < 240 ? 'Overnight' : m < 570 ? 'Pre-market' : m < 960 ? 'Market open' : m < 1200 ? 'After hours' : 'Overnight';
+    const d = etNow(), wd = d.getDay(), m = d.getHours() * 60 + d.getMinutes(), ds = ymdOf(d);
+    if (wd === 0 || wd === 6 || HOLS[ds]) return 'Market closed'; // holidays too, so Thanksgiving doesn't show a live session and rank a dead list
+    const close = HALFD[ds] ? 780 : 960, ahEnd = HALFD[ds] ? 1020 : 1200; // early-close days end at 1 PM, after hours at 5 PM
+    return m < 240 ? 'Overnight' : m < 570 ? 'Pre-market' : m < close ? 'Market open' : m < ahEnd ? 'After hours' : 'Overnight';
   }
   function dateLine() {
     const d = etNow();
@@ -359,8 +364,6 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   }
   // Today's header: a greeting with your first name, a small "Market brief" label, and one line on how the market's doing
   // market-hours bar: where we are in the trading day (pre-market, regular, after hours), with time left
-  const HOLS = { '2026-11-26': 'Thanksgiving', '2026-12-25': 'Christmas', '2027-01-01': 'New Year’s Day', '2027-01-18': 'MLK Day', '2027-02-15': 'Presidents’ Day', '2027-03-26': 'Good Friday', '2027-05-31': 'Memorial Day', '2027-06-18': 'Juneteenth', '2027-07-05': 'Independence Day', '2027-09-06': 'Labor Day', '2027-11-25': 'Thanksgiving', '2027-12-24': 'Christmas' };
-  const HALFD = { '2026-11-27': 1, '2026-12-24': 1, '2027-11-26': 1 };
   function hoursBar() {
     const et = etNow(), wd = et.getDay(), m = et.getHours() * 60 + et.getMinutes(); const ds = et.getFullYear() + '-' + String(et.getMonth() + 1).padStart(2, '0') + '-' + String(et.getDate()).padStart(2, '0');
     const hm = (x) => (x >= 60 ? Math.floor(x / 60) + 'h ' : '') + (x % 60) + 'm'; const S0 = 240, O = 570, C = HALFD[ds] ? 780 : 960, EN = HALFD[ds] ? 1020 : 1200;
