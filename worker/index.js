@@ -6,7 +6,9 @@
 import { Webull } from './webull.js';
 import { makeVapid, sendPush, PUSHLAST } from './push.js';
 import { authRoutes, sessionFrom, KINDS } from './auth.js';
-import { buildBrief, sendMail, dailyBrief, briefRecipients, cleanMail } from './brief.js';
+import { sendMail } from './brief.js';
+import { TYPES, TYPE_IDS, dueTypes, cleanMail, cleanTypes, ownerList, optTypes, recipients, loadSubs, mailToOf, checkUnsub, E as mE } from './mails.js';
+import { mailJob, build as buildMailOf, deliver, lastSent, signKey } from './mailjob.js';
 import { etNow, closeOf, ahEndOf, rankFor } from './market.js';
 // Every outside request gets a deadline so one slow source can't hang a whole response.
 const fetch = (u, o = {}) => globalThis.fetch(u, o.signal ? o : { ...o, signal: AbortSignal.timeout(o.timeoutMs || (/api\.anthropic\.com/.test(String(u)) ? 25000 : 8000)) });
@@ -865,6 +867,7 @@ async function vget(env, k) { const v = await vault(env); if (!v) return null; c
 async function vlease(env, k, ms) { const v = await vault(env); if (!v) return { ok: true, id: 'none' }; const r = await v.fetch('https://v/lease?k=' + k + '&ms=' + (ms || 60000)); return r.ok ? r.json() : { ok: false }; }
 async function vrelease(env, k, id) { const v = await vault(env); if (v && id) await v.fetch('https://v/lease?k=' + k + '&release=1&id=' + id); }
 async function vput(env, k, val) { const v = await vault(env); if (!v) return; await v.fetch('https://v/put?k=' + k, { method: 'POST', body: JSON.stringify(val) }); }
+async function vpatch(env, k, patch) { const v = await vault(env); if (!v) return { ok: false }; const r = await v.fetch('https://v/patch?k=' + k, { method: 'POST', body: JSON.stringify(patch) }); return r.ok ? r.json() : { ok: false }; }
 let WBCFG = null;
 let GATE_C = null; const SESS_C = new Map();
 async function wbToken(env, wb) {
@@ -897,6 +900,15 @@ export class Vault {
     const u = new URL(req.url); const k = u.searchParams.get('k');
     if (u.pathname === '/get') { const v = await this.state.storage.get(k); return v === undefined ? new Response('null', { status: 404 }) : new Response(JSON.stringify(v)); }
     if (u.pathname === '/put') { await this.state.storage.put(k, await req.json()); return new Response('ok'); }
+    if (u.pathname === '/patch') { // atomic read-change-write of one object (nothing else runs in between): set/del entries, merge fields, add/remove list items
+      const b = await req.json(); const cur = await this.state.storage.get(k); const o = cur && typeof cur === 'object' && !Array.isArray(cur) ? cur : (b.init && typeof b.init === 'object' ? b.init : {});
+      const isNew = (x) => !Object.prototype.hasOwnProperty.call(o, x);
+      const adds = [...Object.keys(b.set || {}), ...Object.keys(b.merge || {}), ...Object.keys(b.add || {})].filter(isNew); if (b.max && adds.length && Object.keys(o).length + new Set(adds).size > b.max) return new Response(JSON.stringify({ ok: false, full: true, v: o }));
+      Object.entries(b.set || {}).forEach(([x, v]) => { o[x] = v; }); Object.entries(b.merge || {}).forEach(([x, v]) => { o[x] = Object.assign({}, o[x] && typeof o[x] === 'object' ? o[x] : {}, v); });
+      Object.entries(b.add || {}).forEach(([x, L]) => { const a = Array.isArray(o[x]) ? o[x] : []; (L || []).forEach((y) => { if (a.indexOf(y) < 0) a.push(y); }); o[x] = a; });
+      Object.entries(b.rm || {}).forEach(([x, L]) => { if (!Array.isArray(o[x])) return; o[x] = o[x].filter((y) => (L || []).indexOf(y) < 0); if (!o[x].length) delete o[x]; });
+      (b.del || []).forEach((x) => { delete o[x]; });
+      await this.state.storage.put(k, o); return new Response(JSON.stringify({ ok: true, v: o })); }
     if (u.pathname === '/sweep') { // delete counters older than 2 days and sign-ins older than 90 days (or logged out)
       const cut = new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10); let n = 0;
       for (const pre of ['rdm_', 'fbr_', 'ai_']) { const m = await this.state.storage.list({ prefix: pre }); for (const k of m.keys()) { const d = (k.match(/\d{4}-\d{2}-\d{2}/) || [])[0]; if (d && d < cut) { await this.state.storage.delete(k); n++; } } }
@@ -1249,34 +1261,141 @@ async function inviteReqRoutes(url, req, env) {
   }
   return json({ error: 'bad_request' }, 400);
 }
+// ---------- email center: data for the emails, the owner's controls, everyone's own email choices, and unsubscribe ----------
+async function cronKey(env) { let k = await vget(env, 'cronkey').catch(() => null); if (!k) { k = [...crypto.getRandomValues(new Uint8Array(24))].map((b) => b.toString(16).padStart(2, '0')).join(''); await vput(env, 'cronkey', k); } return k; }
+// Every minute, but only inside a send window: the morning brief runs here (as before); the others each get their own run.
+async function mailCron(env, ctx, n) {
+  for (const t of dueTypes(n)) {
+    const last = await vget(env, TYPES[t].last).catch(() => null); if (last && last.day === n.day) continue;
+    if (t === 'morning') { aiKey(env); await mailJob('morning', env, mailH(env, ctx)); continue; }
+    const k = await cronKey(env); await fetch((env.MAIL_ORIGIN || 'https://jumptrade.app') + '/x/mailrun?type=' + t + '&k=' + k).catch(() => null);
+  }
+}
+let SYMNAMES = null;
+// What the emails read: Webull first (like the app), the app's free backup feeds when Webull isn't connected. Never made-up numbers.
+function mailH(env, ctx) {
+  const used = new Set(); const C = ctx || { waitUntil: () => {} };
+  const wb = async (tool, input) => { const r = await wbCall(env, tool, input).catch(() => null); if (r && r.payload != null && arr0(r.payload).length) { used.add('Webull'); return r.payload; } return null; };
+  const arr0 = (p) => (Array.isArray(p) ? p : (p && (p.data || p.list || p.items)) || []);
+  const tool = async (name, input) => { const w = await wb(name, input); if (w != null) return w; if (!T[name]) return null; const p = await T[name](input).catch(() => null); if (p) used.add(/news/.test(name) ? 'news feeds' : 'Yahoo Finance'); return p; };
+  const snap = async (list, cat) => { const out = {}; const L = syms(list); if (!L.length) return out;
+    for (const c of chunk(L, 90)) { const p = await wb('get_stock_snapshot', { symbols: c.join(','), category: cat || 'US_STOCK', extend_hour_required: true }); arr0(p).forEach((q) => { if (q && q.symbol) out[q.symbol] = q; }); }
+    const miss = L.filter((s) => !out[s]); if (miss.length) { const q = await T.get_stock_snapshot({ symbols: miss }).catch(() => []); if (q.length) used.add('Yahoo Finance'); q.forEach((x) => { if (x && x.symbol) out[x.symbol] = x; }); }
+    return out; };
+  aiKey(env);
+  return {
+    etNow: () => etNow(), vget: (...a) => vget(...a), vput: (...a) => vput(...a), vlease: (...a) => vlease(...a),
+    wbCall: async (e, t, i) => { const p = await tool(t, i); return p == null ? null : { payload: p }; }, aiCall: (...a) => aiCall(...a), // the morning brief's own calls
+    ai: env.ANTHROPIC_API_KEY ? (sys, user, max) => aiCall(env, sys, user, max) : null,
+    snap: (list) => { const L = syms(list); const etf = L.filter((s) => /^(SPY|QQQ|DIA|IWM)$/.test(s) || GROUPS.some((g) => g[2] === s)); const st = L.filter((s) => etf.indexOf(s) < 0);
+      return Promise.all([snap(etf, 'US_ETF'), snap(st, 'US_STOCK')]).then((r) => Object.assign({}, r[0], r[1])); },
+    rank: async (rank_type, direction, n) => { const p = await tool('get_gainers_losers', { category: 'US_STOCK', rank_type, sort_by: 'CHANGE_RATIO', direction, page_size: String(n || 40), page_index: '1' }); let rows = arr0(p);
+      if (rank_type === 'AFTER_MARKET' && rows.length) { // after hours: read each name's after-hours price fresh, measured against today's close
+        const q = await snap(rows.slice(0, 40).map((x) => x.symbol), 'US_STOCK'); rows = rows.slice(0, 40).map((x) => (q[x.symbol] && q[x.symbol].extend_hour_last_price ? Object.assign({}, q[x.symbol], { name: q[x.symbol].name || x.name, volume: Math.max(+x.volume || 0, +q[x.symbol].volume || 0) }) : null)).filter(Boolean);
+        const pct = (x) => (+x.extend_hour_change_ratio || (+x.extend_hour_last_price / +x.price - 1));
+        rows.sort((a, b) => (direction === 'ASC' ? 1 : -1) * (pct(a) - pct(b))); }
+      return rows; },
+    why: (list) => T.get_mover_why({ symbols: syms(list).slice(0, 14) }),
+    analyst: async (list, days) => { const L = syms(list); if (!L.length) return []; const p = await T.get_analyst_actions({ symbols: L, days: days || 1 }).catch(() => null); return (p && p.data) || []; },
+    earnWeek: () => T.get_earnings_week({}),
+    sectorsDay: async () => { const q = await snap(GROUPS.map((g) => g[2]), 'US_ETF'); return GROUPS.map((g) => { const x = q[g[2]]; if (!x || !(+x.price > 0) || x.change_ratio == null) return null; const pc = +x.pre_close; return { name: g[1], etf: g[2], pct: +x.change_ratio * 100, v: { px: +x.price, ch: x.change != null ? +x.change : pc > 0 ? +x.price - pc : null, pct: +x.change_ratio * 100 } }; }).filter((x) => x && x.v.ch != null); },
+    groups: GROUPS.map((g) => ({ name: g[1], etf: g[2], members: g[3].split(',') })),
+    weekChg: (list) => weekChg(list), weekSrc: 'Yahoo Finance daily closes',
+    macro: async () => { const n = etNow(); const base = new Date(n.day + 'T12:00:00Z'); const wd = base.getUTCDay(); const mon = new Date(base.getTime() + ((8 - wd) % 7 || 7) * 864e5); const fri = new Date(mon.getTime() + 4 * 864e5);
+      const p = await wb('get_macroeconomic_calendar', { start_date: mon.toISOString().slice(0, 10), end_date: fri.toISOString().slice(0, 10) }); return arr0(p).filter((c) => c && c.event_name && (c.importance == null || +c.importance >= 2)).map((c) => ({ e: c.event_name, at: c.publish_time, f: c.forecast_value, p: c.prior_value })); },
+    names: async () => { if (!SYMNAMES) { try { const r = await env.ASSETS.fetch(new Request('https://jumptrade.app/symbols.json')); const j = await r.json(); const m = {}; (Array.isArray(j) ? j : []).forEach((x) => { if (x && x[0]) { m[x[0]] = x[1]; m[String(x[0]).replace('.', '-')] = x[1]; } }); SYMNAMES = m; } catch (e) { return {}; } } return SYMNAMES; },
+    srcName: () => [...used].join(' and ') || 'Yahoo Finance',
+  };
+}
+// change for the week so far (or the full week on the weekend): latest daily close vs the last close before this week's Monday
+async function weekChg(list) {
+  const out = {}; const L = syms(list);
+  const parts = chunk(L, 20); let at = 0; // a few at a time: Yahoo refuses (429) bursts of 20 at once
+  await Promise.all([0, 1, 2].map(async () => { while (at < parts.length) { const c = parts[at++]; await one(c); } }));
+  async function one(c) {
+    let d = null; for (let k = 0; k < 3 && !d; k++) { d = await yget('/v8/finance/spark?symbols=' + encodeURIComponent(c.join(',')) + '&range=1mo&interval=1d', { base: k === 1 ? Y2 : Y1 }).catch((e) => (e && e.status === 429 ? null : false)); if (d === null) await new Promise((r) => setTimeout(r, 600 * (k + 1))); else if (d === false) d = null; }
+    if (!d) return;
+    const rows = d.spark && d.spark.result ? d.spark.result.map((r) => { const x = (r.response || [])[0] || {}; return { s: r.symbol, ts: x.timestamp || [], cl: (((x.indicators || {}).quote || [{}])[0].close) || [] }; }) : Object.keys(d).map((k) => ({ s: k, ts: (d[k] && d[k].timestamp) || [], cl: (d[k] && d[k].close) || [] }));
+    rows.forEach((r) => {
+      const pts = r.ts.map((t, i) => ({ d: etNow(new Date(t * 1000)).day, c: r.cl[i] })).filter((p) => p.c != null && isFinite(p.c)); if (pts.length < 2) return;
+      const lastP = pts[pts.length - 1]; const ld = new Date(lastP.d + 'T12:00:00Z'); const mon = new Date(ld.getTime() - ((ld.getUTCDay() + 6) % 7) * 864e5).toISOString().slice(0, 10);
+      const prev = pts.filter((p) => p.d < mon).pop(); const first = pts.find((p) => p.d >= mon); if (!prev || !first) return;
+      out[r.s] = { px: +lastP.c, ch: lastP.c - prev.c, pct: (lastP.c / prev.c - 1) * 100, from: first.d, to: lastP.d, base: prev.d };
+    });
+  }
+  return out;
+}
+const MAILCAP = 200;
 async function mailRoutes(url, req, env) {
   const w = await sessionFrom(req, env, vget).catch(() => null); if (!w || !w.u.owner) return json({ error: 'auth' }, 401);
   const keyOn = !!(env.RESEND_API_KEY || Object.keys(env).find((x) => x.trim().toUpperCase() === 'RESEND_API_KEY'));
-  if (url.pathname === '/api/admin/mail' && req.method === 'GET') { const opt = (await vget(env, 'mail_optin')) || {}; const U = w.U || {};
-    return json({ to: (await vget(env, 'mail_to')) || [], subs: Object.keys(opt).filter((k) => opt[k] && opt[k].email).map((k) => ({ email: opt[k].email, name: (U[k] && U[k].name) || '', t: opt[k].t })), all: await briefRecipients(env, vget), last: (await vget(env, 'brief_last')) || null, key: keyOn, ai: aiKey(env) }); }
-  let b = {}; try { b = JSON.parse((await req.text()).slice(0, 4000)); } catch (e) {}
-  if (url.pathname === '/api/admin/mail' && req.method === 'POST') { const raw = Array.isArray(b.to) ? b.to : []; const bad = raw.filter((x) => String(x).trim() && !cleanMail(x)).map((x) => String(x).slice(0, 80));
-    const to = Array.from(new Set(raw.map(cleanMail).filter(Boolean))).slice(0, 50); await vput(env, 'mail_to', to); return json({ ok: true, to, bad }); }
-  if (url.pathname === '/api/admin/mail/test' && req.method === 'POST') {
-    // a test goes to one address when asked ("send a test to me"), otherwise to everyone on the list
+  const S = await loadSubs(env, vget); const list = ownerList(S.list, S.mailTo);
+  const syncTo = async (L) => { await vput(env, 'mail_to', mailToOf(L)); }; // the old one-list shape, kept in step for the classic Admin page
+  const writeList = async (patch) => { const r = await vpatch(env, 'mail_list', Object.assign({ init: list, max: MAILCAP }, patch)); if (r && r.v) await syncTo(r.v); return r; };
+  const view = async (L) => { const S2 = await loadSubs(env, vget); const LL = L || ownerList(S2.list, S2.mailTo); const U = S2.users || {}; const opt = S2.optin || {};
+    return { types: TYPE_IDS.map((t) => Object.assign({ id: t }, TYPES[t])), list: Object.keys(LL).map((e) => ({ email: e, types: cleanTypes(LL[e].types), mine: !!LL[e].mine, t: LL[e].t || 0 })),
+      subs: Object.keys(opt).filter((k) => opt[k] && opt[k].email && U[k]).map((k) => ({ email: opt[k].email, name: (U[k] && U[k].name) || '', types: optTypes(opt[k]), off: !!U[k].off, t: opt[k].t })),
+      unsub: S2.unsub || {}, counts: Object.fromEntries(TYPE_IDS.map((t) => [t, recipients(t, Object.assign({}, S2, { list: LL })).length])), last: await lastSent(env, { vget }),
+      to: mailToOf(LL), all: recipients('morning', Object.assign({}, S2, { list: LL })).map((r) => r.email), key: keyOn, ai: aiKey(env) }; };
+  if (url.pathname === '/api/admin/mail' && req.method === 'GET') return json(await view(list), 200, { 'cache-control': 'no-store' });
+  if (url.pathname === '/api/admin/mail/preview' && req.method === 'GET') { // the email as it would go out now, shown in the browser; nothing is sent
+    const ty = url.searchParams.get('type') || 'morning'; if (!TYPES[ty]) return json({ error: 'bad_type' }, 400);
+    const m = await buildMailOf(ty, env, mailH(env, null)); const v = ty === 'morning' && url.searchParams.get('mine') === '0' ? m.other : m;
+    return new Response(String(v.html).split('{{UNSUB}}').join('#unsubscribe-preview').split('{{UNSUB_ALL}}').join('#unsubscribe-preview'), { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-subject': encodeURIComponent(v.subject) } }); }
+  let b = {}; try { b = JSON.parse((await req.text()).slice(0, 8000)); } catch (e) {}
+  if (url.pathname === '/api/admin/mail' && req.method === 'POST') { // the classic Admin page: the whole list of addresses at once (new ones get the morning brief)
+    const raw = Array.isArray(b.to) ? b.to : []; const bad = raw.filter((x) => String(x).trim() && !cleanMail(x)).map((x) => String(x).slice(0, 80));
+    const to = Array.from(new Set(raw.map(cleanMail).filter(Boolean))).slice(0, 50); const set = {}; to.forEach((e) => { if (!list[e]) set[e] = { types: ['morning'], mine: false, t: Date.now() }; });
+    const r = await writeList({ set, del: Object.keys(list).filter((e) => to.indexOf(e) < 0) }); if (!r.ok) return json({ ok: false, error: r.full ? 'The list is full.' : 'Couldn’t save.' }, 400);
+    return json({ ok: true, to: mailToOf(r.v), bad }); }
+  if (url.pathname === '/api/admin/mail/addr' && req.method === 'POST') { // add, change or remove one address on your list
+    const e = cleanMail(b.email); if (!e) return json({ ok: false, error: 'That email address doesn’t look right.' }, 400);
+    if (b.remove) { const r = await writeList({ del: [e] }); return json(Object.assign({ ok: !!r.ok }, await view(r.v))); }
+    const cur = list[e] || {}; const types = b.types != null ? cleanTypes(b.types) : cur.types ? cleanTypes(cur.types) : ['morning'];
+    const blocked = ((S.unsub || {})[e] || []); const refused = types.filter((t) => blocked.indexOf(t) >= 0 || blocked.indexOf('all') >= 0);
+    const r = await writeList({ merge: { [e]: { types, mine: b.mine != null ? !!b.mine : !!cur.mine, t: cur.t || Date.now() } } }); if (!r.ok) return json({ ok: false, error: r.full ? 'The list is full (' + MAILCAP + ' addresses).' : 'Couldn’t save.' }, 400);
+    return json(Object.assign({ ok: true, note: refused.length ? e + ' unsubscribed from ' + refused.map((t) => TYPES[t] ? TYPES[t].name : 'all emails').join(', ') + ' themselves, so they won’t get ' + (refused.length > 1 ? 'those' : 'it') + '.' : null }, await view(r.v))); }
+  if (url.pathname === '/api/admin/mail/test' && req.method === 'POST') { // "Send me a preview": builds the email now and sends it, marked [Preview], to one address (or, for the morning brief, everyone on it)
+    const ty = TYPES[b.type] ? b.type : 'morning';
     const one = b.to != null ? cleanMail(b.to) : ''; if (b.to != null && !one) return json({ ok: false, error: 'That email address doesn’t look right.' }, 400);
-    const to = one ? [one] : await briefRecipients(env, vget); if (!to.length) return json({ ok: false, error: 'Add an email address first.' }, 400);
-    aiKey(env); const m = await buildBrief(env, BH); m.subject = '[Test] ' + m.subject; const r = await sendMail(env, to, m);
-    return json({ ok: r.ok, error: r.error, subject: m.subject, ai: m.ai, n: m.n, to: to.length });
-  }
+    if (!one && ty !== 'morning') return json({ ok: false, error: 'Pick the address to send the preview to.' }, 400);
+    const to = one ? [{ email: one, mine: !!(list[one] && list[one].mine) || one === cleanMail((S.optin || {})[w.u.uid] && S.optin[w.u.uid].email) }] : recipients('morning', S); if (!to.length) return json({ ok: false, error: 'Add an email address first.' }, 400);
+    const m = await buildMailOf(ty, env, mailH(env, null)); m.subject = '[Preview] ' + m.subject; if (m.other) m.other.subject = '[Preview] ' + m.other.subject;
+    const r = await deliver(env, mailH(env, null), m, to);
+    return json({ ok: r.ok, error: r.error, subject: m.subject, ai: m.ai, n: m.n || m.counts, to: to.length }); }
   return null;
 }
-// anyone signed in can turn the morning email on or off for their own address (one per account); the owner's list is separate
+// anyone signed in picks which emails go to their own address (one address per account); the owner's list is separate
 async function myMailRoute(req, env) {
   const w = await sessionFrom(req, env, vget).catch(() => null); if (!w || !w.u || !w.u.uid) return json({ error: 'auth' }, 401);
-  const uid = w.u.uid; const opt = (await vget(env, 'mail_optin')) || {};
-  if (req.method === 'GET') { const o = opt[uid]; return json({ on: !!(o && o.email), email: (o && o.email) || '', owner: !!w.u.owner }); }
+  const uid = w.u.uid; const opt = (await vget(env, 'mail_optin')) || {}; const un = (await vget(env, 'mail_unsub')) || {};
+  const out = (o) => { const e = (o && o.email) || ''; const ty = o && o.email ? optTypes(o) : []; return { on: ty.length > 0, email: e, types: ty, unsub: e ? un[e] || [] : [], owner: !!w.u.owner, all: TYPE_IDS.map((t) => ({ id: t, name: TYPES[t].name, when: TYPES[t].when, short: TYPES[t].short })) }; };
+  if (req.method === 'GET') return json(out(opt[uid]));
   if (req.method !== 'POST') return json({ error: 'bad_request' }, 400);
   let b = {}; try { b = JSON.parse((await req.text()).slice(0, 2000)); } catch (e) {}
-  if (b.on === false) { delete opt[uid]; await vput(env, 'mail_optin', opt); return json({ ok: true, on: false, email: '' }); }
-  const e = cleanMail(b.email); if (!e) return json({ ok: false, error: 'That email address doesn’t look right.' }, 400);
-  if (!opt[uid] && Object.keys(opt).length >= 500) return json({ ok: false, error: 'The morning email list is full right now.' }, 429);
-  opt[uid] = { email: e, t: Date.now() }; await vput(env, 'mail_optin', opt); return json({ ok: true, on: true, email: e });
+  const types = b.on === false ? [] : b.types != null ? cleanTypes(b.types) : opt[uid] ? optTypes(opt[uid]) : ['morning'];
+  if (!types.length) { const r = await vpatch(env, 'mail_optin', { del: [uid] }); return json(Object.assign({ ok: !!r.ok }, out(null), { on: false })); }
+  const e = cleanMail(b.email != null ? b.email : opt[uid] && opt[uid].email); if (!e) return json({ ok: false, error: 'That email address doesn’t look right.' }, 400);
+  const r = await vpatch(env, 'mail_optin', { set: { [uid]: { email: e, types, t: (opt[uid] && opt[uid].t) || Date.now() } }, max: 500 }); if (!r.ok) return json({ ok: false, error: r.full ? 'The email list is full right now.' : 'Couldn’t save.' }, r.full ? 429 : 500);
+  await vpatch(env, 'mail_unsub', { rm: { [e]: types.concat('all') } }); // you just chose these again, so an earlier unsubscribe doesn't block them
+  return json(Object.assign({ ok: true }, out(r.v[uid]), { unsub: [] }));
+}
+// one-click unsubscribe from a link in the email (no sign-in). Opening the link shows a button, so mail scanners that open links don't unsubscribe anyone;
+// mail apps' own "Unsubscribe" button POSTs straight here (RFC 8058).
+async function unsubRoute(url, req, env) {
+  const e = cleanMail(url.searchParams.get('e')); const t = url.searchParams.get('t') || ''; const sig = url.searchParams.get('s') || '';
+  const page = (title, body, code) => new Response('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>' + mE(title) + ' · jumptrade.</title><style>body{margin:0;background:#071A36;color:#E9F1F7;font-family:Inter,-apple-system,Arial,sans-serif}main{max-width:440px;margin:0 auto;padding:48px 22px}h1{font-size:24px;margin:22px 0 10px}p{font-size:16px;line-height:1.5;color:#BBD7F9}button{font:inherit;font-weight:700;font-size:16px;border:0;border-radius:999px;padding:14px 22px;background:#5B9BEA;color:#04101F;cursor:pointer}button.g{background:none;color:#9CCBFF;padding:14px 0;text-decoration:underline}a{color:#9CCBFF}</style></head><body><main><img src="/v2/img/email-logo.png" alt="jumptrade." height="26"><h1>' + mE(title) + '</h1>' + body + '</main></body></html>', { status: code || 200, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } });
+  const key = await signKey(env, { vget, vput, vlease });
+  if (!(await checkUnsub(key, e, t, sig))) return page('This link didn’t work', '<p>It may be cut off or changed. You can choose your emails in the app: <a href="/#email">Settings › Email</a>.</p>', 400);
+  const what = t === 'all' ? 'all jumptrade emails' : 'the ' + TYPES[t].name.toLowerCase();
+  const self = '/api/public/unsub?e=' + encodeURIComponent(e) + '&t=' + t + '&s=' + sig;
+  if (req.method === 'POST') {
+    const f = await req.text().catch(() => ''); const undo = /(^|&)undo=1/.test(f);
+    if (undo) { await vpatch(env, 'mail_unsub', { rm: { [e]: [t] } }); return page('You’re back on', '<p>' + mE(e) + ' will get ' + mE(what) + ' again.</p><p><a href="/#email">Choose your emails in the app</a></p>'); }
+    await vpatch(env, 'mail_unsub', { add: { [e]: [t] }, max: 5000 });
+    return page('You’re unsubscribed', '<p>' + mE(e) + ' won’t get ' + mE(what) + ' anymore.</p><form method="post" action="' + mE(self) + '"><input type="hidden" name="undo" value="1"><button class="g" type="submit">Undo</button></form>');
+  }
+  return page('Unsubscribe?', '<p>Stop sending ' + mE(what) + ' to ' + mE(e) + '.</p><form method="post" action="' + mE(self) + '"><button type="submit">Unsubscribe</button></form>');
 }
 // ---------- jumptrade newsdesk: short analysis pieces written from real data ----------
 // Breaking pieces when something happens (a big real mover, market-moving headline, earnings reaction, a hard market swing),
@@ -1553,7 +1672,7 @@ async function feedWatch(env) {
 }
 let UPK = 0;
 export default {
-  async scheduled(ev, env, ctx) { CUR_ENV = env; const m = new Date().getUTCMinutes(); ctx.waitUntil(vput(env, 'cronbeat', { t: Date.now(), build: 'b2' }).catch(() => {})); /* proof the every-minute job is running */ { const n = etNow(); const live = !/Sat|Sun|Hol/.test(n.wd) && n.hm >= 230 && n.hm < 1210; if (live || m % 10 === 0) ctx.waitUntil(precompute(env, ctx).then((r) => vput(env, 'prerun', { t: Date.now(), r })).catch(() => {})); } if (m % 10 === 0) ctx.waitUntil(wbUpkeep(env).catch(() => {})); { const n3 = etNow(); if (!/Sat|Sun|Hol/.test(n3.wd) && (n3.hm === 1000 || n3.hm === 1030)) ctx.waitUntil((async () => { let k = await vget(env, 'cronkey').catch(() => null); if (!k) { k = [...crypto.getRandomValues(new Uint8Array(24))].map((b) => b.toString(16).padStart(2, '0')).join(''); await vput(env, 'cronkey', k); } await fetch('https://jumptrade.app/x/rotnow?cron=1&k=' + k); })().catch(() => {})); /* its own run, so it has its own request budget */ } if (m % 5 === 2) ctx.waitUntil(feedWatch(env).catch(() => {})); if (m % 3 === 1) ctx.waitUntil(newsdesk(env, ctx).catch(() => {})); { const nb = etNow(); if (nb.hm >= 525 && nb.hm <= 540) ctx.waitUntil((aiKey(env), dailyBrief(env, BH)).catch(() => {})); } if (m % 3 === 0) ctx.waitUntil(moverScan(env, ctx).catch(() => {})); { const n2 = etNow(); if (n2.hm === 247) ctx.waitUntil(vault(env).then((v) => v && v.fetch('https://v/sweep')).catch(() => {})); } ctx.waitUntil(runAlerts(env, ctx).then((r) => vput(env, 'alertrun', Object.assign({ t: Date.now() }, r))).catch((e) => vput(env, 'alertrun', { t: Date.now(), error: String(e && e.message || e) }))); },
+  async scheduled(ev, env, ctx) { CUR_ENV = env; const m = new Date().getUTCMinutes(); ctx.waitUntil(vput(env, 'cronbeat', { t: Date.now(), build: 'b2' }).catch(() => {})); /* proof the every-minute job is running */ { const n = etNow(); const live = !/Sat|Sun|Hol/.test(n.wd) && n.hm >= 230 && n.hm < 1210; if (live || m % 10 === 0) ctx.waitUntil(precompute(env, ctx).then((r) => vput(env, 'prerun', { t: Date.now(), r })).catch(() => {})); } if (m % 10 === 0) ctx.waitUntil(wbUpkeep(env).catch(() => {})); { const n3 = etNow(); if (!/Sat|Sun|Hol/.test(n3.wd) && (n3.hm === 1000 || n3.hm === 1030)) ctx.waitUntil((async () => { let k = await vget(env, 'cronkey').catch(() => null); if (!k) { k = [...crypto.getRandomValues(new Uint8Array(24))].map((b) => b.toString(16).padStart(2, '0')).join(''); await vput(env, 'cronkey', k); } await fetch('https://jumptrade.app/x/rotnow?cron=1&k=' + k); })().catch(() => {})); /* its own run, so it has its own request budget */ } if (m % 5 === 2) ctx.waitUntil(feedWatch(env).catch(() => {})); if (m % 3 === 1) ctx.waitUntil(newsdesk(env, ctx).catch(() => {})); { const nb = etNow(); if (dueTypes(nb).length) ctx.waitUntil(mailCron(env, ctx, nb).catch((e) => vput(env, 'mail_cronerr', { t: Date.now(), e: String(e && e.message || e) }))); } /* emails: nothing runs outside their send windows */ if (m % 3 === 0) ctx.waitUntil(moverScan(env, ctx).catch(() => {})); { const n2 = etNow(); if (n2.hm === 247) ctx.waitUntil(vault(env).then((v) => v && v.fetch('https://v/sweep')).catch(() => {})); } ctx.waitUntil(runAlerts(env, ctx).then((r) => vput(env, 'alertrun', Object.assign({ t: Date.now() }, r))).catch((e) => vput(env, 'alertrun', { t: Date.now(), error: String(e && e.message || e) }))); },
   async fetch(req, env, ctx) {
     try { return await handleFetch(req, env, ctx); } catch (e) { // one bad request must get a clean JSON error, not Cloudflare's 1101 page
       console.error('fetch error', req.method, new URL(req.url).pathname, e && e.stack || e);
@@ -1566,6 +1685,9 @@ async function handleFetch(req, env, ctx) {
     const url = new URL(req.url);
     CUR_ENV = env;
     if (Date.now() - UPK > 600000) { UPK = Date.now(); ctx.waitUntil(wbUpkeep(env).catch(() => {})); }
+    if (url.pathname === '/x/mailrun') { const ck0 = await vget(env, 'cronkey').catch(() => null); if (!ck0 || url.searchParams.get('k') !== ck0) return new Response('Not found', { status: 404 }); const ty = url.searchParams.get('type'); if (!TYPES[ty]) return new Response('Not found', { status: 404 });
+      const r = await mailJob(ty, env, mailH(env, ctx)).catch((e) => ({ error: String(e && e.message || e) })); return json(r, 200, { 'cache-control': 'no-store' }); } // one email's send in its own run, so it has its own request budget
+    if (url.pathname === '/api/public/unsub') return unsubRoute(url, req, env);
     if (url.pathname === '/x/rotnow') { const ck0 = await vget(env, 'cronkey').catch(() => null); if (!ck0 || url.searchParams.get('k') !== ck0) return new Response('Not found', { status: 404 }); const last = await vget(env, 'rotrun').catch(() => null); if (last && last.ok && Date.now() - last.t < 600000) return json({ wait: true, last }); const r = await rotationJob(env, ctx).catch((e) => ({ error: String(e && e.message || e) })); await vput(env, 'rotrun', Object.assign({ t: Date.now() }, r)); return json(r); }
     if (req.method === 'OPTIONS') return new Response(null, { status: 204 }); // the app only calls its own server (same origin), so no cross-site access is granted
     // Private beta: while the site is locked, every data endpoint needs a signed-in account (cookie or bearer token).
