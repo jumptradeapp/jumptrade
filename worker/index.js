@@ -20,6 +20,7 @@ const raw = (v) => (v && typeof v === 'object' && 'raw' in v ? v.raw : v);
 const iso = (sec) => new Date(sec * 1000).toISOString();
 const json = (obj, status = 200, extra = {}) => new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json', 'x-content-type-options': 'nosniff', ...extra } });
 const chunk = (arr, n) => { const out = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
+const safeDecode = (s) => { try { return decodeURIComponent(s); } catch (e) { return ''; } }; // a malformed %-escape is just a bad name, not a crash
 const syms = (s) => (Array.isArray(s) ? s : String(s || '').split(',')).map((x) => String(x).trim().toUpperCase()).filter(Boolean);
 
 // ---------- Yahoo session (cookie + crumb), cached in memory for the life of the isolate ----------
@@ -1535,6 +1536,14 @@ let UPK = 0;
 export default {
   async scheduled(ev, env, ctx) { CUR_ENV = env; const m = new Date().getUTCMinutes(); ctx.waitUntil(vput(env, 'cronbeat', { t: Date.now(), build: 'b2' }).catch(() => {})); /* proof the every-minute job is running */ { const n = etNow(); const live = !/Sat|Sun|Hol/.test(n.wd) && n.hm >= 230 && n.hm < 1210; if (live || m % 10 === 0) ctx.waitUntil(precompute(env, ctx).then((r) => vput(env, 'prerun', { t: Date.now(), r })).catch(() => {})); } if (m % 10 === 0) ctx.waitUntil(wbUpkeep(env).catch(() => {})); { const n3 = etNow(); if (!/Sat|Sun|Hol/.test(n3.wd) && (n3.hm === 1000 || n3.hm === 1030)) ctx.waitUntil((async () => { let k = await vget(env, 'cronkey').catch(() => null); if (!k) { k = [...crypto.getRandomValues(new Uint8Array(24))].map((b) => b.toString(16).padStart(2, '0')).join(''); await vput(env, 'cronkey', k); } await fetch('https://jumptrade.app/x/rotnow?cron=1&k=' + k); })().catch(() => {})); /* its own run, so it has its own request budget */ } if (m % 5 === 2) ctx.waitUntil(feedWatch(env).catch(() => {})); if (m % 3 === 1) ctx.waitUntil(newsdesk(env, ctx).catch(() => {})); { const nb = etNow(); if (nb.hm >= 525 && nb.hm <= 540) ctx.waitUntil((aiKey(env), dailyBrief(env, BH)).catch(() => {})); } if (m % 3 === 0) ctx.waitUntil(moverScan(env, ctx).catch(() => {})); { const n2 = etNow(); if (n2.hm === 247) ctx.waitUntil(vault(env).then((v) => v && v.fetch('https://v/sweep')).catch(() => {})); } ctx.waitUntil(runAlerts(env, ctx).then((r) => vput(env, 'alertrun', Object.assign({ t: Date.now() }, r))).catch((e) => vput(env, 'alertrun', { t: Date.now(), error: String(e && e.message || e) }))); },
   async fetch(req, env, ctx) {
+    try { return await handleFetch(req, env, ctx); } catch (e) { // one bad request must get a clean JSON error, not Cloudflare's 1101 page
+      console.error('fetch error', req.method, new URL(req.url).pathname, e && e.stack || e);
+      return json({ error: { code: 'server_error', message: 'Something went wrong on our side. Try again.' } }, 500, { 'cache-control': 'no-store' });
+    }
+  },
+};
+async function handleFetch(req, env, ctx) {
+  {
     const url = new URL(req.url);
     CUR_ENV = env;
     if (Date.now() - UPK > 600000) { UPK = Date.now(); ctx.waitUntil(wbUpkeep(env).catch(() => {})); }
@@ -1676,7 +1685,7 @@ export default {
       } catch (e) { return miss(); }
     }
     if (url.pathname.indexOf('/api/flogo/') === 0) { // fund firm logos: the firm website's icon (Google's favicon service, then DuckDuckGo)
-      const d = decodeURIComponent(url.pathname.slice(11)).toLowerCase(); if (!/^[a-z0-9-]{2,40}(\.[a-z0-9-]{2,20}){1,2}$/.test(d)) return new Response('', { status: 404 });
+      const d = safeDecode(url.pathname.slice(11)).toLowerCase(); if (!/^[a-z0-9-]{2,40}(\.[a-z0-9-]{2,20}){1,2}$/.test(d)) return new Response('', { status: 404 });
       const ck = new Request('https://cache.jumptrade/flogo/' + d); const hit = await caches.default.match(ck); if (hit) return hit;
       for (const src of ['https://www.google.com/s2/favicons?domain=' + d + '&sz=128', 'https://icons.duckduckgo.com/ip3/' + d + '.ico']) {
         try { const r = await fetch(src, { headers: { 'user-agent': NUA }, cf: { cacheTtl: 604800 } }); const ct = r.headers.get('content-type') || '';
@@ -1685,7 +1694,7 @@ export default {
       const miss = new Response('', { status: 404, headers: { 'cache-control': 'public, max-age=86400' } }); ctx.waitUntil(caches.default.put(ck, miss.clone())); return miss;
     }
     if (url.pathname.indexOf('/api/logo/') === 0) { // backup logos for tickers missing from the built-in set
-      const sym = decodeURIComponent(url.pathname.slice(10)).toUpperCase().replace(/[^A-Z.\-]/g, '').slice(0, 6);
+      const sym = safeDecode(url.pathname.slice(10)).toUpperCase().replace(/[^A-Z.\-]/g, '').slice(0, 6); if (!sym) return new Response('', { status: 404 });
       const ck = new Request('https://cache.jumptrade/logo/' + sym); const hit = await caches.default.match(ck); if (hit) return hit;
       for (const src of ['https://assets.parqet.com/logos/symbol/' + sym + '?format=png&size=128', 'https://financialmodelingprep.com/image-stock/' + sym + '.png']) {
         try { const r = await fetch(src, { headers: { 'user-agent': NUA }, cf: { cacheTtl: 604800 } }); const ct = r.headers.get('content-type') || '';
@@ -1699,5 +1708,5 @@ export default {
     if (url.pathname === '/api/tool' && req.method === 'POST') { const tx = await req.text().catch(() => ''); if (tx.length > 65536) return json({ error: { code: 'too_big' } }, 413); let b = {}; try { b = JSON.parse(tx); } catch (e) {} return runTool(b.tool, b.input, ctx, env); }
     if (url.pathname.startsWith('/api/')) return json({ error: { code: 'bad_request', message: 'Unknown endpoint' } }, 404);
     { const r = await env.ASSETS.fetch(req); if (r.ok && url.searchParams.has('v') && /\.(js|css|png|jpg|svg|webp|woff2?)$/.test(url.pathname)) { const h = new Headers(r.headers); h.set('cache-control', 'public, max-age=31536000, immutable'); return new Response(r.body, { status: r.status, headers: h }); } return r; } // versioned files never change: cache a year
-  },
-};
+  }
+}
