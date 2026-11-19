@@ -172,6 +172,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     return { a: merged, c: acctCalc(merged) };
   }
 
+  // when Webull didn't answer on the last refresh, say how old the positions on screen are (acctpos.js); '' when they're current
+  const staleNote = () => { const t = window.JT_ACCTPOS && ACCTS.length ? JT_ACCTPOS.note(ACCTS) : ''; return t ? '<div class="mini pstale" role="status" style="margin:6px 0 2px;color:var(--fg2)">' + E(t) + '</div>' : ''; };
   // ---------- building blocks (same markup as the mock generator) ----------
   const DEMO_ = ''; let DEMO = '';
   const kick = (t, st) => '<div class="kick" style="' + (st || '') + '">' + t + '</div>';
@@ -309,7 +311,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const name = idx === 0 ? 'All accounts' : a.name;
     const menu = cards.length > 1 ? '<button class="acct2" data-acctmenu="1" aria-haspopup="listbox" aria-expanded="' + S.amenu + '"><i></i>' + E(name) + ic('chev', 14, 2.4) + '</button>' : '<span class="acct2 solo"><i></i>' + E(name) + '</span>';
     const list = S.amenu ? '<div class="amenu" role="listbox">' + cards.map((x, k) => '<button role="option" aria-selected="' + (k === idx) + '" data-acct="' + k + '"><i></i><span class="am-n"><b>' + E(k === 0 ? 'All accounts' : x.a.name) + '</b><small>' + E(x.a.sub || '') + '</small></span><span class="am-v"><b>' + (HB ? '$••••' : money(x.c.val)) + '</b><small class="' + cls(x.c.dayPct) + '">' + pct(x.c.dayPct) + '</small></span>' + (k === idx ? '<em>✓</em>' : '<em></em>') + '</button>').join('') + '</div>' : '';
-    return card('<div class="pt2h"><a class="pt2k" href="#portfolio' + (idx ? '/' + idx : '') + '">Portfolio</a>' + menu + '<a class="pt2go" href="#portfolio' + (idx ? '/' + idx : '') + '" aria-label="Open portfolio">' + ic('chev', 20, 2.2) + '</a></div>' + list +
+    return card('<div class="pt2h"><a class="pt2k" href="#portfolio' + (idx ? '/' + idx : '') + '">Portfolio</a>' + menu + '<a class="pt2go" href="#portfolio' + (idx ? '/' + idx : '') + '" aria-label="Open portfolio">' + ic('chev', 20, 2.2) + '</a></div>' + list + staleNote() +
       '<div class="pt2bw"><div class="pt2b">' + (dot > 0 ? m.slice(0, dot) + '<small>' + m.slice(dot) + '</small>' : m) + '</div><button type="button" class="eyeb" data-hidebal="1" aria-label="' + (HB ? 'Show balance' : 'Hide balance') + '" aria-pressed="' + HB + '">' + ic(HB ? 'eyeoff' : 'eye', 20, 2.0) + '</button></div>' +
       '<div class="pt2p ' + (amt == null ? '' : amt >= 0 ? 'u' : 'd') + '">' + (amt == null ? 'Loading ' + tf[2] + '…' : (amt >= 0 ? '▲ ' : '▼ ') + (HB ? '' : chg(amt).replace(/^[+−-]/, '') + ' · ') + pct(Math.abs(pc)).replace(/^[+−-]/, '') + ' ' + tf[2]) + '</div>' +
       areaChart(ser, (amt || 0) >= 0, c.val - c.day) + mixRow(c) +
@@ -511,9 +513,9 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const c = cur.c; const totalVal = all.c.val;
     const ct = '<div style="display:flex;gap:10px;margin-top:14px">' + counter('trend', 'Total gain', c.ready ? (c.gain >= 0 ? '+' : '−') + money(Math.abs(c.gain), 0) : '—', c.ready ? (c.gainPct >= 0 ? '+' : '−') + Math.abs(c.gainPct).toFixed(1) + '%' : '', c.ready && c.gain ? cls(c.gain) : '') + counter('dollar', 'Cash', money(c.cash, 0), on === 0 ? Math.round(c.cash / (totalVal || 1) * 100) + '% of total' : Math.round(c.cash / (c.val || 1) * 100) + '% of account') + '</div>';
     const hl = c.rows.slice().sort((x, y) => y.mv - x.mv).slice(0, S.allHold ? 99 : 5).map((r) => r.sym);
-    const hd = sh('Holdings · ' + E(cur.a.name), c.rows.length > 5 ? (S.allHold ? 'Show less' : 'View all') : '', '#hold', 'layers') + (hl.length ? rowsBox(hl.map((s) => srow(s, 64)).join('')) : c.ready || !ACCTS.length ? (window.JT_OWN && JT_OWN.card() ? card(JT_OWN.card(), 'padding:14px 16px;margin-top:6px') : rowsBox('<div class="err">No positions. <a href="#connect">Connect a brokerage</a> to see your holdings.</div>', 'padding:14px')) : rowsBox(skel(4), 'padding:14px'));
+    const hd = sh('Holdings · ' + E(cur.a.name), c.rows.length > 5 ? (S.allHold ? 'Show less' : 'View all') : '', '#hold', 'layers') + (hl.length ? rowsBox(hl.map((s) => srow(s, 64)).join('')) : ACCTS.length && c.ready && !Object.keys(cur.a.pos || {}).length && !cur.a.err ? rowsBox('<div class="err">No positions' + (on ? ' in this account' : '') + '. Cash only.</div>', 'padding:14px') : c.ready || !ACCTS.length ? (window.JT_OWN && JT_OWN.card() ? card(JT_OWN.card(), 'padding:14px 16px;margin-top:6px') : rowsBox('<div class="err">No positions. <a href="#connect">Connect a brokerage</a> to see your holdings.</div>', 'padding:14px')) : rowsBox(skel(4), 'padding:14px'));
     const link = '<a class="card act" style="margin-top:12px" href="#connect"><span class="ibx">' + tl('BULL', 30) + '</span><span class="tx"><b>Webull accounts</b><small>' + (ACCTS.length ? ACCTS.length + ' linked · add or manage' : 'None connected yet') + '</small></span><span class="chv">' + ic('chev', 22, 2.4) + '</span></a>';
-    return swoosh() + '<div class="wrap">' + topbar() + head('Portfolio', 'Your accounts &amp; model portfolios') + seg + car + ct + hd + link + '</div>';
+    return swoosh() + '<div class="wrap">' + topbar() + head('Portfolio', 'Your accounts &amp; model portfolios') + seg + staleNote() + car + ct + hd + link + '</div>';
   }
   function connect() {
     const all = allCalc();

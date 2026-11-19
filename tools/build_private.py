@@ -8,6 +8,7 @@ for f in os.listdir(SRC+'/v2/img'): shutil.copy(SRC+'/v2/img/'+f,DST+'/v2/img/'+
 for f in ['catalysts','funds','ipos','models','models_now','ratings','research','rotation','themes','symbols']:
     if os.path.exists(SRC+'/'+f+'.json'): shutil.copy(SRC+'/'+f+'.json',DST+'/'+f+'.json')
 shutil.copy(os.path.join(os.path.dirname(os.path.abspath(__file__)),'priv.js'),DST+'/v2/priv.js')
+shutil.copy(SRC+'/acctpos.js',DST+'/v2/acctpos.js')  # how a Webull answer replaces the accounts on screen (shared with owner.js)
 def fix(s):
     s=s.replace('"/v2/','"v2/').replace("'/v2/","'v2/").replace("'/lg/","'lg/").replace('/classic.html#','classic.html#')
     return s
@@ -29,6 +30,7 @@ h=re.sub(r'<script src="/shim\.js[^"]*"></script>','',h); h=re.sub(r'<script src
 h=re.sub(r'<script src="/devsync\.js[^"]*"></script>','',h); h=re.sub(r'<script src="/alerts\.js[^"]*"></script>','',h); h=re.sub(r'<script src="/owner\.js[^"]*"></script>','',h); h=re.sub(r'<script src="/landing\.js[^"]*"></script>','',h)
 h=h.replace('src="/nthumb.js','src="nthumb.js').replace('src="/dip.js','src="dip.js').replace('src="/val.js','src="val.js')
 h=h.replace('<title>jumptrade.</title>','<title>jumptrade. live</title>')
-h=h.replace('<script src="v2/v2x.js','<script src="v2/priv.js?v=1"></script><script src="v2/v2x.js',1)
+h=re.sub(r'<script src="/acctpos\.js[^"]*"></script>','',h)
+h=h.replace('<script src="v2/v2x.js','<script src="v2/acctpos.js?v=1"></script><script src="v2/priv.js?v=2"></script><script src="v2/v2x.js',1)
 open(DST+'/index.html','w').write(h)
 print('built'); print(h[h.index('<script'):][:900])

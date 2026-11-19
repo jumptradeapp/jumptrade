@@ -66,3 +66,38 @@ export class Webull {
     return { status: r.status, data };
   }
 }
+
+/* Positions, read-only. Webull's answer is the whole truth for an account: whatever it lists now replaces what we showed before,
+   so a stock you sold disappears. Rows with no shares left (quantity 0, or rounding dust) are dropped. */
+const LIST_KEYS = ['data', 'list', 'holdings', 'positions', 'items', 'result'];
+// { ok, rows }: ok is false when Webull didn't actually answer (HTTP error, an error body, or a shape we don't know).
+// An empty list from a good answer is ok:true with no rows: the account really holds nothing.
+export function positionsResult(r) {
+  if (!r || r.status !== 200) return { ok: false, rows: [], why: 'http ' + (r ? r.status : 'none') };
+  const d = r.data;
+  if (Array.isArray(d)) return { ok: true, rows: d };
+  if (d && typeof d === 'object') {
+    if (d.error_code || d.errorCode || (d.success === false)) return { ok: false, rows: [], why: String(d.error_code || d.errorCode || 'error') };
+    for (const k of LIST_KEYS) if (Array.isArray(d[k])) return { ok: true, rows: d[k] };
+    for (const k of LIST_KEYS) if (d[k] && typeof d[k] === 'object') for (const k2 of LIST_KEYS) if (Array.isArray(d[k][k2])) return { ok: true, rows: d[k][k2] };
+  }
+  return { ok: false, rows: [], why: 'shape' };
+}
+// { SYM: [shares, average cost per share] } from Webull position rows. Stocks and ETFs only; zero-share rows dropped.
+export function parsePositions(rows) {
+  const acc = {};
+  (Array.isArray(rows) ? rows : []).forEach((x) => {
+    if (!x || typeof x !== 'object') return;
+    const sym = String(x.symbol || (x.instrument && x.instrument.symbol) || x.ticker || '').toUpperCase();
+    if (!/^[A-Z.]{1,6}$/.test(sym)) return;
+    if (x.instrument_type && !/EQUITY|ETF|STOCK/i.test(x.instrument_type)) return;
+    const q = Number(x.quantity != null ? x.quantity : x.qty != null ? x.qty : x.position);
+    if (!isFinite(q) || Math.abs(q) < 1e-9) return;
+    const avg = Number(x.cost_price != null ? x.cost_price : x.avg_cost != null ? x.avg_cost : x.unit_cost);
+    const cost = isFinite(+x.cost) && x.cost != null && x.cost !== '' ? +x.cost : (isFinite(avg) ? avg * q : 0);
+    const o = acc[sym] = acc[sym] || { q: 0, cost: 0 }; o.q += q; o.cost += cost;
+  });
+  const pos = {};
+  Object.keys(acc).forEach((s) => { const o = acc[s]; if (Math.abs(o.q) < 1e-9) return; pos[s] = [o.q, o.cost / o.q]; });
+  return pos;
+}

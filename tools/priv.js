@@ -81,23 +81,24 @@
   window.privLogo = function (sym) { if (LOGO[sym]) return LOGO[sym]; const fc = window.JT_FUNDCO && JT_FUNDCO[sym]; if (fc) { const d = window.privLogo(fc); if (d) return (LOGO[sym] = d); } const b = sym.charAt(1); const c = (/^[A-Z]/.test(sym) ? sym[0] : '_') + (!b || b < 'H' ? '1' : b < 'P' ? '2' : '3');
     if (!SH[c]) { SH[c] = 1; of('lg2/' + c + '.json?v=2').then((r) => r.json()).then((j) => { Object.keys(j).forEach((k) => { const dk = j[k].charAt(0) === '!', b = dk ? j[k].slice(1) : j[k]; LOGO[k] = { dark: dk, u: 'data:image/' + (/^iVBOR/.test(b) ? 'png' : /^\/9j\//.test(b) ? 'jpeg' : /^PHN2|^PD94/.test(b) ? 'svg+xml' : 'webp') + ';base64,' + b }; }); if (window.V2) V2.render(); }).catch(() => {}); }
     return null; };
-  // your real Webull accounts
-  function loadAccounts() {
-    tool('get_account_list', {}).then((p) => { const L = arr(p).filter((a) => a.account_class !== 'CRYPTO'); if (!L.length) return;
-      return Promise.all(L.map((a) => Promise.all([tool('get_account_positions', { account_id: a.account_id }).catch(() => []), tool('get_account_balance', { account_id: a.account_id }).catch(() => null)]).then((r) => {
-        const pos = {}; arr(r[0]).forEach((x) => { const s = x.symbol || (x.instrument && x.instrument.symbol); const q = +x.quantity || 0; if (!s || !/^[A-Z.]{1,6}$/.test(s) || !q) return; if (x.instrument_type && !/EQUITY|ETF|STOCK/i.test(x.instrument_type)) return; pos[s] = [(pos[s] ? pos[s][0] : 0) + q, q ? (+x.cost || 0) / q : 0]; });
-        const acct = { name: a.account_label || a.account_class_mapping || 'Account', sub: 'Webull ···' + String(a.account_id).slice(-4), cash: +((r[1] || {}).total_cash_balance) || 0, pos };
-        // Webull's positions list sometimes comes back empty for an account that clearly holds stock (market value > 0).
-        // Rebuild the holdings from filled orders: net shares bought minus sold, average buy price as cost.
-        if (!Object.keys(pos).length && +((r[1] || {}).total_market_value) > 0) return tool('get_order_history', { account_id: a.account_id, page_size: '100' }).then((h) => {
-          const net = {}; arr(h).forEach((g) => (g.orders || [g]).forEach((o) => { if (o.status !== 'FILLED' || (o.instrument_type && !/EQUITY/i.test(o.instrument_type))) return; const sym = o.symbol, q = +o.filled_quantity || 0, px = +o.filled_price || 0; if (!sym || !q) return;
-            const n = net[sym] = net[sym] || { q: 0, bq: 0, bc: 0 }; if (o.side === 'BUY') { n.q += q; n.bq += q; n.bc += q * px; } else n.q -= q; }));
-          Object.keys(net).forEach((sym) => { const n = net[sym]; if (n.q > 0.0001) pos[sym] = [n.q, n.bq ? n.bc / n.bq : 0]; }); acct.rebuilt = true; return acct; }).catch(() => acct);
-        return acct;
-      }))).then((A) => { if (!window.V2 || !A.some((a) => Object.keys(a.pos).length)) return; const V = window.V2;
-        V.ACCTS.splice(0, V.ACCTS.length, ...A); V.HOLD_SYMS.splice(0, V.HOLD_SYMS.length, ...Array.from(new Set(A.reduce((x, a) => x.concat(Object.keys(a.pos)), []))));
-        if (window.V2SETREAL) V2SETREAL(true); V.fastSnap(V.HOLD_SYMS).then(() => V.sparks(V.HOLD_SYMS).catch(() => {})).then(() => V.bars && V.bars(V.HOLD_SYMS).catch(() => {})).then(V.render).catch(V.render); V.render(); });
-    }).catch(() => {});
+  // your real Webull accounts. Webull's answer replaces what's on screen (sold stocks disappear; acctpos.js has the rules).
+  // If Webull doesn't answer for an account, its last good positions stay, labeled with their time. Nothing is guessed from order history.
+  let ASEQ = 0;
+  const PS = () => window.JT_ACCTPOS;
+  function showAccts(A) { const V = window.V2; if (!V) return;
+    V.ACCTS.splice(0, V.ACCTS.length, ...A); V.HOLD_SYMS.splice(0, V.HOLD_SYMS.length, ...Array.from(new Set(A.reduce((x, a) => x.concat(Object.keys(a.pos || {})), []))));
+    if (window.V2SETREAL) V2SETREAL(true); if (V.HOLD_SYMS.length) V.fastSnap(V.HOLD_SYMS).then(() => V.sparks(V.HOLD_SYMS).catch(() => {})).then(() => V.bars && V.bars(V.HOLD_SYMS).catch(() => {})).then(V.render).catch(V.render); V.render(); }
+  function cleanRows(rows) { const pos = {}; arr(rows).forEach((x) => { const s = x.symbol || (x.instrument && x.instrument.symbol); const q = +x.quantity || 0; if (!s || !/^[A-Z.]{1,6}$/.test(s) || !isFinite(q) || Math.abs(q) < 1e-9) return; if (x.instrument_type && !/EQUITY|ETF|STOCK/i.test(x.instrument_type)) return; const o = pos[s] || [0, 0]; const c = +x.cost || (+x.cost_price || 0) * q; pos[s] = [o[0] + q, (o[0] * o[1] + c) / (o[0] + q)]; }); Object.keys(pos).forEach((s) => { if (Math.abs(pos[s][0]) < 1e-9) delete pos[s]; }); return pos; }
+  function loadAccounts() { const my = ++ASEQ;
+    tool('get_account_list', {}).then((p) => { const L = arr(p).filter((a) => a && a.account_id && a.account_class !== 'CRYPTO'); if (!Array.isArray(p) && !arr(p).length) throw new Error('account list');
+      return Promise.all(L.map((a) => Promise.all([tool('get_account_positions', { account_id: a.account_id }).then((r) => ({ ok: Array.isArray(r) || Array.isArray(arr(r)), r }), () => ({ ok: false })), tool('get_account_balance', { account_id: a.account_id }).catch(() => null)]).then((r) => {
+        const bal = r[1] || null; let ok = r[0].ok; const pos = ok ? cleanRows(r[0].r) : null;
+        // Webull's positions list sometimes comes back empty for an account that clearly holds stock (market value > 0): that's a failed answer, not "you hold nothing"
+        if (ok && !Object.keys(pos).length && bal && +bal.total_market_value > 0) ok = false;
+        return { id: String(a.account_class || 'ACCT') + ':' + String(a.account_id).slice(-4), name: a.account_label || a.account_class_mapping || 'Account', sub: 'Webull ···' + String(a.account_id).slice(-4), cash: bal ? +bal.total_cash_balance || 0 : null, balOk: !!bal, pos: ok ? pos : null, posOk: ok, at: Date.now() };
+      })));
+    }).then((A) => { if (my !== ASEQ || !window.V2) return; showAccts(PS() ? PS().merge(V2.ACCTS, A, Date.now()) : A.filter((a) => a.posOk).map((a) => Object.assign({}, a, { cash: +a.cash || 0 }))); })
+      .catch(() => { if (my !== ASEQ || !window.V2 || !V2.ACCTS.length) return; if (PS()) showAccts(PS().markStale(V2.ACCTS)); });
   }
   // your Webull watchlists: listed in the app's watchlist picker; a list's stocks load when you pick it,
   // and adds/removes on a Webull list go back to Webull.

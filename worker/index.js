@@ -3,7 +3,7 @@
    This worker answers them from a swappable provider (Yahoo Finance for now) in the same shapes, and caches every
    answer at the edge so many users share one upstream request. */
 
-import { Webull } from './webull.js';
+import { Webull, positionsResult, parsePositions } from './webull.js';
 import { makeVapid, sendPush, PUSHLAST } from './push.js';
 import { authRoutes, sessionFrom, KINDS } from './auth.js';
 import { sendMail } from './brief.js';
@@ -1226,7 +1226,7 @@ async function ownerRoutes(url, req, env) {
   }
   if (url.pathname === '/api/owner/accounts') {
     if (!unlocked) return json({ error: 'locked' }, 403);
-    if (OWNACC && Date.now() - OWNACC.t < 30000) return json(OWNACC.v);
+    if (OWNACC && Date.now() - OWNACC.t < 15000 && url.searchParams.get('fresh') !== '1') return json(Object.assign({}, OWNACC.v, { cached: true }), 200, { 'cache-control': 'no-store' }); // 15 s, so a once-a-minute refresh never shows an older answer than Webull's
     const wb = new Webull(env); if (!wb.ready) return json({ error: 'no_webull', message: 'Webull keys aren’t set on the server.' }, 503);
     // account routes need a session token (x-access-token) that you approve once in the Webull app; market data doesn't, so it's kept separately
     const t1 = await vget(env, 'trtoken').catch(() => null), t2 = await vget(env, 'token').catch(() => null);
@@ -1246,10 +1246,13 @@ async function ownerRoutes(url, req, env) {
     const accts = list(r0.data).filter((a) => a && a.account_id && !/CRYPTO/i.test(a.account_class || ''));
     const out = await Promise.all(accts.map(async (a) => {
       const [rb, rp] = await Promise.all([wb.raw('GET', v1 ? '/openapi/assets/balance' : '/trading/assets/balances/get', { account_id: a.account_id }, null, useTok), wb.raw('GET', v1 ? '/openapi/assets/positions' : '/trading/assets/positions/list', { account_id: a.account_id }, null, useTok)]);
-      const bal = rb.status === 200 ? (rb.data && (rb.data.data || rb.data)) || {} : {}; const pos = {};
-      list(rp.status === 200 ? rp.data : []).forEach((x) => { const sym = x.symbol || (x.instrument && x.instrument.symbol) || x.ticker; const q = +x.quantity || +x.qty || 0; if (!sym || !/^[A-Z.]{1,6}$/.test(sym) || !q) return; if (x.instrument_type && !/EQUITY|ETF|STOCK/i.test(x.instrument_type)) return;
-        const cost = +x.cost || (+x.cost_price || +x.avg_cost || 0) * q; pos[sym] = [(pos[sym] ? pos[sym][0] : 0) + q, q ? cost / q : 0]; });
-      return { name: a.account_label || a.account_class_mapping || 'Account', sub: 'Webull ···' + String(a.account_id).slice(-4), cash: +(bal.total_cash_balance || bal.cash_balance || 0) || 0, mv: +(bal.total_market_value || 0) || 0, pos, posStatus: rp.status };
+      const balOk = rb.status === 200 && rb.data && typeof rb.data === 'object' && !rb.data.error_code; const bal = balOk ? (rb.data.data || rb.data) : {};
+      // Webull's positions answer replaces the old list outright (sold stocks disappear). If Webull didn't answer, say so (posOk:false, pos:null)
+      // instead of sending an empty list that looks like "you hold nothing"; the app then keeps its last good copy, labeled with its time.
+      const pr = positionsResult(rp);
+      return { id: String(a.account_class || 'ACCT') + ':' + String(a.account_id).slice(-4), name: a.account_label || a.account_class_mapping || 'Account', sub: 'Webull ···' + String(a.account_id).slice(-4),
+        cash: balOk ? +(bal.total_cash_balance || bal.cash_balance || 0) || 0 : null, mv: balOk ? +(bal.total_market_value || 0) || 0 : null, balOk,
+        pos: pr.ok ? parsePositions(pr.rows) : null, posOk: pr.ok, posErr: pr.ok ? undefined : pr.why, posStatus: rp.status, at: Date.now() };
     }));
     const v = { at: Date.now(), accounts: out, tokExp: +tk.expires || null }; OWNACC = { t: Date.now(), v }; return json(v, 200, { 'cache-control': 'no-store' });
   }
