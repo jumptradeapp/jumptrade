@@ -673,7 +673,9 @@
         h += V().lab('zap', 'Patterns spotted', 'All patterns', '#patterns') + '<div class="card rows">' + P.map((p) => '<div class="row"><span class="xpd ' + p[2] + '"></span><span class="nm"><b>' + E(p[0]) + '</b>' + (p[1] ? '<small>' + E(p[1]) + '</small>' : '') + '</span></div>').join('') + '</div>'; }
     }
     // jump check: red flags
-    if (t || sn.price) { const F = []; const ec = perSym('get_stock_earnings_calendar', sym, 21600); const st2 = V().setupOf ? V().setupOf(sym, V().curSess()) : null; const fx = (st2 && st2.facts) || {};
+    const jcReady = b != null && perSym('get_stock_earnings_calendar', sym, 21600) != null; // hold the Jump check until its inputs are in, so it lands once instead of growing row by row
+    if (!jcReady) h += V().lab('shield', 'Jump check', '', '') + '<div class="card xc xjc xjres" aria-busy="true">' + V().skel(4) + '</div>';
+    else if (t || sn.price) { const F = []; const ec = perSym('get_stock_earnings_calendar', sym, 21600); const st2 = V().setupOf ? V().setupOf(sym, V().curSess()) : null; const fx = (st2 && st2.facts) || {};
       const nx = ec && !ec.err && Array.isArray(ec) ? ec.map((e) => e.date).filter((d) => d >= new Date().toISOString().slice(0, 10)).sort()[0] : null; const dte = nx ? Math.round((Date.parse(nx + 'T12:00:00') - Date.now()) / 864e5) : null;
       const add = (bad, t2, why) => F.push([bad, t2, why]);
       if (t && t.s200) add(t.p < t.s200, t.p < t.s200 ? 'Below its 200-day average' : 'Above its 200-day average', 'Long-term trend ' + (t.p < t.s200 ? 'is down' : 'is up'));
