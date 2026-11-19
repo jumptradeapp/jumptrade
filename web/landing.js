@@ -7,7 +7,7 @@
   const pct = (v) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1) + '%';
   const shortD = (iso) => { const d = new Date(iso + 'T12:00:00'); return isFinite(d) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''; };
 
-  const html = () => '<div class="lp">' +
+  const html = () => '<div class="lp" role="region" aria-label="jumptrade">' +
     '<header class="lpTop"><img src="/v2/img/jump-lockup.svg?v=6" alt="jumptrade." width="141" height="26"><button class="lpLink" data-lp="code">Sign in</button></header>' +
     '<section class="lpHero"><div class="lpPitch">' +
       '<h1>Know before you jump.</h1>' +
@@ -27,7 +27,7 @@
       '<label>What do you trade? <span>(optional)</span><input name="note" maxlength="300" autocomplete="off" placeholder="Small caps, options, ETFs…"></label><button class="lpBtn" type="submit">Request invite</button><p class="lpMsg" id="lpFormMsg" role="status"></p></form>' +
       '<p class="lpFine">Your email is only used to send your invite.</p></section>' +
     '<footer class="lpFoot"><span>Market data for research. Not investment advice.</span><a href="/beta.html" target="_blank" rel="noopener">Privacy &amp; terms</a></footer></div>';
-  const feat = (t, d) => '<div class="lpF"><h3>' + t + '</h3><p>' + d + '</p></div>';
+  const feat = (t, d) => '<div class="lpF"><h2>' + t + '</h2><p>' + d + '</p></div>';
   const liveSkel = () => '<div class="lpCard"><div class="lpH"><span class="lpDot"></span>Checking the market…</div>' + '<i class="lpSk"></i>'.repeat(5) + '</div>';
 
   function live(el) {

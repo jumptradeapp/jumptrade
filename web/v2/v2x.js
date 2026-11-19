@@ -619,14 +619,16 @@
   const TF = [['1D', 'M5', 200], ['5D', 'M30', 80], ['1M', 'D', 260, 22], ['6M', 'D', 260, 126], ['1Y', 'D', 260, 252], ['5Y', 'W', 260]];
   X.stockTop = function (sym) {
     const tf = TF.find((x) => x[0] === st.tf) || TF[0]; const b = bars(sym, tf[1], tf[2]); let body;
-    if (!b) body = '<div class="xch empty">' + V().skel(2) + '</div>';
+    if (!b) body = '<div class="xch empty xchres" aria-busy="true">' + V().skel(2) + '</div><div class="xleg" aria-hidden="true"><span>&nbsp;</span></div><small class="xcap" aria-hidden="true">&nbsp;</small>'; // same footprint as the chart + legend + caption that replace it
     else if (b.err) body = '<div class="xch empty">Chart didn’t load. Retrying shortly.</div>';
     else { let L = b, lines = [], base = null;
       if (tf[0] === '1D') { const last = L.length ? new Date(L[L.length - 1].t).toDateString() : ''; L = L.filter((x) => new Date(x.t).toDateString() === last); const q = V().S.qx && V().S.qx[sym]; base = q && q.pre_close ? +q.pre_close : null; let pv = 0, vv = 0; const vw = L.map((x) => { if (x.ss && x.ss !== 'RTH') return null; pv += (x.h + x.l + x.c) / 3 * x.v; vv += x.v; return vv ? pv / vv : null; }); lines.push({ v: vw, c: '#BBD7F9', n: 'VWAP', dash: 1 }); }
       else if (tf[3]) { const c = L.map((x) => x.c); const s50 = c.map((_, i) => sma(c, 50, i)); const e21 = emaA(c, 21); L = L.slice(-tf[3]); lines.push({ v: e21.slice(-tf[3]), c: '#5B9BEA', n: 'EMA 21' }); if (tf[3] > 22) lines.push({ v: s50.slice(-tf[3]), c: '#BBD7F9', n: 'SMA 50', dash: 1 }); }
       if (tf[0] === '1D' && L.length < 2) { const b5 = bars(sym, 'M30', 80); if (b5 && !b5.err && b5.length > 1) { const last5 = new Date(b5[b5.length - 1].t).toDateString(); const d5 = b5.filter((x) => new Date(x.t).toDateString() === last5); L = d5.length > 1 ? d5 : b5.slice(-13); base = null; lines = []; } }
-      const ch = L.length > 1 ? (L[L.length - 1].c / (base || L[0].c) - 1) * 100 : null;
-      body = chart(L, { h: 180, lines: lines, base: base, msg: tf[0] === '1D' ? 'No trades yet today' : null }) + (ch != null ? '<small class="xcap">' + E(tf[0]) + ' <b class="' + cl(ch) + '">' + sgnP(ch, 2) + '</b>' + (L[0] ? ' · since ' + new Date(L[0].t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: tf[0] === '5Y' ? 'numeric' : undefined }) : '') + '</small>' : ''); }
+      const hq = tf[0] === '1D' ? V().S.q[sym] : null; const hOk = hq && isFinite(+hq.pct) && isFinite(+hq.price) && isFinite(+hq.chg); // 1D uses the same quote as the header above it, so the two % never disagree
+      if (hOk && base == null && lines.length) base = +hq.price - +hq.chg; // prior close from that same quote
+      const ch = hOk ? +hq.pct : L.length > 1 ? (L[L.length - 1].c / (base || L[0].c) - 1) * 100 : null;
+      body = chart(L, { h: 180, lines: lines, base: base, msg: tf[0] === '1D' ? 'No trades yet today' : null }) + (ch != null ? '<small class="xcap">' + E(tf[0]) + ' <b class="' + cl(ch) + '">' + sgnP(ch, 2) + '</b>' + (hOk ? ' · vs prior close' : L[0] ? ' · since ' + new Date(L[0].t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: tf[0] === '5Y' ? 'numeric' : undefined }) : '') + '</small>' : ''); }
     const w = inWl(sym);
     return '<div class="card xc xchc">' + body + '<div class="chips xtf">' + TF.map((x) => '<button class="chip' + (x[0] === st.tf ? ' on' : '') + '" data-xtf="' + x[0] + '">' + x[0] + '</button>').join('') + '</div></div>' +
       '<div class="xacts"><button class="xbtn' + (w ? ' ghost' : '') + '" data-xwl="' + E(sym) + '">' + (w ? '★ On watchlist' : '☆ Add to watchlist') + '</button><a class="xbtn ghost" href="#calc/' + encodeURIComponent(sym) + '">Size a trade</a><a class="xbtn ghost" href="#compare/' + encodeURIComponent(sym) + '/SPY">Compare</a>' + (window.ALERTS ? '<button class="xbtn ghost" data-pa="' + E(sym) + '">Price alert</button>' : '') + '</div>' +

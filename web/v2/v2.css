@@ -1160,8 +1160,41 @@ html body .mvrow{gap:8px!important}
 html body .lab>a:not(.labt)::after{height:48px}
 html body .lpFoot a{position:relative}html body .lpFoot a::after{content:"";position:absolute;inset:-8px -4px}
 html body .xin{height:44px}
-html body .xk b{white-space:normal;overflow-wrap:anywhere}
+html body .xk b{white-space:normal;overflow-wrap:break-word;hyphens:auto}
 html body .xmenu .tx small,html body .tx>small{white-space:normal;overflow:visible;text-overflow:clip}
 /* light theme: the letter badge for a stock with no logo was dark text on a dark tile (about 1.4:1) and "What's hot" % was pale blue on white */
 html[data-x2t="light"] .tl .mono2,html[data-x2t="light"] .tl.mono,html[data-x2t="light"] .fmono{color:#E1F0FF!important}
 html[data-x2t="light"] .hotc b{color:#1F5FB8!important}
+/* fix-everything pass (Nov 19): stock page buttons wrap (2×2 on phones), stock page keeps its shape while loading */
+html body .xacts{flex-wrap:wrap}
+@media (max-width:600px){html body .xacts .xbtn{flex:1 1 calc(50% - 4px);min-width:0}}
+html body .xch.empty.xchres{height:auto;aspect-ratio:358/180}
+html body .fct .skel.fsk{display:block;height:15px;width:60%;margin:2px 0 3px}
+/* pinch-zoom allowed again (viewport no longer has maximum-scale/user-scalable=no); manipulation keeps pan + pinch, drops double-tap zoom.
+   Every text field is at least 16px so iOS Safari doesn't zoom in when you tap into it. */
+html,body{touch-action:manipulation!important}
+html body :is(input,select,textarea):not([type=checkbox]):not([type=radio]):not([type=range]){font-size:max(16px,1em)!important}
+/* landing: feature titles are h2 now (h1 > h2 order); same look as before */
+html body .lpF h2{font-family:inherit;font-style:normal;font-size:19px;line-height:26px;margin:0 0 6px;font-weight:600;color:#F3F8FF;letter-spacing:normal;padding:0}
+/* long company names: up to 2 lines instead of "Caring Brand…"; ticker and price columns unchanged */
+html body .row .nm small{white-space:normal!important;display:-webkit-box!important;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-overflow:clip}
+/* light theme: the stock page tiles and tables kept their dark-navy fills, so dark text sat on mid-grey (as low as 1:1).
+   They get light surfaces here, and the dimmest grey is darkened so it passes WCAG AA (4.5:1) on white and on the pale tiles. */
+html[data-x2t="light"]{--fg3:#56657A}
+html[data-x2t="light"] body :is(.xk,.xr3c,.fct){background:#F3F6FA!important;border-color:#DCE4EE!important;color:#243248}
+html[data-x2t="light"] body .mvt{background:#fff!important;border-color:#DCE4EE!important}
+html[data-x2t="light"] body .mvt th{background:#EEF3F9!important;color:#4A5A70!important}
+html[data-x2t="light"] body .mvt td{color:#243248}html[data-x2t="light"] body .mvt td.sy{background:#fff!important}
+html[data-x2t="light"] body .mvt tr.op td{background:#E8F0FB!important}
+html[data-x2t="light"] body .mvt td.up,html[data-x2t="light"] body .mvt .up{color:#15803D!important}html[data-x2t="light"] body .mvt td.dn,html[data-x2t="light"] body .mvt .dn{color:#C81E1E!important}
+html[data-x2t="light"] body .mixl span{color:#4A5A70!important}html[data-x2t="light"] body .mixl b{color:#243248!important}
+html[data-x2t="light"] body .catT{color:#1F4F94!important}
+html[data-x2t="light"] body .fbc{background:#F3F6FA!important;border-color:#DCE4EE!important}html[data-x2t="light"] body .fbc :is(b,small,span){color:#243248!important}html[data-x2t="light"] body .fbc small{color:#4A5A70!important}html[data-x2t="light"] body .fbc i.dn{color:#C81E1E!important}html[data-x2t="light"] body .fbc i.up{color:#15803D!important}
+html[data-x2t="light"] body .mvrow .rk,html[data-x2t="light"] body .row .rk{color:#2E6DD0!important}
+html[data-x2t="light"] body .ana{color:#1F5FB8!important}html[data-x2t="light"] body .ana.u{color:#15803D!important}html[data-x2t="light"] body .ana.d{color:#C81E1E!important}
+html[data-x2t="light"] body .lpsel em{opacity:1;color:#4A5A70}
+html[data-x2t="light"] body .xjr i.bad{color:#B91C1C!important}
+/* last small tap targets: lift the invisible hit areas above the card that starts right below them */
+html body .lab>a:not(.labt){z-index:3}
+html body .pt2 a.pt2p.pt2cn{z-index:3}
+html body .xlink::after{inset:-14px -6px}html body .xlink{z-index:2}
