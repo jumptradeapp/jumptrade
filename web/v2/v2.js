@@ -1047,6 +1047,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       (false ? '' : lab('radar', 'Setup', '', '') + (x && x.tag ? setupBox(sym, sess) : x ? '<p class="note">No setup read for this session.</p>' : rowsBox(skel(2), 'padding:14px;min-height:104px')) + facts +
       '<p class="note">Updates through the trading day. Float and short interest are reported twice a month. A rules-based read, not advice.</p>') +
       '</div><div class="stR">' + lab('news', 'Why it’s moving', '', '') + '<div class="card" style="padding:12px 14px"><small class="why" style="white-space:normal;color:' + w.c + '">' + E(w.t) + '</small>' + (w.h && w.h.url ? '<a class="srcl" href="' + E(w.h.url) + '" target="_blank" rel="noopener">Open the article</a>' : '') + '</div>' +
+      (window.V2X && V2X.topNews ? V2X.topNews(sym, nameOf(sym)) : '') +
       lab('activity', 'Analyst ratings', 'All calls', '#analysts') + tgtCard +
       (window.JT_PRIV && an && an.err ? '' : !an || (!rows && !an.err) ? rowsBox(skel(3), 'padding:14px') : an.err ? anFallback(sym) : rows.length ? rowsBox(rows.slice(0, S.anAll ? 40 : 6).map((a) => anRow(a, false)).join('')) + (rows.length > 6 && !S.anAll ? '<p class="note"><a href="#" id="anall" style="color:' + BL.b2 + '">Show all ' + rows.length + ' calls</a></p>' : '') : rowsBox('<div class="err">No analyst actions in the last 90 days.</div>')) +
       (an && an.t ? '<p class="note">Source: Yahoo Finance analyst history, checked ' + ago2(an.t) + '. Implied upside uses the live price.</p>' : '') +

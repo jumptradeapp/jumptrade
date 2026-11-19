@@ -1215,3 +1215,12 @@ html body .sring b{font-size:12px;letter-spacing:-.02em}
 html[data-x2t="light"] .up{color:#12703A!important}html[data-x2t="light"] .dn{color:#B91C1C!important}
 html[data-x2t="light"] .stg.sq{color:#fff!important;background:linear-gradient(135deg,#1F5FB8,#2E6DD0)!important}html[data-x2t="light"] .stg.ct{color:#174A94!important}
 html body .srcl::after{inset:-15px -6px}
+/* stock page › Top news: three rows of fixed height (2-line headline + source · time), same box while loading, empty or failed */
+html body .tnc{padding:2px 14px!important;min-height:232px;display:flex;flex-direction:column}
+html body .tnc .tnr{display:flex;align-items:center;height:76px;min-height:76px;box-sizing:border-box;padding:8px 0;flex:none}
+html body .tnc .tnr .nm{display:flex;flex-direction:column;gap:4px;min-width:0;width:100%}
+html body .tnc .tnr b{font-size:14px;line-height:20px;font-weight:600;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--fg,#E9F1F7)}
+html body .tnc .tnr small{font-size:12px;line-height:16px;color:var(--fg2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html body .tnc .tnr .skel{height:14px;margin:0}
+html body .tnc .tne{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;font-size:14px;color:var(--fg2);padding:12px}
+html body .tnc a.tnr:hover b{color:#93C0F6}html[data-x2t="light"] .tnc .tnr b{color:#10203A}html[data-x2t="light"] .tnc a.tnr:hover b{color:#1F5FB8}

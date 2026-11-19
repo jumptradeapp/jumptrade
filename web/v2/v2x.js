@@ -648,6 +648,17 @@
     const w = [0.35, 0.35, 0.3]; return { score: Math.round(parts.reduce((a, p, i) => a + p[1] * w[i], 0)), parts: parts }; }
   const grd = (v) => (v >= 67 ? 'A' : v >= 50 ? 'B' : v >= 34 ? 'C' : 'D');
   const scCol = (s) => (s >= 58 ? '#5FBF8F' : s > 42 ? '#BBD7F9' : '#E07A7A');
+  // Top news: the 3 newest articles that name this company or ticker (the worker picks, de-dupes and caches them 5 minutes).
+  // Three fixed-height rows from the first paint (placeholders, then headlines or one honest line), so nothing below moves.
+  X.topNews = function (sym, name) {
+    const nm = name && name !== sym ? name : ''; const d = once('topnews:' + sym + ':' + nm, 300, () => V().call('get_top_news', { symbol: sym, name: nm })); const now = Date.now();
+    const L = d && !d.err && Array.isArray(d.data) ? d.data.filter((n) => n && n.title && /^https:\/\//i.test(n.url || '') && Date.parse(n.publish_time) <= now + 120000).slice(0, 3) : [];
+    const body = !d ? [0, 1, 2].map(() => '<div class="row tnr" aria-hidden="true"><span class="nm"><span class="skel" style="width:86%"></span><span class="skel" style="width:38%"></span></span></div>').join('')
+      : d.err ? '<div class="tne">News didn’t load. Retrying shortly.</div>'
+      : !L.length ? '<div class="tne">No recent news about ' + E(sym) + '.</div>'
+      : L.map((n) => '<a class="row tnr" href="' + E(n.url) + '" target="_blank" rel="noopener"><span class="nm"><b>' + E(n.title) + '</b><small>' + E(n.source || 'News') + ' · ' + ago(n.publish_time) + ' ago</small></span></a>').join('');
+    return V().lab('news', 'Top news', '', '') + '<div class="card rows tnc"' + (d ? '' : ' aria-busy="true"') + '>' + body + '</div>';
+  };
   X.stockExtras = function (sym) {
     const mode = 'pro'; const b = bars(sym, 'D', 260); const ib = bars(sym, 'M5', 200); const t = b && !b.err ? tech(b) : null; const dp = b && !b.err && window.DIP ? DIP.analyze(sym, b) : null;
     const q = V().S.q[sym]; const fc0 = perSym('get_stock_forecast_eps', sym, 43200); const sn = fillSnap(qx(sym), fc0 && !fc0.err ? fc0 : null, t); const price = q ? q.price : t ? t.p : null; const vw = ib && !ib.err ? vwapOf(ib) : null; if (t && price) t.p = price;

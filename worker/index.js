@@ -11,6 +11,7 @@ import { TYPES, TYPE_IDS, dueTypes, windowFor, cleanMail, cleanTypes, ownerList,
 import { mailJob, build as buildMailOf, deliver, lastSent, signKey } from './mailjob.js';
 import { etNow, closeOf, ahEndOf, rankFor } from './market.js';
 import { diagRoute } from './diag.js';
+import { topNews } from './topnews.js';
 // Every outside request gets a deadline so one slow source can't hang a whole response.
 const fetch = (u, o = {}) => globalThis.fetch(u, o.signal ? o : { ...o, signal: AbortSignal.timeout(o.timeoutMs || (/api\.anthropic\.com/.test(String(u)) ? 25000 : 8000)) });
 
@@ -335,6 +336,15 @@ T.get_stock_news = async (i) => {
     okp(rss('https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=' + encodeURIComponent(s) + '&type=8-K&dateb=&owner=include&count=10&output=atom', 'SEC filing', s).then((a) => a.map((n) => ({ ...n, title: n.title.replace(/^8-K\s*-\s*/, '8-K filing: ') })))).catch(() => []),
   ]);
   return { data: mergeNews(lists, 30), feedsOk: ok };
+};
+// Stock page "Top news": the 3 newest articles that name the company or ticker, from the per-ticker feeds plus the market feeds
+// (Investing.com among them), one per story, newest first, no future times. About 14 upstream requests on a miss, then cached 5 minutes.
+T.get_top_news = async (i) => {
+  const s = String(i.symbol || '').toUpperCase().replace(/[^A-Z0-9.\-]/g, '').slice(0, 12); if (!s) return { data: [] };
+  const name = String(i.name || '').slice(0, 80);
+  const [a, b] = await Promise.all([T.get_stock_news({ symbol: s }).catch(() => null), T.get_news_feed().catch(() => null)]);
+  const raw = [].concat((a && a.data) || [], (b && b.data) || []);
+  return { data: topNews(raw, s, name, Date.now()), feedsOk: (a && a.feedsOk) || 0, t: Date.now() };
 };
 // Market-wide headline feeds. Each is fail-soft; /api/newsdiag shows which ones are answering.
 const FEEDS = [
@@ -817,7 +827,7 @@ T.get_market_sectors_detail = async (i) => {
   return { data: rows };
 };
 // How long each answer may be reused (seconds). Prices: short. Fundamentals: long.
-const TTL = { get_news_feed: 60, get_mover_setup: 60, get_insider_transactions: 3600, get_analyst_actions: 900, get_mover_why: 300, get_earnings_week: 600, get_pick_record: 600, get_playbook: 60, get_stock_unusual_activities: 60, get_community_hot_stocks: 180, get_runners: 60, get_sparks: 60, get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 60, search_news: 45,
+const TTL = { get_news_feed: 60, get_mover_setup: 60, get_insider_transactions: 3600, get_analyst_actions: 900, get_mover_why: 300, get_earnings_week: 600, get_pick_record: 600, get_playbook: 60, get_stock_unusual_activities: 60, get_community_hot_stocks: 180, get_runners: 60, get_sparks: 60, get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 60, search_news: 45, get_top_news: 300,
   get_company_profile: 86400, get_analyst_target_price: 21600, get_analyst_rating: 21600, get_stock_forecast_eps: 21600, get_stock_earnings_calendar: 21600,
   get_fund_brief: 86400, get_fund_holdings: 86400, get_fund_performance: 86400 };
 
@@ -1008,7 +1018,7 @@ async function runTool(tool, input, ctx, env, fresh) {
   const cache = caches.default;
   const hit = fresh ? null : await cache.match(key); if (hit) return hit;
   // Slow, many-source tools: answer instantly from the last good copy and refresh it in the background.
-  const SLOW = /^(get_pick_record|get_playbook|search_news|get_stock_news|get_runners|get_community_hot_stocks|get_stock_unusual_activities|get_market_sectors)$/.test(tool);
+  const SLOW = /^(get_pick_record|get_playbook|search_news|get_stock_news|get_top_news|get_runners|get_community_hot_stocks|get_stock_unusual_activities|get_market_sectors)$/.test(tool);
   const skey = new Request('https://cache.jumptrade/stale/' + tool + '?' + encodeURIComponent(JSON.stringify(input || {})));
   const produce = async () => {
     const w = env && !/news/.test(tool) ? await wbCall(env, tool, input || {}).catch((e) => { WBLAST = { tool, error: String(e.message || e), t: Date.now() }; return null; }) : null;
