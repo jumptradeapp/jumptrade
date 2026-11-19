@@ -358,7 +358,11 @@ html[data-design] body .anc svg text{font-size:12px!important}
 html[data-design] body .lab a{min-width:44px;justify-content:flex-end}
 html[data-design] body .seg:has(>:nth-child(4))>*{font-size:12.5px!important;padding:0 2px!important;letter-spacing:-.01em}
 /* Movers reorder: sliding rows get their own layer only while they move; off-screen rows skip rendering */
-.mvrow.flp{will-change:transform;position:relative;z-index:1}
+html body .mvrow.flp{will-change:transform;position:relative;z-index:1;background-color:#0B1B2E!important;transition:none!important}
+.mvrow.flu{box-shadow:0 8px 22px rgba(0,0,0,.35)}
+html[data-design="a"] body .mvrow.flp{background-color:#0B1829!important}html[data-design="b"] body .mvrow.flp{background-color:#0A0F18!important}
+html[data-design="c"] body .mvrow.flp,html[data-design="bl"] body .mvrow.flp,html[data-x2t="light"] body .mvrow.flp{background-color:#FFFFFF!important}
+html[data-design="c"] .mvrow.flu,html[data-design="bl"] .mvrow.flu,html[data-x2t="light"] .mvrow.flu{box-shadow:0 8px 22px rgba(16,40,80,.14)}
 .card.rows>.mvrow{content-visibility:auto;contain-intrinsic-size:auto 64px}
 html[data-design] body .card.rows>.mvrow{contain-intrinsic-size:auto 68px}
 @media (prefers-reduced-motion:reduce){.mvrow.flp{will-change:auto}}

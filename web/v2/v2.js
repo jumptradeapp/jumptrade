@@ -1144,7 +1144,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     if (o.nodeType !== 1) return;
     if (o === D.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(o.tagName)) return; // never touch the field you're using (an open picker used to snap shut)
     for (const at of Array.from(o.attributes)) if (!n.hasAttribute(at.name)) o.removeAttribute(at.name);
-    for (const at of Array.from(n.attributes)) { let v = at.value; if (at.name === 'class' && FLIPA.has(o)) v += ' flp'; if (o.getAttribute(at.name) !== v) o.setAttribute(at.name, v); }
+    for (const at of Array.from(n.attributes)) { let v = at.value; if (at.name === 'class' && FLIPA.has(o)) v += o.classList.contains('flu') ? ' flp flu' : ' flp'; if (o.getAttribute(at.name) !== v) o.setAttribute(at.name, v); }
     if (o.tagName === 'INPUT' || o.tagName === 'TEXTAREA') return;
     patchKids(o, n);
   }
@@ -1173,8 +1173,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
         K.forEach((o) => { const an = FLIPA.get(o); if (an) { an.cancel(); FLIPA.delete(o); } });
         const y1 = K.map((o) => o.getBoundingClientRect().top); const vh = innerHeight;
         K.forEach((o, i) => { const d = y0.get(o) - y1[i]; if (Math.abs(d) < 1) return; if ((y1[i] > vh + 40 || y1[i] < -200) && (y0.get(o) > vh + 40 || y0.get(o) < -200)) return; // off screen both before and after: just move it
-          o.classList.add('flp'); const an = o.animate([{ transform: 'translateY(' + d.toFixed(1) + 'px)' }, { transform: 'translateY(0)' }], { duration: 300, easing: 'cubic-bezier(.22,.61,.36,1)' });
-          FLIPA.set(o, an); an.onfinish = an.oncancel = () => { if (FLIPA.get(o) === an) { FLIPA.delete(o); o.classList.remove('flp'); } }; }); }
+          o.classList.add('flp'); o.classList.toggle('flu', d > 0); const z = String(2 + Math.min(40, Math.round(Math.abs(d) / 16))); /* the row travelling farthest draws on top */ const an = o.animate([{ transform: 'translateY(' + d.toFixed(1) + 'px)', zIndex: z }, { transform: 'translateY(0)', zIndex: z }], { duration: 300, easing: 'cubic-bezier(.22,.61,.36,1)' });
+          FLIPA.set(o, an); an.onfinish = an.oncancel = () => { if (FLIPA.get(o) === an) { FLIPA.delete(o); o.classList.remove('flp', 'flu'); } }; }); }
       return; }
     for (let i = 0; i < B.length; i++) { const n = B[i], o = A[i];
       if (!o) { a.appendChild(fresh(n)); continue; }
