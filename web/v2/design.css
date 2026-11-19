@@ -412,3 +412,5 @@ html[data-design="bl"] body .card.pglass .mixr circle[stroke="#BBD7F9"],html[dat
 html[data-design="bl"] body .card.pglass .mixr circle[stroke="#7BB0F2"],html[data-design="bl"] body .card.pglass .mixl i[style*="#7BB0F2"]{stroke:#6FA0E0;background:#6FA0E0!important}
 html[data-design="bl"] body .card.pglass .mixr circle[stroke="#5E6E86"],html[data-design="bl"] body .card.pglass .mixl i[style*="#5E6E86"]{stroke:#A9B6C8;background:#A9B6C8!important}
 html[data-design="bl"] .hero .card.pglass.pt2{padding:12px 14px!important}
+html[data-design="bl"] .hero::before,html[data-design="bl"] .hero::after{display:none!important}
+html[data-design="bl"] .hero.ptile{padding-left:0!important;padding-right:0!important}html[data-design="bl"] body .card.pglass.pglass{border-radius:16px!important}
