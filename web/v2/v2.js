@@ -8,7 +8,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   'use strict';
   const D = document;
   const E = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const DZ0 = document.documentElement.dataset.design; const UP = DZ0 === 'b' ? '#5CB0FF' : DZ0 === 'c' ? '#167A4C' : '#5FBF8F', DN = DZ0 === 'b' ? '#EB8C86' : DZ0 === 'c' ? '#B4443F' : '#E07A7A'; /* redesign preview B/C use their own up/down */ // muted up/down (same as CSS --up/--dn); used only for direction
+  const DZ0 = document.documentElement.dataset.design; const UP = DZ0 === 'b' ? '#5CB0FF' : DZ0 === 'bl' ? '#1F5FB8' : DZ0 === 'c' ? '#167A4C' : '#5FBF8F', DN = DZ0 === 'b' ? '#EB8C86' : DZ0 === 'bl' ? '#B8453E' : DZ0 === 'c' ? '#B4443F' : '#E07A7A'; /* redesign preview B/C use their own up/down */ // muted up/down (same as CSS --up/--dn); used only for direction
   const TXA = D.createElement('textarea'); const dec = (s) => { TXA.innerHTML = String(s == null ? '' : s); return TXA.value; }; // feed headlines arrive with HTML entities (&#x2019;)
   const ic = (n, s, sw) => '<svg class="ic" width="' + (s || 20) + '" height="' + (s || 20) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (sw || 1.9) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + I[n] + '</svg>';
   const f2 = (v, d) => Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: d == null ? 2 : d, maximumFractionDigits: d == null ? 2 : d });
@@ -629,11 +629,11 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
         '<div class="row mvrow' + fl + '" data-mvx="' + E(sym) + '" role="button" style="min-height:64px"><span class="rk">' + (i + 1) + '</span>' + tl(sym, 34) + '<span class="nm"><b>' + E(sym) + '</b><small>' + E(x.name || nameOf(sym)) + '</small></span><span style="flex:none">' + sp(sym, up, 48, 24) + '</span>' +
         '<span class="q"><b>' + pxs(+x.price) + '</b><small class="' + (up ? 'up' : 'dn') + '">' + (ch != null ? (ch >= 0 ? '+' : '−') + '$' + Math.abs(ch).toFixed(Math.abs(ch) < 1 ? (Math.abs(ch) < 0.1 ? 4 : 2) : 2) : '') + '<i>' + pct(p) + '</i></small></span></div>';
       if (open) { const w = whyText(sym); const fx = (st && st.facts) || {}; const rv = x.avg_volume ? x.volume / x.avg_volume : null;
-        h += '<div class="mvx"><div class="mvl"><span>Why it’s moving</span><b style="color:' + w.c + '">' + E(w.t) + '</b>' + (w.h && w.h.url ? ' <a href="' + E(w.h.url) + '" target="_blank" rel="noopener" class="srcl">Read</a>' : '') + '</div>' +
+        h += '<div class="mvx" data-k="mvx:' + E(sym) + '"><div class="mvl"><span>Why it’s moving</span><b style="color:' + w.c + '">' + E(w.t) + '</b>' + (w.h && w.h.url ? ' <a href="' + E(w.h.url) + '" target="_blank" rel="noopener" class="srcl">Read</a>' : '') + '</div>' +
           (st && st.tag ? '<div class="mvl"><span>What it’s doing</span><b>' + (PLAIN[SETUP[st.tag][1]] || PLAIN[st.tag] || SETUP[st.tag][0]) + '</b><ul>' + (st.reasons || []).slice(0, 2).map((r) => '<li>' + E(cleanR(r)) + '</li>').join('') + '</ul></div>' : '') +
           '<div class="mvl"><span>Trading</span><b style="font-weight:500">' + nfmt(+x.volume) + ' shares' + (rv ? ' · ' + (rv >= 10 ? rv.toFixed(0) : rv.toFixed(1)) + '× normal' : '') + (fx.halt && fx.halt.n ? ' · halted ' + fx.halt.n + '×' : '') + '</b></div>' +
           '<a class="mvgo" href="#stock/' + encodeURIComponent(sym) + '">Open ' + E(sym) + '</a><small class="stn">A rules-based read, not advice.</small></div>'; }
-      return h; }).join(''), 'padding:2px 12px').replace(/^(<div[^>]*>)/, D.documentElement.dataset.design ? '$1<div class="mvhd" aria-hidden="true"><span class="rk">#</span><span class="nm">Symbol · why it’s moving</span><span class="mvsp">Today</span><span class="mvc">Volume</span><span class="mvc">Rel vol</span><span class="mvc">Float</span><span class="q">Price · chg</span></div>' : '$1');
+      return h; }).join(''), 'padding:2px 12px').replace(/^(<div[^>]*>)/, D.documentElement.dataset.design ? '$1<div class="mvhd" data-k="mvhd" aria-hidden="true"><span class="rk">#</span><span class="nm">Symbol · why it’s moving</span><span class="mvsp">Today</span><span class="mvc">Volume</span><span class="mvc">Rel vol</span><span class="mvc">Float</span><span class="q">Price · chg</span></div>' : '$1');
   }
   function movers() {
     if (!S.mv.sess) S.mv.sess = curSess();
@@ -1132,6 +1132,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   function morph(el, html) { const t = IDOC.createElement(el.tagName); t.innerHTML = html; patchKids(el, t); }
   // rows that carry a key (a link's href, data-k, data-mvx) are matched by key, not by position: when a stock moves up the list
   // its row moves with its logo and chart intact, instead of every row below it being rewritten (logos used to reload and pop)
+  const FLIPA = new WeakMap(); // row -> its running slide
   const RMO = window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
   const keyOf = (el) => el.nodeType === 1 ? (el.getAttribute('data-k') || el.getAttribute('data-mvx') || (el.tagName === 'A' && /(^| )(row|fbc|fmc)( |$)/.test(el.className) ? el.getAttribute('href') : null)) : null;
   function keyed(A, B) { if (B.length < 2 || !A.length) return null; const seen = new Set();
@@ -1143,7 +1144,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     if (o.nodeType !== 1) return;
     if (o === D.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(o.tagName)) return; // never touch the field you're using (an open picker used to snap shut)
     for (const at of Array.from(o.attributes)) if (!n.hasAttribute(at.name)) o.removeAttribute(at.name);
-    for (const at of Array.from(n.attributes)) if (o.getAttribute(at.name) !== at.value) o.setAttribute(at.name, at.value);
+    for (const at of Array.from(n.attributes)) { let v = at.value; if (at.name === 'class' && FLIPA.has(o)) v += ' flp'; if (o.getAttribute(at.name) !== v) o.setAttribute(at.name, v); }
     if (o.tagName === 'INPUT' || o.tagName === 'TEXTAREA') return;
     patchKids(o, n);
   }
@@ -1157,16 +1158,23 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const A = Array.from(a.childNodes), B = Array.from(b.childNodes);
     const m = keyed(A, B);
     if (m) {
-      // when the order changes, rows glide to their new place (about 0.2s) instead of jumping
-      const moved = B.some((n, i) => A[i] !== m.get(keyOf(n))); const y0 = moved && !RMO.matches && A.length <= 60 ? new Map(A.map((o) => [o, o.getBoundingClientRect().top])) : null;
+      // when the order changes, rows glide to their new place instead of jumping (FLIP, transform only, on the compositor):
+      // 1) read every row's on-screen top once (includes a slide still running), 2) move the DOM, 3) stop old slides, read the new tops once,
+      // 4) start every slide in the same frame with the Web Animations API. A newer update mid-slide starts from where the row is drawn
+      // (retargets, never queues). Animations live outside the style attribute, so a price tick that re-renders the row can't cut a slide short.
+      const moved = B.some((n, i) => A[i] !== m.get(keyOf(n))); const y0 = moved && !RMO.matches && A.length <= 60 && a.isConnected ? new Map(A.map((o) => [o, o.nodeType === 1 ? o.getBoundingClientRect().top : 0])) : null;
       // move as few rows as possible: the rows that are already in order stay put and only the ones that changed place move
       // (one stock dropping five places used to take out and put back every row it passed, pictures and all)
       const T = B.map((n) => { const k = keyOf(n); const o = m.get(k); if (o && same(o, n)) { m.delete(k); patchEl(o, n); return o; } return fresh(n); });
       m.forEach((o) => { if (o.parentNode === a) a.removeChild(o); });
       const pos = new Map(Array.from(a.childNodes).map((o, i) => [o, i])); const stay = inOrder(T.map((o) => (pos.has(o) ? pos.get(o) : -1)));
       for (let i = T.length - 1, nx = null; i >= 0; i--) { const o = T[i]; if (!stay.has(i)) a.insertBefore(o, nx); nx = o; }
-      if (y0) Array.from(a.children).forEach((o) => { const t = y0.get(o); if (t == null) return; const d = t - o.getBoundingClientRect().top; if (Math.abs(d) < 1) return;
-        o.style.transition = 'none'; o.style.transform = 'translateY(' + d.toFixed(1) + 'px)'; requestAnimationFrame(() => { o.style.transition = 'transform .22s cubic-bezier(.22,.61,.36,1)'; o.style.transform = ''; setTimeout(() => { o.style.transition = ''; }, 260); }); });
+      if (y0) { const K = Array.from(a.children).filter((o) => y0.has(o));
+        K.forEach((o) => { const an = FLIPA.get(o); if (an) { an.cancel(); FLIPA.delete(o); } });
+        const y1 = K.map((o) => o.getBoundingClientRect().top); const vh = innerHeight;
+        K.forEach((o, i) => { const d = y0.get(o) - y1[i]; if (Math.abs(d) < 1) return; if ((y1[i] > vh + 40 || y1[i] < -200) && (y0.get(o) > vh + 40 || y0.get(o) < -200)) return; // off screen both before and after: just move it
+          o.classList.add('flp'); const an = o.animate([{ transform: 'translateY(' + d.toFixed(1) + 'px)' }, { transform: 'translateY(0)' }], { duration: 300, easing: 'cubic-bezier(.22,.61,.36,1)' });
+          FLIPA.set(o, an); an.onfinish = an.oncancel = () => { if (FLIPA.get(o) === an) { FLIPA.delete(o); o.classList.remove('flp'); } }; }); }
       return; }
     for (let i = 0; i < B.length; i++) { const n = B[i], o = A[i];
       if (!o) { a.appendChild(fresh(n)); continue; }
