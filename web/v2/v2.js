@@ -1141,7 +1141,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const same = (o, n) => o.nodeType === n.nodeType && o.nodeName === n.nodeName && !(o.nodeType === 1 && o.tagName === 'IMG' && o.getAttribute('src') !== n.getAttribute('src'));
   function patchEl(o, n) {
     if (o.nodeType === 3 || o.nodeType === 8) { if (o.nodeValue !== n.nodeValue) o.nodeValue = n.nodeValue; return; }
-    if (o.nodeType !== 1) return;
+    if (o.nodeType !== 1) return; o.__h = undefined;
     if (o === D.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(o.tagName)) return; // never touch the field you're using (an open picker used to snap shut)
     for (const at of Array.from(o.attributes)) if (!n.hasAttribute(at.name)) o.removeAttribute(at.name);
     for (const at of Array.from(n.attributes)) { let v = at.value; if (at.name === 'class' && FLIPA.has(o)) v += o.classList.contains('flu') ? ' flp flu' : ' flp'; if (o.getAttribute(at.name) !== v) o.setAttribute(at.name, v); }
@@ -1154,9 +1154,17 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       if (lo > 0) prev[i] = tails[lo - 1]; tails[lo] = i; });
     const keep = new Set(); for (let i = tails.length ? tails[tails.length - 1] : -1; i >= 0; i = prev[i]) keep.add(i); return keep;
   }
+  // skip what didn't change: page sections (children of .wrap) and list rows (children of .rows) remember the HTML they were last
+  // drawn from; when the refresh draws the same HTML again the whole subtree is left alone (no walk, no attribute checks).
+  // Prices still land at once: a row whose numbers changed has different HTML, so it is patched in the same pass.
+  const memoP = (a) => a.nodeType === 1 && a.classList && (a.classList.contains('wrap') || a.classList.contains('rows') || a.classList.contains('row'));
+  function mpatch(o, n, mm) { if (!mm || o.nodeType !== 1) { patchEl(o, n); return; } const h = n.outerHTML; if (o.__h === h) return; patchEl(o, n); o.__h = h; }
+  // anything the user touches may get changed by click code ("Building…", disabled buttons), so the section they touched is fully re-checked on the next draw, like before
+  ['click', 'input', 'change', 'submit'].forEach((ev) => D.addEventListener(ev, (e) => { for (let x = e.target; x && x.nodeType === 1; x = x.parentNode) x.__h = undefined; }, true));
+  function mfresh(n, mm) { const c = fresh(n); if (mm && c.nodeType === 1) c.__h = n.outerHTML; return c; }
   function patchKids(a, b) {
     const A = Array.from(a.childNodes), B = Array.from(b.childNodes);
-    const m = keyed(A, B);
+    const m = keyed(A, B); const mm = memoP(a);
     if (m) {
       // when the order changes, rows glide to their new place instead of jumping (FLIP, transform only, on the compositor):
       // 1) read every row's on-screen top once (includes a slide still running), 2) move the DOM, 3) stop old slides, read the new tops once,
@@ -1165,7 +1173,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       const moved = B.some((n, i) => A[i] !== m.get(keyOf(n))); const y0 = moved && !RMO.matches && A.length <= 60 && a.isConnected ? new Map(A.map((o) => [o, o.nodeType === 1 ? o.getBoundingClientRect().top : 0])) : null;
       // move as few rows as possible: the rows that are already in order stay put and only the ones that changed place move
       // (one stock dropping five places used to take out and put back every row it passed, pictures and all)
-      const T = B.map((n) => { const k = keyOf(n); const o = m.get(k); if (o && same(o, n)) { m.delete(k); patchEl(o, n); return o; } return fresh(n); });
+      const T = B.map((n) => { const k = keyOf(n); const o = m.get(k); if (o && same(o, n)) { m.delete(k); mpatch(o, n, mm); return o; } return mfresh(n, mm); });
       m.forEach((o) => { if (o.parentNode === a) a.removeChild(o); });
       const pos = new Map(Array.from(a.childNodes).map((o, i) => [o, i])); const stay = inOrder(T.map((o) => (pos.has(o) ? pos.get(o) : -1)));
       for (let i = T.length - 1, nx = null; i >= 0; i--) { const o = T[i]; if (!stay.has(i)) a.insertBefore(o, nx); nx = o; }
@@ -1177,9 +1185,9 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
           FLIPA.set(o, an); an.onfinish = an.oncancel = () => { if (FLIPA.get(o) === an) { FLIPA.delete(o); o.classList.remove('flp', 'flu'); } }; }); }
       return; }
     for (let i = 0; i < B.length; i++) { const n = B[i], o = A[i];
-      if (!o) { a.appendChild(fresh(n)); continue; }
-      if (!same(o, n)) { a.replaceChild(fresh(n), o); continue; }
-      patchEl(o, n); }
+      if (!o) { a.appendChild(mfresh(n, mm)); continue; }
+      if (!same(o, n)) { a.replaceChild(mfresh(n, mm), o); continue; }
+      mpatch(o, n, mm); }
     for (let i = A.length - 1; i >= B.length; i--) a.removeChild(A[i]);
   }
   function render() {

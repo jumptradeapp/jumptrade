@@ -33,3 +33,12 @@ test('design toggle knows a, b, c and bl; sliding rows get will-change only whil
   assert.match(css, /content-visibility:auto/);
   assert.match(css, /html\[data-design="bl"\]\{--up:#1F5FB8;--dn:#B8453E/);
 });
+
+test('refresh only re-patches what changed (memoized sections/rows/cells)', () => {
+  const s = fs.readFileSync(new URL('../web/v2/v2.js', import.meta.url), 'utf8');
+  assert.match(s, /function mpatch\(o, n, mm\)[^\n]*o\.__h === h\) return;/);
+  assert.match(s, /contains\('wrap'\) \|\| a\.classList\.contains\('rows'\) \|\| a\.classList\.contains\('row'\)/);
+  assert.match(s, /mpatch\(o, n, mm\); return o; } return mfresh\(n, mm\)/);
+  assert.match(s, /if \(o\.nodeType !== 1\) return; o\.__h = undefined;/);
+  assert.match(s, /\['click', 'input', 'change', 'submit'\]\.forEach/);
+});
