@@ -6,12 +6,12 @@
 .jmimg .jmL{display:none}:is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-light .jmimg .jmD{display:none}:is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-light .jmimg .jmL{display:block}
 /* header lockup: JUMP + trade. */
 :is(#_,html):is(#_,html):is(#_,html):is(#_,html) .brand .jm,:is(#_,html):is(#_,html):is(#_,html):is(#_,html) .brand .wm{display:none!important}
-:is(#_,html):is(#_,html):is(#_,html):is(#_,html) .brand::before{content:"";display:block;width:122px;height:40px;background:url(../img/jump-trade.png?v=1794800001) left center/contain no-repeat;flex-shrink:0}
-:is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-light .brand::before{background-image:url(../img/jump-trade-light.png?v=1794705416)}
+:is(#_,html):is(#_,html):is(#_,html):is(#_,html) .brand::before{content:"";display:block;width:122px;height:40px;background:url(../img/jump-trade.png?v=1795050000) left center/contain no-repeat;flex-shrink:0}
+:is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-light .brand::before{background-image:url(../img/jump-trade-light.png?v=1795050000)}
 :is(#_,html):is(#_,html):is(#_,html):is(#_,html) #splash .m{display:none!important}
-:is(#_,html):is(#_,html):is(#_,html):is(#_,html) #splash .wm{display:block!important;margin:0 auto 22px!important;position:static!important;font-size:0!important;width:240px;height:80px;background:url(../img/jump-trade.png?v=1794800001) center/contain no-repeat;color:transparent!important}
+:is(#_,html):is(#_,html):is(#_,html):is(#_,html) #splash .wm{display:block!important;margin:0 auto 22px!important;position:static!important;font-size:0!important;width:240px;height:80px;background:url(../img/jump-trade.png?v=1795050000) center/contain no-repeat;color:transparent!important}
 :is(#_,html):is(#_,html):is(#_,html):is(#_,html) #splash .wm *{display:none!important}
-:is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-light #splash .wm{background-image:url(../img/jump-trade-light.png?v=1794705416)}
+:is(#_,html):is(#_,html):is(#_,html):is(#_,html).th-light #splash .wm{background-image:url(../img/jump-trade-light.png?v=1795050000)}
 /* no square periods anywhere */
 :is(#_,html):is(#_,html):is(#_,html):is(#_,html) body .sq{display:none!important}
 /* background: navy grain + faint cyan glow at the top */
@@ -29,4 +29,4 @@
 html.th-dark:is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html) body :is(.glass,.card,.sec,.hm,.stCard,.hxA,.mkStrip,.orcCard){background:rgba(4,7,26,.70)!important;-webkit-backdrop-filter:blur(16px)!important;backdrop-filter:blur(16px)!important}
 /*logosize*/:is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html) .brand::before{width:132px!important;height:46px!important}
 /*logosize2*/:is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html) .brand::before{width:122px!important;height:40px!important}
-/*gatelogo*/:is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html) #jtGate .gMark{display:none!important}:is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html) #jtGate .gWm{display:block!important;width:240px;height:84px;margin:0 auto 22px!important;font-size:0!important;color:transparent!important;background:url(../img/jump-trade.png) center/contain no-repeat}:is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html) #jtGate .gWm *{display:none!important}html.th-light:is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html) #jtGate .gWm{background-image:url(../img/jump-trade-light.png)}
+/*gatelogo*/:is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html) #jtGate .gMark{display:none!important}:is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html) #jtGate .gWm{display:block!important;width:240px;height:84px;margin:0 auto 22px!important;font-size:0!important;color:transparent!important;background:url(../img/jump-trade.png?v=1795050000) center/contain no-repeat}:is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html) #jtGate .gWm *{display:none!important}html.th-light:is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html):is(#_,html) #jtGate .gWm{background-image:url(../img/jump-trade-light.png?v=1795050000)}

@@ -54,10 +54,24 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   let LG = null; fetch('/lg/index.json').then((r) => r.json()).then((j) => { LG = j; render(); }).catch(() => { LG = {}; render(); });
   // which pictures already loaded or failed: a refresh redraws them as they are, so a broken logo isn't asked for again every
   // 1.5 seconds (it used to flicker between the picture and its initials) and a loaded one doesn't fade in a second time
-  const IMGOK = new Set(), IMGBAD = new Set();
+  // A failed logo is remembered for a day on this device, so it isn't asked for (and faded in, then swapped for initials) again.
+  const IMGOK = new Set(), IMGBAD = new Set(); const BADK = 'jt.lgbad';
+  try { const b = JSON.parse(localStorage.getItem(BADK) || '{}'), now = Date.now(); Object.keys(b).forEach((u) => { if (now - b[u] < 864e5) IMGBAD.add(u); }); } catch (e) {}
+  const markBad = (u) => { if (!u || IMGBAD.has(u)) return; IMGBAD.add(u); try { const b = JSON.parse(localStorage.getItem(BADK) || '{}'); b[u] = Date.now(); const k = Object.keys(b); if (k.length > 400) k.slice(0, k.length - 400).forEach((x) => delete b[x]); localStorage.setItem(BADK, JSON.stringify(b)); } catch (e) {} };
   window.v2ImgOk = function (img) { IMGOK.add(img.getAttribute('src')); img.classList.add('ok'); };
-  window.v2ImgBad = function (img) { IMGBAD.add(img.getAttribute('src')); img.remove(); };
-  window.v2LogoErr = function (img) { IMGBAD.add(img.getAttribute('src')); const t = img.parentNode; if (!t) return; if (img.dataset.alt) { const a = img.dataset.alt; img.dataset.alt = ''; img.src = a; return; } t.classList.remove('wt'); t.innerHTML = '<span class="mono2" style="font-size:' + Math.round(t.offsetWidth * 0.34) + 'px">' + E(t.dataset.s.slice(0, 2)) + '</span>'; };
+  window.v2ImgBad = function (img) { markBad(img.getAttribute('src')); img.remove(); };
+  window.v2LogoErr = function (img) { markBad(img.getAttribute('src')); const t = img.parentNode; if (!t) return; if (img.dataset.alt && !IMGBAD.has(img.dataset.alt)) { const a = img.dataset.alt; img.removeAttribute('data-alt'); img.src = a; return; } t.classList.remove('wt'); t.innerHTML = '<span class="mono2" style="font-size:' + Math.round((parseInt(t.style.width, 10) || t.offsetWidth) * 0.34) + 'px">' + E((t.dataset.s || '').slice(0, 2)) + '</span>'; };
+  // Logo pictures are made once per ticker and size, then reused: a row that leaves the list and comes back (or a page you return
+  // to) gets the same, already-drawn picture back instead of a new one that loads and fades in again.
+  const LOGOS = new Map(); // 'SYM|src|px' -> [img, ...]
+  const logoKey = (img) => { const t = img.parentNode; return t && t.dataset && t.dataset.s ? t.dataset.s + '|' + img.getAttribute('src') + '|' + (img.style.width || '') : null; };
+  function keepLogos(root) {
+    root.querySelectorAll('.tl[data-s] > img').forEach((img) => { const k = logoKey(img); if (!k) return;
+      const L = LOGOS.get(k) || []; const src = img.getAttribute('src'); const spare = img.isConnected ? null : L.find((x) => !x.isConnected && x !== img && x.getAttribute('src') === src);
+      if (spare) { img.replaceWith(spare); return; }
+      if (L.indexOf(img) < 0) { L.push(img); LOGOS.set(k, L); } });
+    if (LOGOS.size > 800) { const k = LOGOS.keys().next().value; LOGOS.delete(k); }
+  }
   // funds without their own logo show the fund company's (iShares → BlackRock, SPDR → State Street, Invesco, Schwab, JPMorgan)
   const FUNDCO = window.JT_FUNDCO = {IVV:'BLK',IWM:'BLK',IEF:'BLK',TLT:'BLK',SGOV:'BLK',AGG:'BLK',EFA:'BLK',EEM:'BLK',IEMG:'BLK',IBIT:'BLK',ETHA:'BLK',SOXX:'BLK',IGV:'BLK',ITA:'BLK',ICLN:'BLK',IAU:'BLK',SLV:'BLK',TIP:'BLK',LQD:'BLK',HYG:'BLK',SHY:'BLK',MTUM:'BLK',QUAL:'BLK',USMV:'BLK',IJR:'BLK',IJH:'BLK',EWJ:'BLK',EWZ:'BLK',FXI:'BLK',IYR:'BLK',IYW:'BLK',SPY:'STT',GLD:'STT',GLDM:'STT',DIA:'STT',XLK:'STT',XLF:'STT',XLE:'STT',XLV:'STT',XLY:'STT',XLP:'STT',XLI:'STT',XLU:'STT',XLB:'STT',XLRE:'STT',XLC:'STT',KRE:'STT',XBI:'STT',XOP:'STT',XME:'STT',XHB:'STT',XRT:'STT',SPLG:'STT',BIL:'STT',JNK:'STT',MDY:'STT',SPYG:'STT',SPYV:'STT',QQQ:'IVZ',QQQM:'IVZ',SPMO:'IVZ',DBC:'IVZ',DBA:'IVZ',RSP:'IVZ',SPLV:'IVZ',IGPT:'IVZ',TAN:'IVZ',PBW:'IVZ',SCHD:'SCHW',SCHG:'SCHW',SCHX:'SCHW',SCHB:'SCHW',SCHF:'SCHW',SCHA:'SCHW',SCHH:'SCHW',SCHE:'SCHW',JEPI:'JPM',JEPQ:'JPM',JPST:'JPM'};
   function tl(sym, s) {
@@ -68,7 +82,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     let src = inSet ? '/lg/' + encodeURIComponent(lsym) + '.webp' : '/api/logo/' + encodeURIComponent(sym), alt = inSet ? '/api/logo/' + encodeURIComponent(sym) : '';
     if (IMGBAD.has(src) && alt) { src = alt; alt = ''; }
     if (IMGBAD.has(src)) return '<span class="tl" ' + box + '><span class="mono2" style="font-size:' + Math.round(s * 0.34) + 'px">' + E(sym.slice(0, 2)) + '</span></span>';
-    return '<span class="tl' + (light ? ' wt' : '') + '" ' + box + '><img alt="" decoding="async" src="' + src + '"' + (alt ? ' data-alt="' + alt + '"' : '') + (IMGOK.has(src) ? ' class="ok"' : '') + ' onload="v2ImgOk(this)" onerror="v2LogoErr(this)" style="width:' + Math.round(s * 0.7) + 'px;height:' + Math.round(s * 0.7) + 'px"></span>';
+    return '<span class="tl' + (light ? ' wt' : '') + '" ' + box + '><img alt="" src="' + src + '"' + (alt ? ' data-alt="' + alt + '"' : '') + (IMGOK.has(src) ? ' class="ok"' : '') + ' onload="v2ImgOk(this)" onerror="v2LogoErr(this)" style="width:' + Math.round(s * 0.7) + 'px;height:' + Math.round(s * 0.7) + 'px"></span>';
   }
 
   // ---------- company names: friendly short names for common tickers, else the name the price feed sends ----------
@@ -196,7 +210,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const skel = (n) => Array.from({ length: n || 3 }, (_, i) => '<div class="skel" style="width:' + (90 - i * 15) + '%"></div>').join('');
   // first-load placeholder rows, each as tall as the row that replaces it, so nothing below jumps when the data lands
   const skelRows = (n, h) => '<div class="card rows" style="padding:2px 14px">' + Array.from({ length: n }, (_, i) => '<div class="row skr" style="min-height:' + h + 'px!important"><div class="skel" style="width:' + (78 - (i % 3) * 14) + '%"></div></div>').join('') + '</div>';
-  const topbar = () => '<div class="top tc"><a class="ib" href="#menu" aria-label="All pages">' + ic('menu') + '</a><span class="brand"><img src="/v2/img/jump-lockup.svg?v=4" alt="jumptrade." width="129" height="26"></span><div class="acts">' + (REAL || !/^(today|portfolio)$/.test(route().v) ? '' : DEMO) + (V2_STAGE >= 3 ? '<a class="ib" href="#alerts" aria-label="Alerts">' + ic('bell') + (alertCount() ? '<em class="bdot"></em>' : '') + '</a>' : '<a class="ib" href="#calendar" aria-label="Alerts and events">' + ic('bell') + '<em class="bdot"></em></a>') + '</div></div>';
+  const topbar = () => '<div class="top tc"><a class="ib" href="#menu" aria-label="All pages">' + ic('menu') + '</a><span class="brand"><img src="/v2/img/jump-lockup.svg?v=5" alt="jumptrade." width="141" height="26"></span><div class="acts">' + (REAL || !/^(today|portfolio)$/.test(route().v) ? '' : DEMO) + (V2_STAGE >= 3 ? '<a class="ib" href="#alerts" aria-label="Alerts">' + ic('bell') + (alertCount() ? '<em class="bdot"></em>' : '') + '</a>' : '<a class="ib" href="#calendar" aria-label="Alerts and events">' + ic('bell') + '<em class="bdot"></em></a>') + '</div></div>';
   const backbar = (title, href) => '<div class="top"><div style="display:flex;align-items:center;gap:6px;min-width:0"><a class="ib" style="margin-left:-10px" href="' + href + '" aria-label="Back">' + ic('back', 22) + '</a><b class="tbt">' + title + '</b></div><div class="acts">' + (REAL || route().v !== 'connect' ? '' : DEMO) + '</div></div>';
   const head = (t, sub) => { const p = t.lastIndexOf(' '); return '<h1>' + (p > 0 ? t.slice(0, p) + ' <em>' + t.slice(p + 1) + '</em>' : '<em>' + t + '</em>') + '</h1>' + (sub ? '<p class="sub">' + sub + '</p>' : ''); };
   const sh = (t, link, href, icon, th) => '<div class="sh"><h2><span class="shi">' + ic(icon || 'layers', 16) + '</span>' + ((th || href) && (th || href) !== '#hold' && (th || href) !== '#edit' ? '<a class="sht" href="' + (th || href) + '">' + t + '</a>' : t) + '</h2>' + (link ? '<a href="' + href + '">' + link + '</a>' : '') + '</div>';
@@ -394,8 +408,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   }
   // top gainers on Today: the 5 biggest movers right now (pre-market, regular or after hours)
   S.tg = null; S.tgT = 0;
-  function loadTG() { if (S.tgSess && S.tgSess !== curSess()) { S.tgT = 0; S.tg = null; } if (S.tgBusy || Date.now() - S.tgT < 6000) return; S.tgSess = curSess(); S.tgBusy = 1; S.tgT = Date.now(); const ss = curSess(); const rank = ss === 'pre' ? 'PRE_MARKET' : ss === 'after' ? 'AFTER_MARKET' : 'DAY_1';
-    call('get_gainers_losers', { category: 'US_STOCK', rank_type: rank, sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '20', page_index: '1' }).then((p) => { S.tg = ((p && p.data) || []).filter((x) => x && x.symbol && /^[A-Z.]{1,6}$/.test(x.symbol) && +x.price > 0).slice(0, 5); const ns = S.tg.map((x) => x.symbol).filter((x) => !S.spark[x]); if (ns.length) sparks(ns).then(render).catch(() => {}); }).catch(() => { S.tg = S.tg || []; }).then(() => { S.tgBusy = 0; render(); }); }
+  function loadTG() { if (S.tgSess && S.tgSess !== curSess()) { S.tgT = 0; S.tg = null; } if (S.tgBusy || Date.now() - S.tgT < 6000) return; S.tgSess = curSess(); S.tgBusy = 1; S.tgT = Date.now(); const ss = curSess(); const my = S.tgSeq = (S.tgSeq || 0) + 1; const rank = ss === 'pre' ? 'PRE_MARKET' : ss === 'after' ? 'AFTER_MARKET' : 'DAY_1';
+    call('get_gainers_losers', { category: 'US_STOCK', rank_type: rank, sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '20', page_index: '1' }).then((p) => { if (my !== S.tgSeq || ss !== curSess()) return; S.tg = ((p && p.data) || []).filter((x) => x && x.symbol && /^[A-Z.]{1,6}$/.test(x.symbol) && +x.price > 0).slice(0, 5); const ns = S.tg.map((x) => x.symbol).filter((x) => !S.spark[x]); if (ns.length) sparks(ns).then(render).catch(() => {}); }).catch(() => { if (my === S.tgSeq) S.tg = S.tg || []; }).then(() => { if (my === S.tgSeq) S.tgBusy = 0; render(); }); }
   function tgRows() {
     loadTG(); if (!S.tg) return skelRows(5, 62); if (!S.tg.length) return rowsBox('<div class="err">No movers in the feed right now.</div>');
     // live prices can reorder the five: rank by the live % (same order the price column shows) and flash a row that moves up or down
@@ -577,15 +591,16 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const mvKey = () => S.mv.sess + ':' + S.mv.dir;
   function loadMovers() {
     if (!S.mv.sess) S.mv.sess = curSess();
-    const k = mvKey(), sess = S.mv.sess, dir = S.mv.dir;
+    const k = mvKey(), sess = S.mv.sess, dir = S.mv.dir; S.mvSeq = S.mvSeq || {}; S.mvDone = S.mvDone || {}; const my = S.mvSeq[k] = (S.mvSeq[k] || 0) + 1;
     const rank = sess === 'pre' ? 'PRE_MARKET' : sess === 'after' ? 'AFTER_MARKET' : 'DAY_1';
     return call('get_gainers_losers', { category: 'US_STOCK', rank_type: rank, sort_by: 'CHANGE_RATIO', direction: dir === 'up' ? 'DESC' : 'ASC', page_size: '30', page_index: '1' }).then((p) => {
+      if (my < (S.mvDone[k] || 0)) return; S.mvDone[k] = my; // a slower, older reply never replaces a newer list
       const rows = ((p && p.data) || []).filter((x) => x && x.symbol && /^[A-Z.]{1,6}$/.test(x.symbol)).slice(0, 30);
       rankMoves(S.mv.rank[k] = S.mv.rank[k] || {}, rows.map((x) => [x.symbol, +x.change_ratio * 100]), S.mv.flash); S.mv.data[k] = { rows, t: Date.now() };
       const need = rows.slice(25).map((x) => x.symbol).filter((s) => !S.why[s] || Date.now() - S.why[s].t > 300000);
       loadSetup(rows.slice(0, 25).map((x) => x.symbol), sess);
       if (need.length) call('get_mover_why', { symbols: need.slice(0, 6).join(',') }).then((w) => { Object.keys(w || {}).forEach((s) => { S.why[s] = Object.assign({ t: Date.now() }, w[s]); }); render(); }).catch(() => {});
-    }).catch((e) => { S.mv.data[k] = Object.assign(S.mv.data[k] || { rows: null }, { err: e, t: Date.now() }); });
+    }).catch((e) => { if (my < (S.mvDone[k] || 0)) return; S.mv.data[k] = Object.assign(S.mv.data[k] || { rows: null }, { err: e, t: Date.now() }); });
   }
   setInterval(() => { if (!D.hidden && canLoad() && route().v === 'movers' && !S.mvBusy) { S.mvBusy = 1; loadMovers().then(() => { if (!touching) render(); }).catch(() => {}).then(() => { S.mvBusy = 0; }); } }, 4000);
   const WHYC = { real: BL.b3, news: BL.b2, warn: BL.b4, nonews: 'var(--fg3)', unknown: 'var(--fg3)' };
@@ -1102,7 +1117,9 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   D.addEventListener('touchcancel', () => { touching = 0; if (pend) { pend = 0; render(); } }, { passive: true });
   D.addEventListener('touchend', () => { if (touching) setTimeout(() => { touching = 0; if (pend) { pend = 0; render(); } }, 700); }, { passive: true });
   // update the page in place: only what changed is touched, so images, logos and charts don't flash on every refresh
-  function morph(el, html) { const t = D.createElement(el.tagName); t.innerHTML = html; patchKids(el, t); }
+  const IDOC = D.implementation.createHTMLDocument('');
+  const fresh = (n) => { const c = D.importNode(n, true); if (c.nodeType === 1) keepLogos(c); return c; };
+  function morph(el, html) { const t = IDOC.createElement(el.tagName); t.innerHTML = html; patchKids(el, t); }
   // rows that carry a key (a link's href, data-k, data-mvx) are matched by key, not by position: when a stock moves up the list
   // its row moves with its logo and chart intact, instead of every row below it being rewritten (logos used to reload and pop)
   const RMO = window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
@@ -1120,22 +1137,30 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     if (o.tagName === 'INPUT' || o.tagName === 'TEXTAREA') return;
     patchKids(o, n);
   }
+  function inOrder(ix) { // indexes of the longest increasing subsequence of ix (ignoring -1 = new rows)
+    const tails = [], prev = new Array(ix.length).fill(-1);
+    ix.forEach((v, i) => { if (v < 0) return; let lo = 0, hi = tails.length; while (lo < hi) { const mid = (lo + hi) >> 1; if (ix[tails[mid]] < v) lo = mid + 1; else hi = mid; }
+      if (lo > 0) prev[i] = tails[lo - 1]; tails[lo] = i; });
+    const keep = new Set(); for (let i = tails.length ? tails[tails.length - 1] : -1; i >= 0; i = prev[i]) keep.add(i); return keep;
+  }
   function patchKids(a, b) {
     const A = Array.from(a.childNodes), B = Array.from(b.childNodes);
     const m = keyed(A, B);
-    if (m) { let ref = a.firstChild;
+    if (m) {
       // when the order changes, rows glide to their new place (about 0.2s) instead of jumping
       const moved = B.some((n, i) => A[i] !== m.get(keyOf(n))); const y0 = moved && !RMO.matches && A.length <= 60 ? new Map(A.map((o) => [o, o.getBoundingClientRect().top])) : null;
-      for (const n of B) { const k = keyOf(n); let o = m.get(k);
-        if (o && same(o, n)) { m.delete(k); patchEl(o, n); } else o = n.cloneNode(true);
-        if (o !== ref) a.insertBefore(o, ref); else ref = ref.nextSibling; }
+      // move as few rows as possible: the rows that are already in order stay put and only the ones that changed place move
+      // (one stock dropping five places used to take out and put back every row it passed, pictures and all)
+      const T = B.map((n) => { const k = keyOf(n); const o = m.get(k); if (o && same(o, n)) { m.delete(k); patchEl(o, n); return o; } return fresh(n); });
       m.forEach((o) => { if (o.parentNode === a) a.removeChild(o); });
+      const pos = new Map(Array.from(a.childNodes).map((o, i) => [o, i])); const stay = inOrder(T.map((o) => (pos.has(o) ? pos.get(o) : -1)));
+      for (let i = T.length - 1, nx = null; i >= 0; i--) { const o = T[i]; if (!stay.has(i)) a.insertBefore(o, nx); nx = o; }
       if (y0) Array.from(a.children).forEach((o) => { const t = y0.get(o); if (t == null) return; const d = t - o.getBoundingClientRect().top; if (Math.abs(d) < 1) return;
         o.style.transition = 'none'; o.style.transform = 'translateY(' + d.toFixed(1) + 'px)'; requestAnimationFrame(() => { o.style.transition = 'transform .22s cubic-bezier(.22,.61,.36,1)'; o.style.transform = ''; setTimeout(() => { o.style.transition = ''; }, 260); }); });
       return; }
     for (let i = 0; i < B.length; i++) { const n = B[i], o = A[i];
-      if (!o) { a.appendChild(n.cloneNode(true)); continue; }
-      if (!same(o, n)) { a.replaceChild(n.cloneNode(true), o); continue; }
+      if (!o) { a.appendChild(fresh(n)); continue; }
+      if (!same(o, n)) { a.replaceChild(fresh(n), o); continue; }
       patchEl(o, n); }
     for (let i = A.length - 1; i >= B.length; i--) a.removeChild(A[i]);
   }
@@ -1163,7 +1188,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       const key = r.v === 'money' ? 'money:' + (r.id || '') : r.v; const g = GRP.find((G) => G.some((t) => t[2].split(' ').indexOf(key) >= 0));
       if (g && !(r.v === 'xinsiders' && r.id)) { const ti = html.indexOf('<div class="top'); const te = ti >= 0 ? html.indexOf('</div></div>', ti) : -1;
         if (te > 0) html = html.slice(0, te + 12) + '<div class="gtabs" role="tablist">' + g.map((t) => { const on = t[2].split(' ').indexOf(key) >= 0; return '<a role="tab" class="gt' + (on ? ' on' : '') + '" href="' + t[0] + '"' + (on ? ' aria-selected="true"' : '') + '>' + t[1] + '</a>'; }).join('') + '</div>' + html.slice(te + 12); } }
-    if (r.v !== 'today' && VIEW[r.v]) { const m = /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(html); const bi = html.indexOf('<span class="brand">'); if (m && bi >= 0) { const t = m[1].replace(/<[^>]+>/g, '').trim(); const be = html.indexOf('</span>', bi) + 7; html = html.slice(0, bi) + '<b class="ttl">' + t + '</b>' + html.slice(be); html = html.replace(m[0], ''); } } if (lastV !== r.v) { app.innerHTML = html; if (lastV) { app.classList.remove('vin'); void app.offsetWidth; app.classList.add('vin'); } } else morph(app, html);
+    if (r.v !== 'today' && VIEW[r.v]) { const m = /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(html); const bi = html.indexOf('<span class="brand">'); if (m && bi >= 0) { const t = m[1].replace(/<[^>]+>/g, '').trim(); const be = html.indexOf('</span>', bi) + 7; html = html.slice(0, bi) + '<b class="ttl">' + t + '</b>' + html.slice(be); html = html.replace(m[0], ''); } } if (lastV !== r.v) { const t = IDOC.createElement('main'); t.innerHTML = html; keepLogos(app); app.replaceChildren(...Array.from(t.childNodes).map(fresh)); if (lastV) { app.classList.remove('vin'); void app.offsetWidth; app.classList.add('vin'); } } else morph(app, html);
     app.querySelectorAll('.mvt').forEach((t, i) => { if (tsc[i]) { t.scrollTop = tsc[i][0]; t.scrollLeft = tsc[i][1]; } }); render.h = location.hash;
     let navOn = { today: 0, movers: 1, radar: 1, stock: 1, markets: 2, mtheme: 2, earnings: 2, portfolio: 4, funds: 4, fund: 4 }[r.v]; if (navOn == null && window.V2X) navOn = V2X.nav[r.v];
     if (DESK.matches) { // desktop: a full sidebar with search, every section, and settings at the bottom

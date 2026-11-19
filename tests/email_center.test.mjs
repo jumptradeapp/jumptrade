@@ -194,6 +194,6 @@ test('no price or company-size floor: tiny and sub-$1 movers show up; zero/missi
 
 test('email header uses the new jumptrade. logo (cache-busted name, alt text, inline header colour)', async () => {
   const m = await M.buildMail('close', {}, fakeH(at('2026-11-18T21:20:00Z')));
-  assert.match(m.html, /<div class="hd" style="background-color:#0d2a52[^"]*"><img src="https:\/\/jumptrade\.app\/v2\/img\/email-logo-jt1118\.png" alt="jumptrade\." width="240" height="44"/);
+  assert.match(m.html, /<div class="hd" style="background-color:#0d2a52[^"]*"><img src="https:\/\/jumptrade\.app\/v2\/img\/email-logo-rings1118\.png" alt="jumptrade\." width="240" height="44"/);
   assert.doesNotMatch(m.html, /email-logo\.png/);
 });

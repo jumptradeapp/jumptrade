@@ -203,21 +203,36 @@ async function scanAll(asc, field, pages) {
   }
   return out;
 }
+// The backup movers board merges several upstream lists. One of them failing for a moment (a 429, or a page of the full scan
+// coming back short) used to drop its stocks from the board for one refresh and bring them back on the next, so rows and their
+// logos popped in and out every few seconds. Each list keeps its last good copy for 2 minutes: a failed or short answer is topped
+// up from it, and when the same stock is in two copies the quote with the newer timestamp wins (older data never replaces newer).
+const LASTGOOD = new Map();
+const qTime = (q) => Math.max(+q.regularMarketTime || 0, +q.postMarketTime || 0, +q.preMarketTime || 0);
+export function mergeNewest(lists) {
+  const by = new Map();
+  lists.flat().forEach((q) => { if (!q || !q.symbol) return; const o = by.get(q.symbol); if (!o || qTime(q) > qTime(o)) by.set(q.symbol, q); });
+  return [...by.values()];
+}
+export async function steady(name, f) {
+  const old = LASTGOOD.get(name); const live = old && Date.now() - old.t < 120000 ? old.q : null;
+  let q = null; try { q = await f(); } catch (e) { q = null; }
+  if (q && q.length && !(live && q.length < live.length * 0.6)) { LASTGOOD.set(name, { t: Date.now(), q }); return q; }
+  if (!live) return q || [];
+  return q && q.length ? mergeNewest([q, live]) : live; // short or failed: keep the names the last good copy had
+}
 async function pool(asc) {
   // Full scan first; fall back to (and top up with) the predefined lists so the board never goes empty.
-  const lists = await Promise.all([scanAll(asc, null, 3).catch(() => []), screen(asc ? SCREENS.lose : SCREENS.gain, 250).catch(() => []), asc ? [] : screen(SCREENS.small, 250).catch(() => []), asc ? [] : screen(SCREENS.aggressive, 250).catch(() => [])]);
-  const seen = {}; const out = [];
-  lists.flat().forEach((q) => { if (q && q.symbol && !seen[q.symbol]) { seen[q.symbol] = 1; out.push(q); } });
-  return out;
+  const lists = await Promise.all([steady('scan' + asc, () => scanAll(asc, null, 3)), steady(asc ? 'lose' : 'gain', () => screen(asc ? SCREENS.lose : SCREENS.gain, 250)), asc ? [] : steady('small', () => screen(SCREENS.small, 250)), asc ? [] : steady('aggr', () => screen(SCREENS.aggressive, 250))]);
+  return mergeNewest(lists);
 }
 T.get_gainers_losers = async (i) => {
   const size = Math.min(100, +i.page_size || 100), page = Math.max(1, +i.page_index || 1), asc = i.direction === 'ASC';
   let rows;
   if (i.rank_type === 'PRE_MARKET' || i.rank_type === 'AFTER_MARKET') {
     // No extended-hours screener upstream: rank a broad pool of active names by their extended-hours move.
-    const pools = await Promise.all([pool(false), pool(true), screen(SCREENS.active, 250).catch(() => [])]);
-    const seen = {}; rows = [];
-    pools.flat().forEach((q) => { if (!seen[q.symbol]) { seen[q.symbol] = 1; rows.push(q); } });
+    const pools = await Promise.all([pool(false), pool(true), steady('active', () => screen(SCREENS.active, 250))]);
+    rows = mergeNewest(pools);
     const key = i.rank_type === 'PRE_MARKET' ? 'preMarketChangePercent' : 'postMarketChangePercent';
     rows = rows.filter((q) => q[key] != null).map((q) => Object.assign(snapOf(q), {
       price: num(i.rank_type === 'PRE_MARKET' ? q.preMarketPrice : q.postMarketPrice), change: num(i.rank_type === 'PRE_MARKET' ? q.preMarketChange : q.postMarketChange), change_ratio: q[key] / 100 }));
@@ -1250,7 +1265,7 @@ async function inviteReqRoutes(url, req, env) {
     const I = (await vget(env, 'invites')) || {}; I[h] = { label: r.name + ' (requested)', created: Date.now(), exp: Date.now() + 14 * 864e5 }; await vput(env, 'invites', I);
     const link = 'https://jumptrade.app/#invite=' + code; const nm = String(r.name).replace(/[<>&"]/g, '');
     const html = '<!doctype html><html><body style="margin:0;background:#ffffff;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#0B1B33"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;padding:28px 22px"><tr><td>' +
-      '<div style="background:#04122A;border-radius:14px;padding:18px 20px"><img src="https://jumptrade.app/v2/img/email-logo-jt1118.png" alt="jumptrade." width="180" height="33" style="display:block;width:180px;height:auto;border:0;color:#ffffff;font-size:20px;font-weight:700"></div>' +
+      '<div style="background:#04122A;border-radius:14px;padding:18px 20px"><img src="https://jumptrade.app/v2/img/email-logo-rings1118.png" alt="jumptrade." width="180" height="33" style="display:block;width:180px;height:auto;border:0;color:#ffffff;font-size:20px;font-weight:700"></div>' +
       '<h1 style="font-size:24px;margin:26px 0 8px">You’re in, ' + nm + '.</h1><p style="font-size:16px;line-height:24px;margin:0 0 20px;color:#33445C">Here’s your invite to the jumptrade beta: live movers and why they’re moving, what the big funds just bought, and paper portfolios you can track.</p>' +
       '<a href="' + link + '" style="display:inline-block;background:#1E4F94;color:#ffffff;text-decoration:none;font-weight:600;font-size:16px;padding:14px 22px;border-radius:12px">Join jumptrade</a>' +
       '<p style="font-size:13px;line-height:19px;color:#6B7A90;margin:22px 0 0">The link works once, for you, and expires in two weeks. On iPhone, open it in Safari, then Share → Add to Home Screen.</p><p style="font-size:12px;color:#8A97A8;margin:18px 0 0">Market data for research. Not investment advice.</p></td></tr></table></body></html>';
@@ -1384,9 +1399,9 @@ async function myMailRoute(req, env) {
 // mail apps' own "Unsubscribe" button POSTs straight here (RFC 8058).
 async function unsubRoute(url, req, env) {
   const e = cleanMail(url.searchParams.get('e')); const t = url.searchParams.get('t') || ''; const sig = url.searchParams.get('s') || '';
-  const page = (title, body, code) => new Response('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>' + mE(title) + ' · jumptrade.</title><style>body{margin:0;background:#071A36;color:#E9F1F7;font-family:Inter,-apple-system,Arial,sans-serif}main{max-width:440px;margin:0 auto;padding:48px 22px}h1{font-size:24px;margin:22px 0 10px}p{font-size:16px;line-height:1.5;color:#BBD7F9}button{font:inherit;font-weight:700;font-size:16px;border:0;border-radius:999px;padding:14px 22px;background:#5B9BEA;color:#04101F;cursor:pointer}button.g{background:none;color:#9CCBFF;padding:14px 0;text-decoration:underline}a{color:#9CCBFF}</style></head><body><main><img src="/v2/img/email-logo-jt1118.png" alt="jumptrade." height="26"><h1>' + mE(title) + '</h1>' + body + '</main></body></html>', { status: code || 200, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } });
+  const page = (title, body, code) => new Response('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>' + mE(title) + ' · jumptrade.</title><style>body{margin:0;background:#071A36;color:#E9F1F7;font-family:Inter,-apple-system,Arial,sans-serif}main{max-width:440px;margin:0 auto;padding:48px 22px}h1{font-size:24px;margin:22px 0 10px}p{font-size:16px;line-height:1.5;color:#BBD7F9}button{font:inherit;font-weight:700;font-size:16px;border:0;border-radius:999px;padding:14px 22px;background:#5B9BEA;color:#04101F;cursor:pointer}button.g{background:none;color:#9CCBFF;padding:14px 0;text-decoration:underline}a{color:#9CCBFF}</style></head><body><main><img src="/v2/img/email-logo-rings1118.png" alt="jumptrade." height="26"><h1>' + mE(title) + '</h1>' + body + '</main></body></html>', { status: code || 200, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } });
   const key = await signKey(env, { vget, vput, vlease });
-  if (!(await checkUnsub(key, e, t, sig))) return page('This link didn’t work', '<p>It may be cut off or changed. You can choose your emails in the app: <a href="/#email">Settings › Email</a>.</p>', 400);
+  if (!(await checkUnsub(key, e, t, sig))) return page('This link didn’t work', '<p>It may be cut off or changed. You can choose your emails in the app: <a href="/#email">Settings › Emails</a>.</p>', 400);
   const what = t === 'all' ? 'all jumptrade emails' : 'the ' + TYPES[t].name.toLowerCase();
   const self = '/api/public/unsub?e=' + encodeURIComponent(e) + '&t=' + t + '&s=' + sig;
   if (req.method === 'POST') {
