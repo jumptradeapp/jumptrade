@@ -26,7 +26,11 @@ test('home page, landing and app header use the rings lockup; share tile and fav
   assert.match(R('landing.js'), /jump-lockup\.svg\?v=5/); assert.match(R('v2/v2.js'), /jump-lockup\.svg\?v=5/); assert.match(R('v2/v2.css'), /jump-lockup\.svg\?v=5/);
   assert.match(R('classic.html'), /og\.jpg\?v=3/);
   const lock = R('v2/img/jump-lockup.svg');
-  assert.equal((lock.match(/<path d="M/g) || []).length, 9, 'the 9 arcs of tile D');
+  assert.equal((lock.match(/<path d="M[\d.]+ [\d.]+A(222|316|410)/g) || []).length, 9, 'the 9 arcs of tile D');
+  const old = fs.readFileSync(new URL('../tools/brand_rings/jump_lockup_a876967.svg', import.meta.url), 'utf8');
+  const word = (s) => s.slice(s.indexOf('<g transform="translate(241.3 0)">'));
+  assert.equal(word(lock), word(old), 'JUMP + trade. kept exactly as before');
+  assert.equal(lock.slice(0, 60), old.slice(0, 60), 'same viewBox');
   assert.doesNotMatch(lock, /#8FC0FF/, 'no old two-tone rings');
   assert.match(R('sw.js'), /jt-shell-v16/);
 });
