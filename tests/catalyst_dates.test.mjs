@@ -143,7 +143,7 @@ test('the app loads dates.js, recomputes labels at render, and no longer rounds 
   assert.match(idx, /<script src="\/v2\/dates\.js\?v=1"><\/script>/);
   assert.match(idx, /v2\/v2x\.js\?v=40/);
   assert.match(idx, /v2\/v2\.js\?v=119/);
-  assert.match(sw, /jt-shell-v21/);
+  assert.match(sw, /jt-shell-v22/);
   assert.match(sw, /\/v2\/dates\.js/);
   assert.match(v2, /JTDates\.dayDelta/);
   assert.match(v2, /JTDates\.relativeLabel/);

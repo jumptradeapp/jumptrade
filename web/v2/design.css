@@ -414,3 +414,18 @@ html[data-design="bl"] body .card.pglass .mixr circle[stroke="#5E6E86"],html[dat
 html[data-design="bl"] .hero .card.pglass.pt2{padding:12px 14px!important}
 html[data-design="bl"] .hero::before,html[data-design="bl"] .hero::after{display:none!important}
 html[data-design="bl"] .hero.ptile{padding-left:0!important;padding-right:0!important}html[data-design="bl"] body .card.pglass.pglass{border-radius:16px!important}
+/* desktop (sidebar layout): no empty band above the content (Jason Nov 19 12:14 PM ET: too much space at the top) */
+@media (min-width:1024px){
+html[data-design] body .app2>.wrap,html[data-design] body #app>.wrap{padding-top:12px}
+html[data-design] body .wrap>.top.tc:not(:has(.ttl)){display:none!important} /* Today: the phone logo bar is empty on desktop (logo is in the sidebar) */
+html[data-design] body .wrap>.top.tc:has(.ttl){height:auto!important;min-height:0!important;padding:0 0 2px!important;display:flex;align-items:center}
+html[data-design] body .wrap>.top.tc .ttl{position:static!important;transform:none!important;max-width:none!important;text-align:left;font-size:26px!important;line-height:32px!important}
+html[data-design] body .wrap>.top:not(.tc):has(+.sth){height:0!important;padding:0!important;position:relative;z-index:2;overflow:visible}
+html[data-design] body .wrap>.top:not(.tc):has(+.sth)>*{position:absolute;left:-6px;top:6px}
+html[data-design] body .wrap>.top:not(.tc):has(+.sth)+.sth{padding-left:46px;margin-top:0!important}
+}
+@media (min-width:900px){html[data-design] body #jtGate .lpHero{margin-top:28px!important}}
+/* B-Light landing: sign-in links/buttons readable on the light page */
+html[data-design="bl"] #jtGate .lpLink{color:#1F5FB8!important;border-color:#1F5FB8!important}
+html[data-design="bl"] #jtGate .lpBtn{background:#1F5FB8!important;color:#fff!important;border-color:#1F5FB8!important}
+html[data-design="bl"] #jtGate .lpBtn2{color:#0B1B33!important;border-color:#C3CFDF!important;background:#fff!important}
