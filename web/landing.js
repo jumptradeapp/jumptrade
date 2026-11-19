@@ -8,7 +8,7 @@
   const shortD = (iso) => { const d = new Date(iso + 'T12:00:00'); return isFinite(d) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''; };
 
   const html = () => '<div class="lp">' +
-    '<header class="lpTop"><img src="/v2/img/jump-lockup.svg?v=5" alt="jumptrade." width="141" height="26"><button class="lpLink" data-lp="code">Sign in</button></header>' +
+    '<header class="lpTop"><img src="/v2/img/jump-lockup.svg?v=6" alt="jumptrade." width="141" height="26"><button class="lpLink" data-lp="code">Sign in</button></header>' +
     '<section class="lpHero"><div class="lpPitch">' +
       '<h1>Know before you jump.</h1>' +
       '<p class="lpSub">See what’s moving right now, why it’s moving, and what the biggest funds just bought. One fast app for people who trade.</p>' +

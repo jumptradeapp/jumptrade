@@ -4,8 +4,8 @@ Rings: the exact 9 arcs from tools/app_icon/icon-512.svg (tile D: radii 222/316/
 Wordmark: the white rounded 'jumptrade.' from the logo Jason picked (the right-hand part of /workspace/jumptrade-logo-white.svg,
 embedded below so this script runs from the repo alone).
 
-Run from the repo root:  python3 tools/brand_rings/make.py               (Jason's pick, Nov 18: option B, 'trade.' as traced)
-                         python3 tools/brand_rings/make.py --trade light  ('trade.' in a thinner stroke, ~60% of the traced one;
+Run from the repo root:  python3 tools/brand_rings/make.py --trade bold   (option B, 'trade.' as traced)
+                         python3 tools/brand_rings/make.py                (default, shipped: 'trade.' in a thinner stroke, ~60% of the traced one;
                                                                           --trade light45 for ~45%; outlines from lighten.py)
 Needs: resvg_py, Pillow; playwright + Chrome for the share tile (it uses the Poppins font in web/fonts).
 """
@@ -21,7 +21,7 @@ ICON = open(os.path.join(ROOT, 'tools/app_icon/icon-512.svg')).read()
 ARCS = re.findall(r'<path d="(M[^"]+)" fill="none" stroke="#FFFFFF" stroke-width="56.00"', ICON)
 assert len(ARCS) == 9, len(ARCS)
 WORD = open(os.path.join(HERE, 'wordmark.d')).read().strip()  # 'jumptrade.' outline, x 202..674, y 16..104
-TRADE = 'bold'  # set by --trade
+TRADE = 'light'  # shipped Nov 18 (Jason: B with the lighter trade.); --trade bold|light|light45
 def word_d():
     if TRADE == 'bold': return WORD
     sys.path.insert(0, HERE); import lighten
@@ -75,7 +75,7 @@ def main():
                         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><clipPath id="rr"><rect width="1024" height="1024" rx="228"/></clipPath><g clip-path="url(#rr)">').replace('</svg>', '</g></svg>')
     save('v2/img/jump-icon.svg', tile)               # tile D with rounded corners
     # emails: 3x of 240x44 so it stays sharp on phones; transparent, white, sits on the navy email header
-    em = png(white, 726); save('v2/img/email-logo-rings1118.png', em)
+    em = png(white, 726); save('v2/img/email-logo-rings1118l.png', em)
     save('v2/img/email-logo.png', png(white, 325))   # the older email name, in case an old email is still opened
     # the sign-in / install mark (jmMark): the rings in swoop blues so they read on light and dark
     mk = png(mark('url(#g)', GRAD_MID), 232); save('v2/img/mark-rings.png', mk); save('v2/img/mark-blue.png', fit(mk, (161, 116)))
