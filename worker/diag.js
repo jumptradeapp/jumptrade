@@ -1,6 +1,6 @@
 // Owner-only health check for push alerts and emails, for fixing problems without a phone in hand.
 // Guarded by the DIAG_KEY secret (no secret set = the route doesn't exist). Never returns keys, tokens or full push addresses.
-import { TYPES, TYPE_IDS, recipients, loadSubs, ownerList, cleanMail } from './mails.js';
+import { TYPES, TYPE_IDS, recipients, loadSubs, ownerList, cleanMail, cleanTypes, mailToOf } from './mails.js';
 
 const te = new TextEncoder();
 async function same(a, b) { // constant-time compare via hashes
@@ -57,8 +57,16 @@ export async function diagRoute(url, req, env, H) {
     if (!env.RESEND_API_KEY) return new Response('{"error":"no key"}', { status: 400 });
     const g = async (path) => { const r = await fetch('https://api.resend.com' + path, { headers: { authorization: 'Bearer ' + env.RESEND_API_KEY } }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
     const d = await g('/domains'); const e = await g('/emails?limit=25');
-    return new Response(JSON.stringify({ domains: { status: d.status, list: ((d.j && d.j.data) || []).map((x) => ({ name: x.name, status: x.status, region: x.region, created_at: x.created_at })), error: d.j && d.j.message },
+    const recs = await Promise.all(((d.j && d.j.data) || []).map(async (x) => { const r = await g('/domains/' + x.id); return { name: x.name, records: ((r.j && r.j.records) || []).map((y) => ({ record: y.record, type: y.type, name: y.name, status: y.status, value: String(y.value || '').slice(0, 80) })) }; }));
+    return new Response(JSON.stringify({ domains: { status: d.status, list: ((d.j && d.j.data) || []).map((x) => ({ name: x.name, status: x.status, region: x.region, created_at: x.created_at })), records: recs, error: d.j && d.j.message },
       emails: { status: e.status, list: ((e.j && e.j.data) || []).map((x) => ({ id: x.id, created_at: x.created_at, to: x.to, subject: x.subject, last_event: x.last_event })), error: e.j && e.j.message } }, null, 1), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+  }
+  if (act === 'addr') { // add (or change) one address on the owner's email list: same rules as Settings > Emails > Add
+    const e = cleanMail(url.searchParams.get('email')); if (!e) return new Response('{"error":"bad email"}', { status: 400 });
+    const S = await loadSubs(env, H.vget); const L = ownerList(S.list, S.mailTo); const cur = L[e] || {};
+    const types = cleanTypes(String(url.searchParams.get('types') || 'morning').split(',')); const mine = url.searchParams.get('mine') === '1';
+    const r = await H.vpatch(env, 'mail_list', { init: L, max: 200, merge: { [e]: { types, mine, t: cur.t || Date.now() } } }); if (r && r.v) await H.vput(env, 'mail_to', mailToOf(r.v));
+    return new Response(JSON.stringify({ ok: !!(r && r.ok), list: r && r.v }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
   }
   if (act === 'build') { // build one email now without sending it (checks it fits in one run); returns only its subject and size
     const ty = url.searchParams.get('type') || 'morning'; if (!TYPES[ty] || !H.buildMail) return new Response('{}', { status: 400 });

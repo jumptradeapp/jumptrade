@@ -32,3 +32,9 @@ test('diag: test mail only goes to an address on the owner list', async () => {
   const r = await worker.default.fetch(new Request('https://jumptrade.app/x/diag?act=mail&to=stranger@example.com', { method: 'POST', headers: { 'x-diag-key': 'right-key-123' } }), env, ctx);
   assert.equal(r.status, 400);
 });
+test('diag: addr adds an owner-list address with the chosen emails', async () => {
+  const { env, storage } = makeEnv({ DIAG_KEY: 'right-key-123' });
+  const r = await worker.default.fetch(new Request('https://jumptrade.app/x/diag?act=addr&email=Me@Example.com&types=morning,close,bogus&mine=1', { method: 'POST', headers: { 'x-diag-key': 'right-key-123' } }), env, ctx);
+  assert.equal(r.status, 200); const L = storage._m.get('mail_list');
+  assert.deepEqual(L['me@example.com'].types, ['morning', 'close']); assert.equal(L['me@example.com'].mine, true); assert.deepEqual(storage._m.get('mail_to'), ['me@example.com']);
+});
