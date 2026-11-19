@@ -366,3 +366,25 @@ html[data-design="c"] .mvrow.flu,html[data-design="bl"] .mvrow.flu,html[data-x2t
 .card.rows>.mvrow{content-visibility:auto;contain-intrinsic-size:auto 64px}
 html[data-design] body .card.rows>.mvrow{contain-intrinsic-size:auto 68px}
 @media (prefers-reduced-motion:reduce){.mvrow.flp{will-change:auto}}
+
+/* ---- chart overlays (all looks): each indicator gets its own color, legend chip in the same color, room kept for the legend ---- */
+:root{--chbg:#0A0F18}
+.ov-vwap{--ov:#F2B84B}.ov-e9{--ov:#3FD0E0}.ov-e21{--ov:#B49CFF}.ov-s50{--ov:#FF9A4D}.ov-s200{--ov:#F472C4}.ov-sup{--ov:#2FC9A9}.ov-res{--ov:#FF8C7E}.ov-pat{--ov:#F2DC5D}
+html[data-x2t="light"]{--chbg:#fff}
+html[data-x2t="light"] .ov-vwap{--ov:#9A6200}html[data-x2t="light"] .ov-e9{--ov:#00788F}html[data-x2t="light"] .ov-e21{--ov:#6A4AD6}html[data-x2t="light"] .ov-s50{--ov:#B95100}html[data-x2t="light"] .ov-s200{--ov:#B52E7C}html[data-x2t="light"] .ov-sup{--ov:#0B8169}html[data-x2t="light"] .ov-res{--ov:#C0433A}html[data-x2t="light"] .ov-pat{--ov:#7F6A00}
+svg.xch .ovl{fill:none;stroke:var(--ov);stroke-width:1.6px;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+svg.xch .ovb{fill:var(--ov);fill-opacity:.08;stroke:var(--ov);stroke-width:1.4px;stroke-dasharray:4 3}
+svg.xch .ovm{fill:var(--ov);stroke:var(--chbg);stroke-width:2px}
+svg.xch .ovt{fill:var(--ov);font:600 13px/1 "JetBrains Mono",ui-monospace,monospace;paint-order:stroke;stroke:var(--chbg);stroke-width:3.5px;stroke-linejoin:round}
+html[data-x2t="light"] svg.xch .xpl{stroke:#1F5FB8}html[data-x2t="light"] svg.xch .xgs{stop-color:#1F5FB8}html[data-x2t="light"] svg.xch .xbase{stroke:rgba(31,95,184,.35)}
+html[data-design="bl"] svg.xch .xpl,html[data-design="c"] svg.xch .xpl{stroke:#1F5FB8}
+.xleg.ovleg{display:flex;flex-wrap:wrap;gap:4px 6px;overflow:hidden;height:48px;min-height:48px;align-content:flex-start;margin-top:8px;font-size:12px} /* two rows always kept, so switching 1D/1M/6M or loading never moves what's below */
+.xleg.ovleg::-webkit-scrollbar{display:none}
+.xleg.ovleg .ovc{flex:none;display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 6px;letter-spacing:-.01em;border-radius:11px;font-weight:600;color:var(--ov,var(--fg2));background:color-mix(in srgb,var(--ov,#888) 12%,transparent);border:1px solid color-mix(in srgb,var(--ov,#888) 35%,transparent);white-space:nowrap;font-variant-numeric:tabular-nums}
+.xleg.ovleg .ovc i{width:12px;height:0;margin:0;border-top:2px solid var(--ov,currentColor);background:none!important}
+.xleg.ovleg .ovc i.d{border-top-style:dashed}.xleg.ovleg .ovc i.b{width:10px;height:8px;border:1.5px dashed var(--ov);border-radius:2px}
+.xleg.ovleg .ovc.off{opacity:.8}
+svg.xpat .ovl{fill:none;stroke:var(--ov);vector-effect:non-scaling-stroke}svg.xpat .ovt{fill:var(--ov);font-weight:700;paint-order:stroke;stroke:var(--chbg);stroke-width:2.5px}
+html[data-x2t="light"] svg.xpat .xpl{stroke:#1F5FB8}
+.xleg.ovleg.many{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;align-items:flex-start} /* 7+ chips: one row you can swipe instead of hiding any */
+html[data-x2t="light"] svg.xpat{background:#F2F5FA;--chbg:#F2F5FA}

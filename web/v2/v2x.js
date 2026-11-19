@@ -81,18 +81,42 @@
     return o; }
   // session VWAP from today's intraday regular-hours bars
   function vwapOf(ib) { if (!ib || !ib.length) return null; const last = new Date(ib[ib.length - 1].t).toDateString(); const td = ib.filter((x) => new Date(x.t).toDateString() === last && (!x.ss || x.ss === 'RTH')); let pv = 0, v = 0; td.forEach((x) => { pv += (x.h + x.l + x.c) / 3 * x.v; v += x.v; }); return v ? pv / v : null; }
-  // svg line chart (blue), optional overlay lines
+  // svg line chart (blue), optional overlay lines, levels, pattern marks. Overlay colors come from CSS classes (ov-vwap, ov-e9 …) so every
+  // design / light theme gets its own legible palette; a line with an explicit color (c) keeps it (benchmarks on compare/models charts).
+  const OVP = (v) => V().px(v).replace(/^\$/, ''); const OVN = (l) => l.n + (l.off ? ' ' + OVP(l.v) : '') + (l.off ? (l.off > 0 ? ' ↑' : ' ↓') : '');
+  function legBox(items, keep) { return items.length ? '<div class="xleg ovleg' + (items.length > 6 ? ' many' : '') + '">' + items.map((l) => '<span class="ovc' + (l.k ? ' ov-' + l.k : '') + (l.off ? ' off' : '') + '"' + (l.off ? ' title="Outside the chart’s price range"' : l.val != null ? ' title="' + E(l.n) + ' now ' + V().px(l.val) + '"' : '') + '><i class="' + (l.dash ? 'd' : '') + (l.box ? ' b' : '') + '"' + (l.c ? ' style="background:' + l.c + '"' : '') + '></i>' + OVN(l) + '</span>').join('') + '</div>' : keep ? '<div class="xleg ovleg" aria-hidden="true"><span>&nbsp;</span></div>' : ''; }
+  X.legBox = legBox;
   function chart(b, opt) {
-    opt = opt || {}; if (!b || b.length < 2) return '<div class="xch empty">' + (opt.msg || 'No chart data') + '</div>';
+    opt = opt || {}; if (!b || b.length < 2) return '<div class="xch empty">' + (opt.msg || 'No chart data') + '</div>' + (opt.leg ? legBox([], 1) : '');
     const W = 358, H = opt.h || 170, pad = 4; const c = b.map((x) => x.c); const ov = (opt.lines || []).filter((l) => l.v && l.v.some((x) => x != null));
-    const all = c.concat(...ov.map((l) => l.v.filter((x) => x != null))); const mn = Math.min.apply(null, all), mx = Math.max.apply(null, all); const rg = mx - mn || 1;
-    const xs = (i) => pad + i * (W - pad * 2) / (b.length - 1), ys = (v) => pad + (1 - (v - mn) / rg) * (H - pad * 2);
+    const all = c.concat(...ov.map((l) => l.v.filter((x) => x != null))); let mn = Math.min.apply(null, all), mx = Math.max.apply(null, all);
+    const sp = (mx - mn) || Math.abs(mx) * 0.01 || 1; // a level just outside the price range is still drawn (scale widens a little); far ones are only listed
+    const lv = (opt.lv || []).filter((l) => l.v != null && isFinite(l.v)).map((l) => Object.assign({}, l, { off: l.v < mn - sp * 0.15 ? -1 : l.v > mx + sp * 0.15 ? 1 : 0 }));
+    const bx = (opt.bx || []).filter((r) => r.lo != null && r.hi != null);
+    lv.forEach((l) => { if (!l.off) { mn = Math.min(mn, l.v); mx = Math.max(mx, l.v); } }); bx.forEach((r) => { mn = Math.min(mn, r.lo); mx = Math.max(mx, r.hi); });
+    const rg = mx - mn || 1; const lbl = 18; // headroom for labels
+    const xs = (i) => pad + i * (W - pad * 2) / (b.length - 1), ys = (v) => lbl + (1 - (v - mn) / rg) * (H - lbl - pad);
     const path = (a) => a.map((v, i) => (v == null ? null : [xs(i), ys(v)])).filter(Boolean).map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
-    const ln = path(c); const up = c[c.length - 1] >= (opt.base != null ? opt.base : c[0]);
-    const base = opt.base != null ? '<line x1="0" x2="' + W + '" y1="' + ys(opt.base).toFixed(1) + '" y2="' + ys(opt.base).toFixed(1) + '" stroke="rgba(187,215,249,.35)" stroke-dasharray="3 4"/>' : '';
-    return '<svg class="xch" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="Price chart"><defs><linearGradient id="xg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5B9BEA" stop-opacity=".32"/><stop offset="1" stop-color="#5B9BEA" stop-opacity="0"/></linearGradient></defs>' + base +
-      '<path d="' + ln + 'L' + xs(c.length - 1).toFixed(1) + ' ' + H + 'L' + xs(0).toFixed(1) + ' ' + H + 'Z" fill="url(#xg)"/>' + ov.map((l) => '<path d="' + path(l.v) + '" fill="none" stroke="' + l.c + '" stroke-width="1.3"' + (l.dash ? ' stroke-dasharray="4 3"' : '') + '/>').join('') +
-      '<path d="' + ln + '" fill="none" stroke="#93C0F6" stroke-width="1.8" stroke-linejoin="round"/></svg>' + (ov.some((l) => l.n) ? '<div class="xleg">' + ov.filter((l) => l.n).map((l) => '<span><i style="background:' + l.c + '"></i>' + l.n + '</span>').join('') + '</div>' :(opt.lines || []).some((l) => l.n) ? '<div class="xleg" aria-hidden="true"><span>&nbsp;</span></div>' : '') + (up ? '' : '');
+    const ln = path(c); const f1 = (v) => v.toFixed(1);
+    const base = opt.base != null ? '<line x1="0" x2="' + W + '" y1="' + f1(ys(opt.base)) + '" y2="' + f1(ys(opt.base)) + '" class="xbase" stroke="rgba(187,215,249,.35)" stroke-dasharray="3 4"/>' : '';
+    // labels are placed one by one at the first candidate spot that doesn't overlap a label already placed (and stays inside the chart)
+    const placed = []; const tw = (t) => t.length * 7.9 + 4;
+    const txt = (k, t, cands) => { const w = tw(t); const box = (c) => { const x0 = c[2] ? c[0] - w : c[0], y = Math.max(13, Math.min(H - 3, c[1])); return [x0, y - 11, x0 + w, y + 2, y]; };
+      let pick = null; for (const c of cands) { const r = box(c); if (r[0] < 0 || r[2] > W) continue; if (!placed.some((q) => r[0] < q[2] && r[2] > q[0] && r[1] < q[3] && r[3] > q[1])) { pick = [c, r]; break; } }
+      if (!pick) pick = [cands[0], box(cands[0])]; placed.push(pick[1]);
+      return void TX.push('<text class="ovt ov-' + k + '" x="' + f1(pick[0][0]) + '" y="' + f1(pick[1][4]) + '"' + (pick[0][2] ? ' text-anchor="end"' : '') + '>' + t + '</text>') || ''; }; const TX = []; // labels go last so no line paints over them
+    const levels = lv.filter((l) => !l.off).sort((p, q) => q.v - p.v).map((l) => { const y = ys(l.v);
+      const t = txt(l.k, E(l.t || l.n) + ' ' + V().px(l.v), [[W - 4, y - 4, 1], [4, y - 4, 0], [W - 4, y + 14, 1], [4, y + 14, 0], [W / 2, y - 4, 0], [W / 2, y + 14, 0]]);
+      return '<line class="ovl ov-' + l.k + '" x1="0" x2="' + W + '" y1="' + f1(y) + '" y2="' + f1(y) + '"' + (l.dash ? ' stroke-dasharray="' + (l.k === 'pat' ? '2 3' : '6 4') + '"' : '') + '/>' + t; });
+    const boxes = bx.map((r) => { const x0 = xs(Math.max(0, r.i0)) - 3, x1 = xs(Math.min(b.length - 1, r.i1)) + 3, y0 = ys(r.hi), y1 = ys(r.lo);
+      return '<rect class="ovb ov-pat" x="' + f1(x0) + '" y="' + f1(y0) + '" width="' + f1(Math.max(6, x1 - x0)) + '" height="' + f1(Math.max(4, y1 - y0)) + '" rx="2"/>' + txt('pat', E(r.n), [[x1, y0 - 4, 1], [x0, y0 - 4, 0], [x1, y1 + 14, 1], [x0, y1 + 14, 0], [x0 - 4, (y0 + y1) / 2 + 4, 1], [x1 + 4, (y0 + y1) / 2 + 4, 0], [x1, y0 - 20, 1], [x0, y0 - 20, 0]]); });
+    const marks = (opt.mk || []).filter((m) => m.i >= 0 && m.i < b.length && m.v != null).map((m) => { const x = xs(m.i), y = ys(m.v);
+      return '<circle class="ovm ov-pat" cx="' + f1(x) + '" cy="' + f1(y) + '" r="4.5"/>' + txt('pat', E(m.n), [[x - 8, y - 8, 1], [x + 8, y - 8, 0], [x - 8, y + 18, 1], [x + 8, y + 18, 0], [x - 8, y - 24, 1], [x + 8, y - 24, 0], [x - 8, y + 34, 1], [x + 8, y + 34, 0]]); });
+    const leg = ov.filter((l) => l.n).concat(lv.filter((l) => l.n), bx.filter((r) => r.n && !r.noleg).map((r) => ({ k: 'pat', n: r.n, box: 1 })), (opt.mk || []).filter((m) => m.n).map((m) => ({ k: 'pat', n: m.ln || m.n, box: 1 }))).filter((l, i, A) => A.findIndex((q) => q.n === l.n && q.k === l.k) === i); // the chip says what it is, the label on the chart carries the date
+    return '<svg class="xch" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="Price chart' + (leg.length ? ' with ' + E(leg.map((l) => l.n).join(', ')) : '') + '"><defs><linearGradient id="xg" x1="0" y1="0" x2="0" y2="1"><stop class="xgs" offset="0" stop-color="#5B9BEA" stop-opacity=".32"/><stop class="xgs" offset="1" stop-color="#5B9BEA" stop-opacity="0"/></linearGradient></defs>' + base +
+      '<path d="' + ln + 'L' + f1(xs(c.length - 1)) + ' ' + H + 'L' + f1(xs(0)) + ' ' + H + 'Z" fill="url(#xg)"/>' + levels.join('') + boxes.join('') +
+      ov.map((l) => '<path d="' + path(l.v) + '" fill="none"' + (l.k ? ' class="ovl ov-' + l.k + '"' : ' stroke="' + l.c + '" stroke-width="1.3"') + (l.dash ? ' stroke-dasharray="' + (l.k ? '6 3' : '4 3') + '"' : '') + '/>').join('') +
+      '<path class="xpl" d="' + ln + '" fill="none" stroke="#93C0F6" stroke-width="1.8" stroke-linejoin="round"/>' + marks.join('') + TX.join('') + '</svg>' + legBox(leg, opt.leg || (opt.lines || []).some((l) => l.n));
   }
   X.chart = chart;
 
@@ -447,11 +471,11 @@
   // ---------- pattern guide (data ported from classic patterns.js) ----------
   st.pk = 'charts';
   function patSvg(p) {
-    const ln = (p.ln || []).map((l) => '<line x1="' + l[0] + '" y1="' + l[1] + '" x2="' + l[2] + '" y2="' + l[3] + '" stroke="#BBD7F9" stroke-width="1.2" stroke-dasharray="3 3"/>').join('');
+    const ln = (p.ln || []).map((l) => '<line x1="' + l[0] + '" y1="' + l[1] + '" x2="' + l[2] + '" y2="' + l[3] + '" class="ovl ov-pat" stroke="#F2DC5D" stroke-width="1.4" stroke-dasharray="3 3"/>').join('');
     const path = (p.pts || []).map((q, i) => (i ? 'L' : 'M') + q[0] + ' ' + q[1]).join('');
-    const hl = (y, c, t) => (y == null ? '' : '<line x1="0" x2="200" y1="' + y + '" y2="' + y + '" stroke="' + c + '" stroke-width="1" stroke-dasharray="2 3" opacity=".8"/><text x="198" y="' + (y - 2) + '" text-anchor="end" font-size="7" fill="' + c + '">' + t + '</text>');
+    const hl = (y, c, t) => (y == null ? '' : '<line class="ovl ov-' + c + '" x1="0" x2="200" y1="' + y + '" y2="' + y + '" stroke-width="1.2" stroke-dasharray="2 3"/><text class="ovt ov-' + c + '" x="198" y="' + (y < 11 ? y + 9 : y - 2) + '" text-anchor="end" font-size="8">' + t + '</text>');
     const sy = Array.isArray(p.st) ? p.st[1] : p.st, ty = Array.isArray(p.tg) ? p.tg[1] : p.tg;
-    return '<svg class="xpat" viewBox="0 0 200 100" role="img" aria-label="' + E(p.n) + ' shape">' + hl(ty, '#5FBF8F', 'target') + hl(sy, '#E07A7A', 'stop') + ln + '<path d="' + path + '" fill="none" stroke="#93C0F6" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>' + (p.lb || []).map((l) => '<text x="' + l[0] + '" y="' + l[1] + '" font-size="8" fill="#BBD7F9" opacity=".85">' + E(l[2]) + '</text>').join('') + (p.e ? '<circle cx="' + p.e[0] + '" cy="' + p.e[1] + '" r="3.4" fill="#5B9BEA" stroke="#EAF2FB" stroke-width="1"/>' : '') + '</svg>';
+    return '<svg class="xpat" viewBox="0 0 200 100" role="img" aria-label="' + E(p.n) + ' shape">' + hl(ty, 'sup', 'target') + hl(sy, 'res', 'stop') + ln + '<path class="xpl" d="' + path + '" fill="none" stroke="#93C0F6" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>' + (p.lb || []).map((l) => '<text x="' + l[0] + '" y="' + l[1] + '" font-size="8" class="ovt ov-pat">' + E(l[2]) + '</text>').join('') + (p.e ? '<circle cx="' + p.e[0] + '" cy="' + p.e[1] + '" r="3.4" fill="#5B9BEA" stroke="#EAF2FB" stroke-width="1"/>' : '') + '</svg>';
   }
   function candleSvg(p) {
     const cs = (p.ctx || []).concat(p.c || []); const all = cs.reduce((a, c) => a.concat([c[1], c[2]]), []); const mx = Math.max.apply(null, all), mn = Math.min.apply(null, all), rg = mx - mn || 1; const y = (v) => 6 + (1 - (v - mn) / rg) * 88;
@@ -617,18 +641,31 @@
   // ---------- stock page extras ----------
   st.tf = '1D';
   const TF = [['1D', 'M5', 200], ['5D', 'M30', 80], ['1M', 'D', 260, 22], ['6M', 'D', 260, 126], ['1Y', 'D', 260, 252], ['5Y', 'W', 260]];
+  const DIPC = new WeakMap(); const dipOf = (sym, b) => { let d = DIPC.get(b); if (d === undefined) { try { d = DIP.analyze(sym, b) || null; } catch (e) { d = null; } DIPC.set(b, d); } return d; };
+  const shortDay = (t) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   X.stockTop = function (sym) {
     const tf = TF.find((x) => x[0] === st.tf) || TF[0]; const b = bars(sym, tf[1], tf[2]); let body;
-    if (!b) body = '<div class="xch empty xchres" aria-busy="true">' + V().skel(2) + '</div><div class="xleg" aria-hidden="true"><span>&nbsp;</span></div><small class="xcap" aria-hidden="true">&nbsp;</small>'; // same footprint as the chart + legend + caption that replace it
-    else if (b.err) body = '<div class="xch empty">Chart didn’t load. Retrying shortly.</div>';
-    else { let L = b, lines = [], base = null;
-      if (tf[0] === '1D') { const last = L.length ? new Date(L[L.length - 1].t).toDateString() : ''; L = L.filter((x) => new Date(x.t).toDateString() === last); const q = V().S.qx && V().S.qx[sym]; base = q && q.pre_close ? +q.pre_close : null; let pv = 0, vv = 0; const vw = L.map((x) => { if (x.ss && x.ss !== 'RTH') return null; pv += (x.h + x.l + x.c) / 3 * x.v; vv += x.v; return vv ? pv / vv : null; }); lines.push({ v: vw, c: '#BBD7F9', n: 'VWAP', dash: 1 }); }
-      else if (tf[3]) { const c = L.map((x) => x.c); const s50 = c.map((_, i) => sma(c, 50, i)); const e21 = emaA(c, 21); L = L.slice(-tf[3]); lines.push({ v: e21.slice(-tf[3]), c: '#5B9BEA', n: 'EMA 21' }); if (tf[3] > 22) lines.push({ v: s50.slice(-tf[3]), c: '#BBD7F9', n: 'SMA 50', dash: 1 }); }
+    if (!b) body = '<div class="xch empty xchres" aria-busy="true">' + V().skel(2) + '</div><div class="xleg ovleg" aria-hidden="true"><span>&nbsp;</span></div><small class="xcap" aria-hidden="true">&nbsp;</small>'; // same footprint as the chart + legend + caption that replace it
+    else if (b.err) body = '<div class="xch empty xchres">Chart didn’t load. Retrying shortly.</div>' + legBox([], 1) + '<small class="xcap" aria-hidden="true">&nbsp;</small>';
+    else { let L = b, lines = [], base = null; const lv = [], bx = [], mk = [];
+      if (tf[0] === '1D') { const last = L.length ? new Date(L[L.length - 1].t).toDateString() : ''; L = L.filter((x) => new Date(x.t).toDateString() === last); const q = V().S.qx && V().S.qx[sym]; base = q && q.pre_close ? +q.pre_close : null; let pv = 0, vv = 0; const vw = L.map((x) => { if (x.ss && x.ss !== 'RTH') return null; pv += (x.h + x.l + x.c) / 3 * x.v; vv += x.v; return vv ? pv / vv : null; }); lines.push({ v: vw, k: 'vwap', n: 'VWAP', dash: 1, val: vw.filter((x) => x != null).pop() }); }
+      else if (tf[3]) { const c = L.map((x) => x.c), n = tf[3], off = c.length - n; const last = (a) => a[a.length - 1];
+        const ma = (k, nm, a) => { const v = a.slice(-n); if (v.some((x) => x != null)) lines.push({ v: v, k: k, n: nm, val: last(a) }); };
+        if (n <= 22) { ma('e9', 'EMA 9', emaA(c, 9)); ma('e21', 'EMA 21', emaA(c, 21)); }
+        else { const s50 = c.map((_, i) => sma(c, 50, i)), s200 = c.map((_, i) => sma(c, 200, i)); ma('e21', 'EMA 21', emaA(c, 21)); ma('s50', 'SMA 50', s50); ma('s200', 'SMA 200', s200);
+          for (let i = Math.max(1, off); i < c.length; i++) { const a0 = s50[i - 1], b0 = s200[i - 1], a1 = s50[i], b1 = s200[i]; if (a0 == null || b0 == null || a1 == null || b1 == null) continue; if (a0 <= b0 && a1 > b1) mk.push({ i: i - off, v: a1, n: 'Golden cross ' + shortDay(L[i].t), ln: 'Golden cross' }); else if (a0 >= b0 && a1 < b1) mk.push({ i: i - off, v: a1, n: 'Death cross ' + shortDay(L[i].t), ln: 'Death cross' }); } }
+        const t = tech(L); if (t && t.p >= t.hi * 0.995) lv.push({ k: 'pat', n: '52-wk high · breakout', t: '52-wk high', v: t.hi, dash: 1 }); else if (t && t.p <= t.lo * 1.01) lv.push({ k: 'pat', n: '52-wk low', t: '52-wk low', v: t.lo, dash: 1 });
+        const x = L[L.length - 1], y = L[L.length - 2]; if (n <= 22 && x && y && x.h < y.h && x.l > y.l) bx.push({ i0: n - 2, i1: n - 1, lo: y.l, hi: y.h, n: 'Inside day' });
+        L = L.slice(-n); }
       if (tf[0] === '1D' && L.length < 2) { const b5 = bars(sym, 'M30', 80); if (b5 && !b5.err && b5.length > 1) { const last5 = new Date(b5[b5.length - 1].t).toDateString(); const d5 = b5.filter((x) => new Date(x.t).toDateString() === last5); L = d5.length > 1 ? d5 : b5.slice(-13); base = null; lines = []; } }
       const hq = tf[0] === '1D' ? V().S.q[sym] : null; const hOk = hq && isFinite(+hq.pct) && isFinite(+hq.price) && isFinite(+hq.chg); // 1D uses the same quote as the header above it, so the two % never disagree
       if (hOk && base == null && lines.length) base = +hq.price - +hq.chg; // prior close from that same quote
       const ch = hOk ? +hq.pct : L.length > 1 ? (L[L.length - 1].c / (base || L[0].c) - 1) * 100 : null;
-      body = chart(L, { h: 180, lines: lines, base: base, msg: tf[0] === '1D' ? 'No trades yet today' : null }) + (ch != null ? '<small class="xcap">' + E(tf[0]) + ' <b class="' + cl(ch) + '">' + sgnP(ch, 2) + '</b>' + (hOk ? ' · vs prior close' : L[0] ? ' · since ' + new Date(L[0].t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: tf[0] === '5Y' ? 'numeric' : undefined }) : '') + '</small>' : ''); }
+      const bd = bars(sym, 'D', 260); const dp = bd && !bd.err && window.DIP ? dipOf(sym, bd) : null; // same support / resistance the Levels & plan card shows
+      if (dp && dp.sup) lv.push({ k: 'sup', n: 'Support', v: dp.sup.p }); if (dp && dp.res) lv.push({ k: 'res', n: 'Resistance', v: dp.res.p, dash: 1 });
+      if (tf[0] === '1D' && base != null && L.length > 1 && bd && !bd.err && bd.length > 1) { const dx = bd[bd.length - 1]; const i0 = L.findIndex((x) => !x.ss || x.ss === 'RTH');
+        if (i0 >= 0 && new Date(dx.t).toDateString() === new Date(L[i0].t).toDateString()) { const pc = bd[bd.length - 2].c, o = dx.o, g = (o / pc - 1) * 100; /* same gap the Patterns spotted list reports (daily open vs prior daily close) */ if (isFinite(g) && Math.abs(g) >= 2) bx.push({ i0: i0, i1: Math.min(L.length - 1, i0 + Math.max(3, Math.round(L.length * 0.06))), lo: Math.min(o, pc), hi: Math.max(o, pc), n: (g > 0 ? 'Gap up ' : 'Gap down ') + Math.abs(g).toFixed(1) + '%' }); } }
+      body = chart(L, { h: 180, lines: lines, lv: lv, bx: bx, mk: mk, leg: 1, base: base, msg: tf[0] === '1D' ? 'No trades yet today' : null }) + (ch != null ? '<small class="xcap">' + E(tf[0]) + ' <b class="' + cl(ch) + '">' + sgnP(ch, 2) + '</b>' + (hOk ? ' · vs prior close' : L[0] ? ' · since ' + new Date(L[0].t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: tf[0] === '5Y' ? 'numeric' : undefined }) : '') + '</small>' : ''); }
     const w = inWl(sym);
     return '<div class="card xc xchc">' + body + '<div class="chips xtf">' + TF.map((x) => '<button class="chip' + (x[0] === st.tf ? ' on' : '') + '" data-xtf="' + x[0] + '">' + x[0] + '</button>').join('') + '</div></div>' +
       '<div class="xacts"><button class="xbtn' + (w ? ' ghost' : '') + '" data-xwl="' + E(sym) + '">' + (w ? '★ On watchlist' : '☆ Add to watchlist') + '</button><a class="xbtn ghost" href="#calc/' + encodeURIComponent(sym) + '">Size a trade</a><a class="xbtn ghost" href="#compare/' + encodeURIComponent(sym) + '/SPY">Compare</a>' + (window.ALERTS ? '<button class="xbtn ghost" data-pa="' + E(sym) + '">Price alert</button>' : '') + '</div>' +
