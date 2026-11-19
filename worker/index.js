@@ -7,7 +7,7 @@ import { Webull } from './webull.js';
 import { makeVapid, sendPush, PUSHLAST } from './push.js';
 import { authRoutes, sessionFrom, KINDS } from './auth.js';
 import { sendMail } from './brief.js';
-import { TYPES, TYPE_IDS, dueTypes, cleanMail, cleanTypes, ownerList, optTypes, recipients, loadSubs, mailToOf, checkUnsub, E as mE } from './mails.js';
+import { TYPES, TYPE_IDS, dueTypes, windowFor, cleanMail, cleanTypes, ownerList, optTypes, recipients, loadSubs, mailToOf, checkUnsub, E as mE } from './mails.js';
 import { mailJob, build as buildMailOf, deliver, lastSent, signKey } from './mailjob.js';
 import { etNow, closeOf, ahEndOf, rankFor } from './market.js';
 import { diagRoute } from './diag.js';
@@ -1129,7 +1129,10 @@ async function pushRoutes(url, req, env, ctx) {
       syms: (Array.isArray(b.syms) ? b.syms : []).map((s) => String(s).toUpperCase()).filter((s) => /^[A-Z.\-]{1,6}$/.test(s)).slice(0, 80), state: old.state || {}, t: Date.now() };
     { const cut = Date.now() - 45 * 864e5; Object.keys(all).forEach((k) => { if (k !== id && (all[k].t || 0) < cut) delete all[k]; }); } // drop subscriptions not refreshed in 45 days
     if (Object.keys(all).length > 400) return json({ error: 'full' }, 429);
-    await vput(env, 'subs', all); return json({ ok: true, id, prefs: all[id].prefs });
+    const w = await sessionFrom(req, env, vget).catch(() => null); if (w && w.u && w.u.uid) all[id].uid = w.u.uid; // whose device this is
+    await vput(env, 'subs', all);
+    if (w && w.u && w.u.owner) { const L = (await vget(env, 'ownerSubs')) || []; const keep = L.filter((x) => x !== id && all[x]); keep.push(id); if (keep.join() !== L.join()) await vput(env, 'ownerSubs', keep.slice(-6)); } // the owner's devices get the owner alerts, without a separate Connect step
+    return json({ ok: true, id, prefs: all[id].prefs });
   }
   if (url.pathname === '/api/push/unsub' && req.method === 'POST') { const b = await req.json().catch(() => ({})); const id = await subId(b.endpoint || ''); const all = (await vget(env, 'subs')) || {}; delete all[id]; await vput(env, 'subs', all); return json({ ok: true }); }
   if (url.pathname === '/api/push/test' && req.method === 'POST') {
@@ -1278,14 +1281,23 @@ async function inviteReqRoutes(url, req, env) {
   return json({ error: 'bad_request' }, 400);
 }
 // ---------- email center: data for the emails, the owner's controls, everyone's own email choices, and unsubscribe ----------
-async function cronKey(env) { let k = await vget(env, 'cronkey').catch(() => null); if (!k) { k = [...crypto.getRandomValues(new Uint8Array(24))].map((b) => b.toString(16).padStart(2, '0')).join(''); await vput(env, 'cronkey', k); } return k; }
+let CRONK = null;
+async function cronKey(env) { if (CRONK) return CRONK; let k = await vget(env, 'cronkey').catch(() => null); if (k) return (CRONK = k); if (!k) { k = [...crypto.getRandomValues(new Uint8Array(24))].map((b) => b.toString(16).padStart(2, '0')).join(''); await vput(env, 'cronkey', k); } return k; }
 // Every minute, but only inside a send window: the morning brief runs here (as before); the others each get their own run.
-async function mailCron(env, ctx, n) {
+async function mailCron(env, ctx, n) { // every email (the morning brief too) is built and sent in its own run, with its own request budget
   for (const t of dueTypes(n)) {
-    const last = await vget(env, TYPES[t].last).catch(() => null); if (last && last.day === n.day) continue;
-    if (t === 'morning') { aiKey(env); await mailJob('morning', env, mailH(env, ctx)); continue; }
-    const k = await cronKey(env); await fetch((env.MAIL_ORIGIN || 'https://jumptrade.app') + '/x/mailrun?type=' + t + '&k=' + k).catch(() => null);
+    const last = await vget(env, TYPES[t].last).catch(() => null); if (last && last.day === windowFor(t, n)) continue;
+    const k = await cronKey(env); const r = await fetch((env.MAIL_ORIGIN || 'https://jumptrade.app') + '/x/mailrun?type=' + t + '&k=' + k).catch((e) => ({ status: 0, e }));
+    if (!r || r.status !== 200) await vput(env, 'mail_cronerr', { t: Date.now(), type: t, status: r && r.status, e: r && r.e ? String(r.e.message || r.e) : null });
   }
+}
+// The every-minute job starts these first, each as its own request to this worker, so they never run out of subrequests.
+async function selfRuns(env) {
+  const n = etNow(); const k = await cronKey(env); const O = env.MAIL_ORIGIN || 'https://jumptrade.app';
+  await Promise.all([
+    fetch(O + '/x/alertrun?k=' + k).then((r) => (r.status === 200 ? null : vput(env, 'alertrun', { t: Date.now(), error: 'alert run answered ' + r.status }))).catch((e) => vput(env, 'alertrun', { t: Date.now(), error: 'alert run: ' + String(e && e.message || e) })),
+    dueTypes(n).length ? mailCron(env, null, n) : null,
+  ]);
 }
 let SYMNAMES = null;
 // What the emails read: Webull first (like the app), the app's free backup feeds when Webull isn't connected. Never made-up numbers.
@@ -1610,7 +1622,7 @@ async function runAlerts(env, ctx) {
   const fresh = (n) => n && n.title && Date.now() - Date.parse(n.publish_time) < 15 * 60000;
   const mkt = ((await cachedTool('search_news', {}, ctx, env).catch(() => null)) || {}).data || [];
   const symNews = {};
-  if (now.hm % 5 === 0 && want.size) await Promise.all([...want].slice(0, 40).map(async (s) => { const d = await cachedTool('get_stock_news', { symbol: s }, ctx, env).catch(() => null); symNews[s] = ((d || {}).data || []).filter(fresh); }));
+  if (now.hm % 5 === 0 && want.size) { const W = [...want]; const off = W.length > 10 ? (Math.floor(now.hm / 5) * 10) % W.length : 0; await Promise.all(W.concat(W).slice(off, off + Math.min(10, W.length)).map(async (s) => { const d = await cachedTool('get_stock_news', { symbol: s }, ctx, env).catch(() => null); symNews[s] = ((d || {}).data || []).filter(fresh); })); }
   const KIND = [[/\b(beats?|tops?|exceeds?) (estimates|expectations|views)|earnings beat/i, 'Earnings beat'], [/\b(miss(es)?|falls short of) (estimates|expectations)|earnings miss/i, 'Earnings miss'], [/\b(raises?|lifts?|boosts?) (guidance|outlook|forecast)/i, 'Raised guidance'], [/\b(cuts?|lowers?|slashes?) (guidance|outlook|forecast)/i, 'Cut guidance'], [/\bearnings|results|quarter/i, 'Earnings'],
     [/\bfda\b.*\b(approv|clear)/i, 'FDA approval'], [/\bfda\b|clinical|trial|phase [123]/i, 'Drug/trial news'], [/\b(to acquire|acquires|acquisition|buyout|takeover|merger|to buy)\b/i, 'Deal / acquisition'], [/\b(offering|raises \$|private placement|dilut)/i, 'Stock offering (dilution)'],
     [/\b(upgrade|raises? (price )?target|outperform|overweight|buy rating)/i, 'Analyst upgrade'], [/\b(downgrade|cuts? (price )?target|underperform|sell rating)/i, 'Analyst downgrade'], [/\b(contract|order|awarded|partnership|agreement)\b/i, 'Contract / partnership'],
@@ -1626,7 +1638,7 @@ async function runAlerts(env, ctx) {
   const moverNews = [];
   if (now.hm % 5 === 0) {
     const gl = await cachedTool('get_gainers_losers', { category: 'US_STOCK', rank_type: pre ? 'PRE_MARKET' : post ? 'AFTER_MARKET' : 'DAY_1', sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '30', page_index: '1' }, ctx, env).catch(() => null);
-    const tops = (((gl || {}).data) || []).filter((x) => x && x.symbol && +x.change_ratio >= 0.2 && +x.price >= 1).slice(0, 8);
+    const tops = (((gl || {}).data) || []).filter((x) => x && x.symbol && +x.change_ratio >= 0.2 && +x.price >= 1).slice(0, 5);
     await Promise.all(tops.map(async (x) => { const d = await cachedTool('get_stock_news', { symbol: x.symbol }, ctx, env).catch(() => null); const n = (((d || {}).data) || []).filter((y) => y && y.title && Date.now() - Date.parse(y.publish_time) < 90 * 60000)[0]; if (n) moverNews.push({ x, n }); }));
   }
   let ratings = null, cats = null;
@@ -1635,13 +1647,14 @@ async function runAlerts(env, ctx) {
     try { ratings = await (await env.ASSETS.fetch('https://a/ratings.json')).json(); } catch (e) {}
     try { cats = await (await env.ASSETS.fetch('https://a/catalysts.json')).json(); } catch (e) {}
   }
-  let sent = 0, dead = [];
+  let sent = 0, tried = 0, failed = 0, dead = [];
   for (const id of ids) {
     const s = all[id]; const P = Object.assign({}, PDEF, s.prefs); const st = s.state || (s.state = {});
     if (st.day !== now.day) { st.day = now.day; st.n = 0; st.seen = {}; }
     const quiet = P.quiet && (now.hm < 420 || now.hm >= 1260); // 7am-9pm only
     const out = []; const mine = new Set(s.syms || []);
-    const once = (k) => { if (st.seen[k]) return false; st.seen[k] = 1; return true; };
+    let lastK = null; const once = (k) => { if (st.seen[k]) return false; st.seen[k] = 1; lastK = k; return true; };
+    out.push = (m) => Array.prototype.push.call(out, Object.assign(m, { _k: lastK }));
     const f$ = (v) => '$' + (v >= 100 ? v.toFixed(2) : v >= 1 ? v.toFixed(2) : v.toFixed(4));
     if (P.runners && run && run.data && !run.from) run.data.filter((r) => r.score >= (P.runnerMin || 80)).slice(0, 3).forEach((r) => { if (once('run:' + r.symbol)) out.push({ title: r.symbol + ' ' + (r.change_ratio >= 0 ? '+' : '') + (r.change_ratio * 100).toFixed(1) + '% · runner score ' + r.score, body: (r.why || []).slice(0, 2).join(' · ') + ' · ' + f$(r.price), url: '/#runners', tag: 'run-' + r.symbol }); });
     if (P.move && !pre) mine.forEach((sym) => { const x = Q[sym]; if (!x || x.change_ratio == null) return; const pct = x.change_ratio * 100; const lv = Math.abs(pct) >= (P.movePct || 5) * 2 ? 2 : Math.abs(pct) >= (P.movePct || 5) ? 1 : 0; if (!lv) return;
@@ -1670,13 +1683,15 @@ async function runAlerts(env, ctx) {
     for (const m of out) {
       if (quiet && !/^px-/.test(m.tag)) continue; // price alerts always come through
       if ((st.n || 0) >= (P.cap || 12)) break;
-      const code = await sendPush(s.sub, withSubject(m), vapid).catch((e) => { PUSHLAST.status = 0; PUSHLAST.reason = String(e && e.message || e).slice(0, 200); return 0; }); ctx.waitUntil(vput(env, 'pushlast', Object.assign({ via: 'alert' }, PUSHLAST)).catch(() => {}));
+      const k = m._k; delete m._k;
+      const code = await sendPush(s.sub, withSubject(m), vapid).catch((e) => { PUSHLAST.status = 0; PUSHLAST.reason = String(e && e.message || e).slice(0, 200); PUSHLAST.t = Date.now(); return 0; }); tried++;
       if (code === 404 || code === 410) { dead.push(id); break; }
-      if (code && code < 300) { st.n = (st.n || 0) + 1; sent++; }
+      if (code && code < 300) { st.n = (st.n || 0) + 1; sent++; } else { failed++; if (!code || code === 429 || code >= 500) { if (k) delete st.seen[k]; out.slice(out.indexOf(m) + 1).forEach((r) => { if (r._k) delete st.seen[r._k]; }); break; } } // not delivered: try it again next minute
     }
   }
   { const F = (await vget(env, 'subs')) || {}; ids.forEach((id) => { if (F[id] && all[id]) F[id].state = all[id].state; }); dead.forEach((id) => delete F[id]); await vput(env, 'subs', F); } // merge into a fresh copy: a subscribe/unsubscribe made while alerts were sending isn't lost
-  return { sent, subs: ids.length - dead.length };
+  if (tried) await vput(env, 'pushlast', Object.assign({ via: 'alert' }, PUSHLAST)).catch(() => {}); // one write per run, not one per notification
+  return { sent, failed, dead: dead.length, subs: ids.length - dead.length };
 }
 
 // Tell the owner when live Webull prices stop and everyone falls back to the backup feed (at most every 6 hours), and when they're back.
@@ -1688,7 +1703,7 @@ async function feedWatch(env) {
 }
 let UPK = 0;
 export default {
-  async scheduled(ev, env, ctx) { CUR_ENV = env; const m = new Date().getUTCMinutes(); ctx.waitUntil(vput(env, 'cronbeat', { t: Date.now(), build: 'b2' }).catch(() => {})); /* proof the every-minute job is running */ { const n = etNow(); const live = !/Sat|Sun|Hol/.test(n.wd) && n.hm >= 230 && n.hm < 1210; if (live || m % 10 === 0) ctx.waitUntil(precompute(env, ctx).then((r) => vput(env, 'prerun', { t: Date.now(), r })).catch(() => {})); } if (m % 10 === 0) ctx.waitUntil(wbUpkeep(env).catch(() => {})); { const n3 = etNow(); if (!/Sat|Sun|Hol/.test(n3.wd) && (n3.hm === 1000 || n3.hm === 1030)) ctx.waitUntil((async () => { let k = await vget(env, 'cronkey').catch(() => null); if (!k) { k = [...crypto.getRandomValues(new Uint8Array(24))].map((b) => b.toString(16).padStart(2, '0')).join(''); await vput(env, 'cronkey', k); } await fetch('https://jumptrade.app/x/rotnow?cron=1&k=' + k); })().catch(() => {})); /* its own run, so it has its own request budget */ } if (m % 5 === 2) ctx.waitUntil(feedWatch(env).catch(() => {})); if (m % 3 === 1) ctx.waitUntil(newsdesk(env, ctx).catch(() => {})); { const nb = etNow(); if (dueTypes(nb).length) ctx.waitUntil(mailCron(env, ctx, nb).catch((e) => vput(env, 'mail_cronerr', { t: Date.now(), e: String(e && e.message || e) }))); } /* emails: nothing runs outside their send windows */ if (m % 3 === 0) ctx.waitUntil(moverScan(env, ctx).catch(() => {})); { const n2 = etNow(); if (n2.hm === 247) ctx.waitUntil(vault(env).then((v) => v && v.fetch('https://v/sweep')).catch(() => {})); } ctx.waitUntil(runAlerts(env, ctx).then((r) => vput(env, 'alertrun', Object.assign({ t: Date.now() }, r))).catch((e) => vput(env, 'alertrun', { t: Date.now(), error: String(e && e.message || e) }))); },
+  async scheduled(ev, env, ctx) { CUR_ENV = env; const m = new Date().getUTCMinutes(); ctx.waitUntil(selfRuns(env).catch((e) => vput(env, 'selfrun_err', { t: Date.now(), e: String(e && e.message || e) }).catch(() => {}))); /* push alerts and emails first, each in its own run: sharing this run's 50-subrequest budget starved them ("Too many subrequests") */ ctx.waitUntil(vput(env, 'cronbeat', { t: Date.now(), build: 'b2' }).catch(() => {})); /* proof the every-minute job is running */ { const n = etNow(); const live = !/Sat|Sun|Hol/.test(n.wd) && n.hm >= 230 && n.hm < 1210; if (live || m % 10 === 0) ctx.waitUntil(precompute(env, ctx).then((r) => vput(env, 'prerun', { t: Date.now(), r })).catch(() => {})); } if (m % 10 === 0) ctx.waitUntil(wbUpkeep(env).catch(() => {})); { const n3 = etNow(); if (!/Sat|Sun|Hol/.test(n3.wd) && (n3.hm === 1000 || n3.hm === 1030)) ctx.waitUntil((async () => { let k = await vget(env, 'cronkey').catch(() => null); if (!k) { k = [...crypto.getRandomValues(new Uint8Array(24))].map((b) => b.toString(16).padStart(2, '0')).join(''); await vput(env, 'cronkey', k); } await fetch('https://jumptrade.app/x/rotnow?cron=1&k=' + k); })().catch(() => {})); /* its own run, so it has its own request budget */ } if (m % 5 === 2) ctx.waitUntil(feedWatch(env).catch(() => {})); if (m % 3 === 1) ctx.waitUntil(newsdesk(env, ctx).catch(() => {})); if (m % 3 === 0) ctx.waitUntil(moverScan(env, ctx).catch(() => {})); { const n2 = etNow(); if (n2.hm === 247) ctx.waitUntil(vault(env).then((v) => v && v.fetch('https://v/sweep')).catch(() => {})); } },
   async fetch(req, env, ctx) {
     try { return await handleFetch(req, env, ctx); } catch (e) { // one bad request must get a clean JSON error, not Cloudflare's 1101 page
       console.error('fetch error', req.method, new URL(req.url).pathname, e && e.stack || e);
@@ -1701,10 +1716,13 @@ async function handleFetch(req, env, ctx) {
     const url = new URL(req.url);
     CUR_ENV = env;
     if (Date.now() - UPK > 600000) { UPK = Date.now(); ctx.waitUntil(wbUpkeep(env).catch(() => {})); }
+    if (url.pathname === '/x/alertrun') { const ck0 = await vget(env, 'cronkey').catch(() => null); if (!ck0 || url.searchParams.get('k') !== ck0) return new Response('Not found', { status: 404 }); // push alerts, in their own run (own request budget)
+      const L = await vlease(env, 'alertrun', 55000); if (!L.ok) return json({ skip: 'busy' }, 200, { 'cache-control': 'no-store' }); // never two runs at once (no double alerts)
+      const r = await runAlerts(env, ctx).catch((e) => ({ error: String(e && e.message || e) })); await vput(env, 'alertrun', Object.assign({ t: Date.now() }, r)).catch(() => {}); return json(r, 200, { 'cache-control': 'no-store' }); }
     if (url.pathname === '/x/mailrun') { const ck0 = await vget(env, 'cronkey').catch(() => null); if (!ck0 || url.searchParams.get('k') !== ck0) return new Response('Not found', { status: 404 }); const ty = url.searchParams.get('type'); if (!TYPES[ty]) return new Response('Not found', { status: 404 });
-      const r = await mailJob(ty, env, mailH(env, ctx)).catch((e) => ({ error: String(e && e.message || e) })); return json(r, 200, { 'cache-control': 'no-store' }); } // one email's send in its own run, so it has its own request budget
+      const r = await mailJob(ty, env, mailH(env, ctx)).catch((e) => ({ error: String(e && e.message || e) })); if (r && (r.error || r.ok === false)) await vput(env, 'mail_cronerr', { t: Date.now(), type: ty, e: String(r.error || 'send failed') }).catch(() => {}); return json(r, 200, { 'cache-control': 'no-store' }); } // one email's send in its own run, so it has its own request budget
     if (url.pathname === '/api/public/unsub') return unsubRoute(url, req, env);
-    if (url.pathname === '/x/diag') return diagRoute(url, req, env, { vget, etNow, sendPush, vapidKeys, PUSHLAST, sendMail }); // owner health check (DIAG_KEY secret)
+    if (url.pathname === '/x/diag') return diagRoute(url, req, env, { vget, etNow, sendPush, vapidKeys, PUSHLAST, sendMail, buildMail: (ty) => buildMailOf(ty, env, mailH(env, ctx)) }); // owner health check (DIAG_KEY secret)
     if (url.pathname === '/x/rotnow') { const ck0 = await vget(env, 'cronkey').catch(() => null); if (!ck0 || url.searchParams.get('k') !== ck0) return new Response('Not found', { status: 404 }); const last = await vget(env, 'rotrun').catch(() => null); if (last && last.ok && Date.now() - last.t < 600000) return json({ wait: true, last }); const r = await rotationJob(env, ctx).catch((e) => ({ error: String(e && e.message || e) })); await vput(env, 'rotrun', Object.assign({ t: Date.now() }, r)); return json(r); }
     if (req.method === 'OPTIONS') return new Response(null, { status: 204 }); // the app only calls its own server (same origin), so no cross-site access is granted
     // Private beta: while the site is locked, every data endpoint needs a signed-in account (cookie or bearer token).

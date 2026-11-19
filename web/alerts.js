@@ -20,7 +20,15 @@
   { const h0 = window.JT_HASH0 || location.hash; if (/^#s=/.test(h0)) setTimeout(() => route(h0), 1500); }
 
   async function currentSub() { if (!reg) reg = await navigator.serviceWorker.ready; return reg.pushManager.getSubscription(); }
-  async function sync() { try { if (!reg || Notification.permission !== 'granted') return; const sub = await currentSub(); if (!sub) return;
+  // Every app open: make sure this device's push address is current and the server has it. If notifications are allowed but the
+  // device lost its subscription, or it was made with an older server key, sign it up again (no tap needed once allowed).
+  const same = (a, b) => { if (!a || !b || a.byteLength !== b.byteLength) return false; const x = new Uint8Array(a), y = new Uint8Array(b); for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return false; return true; };
+  async function fresh() { let sub = await currentSub(); let key = null;
+    try { key = b2u((await (await fetch('/api/push/key', { cache: 'no-store' })).json()).key); } catch (e) {}
+    if (sub && key && sub.options && sub.options.applicationServerKey && !same(sub.options.applicationServerKey, key.buffer)) { await sub.unsubscribe().catch(() => {}); sub = null; }
+    if (!sub && key) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key }).catch(() => null);
+    return sub; }
+  async function sync() { try { if (!reg || Notification.permission !== 'granted') return; const sub = await fresh(); if (!sub) return;
     await fetch('/api/push/sub', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sub: sub.toJSON(), prefs: P, syms: syms() }) }); } catch (e) {} }
   let syncT = 0; const syncSoon = () => { clearTimeout(syncT); syncT = setTimeout(sync, 800); };
   window.addEventListener('storage', (e) => { if (e.key === 'jt.webwl') syncSoon(); });

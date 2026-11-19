@@ -22,7 +22,7 @@ export async function diagRoute(url, req, env, H) {
       vapidPub: vap && vap.pub ? vap.pub.slice(0, 16) + '…' : null,
       ownerSubs: owner,
       subs: Object.keys(subs).map((id) => { const s = subs[id] || {}; const st = s.state || {}; const p = s.prefs || {};
-        return { id, owner: owner.indexOf(id) >= 0, host: String((s.sub && s.sub.endpoint) || '').split('/')[2] || '', saved: iso(s.t), syms: (s.syms || []).length,
+        return { id, uid: s.uid || null, owner: owner.indexOf(id) >= 0, host: String((s.sub && s.sub.endpoint) || '').split('/')[2] || '', saved: iso(s.t), syms: (s.syms || []).length,
           prefs: { quiet: p.quiet, cap: p.cap, news: p.news, runners: p.runners, move: p.move, fresh: p.fresh, newsGeneral: p.newsGeneral, prices: (p.prices || []).length },
           state: { day: st.day, n: st.n, seen: Object.keys(st.seen || {}).length, genAt: iso(st.genAt) } }; }),
       mail: { key: !!env.RESEND_API_KEY, signKey: !!env.MAIL_SIGN_KEY, cronerr: await H.vget(env, 'mail_cronerr'),
@@ -52,6 +52,18 @@ export async function diagRoute(url, req, env, H) {
     const id = String(url.searchParams.get('id') || '').replace(/[^a-zA-Z0-9-]/g, ''); if (!id || !env.RESEND_API_KEY) return new Response('{}', { status: 400 });
     const r = await fetch('https://api.resend.com/emails/' + id, { headers: { authorization: 'Bearer ' + env.RESEND_API_KEY } }); const j = await r.json().catch(() => ({}));
     return new Response(JSON.stringify({ status: r.status, to: j.to, subject: j.subject, last_event: j.last_event, created_at: j.created_at, from: j.from }), { headers: { 'content-type': 'application/json' } });
+  }
+  if (act === 'resendlog') { // the sending domain's status and the last emails Resend has (who they went to and what happened)
+    if (!env.RESEND_API_KEY) return new Response('{"error":"no key"}', { status: 400 });
+    const g = async (path) => { const r = await fetch('https://api.resend.com' + path, { headers: { authorization: 'Bearer ' + env.RESEND_API_KEY } }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+    const d = await g('/domains'); const e = await g('/emails?limit=25');
+    return new Response(JSON.stringify({ domains: { status: d.status, list: ((d.j && d.j.data) || []).map((x) => ({ name: x.name, status: x.status, region: x.region, created_at: x.created_at })), error: d.j && d.j.message },
+      emails: { status: e.status, list: ((e.j && e.j.data) || []).map((x) => ({ id: x.id, created_at: x.created_at, to: x.to, subject: x.subject, last_event: x.last_event })), error: e.j && e.j.message } }, null, 1), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+  }
+  if (act === 'build') { // build one email now without sending it (checks it fits in one run); returns only its subject and size
+    const ty = url.searchParams.get('type') || 'morning'; if (!TYPES[ty] || !H.buildMail) return new Response('{}', { status: 400 });
+    const t0 = Date.now(); const m = await H.buildMail(ty).catch((e) => ({ error: String(e && e.message || e) }));
+    return new Response(JSON.stringify({ type: ty, ms: Date.now() - t0, error: m.error || null, subject: m.subject || null, html: m.html ? m.html.length : 0, ai: !!m.ai }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
   }
   return new Response('Not found', { status: 404 });
 }
