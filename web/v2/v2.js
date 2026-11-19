@@ -8,7 +8,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   'use strict';
   const D = document;
   const E = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const UP = '#5FBF8F', DN = '#E07A7A'; // muted up/down (same as CSS --up/--dn); used only for direction
+  const DZ0 = document.documentElement.dataset.design; const UP = DZ0 === 'b' ? '#5CB0FF' : DZ0 === 'c' ? '#167A4C' : '#5FBF8F', DN = DZ0 === 'b' ? '#EB8C86' : DZ0 === 'c' ? '#B4443F' : '#E07A7A'; /* redesign preview B/C use their own up/down */ // muted up/down (same as CSS --up/--dn); used only for direction
   const TXA = D.createElement('textarea'); const dec = (s) => { TXA.innerHTML = String(s == null ? '' : s); return TXA.value; }; // feed headlines arrive with HTML entities (&#x2019;)
   const ic = (n, s, sw) => '<svg class="ic" width="' + (s || 20) + '" height="' + (s || 20) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (sw || 1.9) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + I[n] + '</svg>';
   const f2 = (v, d) => Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: d == null ? 2 : d, maximumFractionDigits: d == null ? 2 : d });
@@ -620,14 +620,20 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const ss = S.mv.sess; const L = rows.slice(); const need = L.slice(0, 40).map((x) => x.symbol).filter((x) => !S.spark[x] && !S.mvSpk[x]); if (need.length) { need.forEach((x) => { S.mvSpk[x] = 1; }); sparks(need).then(render).catch(() => {}); }
     return rowsBox(L.map((x, i) => { const sym = x.symbol, f = S.mv.flash[sym]; const fl = f && Date.now() - f.t < 650 ? ' ' + f.c : ''; const p = x.change_ratio * 100, up = p >= 0; const open = S.mvOpen[ss + ':' + sym];
       const ch = x.change != null ? +x.change : null; const st = setupOf(sym, ss);
-      let h = '<div class="row mvrow' + fl + '" data-mvx="' + E(sym) + '" role="button" style="min-height:64px"><span class="rk">' + (i + 1) + '</span>' + tl(sym, 34) + '<span class="nm"><b>' + E(sym) + '</b><small>' + E(x.name || nameOf(sym)) + '</small></span><span style="flex:none">' + sp(sym, up, 48, 24) + '</span>' +
+      const dzr = D.documentElement.dataset.design; const rv0 = x.avg_volume ? x.volume / x.avg_volume : null; const fx0 = (st && st.facts) || {};
+      let h = dzr ? /* redesign preview: dense screener line, why it's moving + setup tag on the row itself */
+        '<div class="row mvrow mvd' + fl + '" data-mvx="' + E(sym) + '" role="button"><span class="rk">' + (i + 1) + '</span>' + tl(sym, 30) +
+        '<span class="nm"><b>' + E(sym) + (st && st.tag && SETUP[st.tag] ? ' <i class="stg ' + SETUP[st.tag][1] + '">' + SETUP[st.tag][0] + '</i>' : '') + '</b><small>' + E(x.name || nameOf(sym)) + '</small>' + whyLine2(sym) + '</span>' +
+        '<span class="mvsp">' + sp(sym, up, 64, 24) + '</span><span class="mvc">' + (x.volume ? nfmt(+x.volume) : '—') + '</span><span class="mvc">' + (rv0 ? (rv0 >= 10 ? rv0.toFixed(0) : rv0.toFixed(1)) + '×' : '—') + '</span><span class="mvc">' + (+fx0.float > 0 ? nfmt(+fx0.float) : +x.market_value > 0 ? '$' + nfmt(+x.market_value) : '—') + '</span>' +
+        '<span class="q"><b>' + pxs(+x.price) + '</b><small class="' + (up ? 'up' : 'dn') + '">' + (ch != null ? (ch >= 0 ? '+' : '−') + '$' + Math.abs(ch).toFixed(Math.abs(ch) < 1 ? (Math.abs(ch) < 0.1 ? 4 : 2) : 2) : '') + '<i>' + pct(p) + '</i></small></span></div>' :
+        '<div class="row mvrow' + fl + '" data-mvx="' + E(sym) + '" role="button" style="min-height:64px"><span class="rk">' + (i + 1) + '</span>' + tl(sym, 34) + '<span class="nm"><b>' + E(sym) + '</b><small>' + E(x.name || nameOf(sym)) + '</small></span><span style="flex:none">' + sp(sym, up, 48, 24) + '</span>' +
         '<span class="q"><b>' + pxs(+x.price) + '</b><small class="' + (up ? 'up' : 'dn') + '">' + (ch != null ? (ch >= 0 ? '+' : '−') + '$' + Math.abs(ch).toFixed(Math.abs(ch) < 1 ? (Math.abs(ch) < 0.1 ? 4 : 2) : 2) : '') + '<i>' + pct(p) + '</i></small></span></div>';
       if (open) { const w = whyText(sym); const fx = (st && st.facts) || {}; const rv = x.avg_volume ? x.volume / x.avg_volume : null;
         h += '<div class="mvx"><div class="mvl"><span>Why it’s moving</span><b style="color:' + w.c + '">' + E(w.t) + '</b>' + (w.h && w.h.url ? ' <a href="' + E(w.h.url) + '" target="_blank" rel="noopener" class="srcl">Read</a>' : '') + '</div>' +
           (st && st.tag ? '<div class="mvl"><span>What it’s doing</span><b>' + (PLAIN[SETUP[st.tag][1]] || PLAIN[st.tag] || SETUP[st.tag][0]) + '</b><ul>' + (st.reasons || []).slice(0, 2).map((r) => '<li>' + E(cleanR(r)) + '</li>').join('') + '</ul></div>' : '') +
           '<div class="mvl"><span>Trading</span><b style="font-weight:500">' + nfmt(+x.volume) + ' shares' + (rv ? ' · ' + (rv >= 10 ? rv.toFixed(0) : rv.toFixed(1)) + '× normal' : '') + (fx.halt && fx.halt.n ? ' · halted ' + fx.halt.n + '×' : '') + '</b></div>' +
           '<a class="mvgo" href="#stock/' + encodeURIComponent(sym) + '">Open ' + E(sym) + '</a><small class="stn">A rules-based read, not advice.</small></div>'; }
-      return h; }).join(''), 'padding:2px 12px');
+      return h; }).join(''), 'padding:2px 12px').replace(/^(<div[^>]*>)/, D.documentElement.dataset.design ? '$1<div class="mvhd" aria-hidden="true"><span class="rk">#</span><span class="nm">Symbol · why it’s moving</span><span class="mvsp">Today</span><span class="mvc">Volume</span><span class="mvc">Rel vol</span><span class="mvc">Float</span><span class="q">Price · chg</span></div>' : '$1');
   }
   function movers() {
     if (!S.mv.sess) S.mv.sess = curSess();

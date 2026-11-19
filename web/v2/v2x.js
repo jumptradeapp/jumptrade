@@ -723,7 +723,7 @@
 
   // ---------- settings / account / feedback / app ----------
   const THEMES = [['midnight', 'Dark', ''], ['light', 'Light', ''], ['auto', 'Auto', 'Matches your phone']];
-  const applyTheme = () => { let t = lsGet('jt.v2theme', 'midnight'); if (t === 'black' || t === 'swoop') { t = 'midnight'; lsSet('jt.v2theme', t); } if (t === 'auto') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'midnight'; D.documentElement.dataset.x2t = t; const m = D.querySelector('meta[name=theme-color]'); if (m) m.content = t === 'light' ? '#F5F8FC' : '#030A15'; };
+  const applyTheme = () => { let t = lsGet('jt.v2theme', 'midnight'); if (t === 'black' || t === 'swoop') { t = 'midnight'; lsSet('jt.v2theme', t); } if (t === 'auto') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'midnight'; const dz = D.documentElement.dataset.design; if (dz) t = dz === 'c' ? 'light' : 'midnight'; /* redesign preview picks its own base */ D.documentElement.dataset.x2t = t; const m = D.querySelector('meta[name=theme-color]'); if (m) m.content = t === 'light' ? '#F5F8FC' : '#030A15'; };
   try { matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => { if (lsGet('jt.v2theme', '') === 'auto') applyTheme(); }); } catch (e) {}
   // Alerts settings: phone notifications (what, when, how many) and what the in-app Alerts page shows. Everything saves the moment you tap it.
   st.als = null;
