@@ -31,7 +31,7 @@ test('shipped look: B for dark, B-Light for light, old ?design= choice cleared, 
   assert.doesNotMatch(idx, /URLSearchParams\(location\.search\)\.get\("design"\)/);
   const vx = R('v2/v2x.js');
   assert.match(vx, /dataset\.design = t === 'light' \? 'bl' : 'b'/);
-  assert.match(R('sw.js'), /jt-shell-v20/);
+  assert.match(R('sw.js'), /jt-shell-v21/);
   assert.match(R('sw.js'), /'\/v2\/design\.css'/);
   assert.match(idx, /\/v2\/design\.css\?v=\d+/);
   const css = R('v2/design.css');

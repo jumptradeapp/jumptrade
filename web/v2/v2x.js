@@ -272,7 +272,7 @@
   // ---------- calendar (catalysts + earnings snapshot) ----------
   st.ck = 'all';
   function calendarScreen() {
-    const j = file('/catalysts.json'); const td = new Date(); td.setHours(0, 0, 0, 0); const tds = td.toISOString().slice(0, 10);
+    const j = file('/catalysts.json'); const tds = (window.JTDates && JTDates.etYmd()) || new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
     let body;
     if (!j) body = V().rowsBox(V().skel(6), 'padding:14px');
     else if (j.err) body = V().rowsBox(errB('The calendar file didn’t load.'));
@@ -280,7 +280,7 @@
       const ev = []; (j.catalysts || []).forEach((c) => ev.push({ d: c.date, k: 'cat', s: c.ticker, t: c.title, sub: (c.type || '') + (c.time ? ' · ' + c.time : '') + (c.impact ? ' · ' + c.impact + ' impact' : ''), x: c.detail }));
       ((j.earnings || {}).upcoming || []).forEach((e) => ev.push({ d: e.date, k: 'earn', s: e.ticker, t: (e.company || e.ticker) + ' reports earnings', sub: (e.timing || '') + (e.eps_est != null ? ' · EPS est $' + (+e.eps_est).toFixed(2) : '') + (e.rev_est_usd ? ' · rev est $' + V().nfmt(+e.rev_est_usd) : '') + (e.date_status ? ' · ' + e.date_status : '') }));
       const L = ev.filter((e) => e.d >= tds && (st.ck === 'all' || e.k === st.ck)).sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : 0)); const by = {}; L.forEach((e) => { (by[e.d] = by[e.d] || []).push(e); });
-      body = !L.length ? V().rowsBox(errB('Nothing upcoming in this snapshot.')) : Object.keys(by).slice(0, 30).map((d) => '<div class="lab">' + new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + '</div><div class="card rows">' + by[d].map((e) => '<a class="row" href="' + (e.s ? '#stock/' + encodeURIComponent(e.s) : '#calendar') + '">' + (e.s ? V().tl(e.s, 30) : '<span class="aic">' + ic('cal', 18, 2.1) + '</span>') + '<span class="nm"><b>' + E(e.t) + '</b><small>' + E((e.s ? e.s + ' · ' : '') + e.sub) + '</small></span><span class="xtag ' + e.k + '">' + (e.k === 'earn' ? 'Earnings' : 'Catalyst') + '</span></a>').join('') + '</div>').join('');
+      body = !L.length ? V().rowsBox(errB('Nothing upcoming in this snapshot.')) : Object.keys(by).slice(0, 30).map((d) => '<div class="lab">' + E((window.JTDates && JTDates.relativeLabel(d)) || new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })) + '</div><div class="card rows">' + by[d].map((e) => '<a class="row" href="' + (e.s ? '#stock/' + encodeURIComponent(e.s) : '#calendar') + '">' + (e.s ? V().tl(e.s, 30) : '<span class="aic">' + ic('cal', 18, 2.1) + '</span>') + '<span class="nm"><b>' + E(e.t) + '</b><small>' + E((e.s ? e.s + ' · ' : '') + e.sub) + '</small></span><span class="xtag ' + e.k + '">' + (e.k === 'earn' ? 'Earnings' : 'Catalyst') + '</span></a>').join('') + '</div>').join('');
     }
     return wrap(V().backbar('Calendar', '#menu') + V().head('Calendar', 'Catalysts and earnings dates') +
       (j && !j.err ? V().snapNote((j.generated && (j.earnings || {}).generated && j.generated !== j.earnings.generated ? 'Catalysts snapshot from ' + E(j.generated) + ', earnings dates from ' + E(j.earnings.generated) : 'Snapshot from ' + E(j.generated || (j.earnings || {}).generated || 'the last build')) + '. Dates can move; check the company’s release.') : '') +
@@ -724,7 +724,7 @@
     const jcReady = b != null && perSym('get_stock_earnings_calendar', sym, 21600) != null; // hold the Jump check until its inputs are in, so it lands once instead of growing row by row
     if (!jcReady) h += V().lab('shield', 'Jump check', '', '') + '<div class="card xc xjc xjres" aria-busy="true">' + V().skel(4) + '</div>';
     else if (t || sn.price) { const F = []; const ec = perSym('get_stock_earnings_calendar', sym, 21600); const st2 = V().setupOf ? V().setupOf(sym, V().curSess()) : null; const fx = (st2 && st2.facts) || {};
-      const nx = ec && !ec.err && Array.isArray(ec) ? ec.map((e) => e.date).filter((d) => d >= new Date().toISOString().slice(0, 10)).sort()[0] : null; const dte = nx ? Math.round((Date.parse(nx + 'T12:00:00') - Date.now()) / 864e5) : null;
+      const todayEt = (window.JTDates && JTDates.etYmd()) || new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }); const nx = ec && !ec.err && Array.isArray(ec) ? ec.map((e) => e.date).filter((d) => d >= todayEt).sort()[0] : null; const dte = nx && window.JTDates ? JTDates.dayDelta(nx) : (nx ? Math.round((Date.parse(nx + 'T00:00:00Z') - Date.parse(todayEt + 'T00:00:00Z')) / 864e5) : null);
       const add = (bad, t2, why) => F.push([bad, t2, why]);
       if (t && t.s200) add(t.p < t.s200, t.p < t.s200 ? 'Below its 200-day average' : 'Above its 200-day average', 'Long-term trend ' + (t.p < t.s200 ? 'is down' : 'is up'));
       if (t) add(t.rsi >= 75, t.rsi >= 75 ? 'Overbought' : 'Not overbought', 'RSI ' + t.rsi.toFixed(0));
@@ -732,7 +732,7 @@
       if (price) add(price < 5, price < 1 ? 'Penny stock (under $1)' : price < 5 ? 'Low-priced (under $5)' : 'Not a penny stock', 'Price ' + V().px(price));
       if (sn.avg_volume) add(+sn.avg_volume < 5e5, +sn.avg_volume < 5e5 ? 'Thin trading' : 'Liquid', V().nfmt(+sn.avg_volume) + ' shares a day on average');
       if (t) add(t.p < t.hi * 0.6, t.p < t.hi * 0.6 ? 'Down 40%+ from its high' : 'Within 40% of its high', sgnP((t.p / t.hi - 1) * 100) + ' from the 52-week high');
-      if (dte != null) add(dte <= 7, dte <= 7 ? 'Earnings in ' + Math.max(0, dte) + ' day' + (dte === 1 ? '' : 's') : 'No earnings this week', 'Next report ' + nx);
+      if (dte != null) add(dte <= 7, dte <= 7 ? (dte === 0 ? 'Earnings today' : dte === 1 ? 'Earnings tomorrow' : 'Earnings in ' + dte + ' days') : 'No earnings this week', 'Next report ' + nx);
       if (fx.si != null) add(fx.si >= 20, fx.si >= 20 ? 'Heavily shorted' : 'Short interest normal', fx.si.toFixed(1) + '% of float short');
       if (fx.halt && fx.halt.n) add(true, 'Halted today', fx.halt.n + ' trading halt' + (fx.halt.n > 1 ? 's' : ''));
       if (st2 && (st2.reasons || []).some((r) => /offering|dilut|warrant|reverse split/i.test(r))) add(true, 'Dilution risk', (st2.reasons || []).find((r) => /offering|dilut|warrant|reverse split/i.test(r)));

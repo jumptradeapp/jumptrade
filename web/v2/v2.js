@@ -207,8 +207,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const q = (s) => { const x = S.q[s]; if (!x) return '<span class="q"><b>—</b><small>&nbsp;</small></span>'; return '<span class="q"><b>' + money(x.price) + '</b><small class="' + cls(x.chg) + '">' + chg(x.chg) + '<i>' + pct(x.pct) + '</i></small>' + extHTML(s) + '</span>'; };
   const srow = (s, minh) => { const x = S.q[s]; return '<a class="row" href="#stock/' + encodeURIComponent(s) + '" style="min-height:' + minh + 'px">' + tl(s, 38) + '<span class="nm"><b>' + E(s) + '</b><small>' + E(nameOf(s)) + '</small></span><span style="flex:none">' + sp(s, !x || x.chg >= 0) + '</span>' + q(s) + '</a>'; };
   // amber = needs your attention: earnings for a stock you hold, within the next 7 days
-  const earnTag = (sym) => { if (!Array.isArray(S.earn)) return ''; const t0 = etNow(); t0.setHours(0, 0, 0, 0); const e = S.earn.find((x) => x && x.symbol === sym && x.date && Date.parse(x.date + 'T12:00:00') >= t0.getTime() && Date.parse(x.date + 'T12:00:00') - t0.getTime() < 7 * 864e5); if (!e) return '';
-    const d = new Date(e.date + 'T12:00:00'); const days = Math.floor((d - t0) / 864e5); return '<span class="amb"><i></i>Earnings ' + (days === 0 ? 'today' : days === 1 ? 'tomorrow' : d.toLocaleDateString('en-US', { weekday: 'short' })) + '</span>'; };
+  const earnTag = (sym) => { if (!Array.isArray(S.earn)) return ''; const e = S.earn.find((x) => x && x.symbol === sym && x.date && window.JTDates && JTDates.isUpcoming(x.date, x.timing || x.when, null, 6)); if (!e) return '';
+    const days = JTDates.dayDelta(e.date); return '<span class="amb"><i></i>Earnings ' + (days === 0 ? 'today' : days === 1 ? 'tomorrow' : JTDates.formatDay(e.date).split(',')[0]) + '</span>'; };
   const perf = (list, n, minh) => list.slice(0, n).map((r) => { const s = r.sym, x = S.q[s]; return '<a class="row perf" href="#stock/' + encodeURIComponent(s) + '" style="min-height:' + minh + 'px!important;gap:8px">' + tl(s, 30) + '<span class="nm"><b style="font-size:15px">' +E(s) + earnTag(s) + '</b><small style="font-size:11.5px;line-height:15px;white-space:normal">' + E(nameOf(s)) + '</small></span><span style="flex:none">' + sp(s, x.chg >= 0, 40, 24) + '</span><span class="q" style="width:96px;flex:none"><b style="font-size:15px">' + money(x.price) + '</b><small style="font-size:11.5px" class="' + cls(x.chg) + '">' + chg(x.chg) + '<i style="margin-left:5px">' + pct(x.pct) + '</i></small></span></a>'; }).join('');
   const skel = (n) => Array.from({ length: n || 3 }, (_, i) => '<div class="skel" style="width:' + (90 - i * 15) + '%"></div>').join('');
   // first-load placeholder rows, each as tall as the row that replaces it, so nothing below jumps when the data lands
@@ -384,11 +384,10 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   }
   function earnCard() {
     if (S.earn == null) return '';
-    const today = etNow(); today.setHours(0, 0, 0, 0);
-    const up = S.earn.filter((e) => e && e.date && Date.parse(e.date + 'T12:00:00') >= today.getTime()).sort((a, b) => a.date.localeCompare(b.date))[0];
+    const up = S.earn.filter((e) => e && e.date && window.JTDates && JTDates.dayDelta(e.date) >= 0).sort((a, b) => a.date.localeCompare(b.date))[0];
     if (!up) return act('cal', 'No upcoming earnings', 'For your watchlist and holdings', V2_STAGE >= 2 ? '#earnings' : '#calendar');
-    const d = new Date(up.date + 'T12:00:00'); const days = Math.floor((d - today) / 864e5); /* d is noon, today is midnight */
-    const when = days === 0 ? 'today' : days === 1 ? 'tomorrow' : days < 7 ? d.toLocaleDateString('en-US', { weekday: 'long' }) : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const days = JTDates.dayDelta(up.date);
+    const when = days === 0 ? 'today' : days === 1 ? 'tomorrow' : days < 7 ? new Date(up.date + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' }) : JTDates.formatDay(up.date).replace(/^[A-Za-z]+, /, '');
     return act('cal', E(up.symbol) + ' earnings ' + when, (up.eps_estimate != null ? 'EPS estimate $' + (+up.eps_estimate).toFixed(2) : 'Date confirmed') + ' · ' + E(nameOf(up.symbol) || up.symbol) + (HOLD_SYMS.indexOf(up.symbol) >= 0 && (wl() || []).indexOf(up.symbol) < 0 ? ' · demo holding' : ''), V2_STAGE >= 2 ? '#earnings' : '#calendar');
   }
   // Today's header: a greeting with your first name, a small "Market brief" label, and one line on how the market's doing
@@ -468,26 +467,25 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   function catTile() {
     if (!S.cat) { S.cat = { loading: 1 }; getJ('/catalysts.json').then((j) => { S.cat = j; render(); }).catch(() => { S.cat = { err: 1 }; render(); }); }
     if (S.cat.loading) return lab('cal', 'Upcoming catalysts', 'Calendar', '#calendar') + skelRows(6, 62); if (S.cat.err) return '';
-    const td = etNow(); td.setHours(0, 0, 0, 0); const t0 = td.getTime(); const day = (d) => Math.round((new Date(d + 'T12:00:00').getTime() - t0) / 864e5);
     const mine = new Set(HOLD_SYMS.concat(wlSyms())); const W = { fda: 5, trial: 5, earnings: 3, index: 3, lockup: 2, ipo: 2, macro: 2, event: 1 };
-    const L = (S.cat.catalysts || []).filter((c) => c && c.date && c.status !== 'done').map((c) => Object.assign({ dd: day(c.date) }, c)).filter((c) => c.dd >= 0 && c.dd <= 10)
+    const L = (S.cat.catalysts || []).filter((c) => c && c.date && c.status !== 'done' && window.JTDates && JTDates.isUpcoming(c.date, c.time, null, 10)).map((c) => Object.assign({ dd: JTDates.dayDelta(c.date) }, c))
       .sort((a, b) => a.dd - b.dd || ((mine.has(b.ticker) ? 9 : 0) + (W[b.type] || 0) + (b.impact === 'high' ? 3 : 0)) - ((mine.has(a.ticker) ? 9 : 0) + (W[a.type] || 0) + (a.impact === 'high' ? 3 : 0))).slice(0, 6);
     if (!L.length) return '';
     const TN = { fda: 'FDA', trial: 'Trial', earnings: 'Earnings', index: 'Index', lockup: 'Lock-up', ipo: 'IPO', macro: 'Economy', event: 'Event' };
-    const when = (d) => (d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : new Date(t0 + d * 864e5).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
+    const when = (c) => JTDates.relativeLabel(c.date, c.time);
     return lab('cal', 'Upcoming catalysts', 'Calendar', '#calendar') + rowsBox(L.map((c) => { const href = c.ticker ? '#stock/' + encodeURIComponent(c.ticker) : c.source_url && /^https:\/\//.test(c.source_url) ? c.source_url : '#calendar'; const ext = !c.ticker && /^https:/.test(href);
       return '<a class="row" href="' + E(href) + '"' + (ext ? ' target="_blank" rel="noopener"' : '') + ' style="min-height:62px">' + (c.ticker ? tl(c.ticker, 32) : '<span class="catI">' + ic(c.type === 'macro' ? 'activity' : 'cal', 17, 2.2) + '</span>') +
-        '<span class="nm"><b style="font-weight:500;font-size:14.5px;line-height:19px;white-space:normal">' + (c.ticker ? '<span style="font-weight:700">' + E(c.ticker) + '</span> · ' : '') + E(c.title) + '</b><small>' + when(c.dd) + (c.time ? ' · ' + E(c.time) : '') + '</small></span><span class="catT ' + E(c.type) + (mine.has(c.ticker) ? ' mine' : '') + '">' + (TN[c.type] || 'Event') + '</span></a>'; }).join('')) +
+        '<span class="nm"><b style="font-weight:500;font-size:14.5px;line-height:19px;white-space:normal">' + (c.ticker ? '<span style="font-weight:700">' + E(c.ticker) + '</span> · ' : '') + E(c.title) + '</b><small>' + when(c) + (c.time ? ' · ' + E(c.time) : '') + '</small></span><span class="catT ' + E(c.type) + (mine.has(c.ticker) ? ' mine' : '') + '">' + (TN[c.type] || 'Event') + '</span></a>'; }).join('')) +
       '<p class="snapb">From the jumptrade catalyst list. Dates can move; check the source before you trade.</p>';
   }
   function comingUp() {
-    const td = etNow(); td.setHours(0, 0, 0, 0); const mine = Array.from(new Set(HOLD_SYMS.concat(wlSyms())));
-    const ear = (S.earn || []).filter((e) => e && e.date && mine.indexOf(e.symbol) >= 0).map((e) => ({ e, days: Math.round((new Date(e.date + 'T12:00:00') - td) / 864e5) })).filter((x) => x.days >= 0 && x.days <= 14).sort((a, b) => a.days - b.days).slice(0, 4);
+    const mine = Array.from(new Set(HOLD_SYMS.concat(wlSyms())));
+    const ear = (S.earn || []).filter((e) => e && e.date && mine.indexOf(e.symbol) >= 0 && window.JTDates && JTDates.isUpcoming(e.date, e.timing || e.when, null, 14)).map((e) => ({ e, days: JTDates.dayDelta(e.date) })).sort((a, b) => a.days - b.days).slice(0, 4);
     const al = alertList().slice(0, 3);
     if (!ear.length && !al.length) return '';
-    const when = (d) => (d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : new Date(td.getTime() + d * 864e5).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
+    const when = (x) => JTDates.relativeLabel(x.e.date, x.e.timing || x.e.when);
     return lab('cal', 'Heads up', al.length ? 'All alerts' : '', '#alerts') + rowsBox(
-      ear.map((x) => '<a class="row" href="#stock/' + encodeURIComponent(x.e.symbol) + '" style="min-height:58px">' + tl(x.e.symbol, 32) + '<span class="nm"><b>' + E(x.e.symbol) + ' reports earnings</b><small>' + when(x.days) + (x.e.eps_estimate ? ' · EPS est. $' + (+x.e.eps_estimate).toFixed(2) : '') + '</small></span>' + (x.days <= 2 ? '<span class="cuSoon">Soon</span>' : '') + '</a>').join('') +
+      ear.map((x) => '<a class="row" href="#stock/' + encodeURIComponent(x.e.symbol) + '" style="min-height:58px">' + tl(x.e.symbol, 32) + '<span class="nm"><b>' + E(x.e.symbol) + ' reports earnings</b><small>' + when(x) + (x.e.eps_estimate ? ' · EPS est. $' + (+x.e.eps_estimate).toFixed(2) : '') + '</small></span>' + (x.days <= 2 ? '<span class="cuSoon">Soon</span>' : '') + '</a>').join('') +
       al.map((a) => '<a class="row" href="#stock/' + encodeURIComponent(a.s) + '" style="min-height:58px">' + tl(a.s, 32) + '<span class="nm"><b style="font-weight:500">' + a.h + '</b>' + (a.sub ? '<small>' + a.sub + '</small>' : '') + '</span></a>').join(''));
   }
   function today() {
@@ -839,7 +837,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     else {
       const days = W.days || []; if (!S.ewDay) S.ewDay = (days.find((d) => d.d >= W.today) || days[0] || {}).d;
       const dd = days.find((d) => d.d === S.ewDay) || { tiles: [] };
-      body = chipsHTML(days.map((d) => [d.d, new Date(d.d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }) + ' ' + (+d.d.slice(8)) + ' <small>' + d.tiles.length + '</small>']), S.ewDay, 'data-ewd') +
+      body = chipsHTML(days.map((d) => { const rel = window.JTDates ? JTDates.dayDelta(d.d) : null; const lab = rel === 0 ? 'Today' : rel === 1 ? 'Tomorrow' : new Date(d.d + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }) + ' ' + (+d.d.slice(8)); return [d.d, lab + ' <small>' + d.tiles.length + '</small>']; }), S.ewDay, 'data-ewd') +
         (dd.tiles.length ? rowsBox(dd.tiles.map((t) => { const x = S.q[t.s]; const when = t.when === 'bmo' ? 'Before open' : t.when === 'amc' ? 'After close' : 'Time not given';
           const res = t.res ? '<span class="res ' + (t.res === 'beat' ? 'up' : t.res === 'miss' ? 'dn' : '') + '">' + t.res.toUpperCase() + '</span>' : '';
           const eps = t.eps != null ? 'EPS $' + t.eps.toFixed(2) + ' vs $' + (t.est != null ? t.est.toFixed(2) : '—') + ' est.' : 'EPS est. ' + (t.est != null ? '$' + t.est.toFixed(2) : '—');
@@ -857,8 +855,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const at = AT(); const out = []; const mine = Array.from(new Set(wlSyms().concat(HOLD_SYMS)));
     mine.forEach((s) => { const x = S.q[s]; if (x && Math.abs(x.pct) >= at.move) out.push({ k: 'move', s, w: Math.abs(x.pct), t: S.t.q || Date.now(), h: E(s) + ' is <span class="' + cls(x.pct) + '">' + (x.pct >= 0 ? 'up ' : 'down ') + Math.abs(x.pct).toFixed(1) + '%</span> today', sub: nameOf(s) + (HOLD_SYMS.indexOf(s) >= 0 ? ' · demo holding' : ' · watchlist') }); });
     IDX.slice(0, 2).forEach((s) => { const x = S.q[s]; if (x && Math.abs(x.pct) >= at.idx) out.push({ k: 'idx', s, w: 50 + Math.abs(x.pct), t: S.t.q || Date.now(), h: E(NM[s] || s) + ' is <span class="' + cls(x.pct) + '">' + (x.pct >= 0 ? 'up ' : 'down ') + Math.abs(x.pct).toFixed(1) + '%</span>', sub: 'Market' }); });
-    const td = etNow(); td.setHours(0, 0, 0, 0);
-    (S.earn || []).forEach((e) => { if (!e || !e.date) return; const d = new Date(e.date + 'T12:00:00'); const days = Math.floor((d - td) / 864e5); if (at.earn && days >= 0 && days <= 2) out.push({ k: 'earn', s: e.symbol, w: 40 - days, t: Date.now(), h: E(e.symbol) + ' reports ' + (days === 0 ? 'today' : days === 1 ? 'tomorrow' : 'in 2 days'), sub: nameOf(e.symbol) + (e.eps_estimate != null ? ' · EPS est. $' + (+e.eps_estimate).toFixed(2) : '') }); });
+    (S.earn || []).forEach((e) => { if (!e || !e.date || !window.JTDates) return; const days = JTDates.dayDelta(e.date); if (at.earn && days >= 0 && days <= 2) out.push({ k: 'earn', s: e.symbol, w: 40 - days, t: Date.now(), h: E(e.symbol) + ' reports ' + (days === 0 ? 'today' : days === 1 ? 'tomorrow' : 'in 2 days'), sub: nameOf(e.symbol) + (e.eps_estimate != null ? ' · EPS est. $' + (+e.eps_estimate).toFixed(2) : '') }); });
     ((S.ua && S.ua.d) || []).forEach((a) => { if (!a || !a.symbol) return; if (a.amount > 1.5e9 || a.multiple > 400) return; /* a single minute that size is a feed glitch, not a trade */ const m = mine.indexOf(a.symbol) >= 0; if (!m && !(a.amount >= at.flow)) return; out.push({ k: 'flow', s: a.symbol, w: m ? 30 : 10 + Math.min(10, a.amount / 1e7), t: Date.parse(a.time) || Date.now(), h: E(a.symbol) + ' heavy ' + (/BUY/.test(a.alert_type) ? 'buying' : /SELL/.test(a.alert_type) ? 'selling' : 'trading') + ' · ' + big$(a.amount) + ' in a minute', sub: nameOf(a.symbol) + ' · ' + (a.multiple ? a.multiple + '× a normal minute' : 'volume spike') + (m ? ' · on your list' : '') }); });
     runRows().filter((x) => x.score >= at.run).slice(0, 3).forEach((x) => out.push({ k: 'run', s: x.symbol, w: 20 + x.score / 10, t: S.run.t, h: E(x.symbol) + ' is starting to run · score ' + Math.round(x.score), sub: (x.name || nameOf(x.symbol)) + ' · ' + E((x.why || [])[0] || '') }));
     return out.sort((a, b) => b.w - a.w).slice(0, 25);
@@ -1277,7 +1274,18 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     D.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.getAttribute && e.target.getAttribute('role') === 'button' && e.target.tagName !== 'BUTTON') { e.preventDefault(); e.target.click(); } }); })();
   try { history.scrollRestoration = 'manual'; } catch (e) {} // every page opens at the top, even going back
   window.addEventListener('hashchange', () => { touching = 0; pend = 0; if (D.activeElement && D.activeElement.blur) D.activeElement.blur(); render(); });
-  setInterval(() => { if (!D.hidden && route().v === 'today') { const s = D.querySelector('.app2 .sub'); if (s) s.textContent = dateLine(); } }, 30000);
+  let lastEtDay = window.JTDates ? JTDates.etYmd() : null;
+  function armMidnightRender() {
+    if (armMidnightRender.t) clearTimeout(armMidnightRender.t);
+    if (!window.JTDates) return;
+    armMidnightRender.t = setTimeout(() => { lastEtDay = JTDates.etYmd(); render(); armMidnightRender(); }, JTDates.msUntilNextEtMidnight());
+  }
+  armMidnightRender();
+  D.addEventListener('visibilitychange', () => { if (!D.hidden && window.JTDates && JTDates.etYmd() !== lastEtDay) { lastEtDay = JTDates.etYmd(); render(); } });
+  setInterval(() => {
+    if (window.JTDates) { const day = JTDates.etYmd(); if (lastEtDay && day !== lastEtDay) { lastEtDay = day; render(); return; } lastEtDay = day; }
+    if (!D.hidden && route().v === 'today') { const s = D.querySelector('.app2 .sub'); if (s) s.textContent = dateLine(); }
+  }, 30000);
 
   S.qx = S.qx || {};
   window.V2 = { extHTML, AT, I, S, call, fastSnap, E, dec, ic, tl, qv, px, pct, cls, head, backbar, topbar, lab, act, rowsBox, snapNote, chipsHTML, skel, nameOf, getJ, render: () => render(), route, toast,

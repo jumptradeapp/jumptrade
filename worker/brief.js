@@ -51,7 +51,7 @@ async function write(env, H, d) {
   const user = 'DATA:\n' + JSON.stringify(data).slice(0, 60000) + '\n\nReturn JSON exactly like: {"subject": email subject under 70 characters naming the 2-3 biggest things, "pre": inbox preview line under 90 characters, "headline": under 55 characters, "sector": under 6 words like "Staples up, chips down" or "" if unclear, ' +
     '"matters": [3 items {"b": bold lead under 6 words ending with a period, "t": one short sentence}], "yours": {"TICKER": "why it moved, under 7 words, or No news yet"} for each your_stocks ticker, "movers": {"TICKER": "why, under 7 words"} for each premarket ticker, ' +
     '"headlines": [up to 4 {"tag": one of Breaking|Policy|Fed|Economy|Earnings|IPO|Trade|Markets, "title": under 70 chars, "why": one short sentence on why it matters to markets}], "deals": [up to 3 real acquisitions/mergers/big contracts {"t": ticker of the company in the deal or "", "text": "Buys X · $size" under 45 chars}], ' +
-    '"earnings": [up to 4 {"t": ticker, "label": Beat|Missed|Mixed|Tonight|Today, "text": under 35 chars}], "coming": [up to 2 {"when": "Wed" style, "text": under 45 chars}]}. Use only companies and events that appear in DATA. Use "Breaking" only for a truly market-moving development.';
+    '"earnings": [up to 4 {"t": ticker, "label": Beat|Missed|Mixed|Tonight|Today, "text": under 35 chars}], "coming": [up to 2 {"when": "Wed" or "Mon, Nov 23" (never Today/Tomorrow — those go stale if the email is opened later), "text": under 45 chars}]}. Use only companies and events that appear in DATA. Use "Breaking" only for a truly market-moving development.';
   try { return await H.aiCall(env, SYS, user, 1800); } catch (e) { return null; }
 }
 
