@@ -760,7 +760,7 @@
 
   // ---------- settings / account / feedback / app ----------
   const THEMES = [['midnight', 'Dark', ''], ['light', 'Light', ''], ['auto', 'Auto', 'Matches your phone']];
-  const applyTheme = () => { let t = lsGet('jt.v2theme', 'midnight'); if (t === 'black' || t === 'swoop') { t = 'midnight'; lsSet('jt.v2theme', t); } if (t === 'auto') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'midnight'; D.documentElement.dataset.x2t = t; D.documentElement.dataset.design = t === 'light' ? 'bl' : 'b'; /* dark = B Terminal, light = B-Light */ const m = D.querySelector('meta[name=theme-color]'); if (m) m.content = t === 'light' ? '#F3F5F8' : '#05080E'; };
+  const applyTheme = () => { let t = lsGet('jt.v2theme', 'midnight'); if (t === 'black' || t === 'swoop') { t = 'midnight'; lsSet('jt.v2theme', t); } if (t === 'auto') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'midnight'; D.documentElement.dataset.x2t = t; let dz = t === 'light' ? 'bl' : 'b'; const alt = lsGet('jt.design', ''); if (t !== 'light' && /^[nsg]$/.test(alt)) dz = alt; D.documentElement.dataset.design = dz; /* dark = B Terminal (or ?design=n|s|g), light = B-Light */ const m = D.querySelector('meta[name=theme-color]'); if (m) m.content = t === 'light' ? '#F3F5F8' : dz === 'n' ? '#0E1A2E' : dz === 's' ? '#1A2030' : dz === 'g' ? '#0C182C' : '#05080E'; };
   try { matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => { if (lsGet('jt.v2theme', '') === 'auto') applyTheme(); }); } catch (e) {}
   // Alerts settings: phone notifications (what, when, how many) and what the in-app Alerts page shows. Everything saves the moment you tap it.
   st.als = null;

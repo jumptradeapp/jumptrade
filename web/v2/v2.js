@@ -8,7 +8,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   'use strict';
   const D = document;
   const E = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const DZ = () => document.documentElement.dataset.design; const UPC = () => (DZ() === 'bl' ? '#1F5FB8' : DZ() === 'b' ? '#5CB0FF' : '#5FBF8F'), DNC = () => (DZ() === 'bl' ? '#B8453E' : DZ() === 'b' ? '#EB8C86' : '#E07A7A'); // up/down for sparklines, follows the look (B dark / B-Light) when the theme is switched
+  const DZ = () => document.documentElement.dataset.design; const UPC = () => (DZ() === 'bl' ? '#1F5FB8' : '#5CB0FF'), DNC = () => (DZ() === 'bl' ? '#B8453E' : '#EB8C86'); // up/down for sparklines: B-Light on light, B swoop blue / soft coral on B and dark alts n/s/g
   const TXA = D.createElement('textarea'); const dec = (s) => { TXA.innerHTML = String(s == null ? '' : s); return TXA.value; }; // feed headlines arrive with HTML entities (&#x2019;)
   const ic = (n, s, sw) => '<svg class="ic" width="' + (s || 20) + '" height="' + (s || 20) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (sw || 1.9) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + I[n] + '</svg>';
   const f2 = (v, d) => Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: d == null ? 2 : d, maximumFractionDigits: d == null ? 2 : d });
