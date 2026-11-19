@@ -8,7 +8,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   'use strict';
   const D = document;
   const E = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const DZ0 = document.documentElement.dataset.design; const UP = DZ0 === 'b' ? '#5CB0FF' : DZ0 === 'bl' ? '#1F5FB8' : DZ0 === 'c' ? '#167A4C' : '#5FBF8F', DN = DZ0 === 'b' ? '#EB8C86' : DZ0 === 'bl' ? '#B8453E' : DZ0 === 'c' ? '#B4443F' : '#E07A7A'; /* redesign preview B/C use their own up/down */ // muted up/down (same as CSS --up/--dn); used only for direction
+  const DZ = () => document.documentElement.dataset.design; const UPC = () => (DZ() === 'bl' ? '#1F5FB8' : DZ() === 'b' ? '#5CB0FF' : '#5FBF8F'), DNC = () => (DZ() === 'bl' ? '#B8453E' : DZ() === 'b' ? '#EB8C86' : '#E07A7A'); // up/down for sparklines, follows the look (B dark / B-Light) when the theme is switched
   const TXA = D.createElement('textarea'); const dec = (s) => { TXA.innerHTML = String(s == null ? '' : s); return TXA.value; }; // feed headlines arrive with HTML entities (&#x2019;)
   const ic = (n, s, sw) => '<svg class="ic" width="' + (s || 20) + '" height="' + (s || 20) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (sw || 1.9) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + I[n] + '</svg>';
   const f2 = (v, d) => Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: d == null ? 2 : d, maximumFractionDigits: d == null ? 2 : d });
@@ -32,7 +32,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   function sp(sym, up, w, h) { // the day's 5-minute closes for this stock
     const c = S.spark[sym]; w = w || 64; h = h || 26;
     if (!c || c.length < 3) return '<svg width="' + w + '" height="' + h + '" aria-hidden="true"></svg>';
-    return spark(smooth(thin(c, 40), 1), w, h, up ? UP : DN, 2, 0.22);
+    return spark(smooth(thin(c, 40), 1), w, h, up ? UPC() : DNC(), 2, 0.22);
   }
   function mtn(vals, w, h, prev, up) { // the portfolio day chart: every real 5-minute point, straight segments, previous-close baseline
     vals = (vals || []).filter((x) => isFinite(x)); if (vals.length < 3) return '<svg width="' + w + '" height="' + h + '" aria-hidden="true"></svg>';
@@ -460,7 +460,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       (fb.L.length ? '<div class="fbuy" style="margin-bottom:10px">' + fb.L.map((x) => { const q = S.q[x.s]; return '<a class="fbc" href="#stock/' + encodeURIComponent(x.s) + '">' + tl(x.s, 30) + '<b>' + E(x.s) + '</b><small>' + x.f.length + ' funds bought</small>' + (q ? '<i class="' + cls(q.pct) + '">' + pct(q.pct) + '</i>' : '') + '</a>'; }).join('') + '</div>' : '') +
       rowsBox(top.map((f) => { const nw = f.h.filter((h) => h[3] === 'new' && /^[A-Z.]{1,6}$/.test(h[0])).slice(0, 2).map((h) => h[0]); const ad = f.h.filter((h) => h[3] === 'added' && /^[A-Z.]{1,6}$/.test(h[0])).slice(0, 2).map((h) => h[0]);
         const what = nw.length ? 'New: ' + nw.join(', ') : ad.length ? 'Added: ' + ad.join(', ') : 'No new buys';
-        return '<a class="row" href="#fund/' + encodeURIComponent(f.slug) + '" style="min-height:64px">' + fundMark(f, 36) + '<span class="nm"><b>' + E(f.fund.replace(/ (Capital |Asset |Investment )?(Management|Partners|Group|Advisors|Investors|LP|& Co)$/i, '')) + '</b><small>' + E(shortD(f.filed)) + ' · <span style="color:' + (nw.length ? '#CFE4FF' : 'inherit') + '">' + E(what) + '</span></small></span>' + ic('chev', 18, 2.4) + '</a>'; }).join('')) +
+        return '<a class="row" href="#fund/' + encodeURIComponent(f.slug) + '" style="min-height:64px">' + fundMark(f, 36) + '<span class="nm"><b>' + E(f.fund.replace(/ (Capital |Asset |Investment )?(Management|Partners|Group|Advisors|Investors|LP|& Co)$/i, '')) + '</b><small>' + E(shortD(f.filed)) + ' · <span' + (nw.length ? ' class="fnew"' : '') + '>' + E(what) + '</span></small></span>' + ic('chev', 18, 2.4) + '</a>'; }).join('')) +
       (F.length > 5 ? '<p class="filh" style="margin-top:12px">Also filed · ' + F.slice(5).filter((f) => recentDay(f.filed, 21)).length + ' more, swipe</p><div class="fmore">' + F.slice(5).filter((f) => recentDay(f.filed, 21)).map((f) => '<a class="fmc" href="#fund/' + encodeURIComponent(f.slug) + '">' + fundMark(f, 22) + '<span class="fmn">' + E(f.fund.replace(/ (Capital |Asset |Investment )?(Management|Partners|Group|Advisors|Investors|LP|& Co)$/i, '').replace(/ \(.*\)$/, '')) + '</span></a>').join('') + '</div>' : '');
   }
   // Upcoming catalysts (Today): the next 10 days of FDA decisions, trial readouts, lock-ups, index changes, IPOs, economic releases and big events

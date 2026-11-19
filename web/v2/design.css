@@ -388,3 +388,27 @@ svg.xpat .ovl{fill:none;stroke:var(--ov);vector-effect:non-scaling-stroke}svg.xp
 html[data-x2t="light"] svg.xpat .xpl{stroke:#1F5FB8}
 .xleg.ovleg.many{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;align-items:flex-start} /* 7+ chips: one row you can swipe instead of hiding any */
 html[data-x2t="light"] svg.xpat{background:#F2F5FA;--chbg:#F2F5FA}
+.fnew{color:#CFE4FF;font-weight:600;display:inline!important}html[data-x2t="light"] .fnew{color:#1F5FB8}
+/* B-Light: the Today portfolio card is a light card like the rest (the old light theme kept it dark navy glass) */
+html[data-design="bl"] body .card.pglass.pglass{background:#fff!important;border:1px solid #D5DEEA!important;box-shadow:0 1px 2px rgba(16,40,80,.05),0 6px 18px rgba(16,40,80,.06)!important;color:#0B1B33!important}
+html[data-design="bl"] body .card.pglass.pglass::before,html[data-design="bl"] body .card.pglass.pglass::after,html[data-design="bl"] .hero .ribbon{display:none!important}
+html[data-design="bl"] body .pglass.pglass.pglass.pt2,html[data-design="bl"] body .pglass.pglass.pglass.pt2 .pt2k,html[data-design="bl"] body .pglass.pglass.pglass.pt2 .pt2b,html[data-design="bl"] body .pglass.pglass.pglass.pt2 .own b,html[data-design="bl"] body .pglass.pglass.pglass.pt2 .am-n b,html[data-design="bl"] body .pglass.pglass.pglass.pt2 .am-v b{color:#0B1B33!important}
+html[data-design="bl"] body .pglass.pglass.pglass.pt2 small,html[data-design="bl"] body .pglass.pglass.pglass.pt2 .pt2b small,html[data-design="bl"] body .pglass.pglass.pglass.pt2 .pt2go,html[data-design="bl"] body .pglass.pglass.pglass.pt2 .pt2t button{color:#46566D!important}
+html[data-design="bl"] body .pglass.pglass.pglass.pt2 .pt2t{background:#EEF2F7}
+html[data-design="bl"] body .pglass.pglass.pglass.pt2 .pt2t button.on{background:#fff;color:#0B1B33!important;box-shadow:0 1px 2px rgba(16,40,80,.12)}
+html[data-design="bl"] body .pglass.pglass.pglass.pt2 .pt2p{background:#EEF2F7;color:#0B1B33!important}
+html[data-design="bl"] body .pglass.pglass.pglass.pt2 .pt2p.u,html[data-design="bl"] body .pglass.pglass.pglass.pt2 .am-v small.up{color:#1F5FB8!important}html[data-design="bl"] body .pglass.pglass.pglass.pt2 .pt2p.u{background:rgba(31,95,184,.10)}
+html[data-design="bl"] body .pglass.pglass.pglass.pt2 .pt2p.d,html[data-design="bl"] body .pglass.pglass.pglass.pt2 .am-v small.dn{color:#B8453E!important}html[data-design="bl"] body .pglass.pglass.pglass.pt2 .pt2p.d{background:rgba(184,69,62,.10)}
+html[data-design="bl"] body .pglass.pglass.pglass.pt2 .acct2{background:#EEF2F7;border-color:#D5DEEA;color:#0B1B33!important}
+html[data-design="bl"] body .card.pglass .strip,html[data-design="bl"] body .card.pglass .ptog{background:#F5F7FA!important;border-color:#DCE5F0!important}
+html[data-design="bl"] body .card.pglass .rows .row+.row{border-top-color:#E5EBF2!important}
+html[data-design="bl"] body .card.pglass svg [stroke="#9CCBFF"]{stroke:#1F5FB8}html[data-design="bl"] body .card.pglass svg [stroke="#8FC0FF"]{stroke:#1F5FB8;stroke-opacity:.12}html[data-design="bl"] body .card.pglass svg line[stroke-dasharray]{stroke:rgba(31,95,184,.35)}
+html[data-design="bl"] body .card.pt2 .amenu{background:#fff!important;border:1px solid #D5DEEA!important;box-shadow:0 12px 30px rgba(16,40,80,.14)!important}html[data-design="bl"] body .card.pt2 .amenu button{color:#0B1B33!important;border-top-color:#E5EBF2!important}
+html[data-design="bl"] body .card.pglass #pt2f stop:nth-child(1){stop-color:#1F5FB8;stop-opacity:.16}html[data-design="bl"] body .card.pglass #pt2f stop:nth-child(2){stop-color:#1F5FB8;stop-opacity:.06}html[data-design="bl"] body .card.pglass #pt2f stop:nth-child(3){stop-color:#1F5FB8;stop-opacity:0}
+html[data-design="bl"] body .card.pglass .pt2w svg line:not([stroke-dasharray]){stroke:rgba(16,40,80,.07)}
+html[data-design="bl"] body .card.pglass .pt2d{background:#1F5FB8!important;box-shadow:0 0 0 3px rgba(31,95,184,.18)!important;border-color:#fff!important}
+html[data-design="bl"] body .pglass.pglass.pglass.pt2 .mixl span,html[data-design="bl"] body .pglass.pglass.pglass.pt2 .mixl b,html[data-design="bl"] body .pglass.pglass.pglass.pt2 .ptog,html[data-design="bl"] body .pglass.pglass.pglass.pt2 .ptog span,html[data-design="bl"] body .pglass.pglass.pglass.pt2 .eyeb{color:#0B1B33!important}
+html[data-design="bl"] body .card.pglass .mixr circle[stroke="#BBD7F9"],html[data-design="bl"] body .card.pglass .mixl i[style*="#BBD7F9"]{stroke:#1F5FB8;background:#1F5FB8!important}
+html[data-design="bl"] body .card.pglass .mixr circle[stroke="#7BB0F2"],html[data-design="bl"] body .card.pglass .mixl i[style*="#7BB0F2"]{stroke:#6FA0E0;background:#6FA0E0!important}
+html[data-design="bl"] body .card.pglass .mixr circle[stroke="#5E6E86"],html[data-design="bl"] body .card.pglass .mixl i[style*="#5E6E86"]{stroke:#A9B6C8;background:#A9B6C8!important}
+html[data-design="bl"] .hero .card.pglass.pt2{padding:12px 14px!important}
