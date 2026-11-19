@@ -21,10 +21,10 @@ test('the old JU/MP email logo is gone from every email, the invite and the unsu
 
 test('home page, landing and app header use the rings lockup; share tile and favicon are cache-busted', () => {
   const idx = R('index.html');
-  assert.match(idx, /og\.jpg\?v=4/); assert.doesNotMatch(idx, /og\.jpg\?v=3/);
-  assert.match(idx, /mark-rings\.png\?v=1/); assert.doesNotMatch(idx, /mark-blue\.png/);
-  assert.match(R('landing.js'), /jump-lockup\.svg\?v=6/); assert.match(R('v2/v2.js'), /jump-lockup\.svg\?v=6/); assert.match(R('v2/v2.css'), /jump-lockup\.svg\?v=6/);
-  assert.match(R('classic.html'), /og\.jpg\?v=4/);
+  assert.match(idx, /og\.jpg\?v=5/); assert.doesNotMatch(idx, /og\.jpg\?v=4/);
+  assert.match(idx, /mark-rings\.png\?v=2/); assert.doesNotMatch(idx, /mark-blue\.png/);
+  assert.match(R('landing.js'), /jump-lockup\.svg\?v=7/); assert.match(R('v2/v2.js'), /jump-lockup\.svg\?v=7/); assert.match(R('v2/v2.css'), /jump-lockup\.svg\?v=7/);
+  assert.match(R('classic.html'), /og\.jpg\?v=5/);
   const lock = R('v2/img/jump-lockup.svg');
   assert.equal((lock.match(/<path d="M/g) || []).length, 9, 'the 9 arcs of tile D');
   assert.doesNotMatch(lock, /#8FC0FF/, 'no old two-tone rings');
@@ -33,7 +33,7 @@ test('home page, landing and app header use the rings lockup; share tile and fav
   const jump = BR('wordmark.d').match(/M[^M]+/g).filter((sp) => Math.min(...sp.match(/-?\d+\.?\d*/g).filter((_, i) => i % 2 === 0).map(Number)) < 418).join('');
   assert.ok(lock.includes(jump + BR('trade_light60.d')), "rings + 'jump' + the lighter 'trade.'");
   assert.doesNotMatch(lock, /translate\(241\.3 0\)/, 'not the old JUMP + trade. lockup');
-  assert.match(R('sw.js'), /jt-shell-v22/);
+  assert.match(R('sw.js'), /jt-shell-v23/);
 });
 
 test('unsubscribe error page points to Settings › Emails', () => {

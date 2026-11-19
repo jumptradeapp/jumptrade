@@ -1,3 +1,4 @@
+# Historical (Nov 18 shrink of tile D). Current tiles come from tools/brand_rings/make.py (V5).
 # Shrink the white rings mark inside the jumptrade app tiles, keeping the exact background gradient.
 # The background is a pure vertical gradient (every row is one colour), so per row: bg = column 0.
 # Mark alpha is unmixed against white, scaled about the tile centre, and composited back.

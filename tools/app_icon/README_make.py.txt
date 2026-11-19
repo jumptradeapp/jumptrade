@@ -1,11 +1,11 @@
-import sys, io; sys.path.insert(0, '/workspace/jumptrade_tile_1118/variants/build')
-import gen, resvg_py
-from PIL import Image
-OUT = '/workspace/jumptrade_tile_1118/shipD/'
-def render(scale, size, name):
-    s = gen.svg(gen.BG_SWOOP, gen.current_mark(), scale)
-    open(OUT + name.replace('.png', '.svg'), 'w').write(s)
-    png = bytes(resvg_py.svg_to_bytes(svg_string=s, width=size, height=size))
-    Image.open(io.BytesIO(png)).convert('RGB').save(OUT + name, optimize=True)  # opaque, like the old icons
-render(0.84, 512, 'icon-512.png'); render(0.84, 192, 'icon-192.png'); render(0.84, 180, 'apple-touch-icon-v3.png')
-render(0.72, 512, 'icon-maskable-512.png')
+App tile sources and rasters are produced by tools/brand_rings/make.py (V5 Deep swoop, Nov 19 2026).
+
+  python3 tools/brand_rings/make.py
+
+Writes tools/app_icon/icon-512.svg, icon-192.svg, apple-touch-icon-v4.svg (and v3, kept in sync),
+icon-maskable-512.svg, plus the web/ PNGs (icon-512/192, apple-touch-icon-v4.png and older
+aliases, icon-maskable-512.png), favicon.png / favicon.svg / favicon.ico, lockups, email logo,
+and the og share tile.
+
+Maskable uses the same V5 tile with the rings scaled by 0.72/0.84 so they sit in the same
+safe zone as the previous tile-D maskable icon.
