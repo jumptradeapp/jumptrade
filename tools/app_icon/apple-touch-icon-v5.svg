@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs>
+  <linearGradient id="bg" x1="0.12" y1="1" x2="0.88" y2="0">
+    <stop offset="0" stop-color="#080D18"/>
+    <stop offset="0.38" stop-color="#0E2A52"/>
+    <stop offset="1" stop-color="#1E62C4"/>
+  </linearGradient>
+  <radialGradient id="sh" cx="0.82" cy="0.08" r="0.64">
+    <stop offset="0" stop-color="#7EB6F5" stop-opacity="0.42"/>
+    <stop offset="0.35" stop-color="#4A8FE8" stop-opacity="0.28"/>
+    <stop offset="1" stop-color="#4A8FE8" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="vg" cx="0.5" cy="0.55" r="0.74">
+    <stop offset="0.55" stop-color="#080D18" stop-opacity="0"/>
+    <stop offset="1" stop-color="#05080F" stop-opacity="0.40"/>
+  </radialGradient>
+  <filter id="bl" x="-20%" y="-20%" width="140%" height="140%">
+    <feGaussianBlur stdDeviation="38"/>
+  </filter>
+</defs>
+<rect width="1024" height="1024" fill="url(#bg)"/>
+<rect width="1024" height="1024" fill="url(#sh)"/>
+<path d="M-120 980 C 180 700, 560 560, 1150 520 L1150 640 C 600 680, 240 820, -120 1120Z" fill="#4A8FE8" opacity="0.11" filter="url(#bl)"/>
+<rect width="1024" height="1024" fill="url(#vg)"/>
+<g transform="translate(512.000 512.000) scale(1.000000) translate(-512 -512)" fill="none" stroke="#FFFFFF" stroke-width="50.000" stroke-linecap="round" stroke-linejoin="round"><path d="M555.186,681.588A175.000,175.000 0 1 1 637.274,634.194"/><path d="M248.760,556.653A267.000,267.000 0 1 1 294.287,666.564"/><path d="M749.849,243.097A359.000,359.000 0 1 1 625.953,171.565"/></g></svg>

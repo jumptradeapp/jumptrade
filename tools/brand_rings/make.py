@@ -1,8 +1,8 @@
 """jumptrade. rings brand set.
 
-Rings: tile V5 Deep swoop (Nov 19, 2026; Jason approved). Same 9-arc family as
-tile D, thicker strokes and slightly tighter angular gaps, mark ~72% of the
-tile, on a deep navy → swoop-blue gradient.
+Rings: Maze mark (Nov 19, 2026; Jason approved). Three concentric rings,
+stroke 50/1024, one staggered gap each at 1:00 / 8:15 / 5:00. App tile keeps
+the V5 Deep swoop background (deep navy → swoop-blue).
 
 Wordmark: the white rounded 'jumptrade.' Jason picked, with the lighter
 'trade.' (~60% stroke) as the default. Outlines live in this folder so the
@@ -29,70 +29,44 @@ def word_d():
     sys.path.insert(0, HERE); import lighten
     jump, _ = lighten.split(); return jump + lighten.light({'light': 0.60, 'light45': 0.45}[TRADE])
 
-# --- V5 ring geometry (1024 tile, painted outer edge matches tile D's 72%) ---
-# Tile D was radii 222/316/410, stroke 56, then scale 0.84 → outer = (410+28)*0.84.
+# --- Maze ring geometry (1024 tile; Jason approved Nov 19, 2026) ---
+# Three concentric rings, equal stroke, one gap each, staggered:
+#   outer mid-gap 1:00, middle 8:15, inner 5:00.
+# Painted outer 384 matches jt_marks_refine_1119/mark3.svg and mark3_v5_tile.png.
 CX = CY = 512.0
-MARK_OUTER = (410 + 28) * 0.84          # 367.92; 71.86% of the tile
-V5_STROKE, V5_GAP, V5_PAD = 60.0, 30.0, 4.0
-_spacing = V5_STROKE + V5_GAP
-_r_out = MARK_OUTER - V5_STROKE / 2.0
-V5_RADII = (_r_out - 2 * _spacing, _r_out - _spacing, _r_out)  # ~157.9, 247.9, 337.9
-
-# Original tile-D centerline angles (screen degrees, 0° = east, y-down) at 222/316/410.
-_ARCS_ORIG = {
-    222.0: [
-        (278.77324114479893, 147.22693600546626),
-        (122.77306399453380, 351.22675885520107),
-        (325.67592456886480, 304.32407543113520),
-    ],
-    316.0: [
-        (280.92339816495030, 145.07675490559376),
-        (124.92324509440624, 349.07660183504976),
-        (328.11810289989296, 301.88189710010704),
-    ],
-    410.0: [
-        (282.08665602975907, 143.91241943881226),
-        (126.08758056118774, 347.91334397024093),
-        (329.54787886111444, 300.45212113888556),
-    ],
-}
-
-def _expand(start, end, pad):
-    span = (start - end) % 360.0
-    ns, ne = (start + pad) % 360.0, (end - pad) % 360.0
-    nxt = (ns - ne) % 360.0
-    if nxt >= 170 or nxt <= span:
-        return start, end
-    return ns, ne
-
-def _angles(r, pad=V5_PAD):
-    keys = sorted(_ARCS_ORIG)
-    if r <= keys[0]:
-        arcs = _ARCS_ORIG[keys[0]]
-    elif r >= keys[-1]:
-        arcs = _ARCS_ORIG[keys[-1]]
-    else:
-        lo = max(k for k in keys if k <= r)
-        hi = min(k for k in keys if k >= r)
-        t = 0 if hi == lo else (r - lo) / (hi - lo)
-        arcs = [(s0 + t * (s1 - s0), e0 + t * (e1 - e0))
-                for (s0, e0), (s1, e1) in zip(_ARCS_ORIG[lo], _ARCS_ORIG[hi])]
-    return [_expand(s, e, pad) for s, e in arcs]
+PAINTED_OUTER = 384.0
+STROKE = 50.0
+RING_GAP = 42.0  # clear space between strokes (centerline spacing = STROKE+RING_GAP)
+MARK_OUTER = PAINTED_OUTER
+_r_out = PAINTED_OUTER - STROKE / 2.0          # 359
+RADII = (_r_out - 2 * (STROKE + RING_GAP),     # 175
+         _r_out - (STROKE + RING_GAP),         # 267
+         _r_out)                               # 359
+# Mid-gap angles (0° = east, clockwise, y-down).
+MAZE_MIDS = (60.0, 157.5, 300.0)  # inner 5:00, mid 8:15, outer 1:00
+MAZE_VISIBLE_DEG = 15.0           # tip-to-tip visible angular gap
 
 def _pt(r, deg):
     a = math.radians(deg)
     return CX + r * math.cos(a), CY + r * math.sin(a)
 
+def _maze_ends(r, mid, visible_deg=MAZE_VISIBLE_DEG, stroke=STROKE):
+    cap_ang = math.degrees(math.asin(min(0.999, (stroke / 2.0) / r)))
+    half = visible_deg / 2.0 + cap_ang
+    return (mid - half) % 360.0, (mid + half) % 360.0
+
 def _arc_d(r, start, end):
+    """Almost-full clockwise arc from start° to end° (large-arc, sweep=1)."""
     x1, y1 = _pt(r, start); x2, y2 = _pt(r, end)
-    return 'M%.2f %.2fA%.2f %.2f 0 0 0 %.2f %.2f' % (x1, y1, r, r, x2, y2)
+    return 'M%.3f,%.3fA%.3f,%.3f 0 1 1 %.3f,%.3f' % (x1, y1, r, r, x2, y2)
 
 def ring_paths():
     out = []
-    for r in V5_RADII:
-        for start, end in _angles(r):
-            out.append(_arc_d(r, start, end))
-    assert len(out) == 9, len(out)
+    for r, mid in zip(RADII, MAZE_MIDS):
+        a0, a1 = _maze_ends(r, mid)
+        # Clockwise from just after the gap (a1) to just before it (a0).
+        out.append(_arc_d(r, a1, a0))
+    assert len(out) == 3, len(out)
     return out
 
 ARCS = ring_paths()
@@ -107,9 +81,9 @@ VB_W, VB = RD + GAP + 472.0 + 2, '0 4 %.1f 112' % (RD + GAP + 472.0 + 2)
 MARK_VB0 = CX - MARK_OUTER
 MARK_VB = '%.2f %.2f %.2f %.2f' % (MARK_VB0, MARK_VB0, MARK_DIAM, MARK_DIAM)
 
-def rings(fill='#FFFFFF', cx=RCX, cy=RCY, k=K, extra='', stroke=V5_STROKE):
+def rings(fill='#FFFFFF', cx=RCX, cy=RCY, k=K, extra='', stroke=STROKE):
     p = ''.join('<path d="%s"/>' % d for d in ARCS)
-    return ('<g transform="translate(%.3f %.3f) scale(%.6f) translate(-512 -512)" fill="none" stroke="%s" stroke-width="%.2f" stroke-linecap="round"%s>%s</g>'
+    return ('<g transform="translate(%.3f %.3f) scale(%.6f) translate(-512 -512)" fill="none" stroke="%s" stroke-width="%.3f" stroke-linecap="round" stroke-linejoin="round"%s>%s</g>'
             % (cx, cy, k, fill, stroke, extra, p))
 
 def word(fill='#FFFFFF'):
@@ -149,7 +123,7 @@ BG_V5 = '''<defs>
 
 def tile_svg(rounded=False, mark_scale=1.0):
     """Full 1024 app tile, V5 background + rings. mark_scale < 1 shrinks the rings for maskable."""
-    mark = rings('#FFFFFF', 512, 512, mark_scale, stroke=V5_STROKE)
+    mark = rings('#FFFFFF', 512, 512, mark_scale, stroke=STROKE)
     body = BG_V5 + mark
     if rounded:
         return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">'
@@ -186,12 +160,13 @@ def save(rel, data, root=None):
 def write_app_icons():
     square = tile_svg(rounded=False)
     rounded = tile_svg(rounded=True)
-    maskable = tile_svg(rounded=False, mark_scale=0.72 / 0.84)  # same safe-zone inset as tile D's maskable
+    maskable = tile_svg(rounded=False, mark_scale=(367.92 * 0.72 / 0.84) / PAINTED_OUTER)  # same painted size as V5/tile-D maskable (315.36)
     # vector sources
     save('icon-512.svg', square, APP_ICON)
     save('icon-192.svg', square, APP_ICON)
-    save('apple-touch-icon-v3.svg', square, APP_ICON)  # keep old name in sync
+    save('apple-touch-icon-v3.svg', square, APP_ICON)  # keep old names in sync
     save('apple-touch-icon-v4.svg', square, APP_ICON)
+    save('apple-touch-icon-v5.svg', square, APP_ICON)
     save('icon-maskable-512.svg', maskable, APP_ICON)
     # rasters (opaque, like the previously shipped icons)
     def rgb(svg, size, rel):
@@ -201,7 +176,8 @@ def write_app_icons():
     rgb(square, 512, 'icon-512.png')
     rgb(square, 192, 'icon-192.png')
     for name in ('apple-touch-icon.png', 'apple-touch-icon-precomposed.png',
-                 'apple-touch-icon-v2.png', 'apple-touch-icon-v3.png', 'apple-touch-icon-v4.png'):
+                 'apple-touch-icon-v2.png', 'apple-touch-icon-v3.png', 'apple-touch-icon-v4.png',
+                 'apple-touch-icon-v5.png'):
         rgb(square, 180, name)
     rgb(maskable, 512, 'icon-maskable-512.png')
     # favicon png (rounded) + ico + svg
@@ -219,7 +195,7 @@ def main():
     save('v2/img/jump-lockup-navy.svg', lockup('#0B2A55', '#0B2A55'))  # B-Light / light sidebar
     save('v2/img/jump-rings.svg', mark())            # rings alone, white
     tile = tile_svg(rounded=True)
-    save('v2/img/jump-icon.svg', tile)               # V5 tile with rounded corners
+    save('v2/img/jump-icon.svg', tile)               # V5-deep tile, Maze rings, rounded corners
     # emails: 3x of 240x44 so it stays sharp on phones; transparent, white, sits on the navy email header
     em = png(white, 726); save('v2/img/email-logo-rings1118l.png', em)
     save('v2/img/email-logo.png', png(white, 325))   # the older email name, in case an old email is still opened

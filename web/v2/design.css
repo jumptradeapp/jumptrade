@@ -247,7 +247,7 @@ html[data-design="bl"] body .stg.dmp,html[data-design="bl"] body .stg.sty{color:
 }
 @media (min-width:1024px){
   html[data-design="bl"] body #nav.nav{background:#FFFFFF!important;border-right:1px solid #E1E7EF!important}
-  html[data-design="bl"] body #nav.nav:before{background-image:url(/v2/img/jump-lockup-navy.svg?v=2)!important}
+  html[data-design="bl"] body #nav.nav:before{background-image:url(/v2/img/jump-lockup-navy.svg?v=3)!important}
   html[data-design="bl"] body #nav .ni,html[data-design="bl"] body #nav .ni *{color:#24364F!important}
   html[data-design="bl"] body #nav .ni.on{background:#EAF2FD!important;box-shadow:inset 2px 0 0 #1F5FB8!important}
   html[data-design="bl"] body #nav .ni.on,html[data-design="bl"] body #nav .ni.on *{color:#0B2A55!important}
@@ -335,7 +335,7 @@ html[data-design] body .row.mvd .why span{color:var(--fg2)}
 html[data-design] body .xtf{flex-wrap:nowrap!important;gap:6px!important}
 html[data-design] body .xtf .chip{flex:1 1 0;min-width:44px;padding:0!important;justify-content:center}
 @media (max-width:1023px){html[data-design] body .row.mvd .nm small.why{display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2!important;white-space:normal!important}}
-@media (min-width:1024px){html[data-design="c"] body #nav.nav:before{background-image:url(/v2/img/jump-lockup-navy.svg?v=2)!important}}
+@media (min-width:1024px){html[data-design="c"] body #nav.nav:before{background-image:url(/v2/img/jump-lockup-navy.svg?v=3)!important}}
 html[data-design="c"] body .stg.fd{color:#4B5C74!important;background:#F1F4F8!important;border-color:#D5DEE9!important}
 html[data-design="c"] body .stg.ld,html[data-design="c"] body .stg.na{color:#5F6E84!important;border-color:#DCE4EE!important}
 /* watchlist on phones: the company name gets the room the mini chart had */
