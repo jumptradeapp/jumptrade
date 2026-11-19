@@ -10,6 +10,7 @@ import { sendMail } from './brief.js';
 import { TYPES, TYPE_IDS, dueTypes, cleanMail, cleanTypes, ownerList, optTypes, recipients, loadSubs, mailToOf, checkUnsub, E as mE } from './mails.js';
 import { mailJob, build as buildMailOf, deliver, lastSent, signKey } from './mailjob.js';
 import { etNow, closeOf, ahEndOf, rankFor } from './market.js';
+import { diagRoute } from './diag.js';
 // Every outside request gets a deadline so one slow source can't hang a whole response.
 const fetch = (u, o = {}) => globalThis.fetch(u, o.signal ? o : { ...o, signal: AbortSignal.timeout(o.timeoutMs || (/api\.anthropic\.com/.test(String(u)) ? 25000 : 8000)) });
 
@@ -1703,6 +1704,7 @@ async function handleFetch(req, env, ctx) {
     if (url.pathname === '/x/mailrun') { const ck0 = await vget(env, 'cronkey').catch(() => null); if (!ck0 || url.searchParams.get('k') !== ck0) return new Response('Not found', { status: 404 }); const ty = url.searchParams.get('type'); if (!TYPES[ty]) return new Response('Not found', { status: 404 });
       const r = await mailJob(ty, env, mailH(env, ctx)).catch((e) => ({ error: String(e && e.message || e) })); return json(r, 200, { 'cache-control': 'no-store' }); } // one email's send in its own run, so it has its own request budget
     if (url.pathname === '/api/public/unsub') return unsubRoute(url, req, env);
+    if (url.pathname === '/x/diag') return diagRoute(url, req, env, { vget, etNow, sendPush, vapidKeys, PUSHLAST, sendMail }); // owner health check (DIAG_KEY secret)
     if (url.pathname === '/x/rotnow') { const ck0 = await vget(env, 'cronkey').catch(() => null); if (!ck0 || url.searchParams.get('k') !== ck0) return new Response('Not found', { status: 404 }); const last = await vget(env, 'rotrun').catch(() => null); if (last && last.ok && Date.now() - last.t < 600000) return json({ wait: true, last }); const r = await rotationJob(env, ctx).catch((e) => ({ error: String(e && e.message || e) })); await vput(env, 'rotrun', Object.assign({ t: Date.now() }, r)); return json(r); }
     if (req.method === 'OPTIONS') return new Response(null, { status: 204 }); // the app only calls its own server (same origin), so no cross-site access is granted
     // Private beta: while the site is locked, every data endpoint needs a signed-in account (cookie or bearer token).
