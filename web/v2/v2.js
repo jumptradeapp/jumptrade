@@ -60,14 +60,15 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const markBad = (u) => { if (!u || IMGBAD.has(u)) return; IMGBAD.add(u); try { const b = JSON.parse(localStorage.getItem(BADK) || '{}'); b[u] = Date.now(); const k = Object.keys(b); if (k.length > 400) k.slice(0, k.length - 400).forEach((x) => delete b[x]); localStorage.setItem(BADK, JSON.stringify(b)); } catch (e) {} };
   window.v2ImgOk = function (img) { IMGOK.add(img.getAttribute('src')); img.classList.add('ok'); };
   window.v2ImgBad = function (img) { markBad(img.getAttribute('src')); img.remove(); };
-  window.v2LogoErr = function (img) { markBad(img.getAttribute('src')); const t = img.parentNode; if (!t) return; if (img.dataset.alt && !IMGBAD.has(img.dataset.alt)) { const a = img.dataset.alt; img.removeAttribute('data-alt'); img.src = a; return; } t.classList.remove('wt'); t.innerHTML = '<span class="mono2" style="font-size:' + Math.round((parseInt(t.style.width, 10) || t.offsetWidth) * 0.34) + 'px">' + E((t.dataset.s || '').slice(0, 2)) + '</span>'; };
+  window.v2LogoErr = function (img) { markBad(img.getAttribute('src')); const t = img.parentNode; if (!t) return; if (img.dataset.alt && !IMGBAD.has(img.dataset.alt)) { const a = img.dataset.alt; img.removeAttribute('data-alt'); img.src = a; return; } t.classList.remove('wt'); t.innerHTML = '<span class="mono2" style="font-size:' + Math.round((parseInt(t.style.width, 10) || t.offsetWidth) * 0.34) + 'px">' + E((t.dataset.s || '').slice(0, 2)) + '</span>'; keepLogos(t); };
   // Logo pictures are made once per ticker and size, then reused: a row that leaves the list and comes back (or a page you return
   // to) gets the same, already-drawn picture back instead of a new one that loads and fades in again.
   const LOGOS = new Map(); // 'SYM|src|px' -> [img, ...]
-  const logoKey = (img) => { const t = img.parentNode; return t && t.dataset && t.dataset.s ? t.dataset.s + '|' + img.getAttribute('src') + '|' + (img.style.width || '') : null; };
+  // A ticker with no logo gets the same initials badge back too (it used to be made new each time its row came back).
+  const logoKey = (img) => { const t = img.parentNode; return t && t.dataset && t.dataset.s ? t.dataset.s + '|' + (img.tagName === 'IMG' ? img.getAttribute('src') + '|' + (img.style.width || '') : 'badge|' + img.style.fontSize) : null; };
   function keepLogos(root) {
-    root.querySelectorAll('.tl[data-s] > img').forEach((img) => { const k = logoKey(img); if (!k) return;
-      const L = LOGOS.get(k) || []; const src = img.getAttribute('src'); const spare = img.isConnected ? null : L.find((x) => !x.isConnected && x !== img && x.getAttribute('src') === src);
+    root.querySelectorAll('.tl[data-s] > img, .tl[data-s] > .mono2').forEach((img) => { const k = logoKey(img); if (!k) return;
+      const L = LOGOS.get(k) || []; const src = img.getAttribute('src'); const spare = img.isConnected ? null : L.find((x) => !x.isConnected && x !== img && x.getAttribute('src') === src && x.textContent === img.textContent);
       if (spare) { img.replaceWith(spare); return; }
       if (L.indexOf(img) < 0) { L.push(img); LOGOS.set(k, L); } });
     if (LOGOS.size > 800) { const k = LOGOS.keys().next().value; LOGOS.delete(k); }

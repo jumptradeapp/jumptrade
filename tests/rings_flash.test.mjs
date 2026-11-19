@@ -60,3 +60,12 @@ test('steady: a failed or short list is topped up from its last good copy, never
   assert.deepEqual((await worker.steady('t1', async () => next)).map((q) => q.symbol), next.map((q) => q.symbol), 'a full fresh answer replaces the old one');
   assert.deepEqual(await worker.steady('t2', async () => { throw new Error('x'); }), [], 'nothing saved yet: empty, not made up');
 });
+
+test('a ticker with no logo keeps one initials badge: remembered, drawn first time, reused, never faded', () => {
+  const js = R('v2/v2.js'), css = R('v2/v2.css');
+  assert.match(js, /localStorage\.setItem\(BADK/, 'failed logo URLs are remembered on the device');
+  assert.match(js, /if \(IMGBAD\.has\(src\)\) return '<span class="tl" ' \+ box \+ '><span class="mono2"/, 'a known miss draws the badge with no <img> try');
+  assert.match(js, /\.tl\[data-s\] > img, \.tl\[data-s\] > \.mono2/, 'badges are pooled like logos');
+  assert.match(js, /'<\/span>'; keepLogos\(t\); \};/, 'the badge made on the first error joins the pool');
+  assert.match(css, /\.tl \.mono2\{[^}]*animation:none!important;transition:none!important;opacity:1!important/);
+});
