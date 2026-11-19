@@ -1224,3 +1224,4 @@ html body .tnc .tnr small{font-size:12px;line-height:16px;color:var(--fg2);white
 html body .tnc .tnr .skel{height:14px;margin:0}
 html body .tnc .tne{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;font-size:14px;color:var(--fg2);padding:12px}
 html body .tnc a.tnr:hover b{color:#93C0F6}html[data-x2t="light"] .tnc .tnr b{color:#10203A}html[data-x2t="light"] .tnc a.tnr:hover b{color:#1F5FB8}
+html[data-x2t="light"] .brk{color:#92400E!important}
