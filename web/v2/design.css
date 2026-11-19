@@ -429,3 +429,23 @@ html[data-design] body .wrap>.top:not(.tc):has(+.sth)+.sth{padding-left:46px;mar
 html[data-design="bl"] #jtGate .lpLink{color:#1F5FB8!important;border-color:#1F5FB8!important}
 html[data-design="bl"] #jtGate .lpBtn{background:#1F5FB8!important;color:#fff!important;border-color:#1F5FB8!important}
 html[data-design="bl"] #jtGate .lpBtn2{color:#0B1B33!important;border-color:#C3CFDF!important;background:#fff!important}
+/* ---- B / B-Light breathing room + bigger company logos (Jason Nov 19 12:33 PM ET: "feels super cramped", "needs company logos") ---- */
+html:is([data-design="b"],[data-design="bl"]) body .card{border-radius:10px!important}
+html:is([data-design="b"],[data-design="bl"]) body .card.rows{padding:4px 16px!important}
+html:is([data-design="b"],[data-design="bl"]) body .row{min-height:60px!important;gap:12px!important;padding-top:10px!important;padding-bottom:10px!important}
+html:is([data-design="b"],[data-design="bl"]) body .row.mvd{min-height:64px!important;padding:12px 14px!important;gap:12px!important}
+html:is([data-design="b"],[data-design="bl"]) body .nm b{line-height:21px!important}
+html:is([data-design="b"],[data-design="bl"]) body .nm small{line-height:18px!important;margin-top:2px!important}
+html:is([data-design="b"],[data-design="bl"]) body .row.mvd .nm small.why{line-height:17px!important;margin-top:4px!important}
+html:is([data-design="b"],[data-design="bl"]) body .wrap>.lab,html:is([data-design="b"],[data-design="bl"]) body .lab{margin:24px 0 10px!important}
+html:is([data-design="b"],[data-design="bl"]) body .q b{line-height:21px!important}html:is([data-design="b"],[data-design="bl"]) body .q small{line-height:18px!important;margin-top:2px}
+/* logos: 38px tiles in lists (36px in Movers rows), the picture fills more of the tile, letter badges sized to match */
+html:is([data-design="b"],[data-design="bl"]) body .row>.tl,html:is([data-design="b"],[data-design="bl"]) body a.row .tl{width:38px!important;height:38px!important;flex:none;border-radius:8px!important}
+html:is([data-design="b"],[data-design="bl"]) body .row.mvd>.tl{width:36px!important;height:36px!important}
+html:is([data-design="b"],[data-design="bl"]) body .tl>img{width:80%!important;height:80%!important;object-fit:contain}
+html:is([data-design="b"],[data-design="bl"]) body .row .tl>.mono2{font-size:13px!important;font-weight:700}
+html:is([data-design="b"],[data-design="bl"]) body a.fbc .tl{width:36px!important;height:36px!important}
+html:is([data-design="b"],[data-design="bl"]) body .xsgi .tl{width:32px!important;height:32px!important}
+html:is([data-design="b"],[data-design="bl"]) body .row .nm{min-width:0}
+@media (min-width:720px){html:is([data-design="b"],[data-design="bl"]) body .row.mvd{padding:9px 14px!important;min-height:60px!important}html:is([data-design="b"],[data-design="bl"]) body .row.mvd .nm small.why{margin-top:2px!important}}
+@media (max-width:719px){html:is([data-design="b"],[data-design="bl"]) body .row.mvd{padding:10px 12px!important}}
