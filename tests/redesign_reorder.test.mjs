@@ -32,13 +32,13 @@ test('shipped look: B for dark, B-Light for light; dark alts via ?design=n|s|g; 
   const vx = R('v2/v2x.js');
   assert.match(vx, /let dz = t === 'light' \? 'bl' : 'b'/);
   assert.match(vx, /if \(t !== 'light' && \/\^\[nsg\]\$\/\.test\(alt\)\) dz = alt/);
-  assert.match(R('sw.js'), /jt-shell-v26/);
+  assert.match(R('sw.js'), /jt-shell-v27/);
   assert.match(R('sw.js'), /'\/v2\/design\.css'/);
   assert.match(idx, /\/v2\/design\.css\?v=\d+/);
   const css = R('v2/design.css');
   assert.match(css, /\.mvrow\.flp\{will-change:transform/);
   assert.match(css, /content-visibility:auto/);
-  assert.match(css, /html\[data-design="bl"\]\{--up:#1F5FB8;--dn:#B8453E/);
+  assert.match(css, /html:is\(\[data-design="bl"\],\[data-design="l1"\],\[data-design="l2"\],\[data-design="l3"\]\)\{--up:#1F5FB8;--dn:#B8453E/);
 });
 
 test('refresh only re-patches what changed (memoized sections/rows/cells)', () => {
