@@ -33,7 +33,7 @@ test('home page, landing and app header use the rings lockup; share tile and fav
   const jump = BR('wordmark.d').match(/M[^M]+/g).filter((sp) => Math.min(...sp.match(/-?\d+\.?\d*/g).filter((_, i) => i % 2 === 0).map(Number)) < 418).join('');
   assert.ok(lock.includes(jump + BR('trade_light60.d')), "rings + 'jump' + the lighter 'trade.'");
   assert.doesNotMatch(lock, /translate\(241\.3 0\)/, 'not the old JUMP + trade. lockup');
-  assert.match(R('sw.js'), /jt-shell-v18/);
+  assert.match(R('sw.js'), /jt-shell-v19/);
 });
 
 test('unsubscribe error page points to Settings › Emails', () => {

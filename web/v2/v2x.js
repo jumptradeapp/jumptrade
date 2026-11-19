@@ -92,7 +92,7 @@
     const base = opt.base != null ? '<line x1="0" x2="' + W + '" y1="' + ys(opt.base).toFixed(1) + '" y2="' + ys(opt.base).toFixed(1) + '" stroke="rgba(187,215,249,.35)" stroke-dasharray="3 4"/>' : '';
     return '<svg class="xch" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="Price chart"><defs><linearGradient id="xg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5B9BEA" stop-opacity=".32"/><stop offset="1" stop-color="#5B9BEA" stop-opacity="0"/></linearGradient></defs>' + base +
       '<path d="' + ln + 'L' + xs(c.length - 1).toFixed(1) + ' ' + H + 'L' + xs(0).toFixed(1) + ' ' + H + 'Z" fill="url(#xg)"/>' + ov.map((l) => '<path d="' + path(l.v) + '" fill="none" stroke="' + l.c + '" stroke-width="1.3"' + (l.dash ? ' stroke-dasharray="4 3"' : '') + '/>').join('') +
-      '<path d="' + ln + '" fill="none" stroke="#93C0F6" stroke-width="1.8" stroke-linejoin="round"/></svg>' + (ov.some((l) => l.n) ? '<div class="xleg">' + ov.filter((l) => l.n).map((l) => '<span><i style="background:' + l.c + '"></i>' + l.n + '</span>').join('') + '</div>' : '') + (up ? '' : '');
+      '<path d="' + ln + '" fill="none" stroke="#93C0F6" stroke-width="1.8" stroke-linejoin="round"/></svg>' + (ov.some((l) => l.n) ? '<div class="xleg">' + ov.filter((l) => l.n).map((l) => '<span><i style="background:' + l.c + '"></i>' + l.n + '</span>').join('') + '</div>' :(opt.lines || []).some((l) => l.n) ? '<div class="xleg" aria-hidden="true"><span>&nbsp;</span></div>' : '') + (up ? '' : '');
   }
   X.chart = chart;
 

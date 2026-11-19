@@ -1044,7 +1044,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const tgtCard = anTarget(tg, cur, rN || (tg && tg.analyst_count)) + anMix(S.rat[sym]) + anEps(S.eps[sym]);
     return '<div class="wrap">' + backbar(E(sym), 'javascript:history.back()') +
       '<div class="sth">' + tl(sym, 48) + '<div class="nm"><h1 style="margin:0">' + E(sym) + '</h1><small>' + E(nameOf(sym)) + '</small></div>' + (q ? qv(q.price, q.chg, q.pct) : qv(null)) + '</div>' + '<div class="stg2"><div class="stL">' + (window.V2X && V2X.stockTop ? V2X.stockTop(sym) : '') + myPos(sym, q) +
-      (false ? '' : lab('radar', 'Setup', '', '') + (x && x.tag ? setupBox(sym, sess) : x ? '<p class="note">No setup read for this session.</p>' : rowsBox(skel(2), 'padding:14px')) + facts +
+      (false ? '' : lab('radar', 'Setup', '', '') + (x && x.tag ? setupBox(sym, sess) : x ? '<p class="note">No setup read for this session.</p>' : rowsBox(skel(2), 'padding:14px;min-height:104px')) + facts +
       '<p class="note">Updates through the trading day. Float and short interest are reported twice a month. A rules-based read, not advice.</p>') +
       '</div><div class="stR">' + lab('news', 'Why it’s moving', '', '') + '<div class="card" style="padding:12px 14px"><small class="why" style="white-space:normal;color:' + w.c + '">' + E(w.t) + '</small>' + (w.h && w.h.url ? '<a class="srcl" href="' + E(w.h.url) + '" target="_blank" rel="noopener">Open the article</a>' : '') + '</div>' +
       lab('activity', 'Analyst ratings', 'All calls', '#analysts') + tgtCard +

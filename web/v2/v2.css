@@ -1199,3 +1199,19 @@ html body .lab>a:not(.labt){z-index:3}
 html body .pt2 a.pt2p.pt2cn{z-index:3}
 html body .xlink::after{inset:-14px -6px}html body .xlink{z-index:2}
 html body .xjc.xjres{min-height:447px}
+/* stock page, phones: the research column below the fold lays out only when it nears the screen, so sections filling in down there never shift the page (and the first screen draws sooner) */
+@media (max-width:1023px){.stR>:not(.lab){content-visibility:auto;contain-intrinsic-size:auto 240px;overflow-clip-margin:16px}}
+/* a section's "See all" link reaches 44px without covering the filter chips just below it (Today › Deals measured 38px) */
+html body .lab>a:not(.labt)::after{height:44px}html body .lab+.chips,html body .lab+div>.chips:first-child{padding-top:8px!important}
+/* signed out: the app behind the landing page is covered, so screen readers skip it too (one set of landmarks, one h1) */
+html.jt-gated body>#app,html.jt-gated body>#nav{visibility:hidden}
+/* light theme: last real contrast misses (WCAG AA on the tinted boxes, not just on white) */
+html[data-x2t="light"]{--up:#12703A;--dn:#B91C1C}
+html[data-x2t="light"] :is(.stbh small,.stn,.stbox li,.xplan small,.stg.fd){color:#46556A!important}
+html[data-x2t="light"] .hotl,html[data-x2t="light"] .hotc b{color:#174A94!important}
+html[data-x2t="light"] [style*="color:#5FBF8F" i]{color:#12703A!important}html[data-x2t="light"] [style*="color:#E07A7A" i]{color:#B91C1C!important}html[data-x2t="light"] [style*="color:#CFE4FF" i]{color:#1F5FB8!important}
+html[data-x2t="light"] .hcard{background:#fff!important;border-color:rgba(20,50,90,.14)!important;box-shadow:0 1px 2px rgba(20,50,90,.06)}
+html body .sring b{font-size:12px;letter-spacing:-.02em}
+html[data-x2t="light"] .up{color:#12703A!important}html[data-x2t="light"] .dn{color:#B91C1C!important}
+html[data-x2t="light"] .stg.sq{color:#fff!important;background:linear-gradient(135deg,#1F5FB8,#2E6DD0)!important}html[data-x2t="light"] .stg.ct{color:#174A94!important}
+html body .srcl::after{inset:-15px -6px}
