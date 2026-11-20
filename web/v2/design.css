@@ -1730,3 +1730,54 @@ html[data-design="d7c2"] body .pt2h{gap:8px!important;align-items:center!importa
 html[data-design="d7c2"] body .acct2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;font-size:12px!important}
 html[data-design="d7c2"] body .mvhd{letter-spacing:.06em!important;white-space:nowrap;overflow:hidden}
 html[data-design="d7c2"] body .mvhd .nm{overflow:hidden;text-overflow:ellipsis}
+
+/* Pinned iOS tab bar: soft rounded swoop-blue pill on the active tab. Desktop sidebar keeps its rail. */
+@media (max-width:1023px){
+  html[data-design="d7c2"] body #nav.nav,
+  html[data-design="d7c2"] body .nav{
+    position:fixed!important;left:0!important;right:0!important;bottom:0!important;top:auto!important;
+    width:auto!important;margin:0!important;
+    height:calc(64px + env(safe-area-inset-bottom,0px))!important;
+    padding:0 4px env(safe-area-inset-bottom,0px)!important;
+    z-index:100
+  }
+  html[data-design="d7c2"] body #nav .ni,
+  html[data-design="d7c2"] body .ni{
+    position:relative!important;
+    flex:1 1 0!important;width:auto!important;
+    height:auto!important;min-height:44px!important;
+    margin:0!important;padding:8px 2px 4px!important;
+    display:flex!important;flex-direction:column!important;
+    align-items:center!important;justify-content:flex-start!important;
+    gap:4px!important;
+    background:transparent!important;border:0!important;box-shadow:none!important;
+    border-radius:0!important;color:#9A9AA0!important;overflow:visible
+  }
+  html[data-design="d7c2"] body #nav .ni span,
+  html[data-design="d7c2"] body .ni span{
+    position:relative;z-index:1;
+    font-family:GeistSans,Inter,system-ui,sans-serif!important;
+    font-size:12px!important;line-height:14px!important;font-weight:500!important;color:inherit!important
+  }
+  html[data-design="d7c2"] body #nav .ni svg,
+  html[data-design="d7c2"] body .ni svg{position:relative;z-index:1;flex:none}
+  html[data-design="d7c2"] body #nav .ni.on,
+  html[data-design="d7c2"] body #nav .ni.on *,
+  html[data-design="d7c2"] body .ni.on,
+  html[data-design="d7c2"] body .ni.on *{
+    background:transparent!important;border:0!important;box-shadow:none!important;color:#F4F4F5!important
+  }
+  html[data-design="d7c2"] body #nav .ni.on span,
+  html[data-design="d7c2"] body .ni.on span{color:#F4F4F5!important;font-weight:600!important}
+  html[data-design="d7c2"] body #nav .ni.on:before,
+  html[data-design="d7c2"] body #nav .ni.on::before,
+  html[data-design="d7c2"] body .ni.on:before,
+  html[data-design="d7c2"] body .ni.on::before{
+    content:""!important;position:absolute!important;top:4px!important;left:50%!important;right:auto!important;
+    transform:translateX(-50%)!important;
+    width:48px!important;height:28px!important;border-radius:999px!important;
+    background:rgba(92,176,255,.22)!important;
+    box-shadow:0 0 10px rgba(92,176,255,.21)!important;
+    z-index:0!important;pointer-events:none!important
+  }
+}

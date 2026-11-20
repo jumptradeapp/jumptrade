@@ -142,7 +142,7 @@ h1{font-size:31px;line-height:37px;font-weight:700;letter-spacing:-.01em;margin-
 :root{--sat:max(env(safe-area-inset-top,0px),8px)}
 html{background:#030A15;-webkit-text-size-adjust:100%}
 html,body{min-height:100%}
-body{max-width:480px;margin:0 auto;min-height:100vh;overflow-x:hidden;padding-bottom:calc(118px + env(safe-area-inset-bottom,0px))}
+body{max-width:480px;margin:0 auto;min-height:100vh;padding-bottom:calc(118px + env(safe-area-inset-bottom,0px))}
 a{color:inherit;text-decoration:none;-webkit-tap-highlight-color:transparent;cursor:pointer}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .bgfx{position:fixed;left:0;right:0;top:0;bottom:0}
@@ -865,7 +865,8 @@ html[data-x2t] .hero+*{margin-top:14px!important}
 .pt2k{font-size:14px;font-weight:600;color:#fff;margin-right:10px}.pt2h .acct2{margin-right:auto}
 .pt2 .ptog{margin-top:10px!important;width:100%}
 /* keep the page locked: no sideways drift or rubber-band wobble */
-html,body{overflow-x:hidden;max-width:100%;overscroll-behavior:none}.app2,.wrap{overflow-x:clip}
+/* overflow-x:hidden on html/body makes iOS treat them as a scroll container, so position:fixed nav rolls with the page. Clip sideways overflow on the inner app wrappers, which are siblings of #nav, not ancestors. */
+html,body{max-width:100%;overscroll-behavior:none}.app2,.wrap,#app{overflow-x:clip}
 html body .top.tc .brand img{height:26px!important;width:auto!important}
 
 /*ptile: portfolio as its own tile*/html[data-x2t] .hero.ptile{position:relative;margin:6px 0 0!important;padding:4px 12px 12px!important;border-radius:22px;overflow:hidden;isolation:isolate}html[data-x2t] .hero.ptile:before{top:0!important;border-radius:22px!important}html[data-x2t] .hero.ptile .ribbon{top:-4px!important}
