@@ -1956,3 +1956,12 @@ html[data-design="d7c2"] body .ajsheet{border-radius:var(--r-card,24px) var(--r-
 @media (min-width:1024px){
   html[data-design="d7c2"] body .ajsheet{border-radius:0}
 }
+
+/* Consistency pass: one radius scale on remaining tiles and list rows. */
+html[data-design="d7c2"] body .card.rows .row,
+html[data-design="d7c2"] body .rbar{
+  border-radius:var(--r-tile,14px)!important
+}
+html[data-design="d7c2"] body .hixn{font-size:12px;line-height:16px}
+html[data-design="d7c2"] body .ajbar{margin:4px 0 8px}
+html[data-design="d7c2"] body .ajbtn{border-radius:var(--r-pill,999px)!important}

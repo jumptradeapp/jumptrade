@@ -1,6 +1,6 @@
 /* jumptrade. service worker: push notifications + instant app open (app files cached, live data never cached) */
-const V = 'jt-shell-v34';
-const SHELL = ['/', '/index.html', '/v2/v2.css', '/v2/design.css', '/v2/dates.js', '/v2/v2.js', '/v2/v2x.js', '/shim.js', '/auth.js', '/nthumb.js', '/dip.js', '/val.js', '/icon-192.png', '/apple-touch-icon.png', '/apple-touch-icon-v4.png', '/apple-touch-icon-v5.png'];
+const V = 'jt-shell-v35';
+const SHELL = ['/', '/index.html', '/v2/v2.css', '/v2/design.css', '/v2/dates.js', '/v2/v2.js', '/v2/v2x.js', '/v2/asksheet.js', '/shim.js', '/auth.js', '/nthumb.js', '/dip.js', '/val.js', '/icon-192.png', '/apple-touch-icon.png', '/apple-touch-icon-v4.png', '/apple-touch-icon-v5.png'];
 
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(V).then((c) => c.addAll(SHELL).catch(() => {}))); self.skipWaiting(); });
 self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== V).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });

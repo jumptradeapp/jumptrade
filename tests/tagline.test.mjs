@@ -18,10 +18,10 @@ test('landing headline bolds only jump; the rest of the sentence is regular and 
   assert.doesNotMatch(design, /#jtGate \.lp h1\{[^}]*font-weight:700!important/);
   assert.match(design, /#jtGate \.lp h1 b\{font-weight:700!important;color:#FFFFFF!important/);
   const idx = R('index.html');
-  assert.match(idx, /landing\.js\?v=\d+/);
-  assert.match(idx, /v2\/design\.css\?v=\d+/);
-  assert.match(idx, /v2\/v2\.css\?v=\d+/);
-  assert.match(R('sw.js'), /jt-shell-v\d+/);
+  assert.match(idx, /landing\.js\?v=10/);
+  assert.match(idx, /v2\/design\.css\?v=18/);
+  assert.match(idx, /v2\/v2\.css\?v=104/);
+  assert.match(R('sw.js'), /jt-shell-v35/);
 });
 
 test('classic splash and share tile already bold JUMP; intro and Ask Jump now do too', () => {
