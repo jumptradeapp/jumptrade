@@ -7,7 +7,7 @@ import { Webull, positionsResult, parsePositions } from './webull.js';
 import { makeVapid, sendPush, PUSHLAST } from './push.js';
 import { authRoutes, sessionFrom, KINDS } from './auth.js';
 import { sendMail } from './brief.js';
-import { TYPES, TYPE_IDS, dueTypes, windowFor, cleanMail, cleanTypes, ownerList, optTypes, recipients, loadSubs, mailToOf, checkUnsub, E as mE } from './mails.js';
+import { TYPES, TYPE_IDS, dueTypes, windowFor, cleanMail, cleanTypes, ownerList, optTypes, recipients, loadSubs, mailToOf, checkUnsub, E as mE, SECTOR_TICKERS, themeOf } from './mails.js';
 import { mailJob, build as buildMailOf, deliver, lastSent, signKey } from './mailjob.js';
 import { etNow, closeOf, ahEndOf, rankFor } from './market.js';
 import { diagRoute } from './diag.js';
@@ -1328,7 +1328,7 @@ function mailH(env, ctx) {
     etNow: () => etNow(), vget: (...a) => vget(...a), vput: (...a) => vput(...a), vlease: (...a) => vlease(...a),
     wbCall: async (e, t, i) => { const p = await tool(t, i); return p == null ? null : { payload: p }; }, aiCall: (...a) => aiCall(...a), // the morning brief's own calls
     ai: env.ANTHROPIC_API_KEY ? (sys, user, max) => aiCall(env, sys, user, max) : null,
-    snap: (list) => { const L = syms(list); const etf = L.filter((s) => /^(SPY|QQQ|DIA|IWM)$/.test(s) || GROUPS.some((g) => g[2] === s)); const st = L.filter((s) => etf.indexOf(s) < 0);
+    snap: (list) => { const L = syms(list); const etf = L.filter((s) => /^(SPY|QQQ|DIA|IWM)$/.test(s) || s.charAt(0) === '^' || GROUPS.some((g) => g[2] === s) || SECTOR_TICKERS.indexOf(s) >= 0); const st = L.filter((s) => etf.indexOf(s) < 0);
       return Promise.all([snap(etf, 'US_ETF'), snap(st, 'US_STOCK')]).then((r) => Object.assign({}, r[0], r[1])); },
     rank: async (rank_type, direction, n) => { const p = await tool('get_gainers_losers', { category: 'US_STOCK', rank_type, sort_by: 'CHANGE_RATIO', direction, page_size: String(n || 40), page_index: '1' }); let rows = arr0(p);
       if (rank_type === 'AFTER_MARKET' && rows.length) { // after hours: read each name's after-hours price fresh, measured against today's close
@@ -1340,6 +1340,12 @@ function mailH(env, ctx) {
     analyst: async (list, days) => { const L = syms(list); if (!L.length) return []; const p = await T.get_analyst_actions({ symbols: L, days: days || 1 }).catch(() => null); return (p && p.data) || []; },
     earnWeek: () => T.get_earnings_week({}),
     sectorsDay: async () => { const q = await snap(GROUPS.map((g) => g[2]), 'US_ETF'); return GROUPS.map((g) => { const x = q[g[2]]; if (!x || !(+x.price > 0) || x.change_ratio == null) return null; const pc = +x.pre_close; return { name: g[1], etf: g[2], pct: +x.change_ratio * 100, v: { px: +x.price, ch: x.change != null ? +x.change : pc > 0 ? +x.price - pc : null, pct: +x.change_ratio * 100 } }; }).filter((x) => x && x.v.ch != null); },
+    sectorsMajor: async (sess) => { const q = await snap(SECTOR_TICKERS, 'US_ETF'); return SECTOR_TICKERS.map((etf, i) => { const x = q[etf]; if (!x || !(+x.price > 0)) return null;
+      let px, ch, pct, base;
+      if (sess === 'ext') { px = +x.extend_hour_last_price; base = +x.price; if (!(px > 0) || !(base > 0)) return null; ch = x.extend_hour_change != null ? +x.extend_hour_change : px - base; pct = x.extend_hour_change_ratio != null ? +x.extend_hour_change_ratio * 100 : (ch / base) * 100; }
+      else { px = +x.price; if (x.change_ratio == null) return null; const pc = +x.pre_close; ch = x.change != null ? +x.change : pc > 0 ? px - pc : null; pct = +x.change_ratio * 100; if (ch == null) return null; }
+      const names = { XLK: 'Tech', XLF: 'Financials', XLE: 'Energy', XLV: 'Health', XLY: 'Consumer', XLP: 'Staples', XLI: 'Industrials', XLB: 'Materials', XLU: 'Utilities', XLRE: 'Real Estate', XLC: 'Comms' };
+      return { name: names[etf] || etf, etf, pct, v: { px, ch, pct } }; }).filter(Boolean); },
     groups: GROUPS.map((g) => ({ name: g[1], etf: g[2], members: g[3].split(',') })),
     weekChg: (list) => weekChg(list), weekSrc: 'Yahoo Finance daily closes',
     macro: async () => { const n = etNow(); const base = new Date(n.day + 'T12:00:00Z'); const wd = base.getUTCDay(); const mon = new Date(base.getTime() + ((8 - wd) % 7 || 7) * 864e5); const fri = new Date(mon.getTime() + 4 * 864e5);
@@ -1381,8 +1387,10 @@ async function mailRoutes(url, req, env) {
   if (url.pathname === '/api/admin/mail' && req.method === 'GET') return json(await view(list), 200, { 'cache-control': 'no-store' });
   if (url.pathname === '/api/admin/mail/preview' && req.method === 'GET') { // the email as it would go out now, shown in the browser; nothing is sent
     const ty = url.searchParams.get('type') || 'morning'; if (!TYPES[ty]) return json({ error: 'bad_type' }, 400);
-    const m = await buildMailOf(ty, env, mailH(env, null)); const v = ty === 'morning' && url.searchParams.get('mine') === '0' ? m.other : m;
-    return new Response(String(v.html).split('{{UNSUB}}').join('#unsubscribe-preview').split('{{UNSUB_ALL}}').join('#unsubscribe-preview'), { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-subject': encodeURIComponent(v.subject) } }); }
+    const theme = themeOf(url.searchParams.get('theme')).id;
+    const H = mailH(env, null); H.theme = theme;
+    const m = await buildMailOf(ty, env, H); const v = ty === 'morning' && url.searchParams.get('mine') === '0' ? m.other : m;
+    return new Response(String(v.html).split('{{UNSUB}}').join('#unsubscribe-preview').split('{{UNSUB_ALL}}').join('#unsubscribe-preview'), { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-subject': encodeURIComponent(v.subject), 'x-theme': theme } }); }
   let b = {}; try { b = JSON.parse((await req.text()).slice(0, 8000)); } catch (e) {}
   if (url.pathname === '/api/admin/mail' && req.method === 'POST') { // the classic Admin page: the whole list of addresses at once (new ones get the morning brief)
     const raw = Array.isArray(b.to) ? b.to : []; const bad = raw.filter((x) => String(x).trim() && !cleanMail(x)).map((x) => String(x).slice(0, 80));

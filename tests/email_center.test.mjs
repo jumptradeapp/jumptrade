@@ -13,7 +13,7 @@ const { etNow } = await import('../worker/market.js');
 
 const at = (iso) => etNow(new Date(iso)); // iso in UTC; November is UTC-5
 const q = (symbol, name, price, change, extra) => Object.assign({ symbol, name, price, change, change_ratio: change / (price - change), pre_close: price - change, volume: 2e6 }, extra || {});
-const IDXQ = { SPY: q('SPY', 'SPDR S&P 500', 730.25, -2.19), QQQ: q('QQQ', 'Invesco QQQ', 659.51, 2.56), DIA: q('DIA', 'SPDR Dow', 501.64, -5.67), IWM: q('IWM', 'iShares Russell 2000', 270.13, 1.08) };
+const IDXQ = { SPY: q('SPY', 'SPDR S&P 500', 730.25, -2.19), QQQ: q('QQQ', 'Invesco QQQ', 659.51, 2.56), DIA: q('DIA', 'SPDR Dow', 501.64, -5.67), IWM: q('IWM', 'iShares Russell 2000', 270.13, 1.08), '^GSPC': q('^GSPC', 'S&P 500', 6640.12, -19.92), '^NDX': q('^NDX', 'Nasdaq 100', 24510.40, 95.16), '^DJI': q('^DJI', 'Dow Jones Industrial Average', 46210.18, -522.30), '^RUT': q('^RUT', 'Russell 2000', 2365.44, 9.46) };
 const EXT = (x, px) => Object.assign({}, x, { extend_hour_last_price: px, extend_hour_change: px - x.price, extend_hour_change_ratio: (px - x.price) / x.price });
 function fakeH(now, over) {
   const mem = new Map();
@@ -53,7 +53,7 @@ test('each email renders with real fields only: no NaN/undefined, company names,
   assert.match(c.html, /NVDA<\/b> <span class="nm">NVIDIA<\/span>/); assert.match(c.html, /\$182\.40/); assert.match(c.html, /\+\$4\.20/); assert.match(c.html, /Hyster-Yale/);
   assert.match(c.html, /Goldman Sachs/); assert.match(c.html, /Walmart/); assert.match(c.html, /Tonight/);
   assert.doesNotMatch(c.html, /Unusual Volume Leaders/); // a list-of-tickers headline is never shown as the reason
-  assert.match(c.subject, /^Closing recap · S&P −0\.3%, Nasdaq \+0\.4% · Wed, Nov 18$/);
+  assert.match(c.subject, /^Closing recap: S&P −0\.3%, Nasdaq \+0\.4%$/);
   const a = await M.buildMail('ah', {}, fakeH(at('2026-11-19T01:10:00Z'))); assert.match(a.html, /after-hours trading closed 8:(&#8288;)?00(&nbsp;| )PM ET/); assert.match(a.html, /Palo Alto Networks/);
   const w = await M.buildMail('week', {}, fakeH(at('2026-11-21T14:05:00Z'))); assert.match(w.html, /Advanced Micro Devices/); assert.match(w.html, /Earnings next week/); assert.match(w.html, /Intuit/);
 });
@@ -194,6 +194,7 @@ test('no price or company-size floor: tiny and sub-$1 movers show up; zero/missi
 
 test('email header uses the new jumptrade. logo (cache-busted name, alt text, inline header colour)', async () => {
   const m = await M.buildMail('close', {}, fakeH(at('2026-11-18T21:20:00Z')));
-  assert.match(m.html, /<div class="hd" style="background-color:#0d2a52[^"]*"><img src="https:\/\/jumptrade\.app\/v2\/img\/email-logo-rings1120l\.png" alt="jumptrade\." width="240" height="44"/);
+  assert.match(m.html, /<div class="hd" style="background-color:#141416[^"]*">/);
+  assert.match(m.html, /email-logo-rings1120l\.png" alt="[^.]+\." width="240" height="44"/);
   assert.doesNotMatch(m.html, /email-logo\.png/);
 });

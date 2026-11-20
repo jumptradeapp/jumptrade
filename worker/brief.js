@@ -3,7 +3,7 @@
 // Who gets it and when it goes out: see mails.js (the email center). Numbers always come from the data, never from the AI.
 
 const FROM = 'JUMPTRADE <brief@jumptrade.app>';
-import { E, ND, fmtPct, fmtPx, fmtChg, srow, card, bullets, idxTiles, shell, IDX, dateLong, dateShort, hmTxt, shortName, unsubUrl, ORIGIN, MAIL_RE, cleanMail, recipients, loadSubs, realMover } from './mails.js';
+import { E, ND, fmtPct, fmtPx, fmtChg, fmtPxOf, fmtChgOf, srow, bullets, shell, INDEX_SYMS, dateShort, dateShortY, hmTxt, shortName, unsubUrl, ORIGIN, MAIL_RE, cleanMail, recipients, loadSubs, realMover, themeOf, sectionBlock, pulseBlock, moveSubject, dateLineOf, SECTOR_TICKERS, SECTOR_ETFS, pickIndexTiles, pulseKicker, newsKicker, indexSession, closeOf } from './mails.js';
 const arr = (p) => (Array.isArray(p) ? p : (p && (p.data || p.list || p.items)) || []);
 const pctOf = (q) => { if (!q) return null; const pre = /PRE|POST|AFTER/i.test(q.trade_status || '') && q.extend_hour_change_ratio != null && q.extend_hour_last_price; const pc = +q.pre_close; const px = pre ? +q.extend_hour_last_price : +q.price;
   return pc > 0 && px > 0 ? (px / pc - 1) * 100 : q.change_ratio != null ? +q.change_ratio * 100 : null; };
@@ -19,7 +19,7 @@ async function gather(env, H) {
   const subs = (await H.vget(env, 'subs')) || {}; const own = (await H.vget(env, 'ownerSubs')) || [];
   const mine = [...new Set(own.flatMap((id) => (subs[id] && subs[id].syms) || []))].slice(0, 80);
   const [idx, ms, gUp, gDn] = await Promise.all([
-    snap(['SPY', 'QQQ', 'DIA', 'IWM'], 'US_ETF'),
+    H.snap ? H.snap([...INDEX_SYMS, ...SECTOR_TICKERS]) : snap([...INDEX_SYMS, ...SECTOR_TICKERS], 'US_ETF'),
     mine.length ? snap(mine, 'US_STOCK') : Promise.resolve({}),
     call('get_gainers_losers', { category: 'US_STOCK', rank_type: 'PRE_MARKET', sort_by: 'CHANGE_RATIO', direction: 'DESC', page_size: '40', page_index: '1' }),
     call('get_gainers_losers', { category: 'US_STOCK', rank_type: 'PRE_MARKET', sort_by: 'CHANGE_RATIO', direction: 'ASC', page_size: '40', page_index: '1' }),
@@ -38,7 +38,8 @@ async function gather(env, H) {
   ]);
   const ew = H.earnWeek ? await H.earnWeek().catch(() => null) : null; // for the Earnings card when the AI write-up isn't available
   const seen = new Set(); const news = newsKw.flat().filter((n) => { const k = String(n.t).toLowerCase().slice(0, 70); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 40);
-  return { now, idx, mine: mineRows, up, dn, news, newsSym, ew, src: H.srcName ? H.srcName() : 'Webull', cal: arr(cal).slice(0, 40).map((c) => ({ e: c.event_name, at: c.publish_time, f: c.forecast_value, p: c.prior_value, fed: c.is_fed_related })) };
+  const major = SECTOR_ETFS.map((s) => { const q = idx[s.etf]; if (!q) return null; const p = pctOf(q), px = pxOf(q); if (!(px > 0) || p == null) return null; const pc = +q.pre_close; return { etf: s.etf, name: s.name, pct: p, v: { px, ch: pc > 0 ? px - pc : null, pct: p } }; }).filter(Boolean);
+  return { now, idx, mine: mineRows, up, dn, news, newsSym, ew, major, src: H.srcName ? H.srcName() : 'Webull', cal: arr(cal).slice(0, 40).map((c) => ({ e: c.event_name, at: c.publish_time, f: c.forecast_value, p: c.prior_value, fed: c.is_fed_related })) };
 }
 
 const SYS = 'You write the JUMPTRADE morning brief, a short pre-market email for retail investors. HARD RULES: use ONLY facts in the DATA. Never invent numbers, events, causes, deals or quotes. If you do not know why a stock moved, say "No news yet". Plain, simple English, short phrases, no jargon (no EPS, no "guided", say "profit" or "a share"). No advice, no predictions. Return JSON only.';
@@ -57,45 +58,58 @@ async function write(env, H, d) {
 
 // Morning brief, same look as the other emails (see mails.js). `withMine` adds the owner's own stocks: only addresses the owner marked
 // "gets my stocks" see that card; people who turned the email on for themselves never do.
-function render(d, w, withMine) {
-  const now = d.now; const date = dateLong(now.day);
-  const mins = Math.max(0, 570 - now.hm); const lead = mins > 0 ? (mins >= 60 ? Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm' : mins + ' min') + ' to the open' : now.hm >= (now.early ? 780 : 960) ? 'Market closed' : 'Market open';
+function render(d, w, withMine, theme) {
+  const T = themeOf(theme || d.theme || 'light'); const img = d.chartImg;
+  const now = d.now;
   const W = w || {}; const yours = W.yours || {}, movers = W.movers || {};
-  // pre-market numbers: price now, $ and % vs yesterday's close
   const pv = (q) => { const px = pxOf(q), p = pctOf(q); if (!(px > 0) || p == null) return null; const pc = +q.pre_close; return { px, ch: pc > 0 ? px - pc : px - px / (1 + p / 100), pct: p }; };
   const mvv = (x) => { const px = +x.price, r = +x.change_ratio; if (!(px > 0) || !isFinite(r)) return null; return { px, ch: x.change != null && isFinite(+x.change) ? +x.change : px - px / (1 + r), pct: r * 100 }; };
   const nm = (x) => shortName(x);
   const matters = (W.matters || []).slice(0, 3);
-  const mine = d.mine.slice(0, 5).map((r) => srow(r.s, nm((r.q && r.q.name) || (d.names || {})[r.s]), ND(yours[r.s] || ''), pv(r.q))).join('');
+  const mine = d.mine.slice(0, 5).map((r) => srow(r.s, nm((r.q && r.q.name) || (d.names || {})[r.s]), ND(yours[r.s] || ''), pv(r.q), null, T)).join('');
   const mvl = [...d.up.slice(0, 3), ...d.dn.slice(0, 2)];
-  const mv = mvl.map((x) => srow(x.symbol, nm(x.name || (d.names || {})[x.symbol]), ND(movers[x.symbol] || ''), mvv(x))).join('');
-  const hl = (W.headlines || []).slice(0, 4).map((h) => '<div class="hl"><span class="tag' + (/breaking/i.test(h.tag) ? ' am' : '') + '">' + E(h.tag || 'Markets') + '</span><div class="hh">' + ND(h.title) + '</div><div class="why">' + ND(h.why) + '</div></div>').join('');
+  const mv = mvl.map((x) => srow(x.symbol, nm(x.name || (d.names || {})[x.symbol]), ND(movers[x.symbol] || ''), mvv(x), null, T)).join('');
+  const hl = (W.headlines || []).slice(0, 4).map((h) => '<div class="hl"><span class="tag">' + E(h.tag || 'Markets') + '</span><div class="hh">' + ND(h.title) + '</div>' + (h.why ? '<div class="why">' + ND(h.why) + '</div>' : '') + '</div>').join('');
   const symQ = (t) => { const r = d.mine.find((x) => x.s === t); if (r) return pv(r.q); const u = [...d.up, ...d.dn].find((x) => x.symbol === t); return u ? mvv(u) : null; };
   const nameFor = (t) => { const u = [...d.up, ...d.dn].find((x) => x.symbol === t); return nm((u && u.name) || (d.names || {})[t] || ''); };
-  const deals = (W.deals || []).slice(0, 3).map((x) => srow(x.t || '', nameFor(x.t), ND(x.text), symQ(x.t), symQ(x.t) ? null : '')).join('');
-  const earn = (W.earnings || []).slice(0, 4).map((x) => srow(x.t, nameFor(x.t), (/(beat|missed|mixed)/i.test(x.label) ? '<i class="lb' + (/beat/i.test(x.label) ? ' b' : /missed/i.test(x.label) ? ' m' : '') + '">' + E(x.label) + '</i>' : '') + ND(x.text), symQ(x.t), /tonight|today/i.test(x.label) ? '<b class="px" style="font-size:13px;color:#B45309">' + E(x.label) + '</b>' : symQ(x.t) ? null : '')).join('');
-  // without the AI write-up: the real headlines (titles and sources only) and the earnings calendar, so the email is never empty
+  const deals = (W.deals || []).slice(0, 3).map((x) => srow(x.t || '', nameFor(x.t), ND(x.text), symQ(x.t), symQ(x.t) ? null : '', T)).join('');
+  const whenC = T.id === 'light' ? '#9A5B12' : '#E8B86D';
+  const earn = (W.earnings || []).slice(0, 4).map((x) => srow(x.t, nameFor(x.t), (/(beat|missed|mixed)/i.test(x.label) ? '<i class="lb' + (/beat/i.test(x.label) ? ' b' : /missed/i.test(x.label) ? ' m' : '') + '">' + E(x.label) + '</i>' : '') + ND(x.text), symQ(x.t), /tonight|today/i.test(x.label) ? '<b class="px" style="font-size:13px;color:' + whenC + '">' + E(x.label) + '</b>' : symQ(x.t) ? null : '', T)).join('');
   const KT = { 'stock market today': 'Markets', futures: 'Markets', 'to acquire': 'Deals', acquisition: 'Deals', 'merger agreement': 'Deals', 'beats estimates': 'Earnings', 'data center deal': 'Deals', 'Fed rate': 'Fed' };
-  const hl0 = !W.headlines ? (d.news || []).filter((n) => n.t && !/stock price today|live chart|quote & history/i.test(n.t)).slice(0, 4).map((n) => '<div class="hl"><span class="tag">' + E(KT[n.k] || 'Markets') + '</span><div class="hh">' + ND(n.t) + '</div><div class="why">' + E(n.src || '') + (n.at && Date.parse(n.at) && Date.parse(n.at) < Date.now() + 300000 /* some feeds send wrong time zones: never show a time in the future */ ? ' · ' + E(new Date(Date.parse(n.at)).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) + ' ET' : '') + '</div></div>').join('') : '';
+  const hl0 = !W.headlines ? (d.news || []).filter((n) => n.t && !/stock price today|live chart|quote & history/i.test(n.t)).slice(0, 4).map((n) => '<div class="hl"><span class="tag">' + E(KT[n.k] || 'Markets') + '</span><div class="hh">' + ND(n.t) + '</div><div class="why">' + E(n.src || '') + (n.at && Date.parse(n.at) && Date.parse(n.at) < Date.now() + 300000 ? ' · ' + E(new Date(Date.parse(n.at)).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) + ' ET' : '') + '</div></div>').join('') : '';
   const td = ((d.ew && d.ew.days) || []).find((x) => x.d === now.day); const tl = (td && td.tiles) || [];
-  const earn0 = !W.earnings ? tl.filter((t) => t.when === 'bmo' || t.eps == null).slice(0, 5).map((t) => srow(t.s, nm(t.n), (t.eps != null ? '<i class="lb' + (t.res === 'beat' ? ' b' : t.res === 'miss' ? ' m' : '') + '">' + (t.res === 'beat' ? 'Beat' : t.res === 'miss' ? 'Missed' : 'In line') + '</i>Profit $' + (+t.eps).toFixed(2) + ' a share vs $' + (+t.est).toFixed(2) + ' expected' : t.est != null ? 'Expected profit $' + (+t.est).toFixed(2) + ' a share' : ''), t.eps != null ? symQ(t.s) : null, t.eps != null && symQ(t.s) ? null : '<b class="px" style="font-size:13px;color:#B45309">' + (t.when === 'amc' ? 'Tonight' : t.when === 'bmo' ? (t.eps != null || now.hm >= 570 ? 'This morning' : 'Before the open') : 'Today') + '</b>')).join('') : '';
+  const earn0 = !W.earnings ? tl.filter((t) => t.when === 'bmo' || t.eps == null).slice(0, 5).map((t) => srow(t.s, nm(t.n), (t.eps != null ? '<i class="lb' + (t.res === 'beat' ? ' b' : t.res === 'miss' ? ' m' : '') + '">' + (t.res === 'beat' ? 'Beat' : t.res === 'miss' ? 'Missed' : 'In line') + '</i>Profit $' + (+t.eps).toFixed(2) + ' a share vs $' + (+t.est).toFixed(2) + ' expected' : t.est != null ? 'Expected profit $' + (+t.est).toFixed(2) + ' a share' : ''), t.eps != null ? symQ(t.s) : null, t.eps != null && symQ(t.s) ? null : '<b class="px" style="font-size:13px;color:' + whenC + '">' + (t.when === 'amc' ? 'Tonight' : t.when === 'bmo' ? (t.eps != null || now.hm >= 570 ? 'This morning' : 'Before the open') : 'Today') + '</b>', T)).join('') : '';
   const coming = (W.coming || []).slice(0, 2).map((x) => '<div class="hl"><span class="tag">' + E(x.when) + '</span><div class="why" style="margin-top:4px">' + ND(x.text) + '</div></div>').join('');
   const pre = now.hm < 570;
-  const fb = !matters.length ? (() => { const L = []; const sp = pv(d.idx.SPY); if (sp) L.push({ b: pre ? 'Before the open.' : 'Since yesterday’s close.', t: 'The S&P 500 fund (SPY) is ' + fmtPct(sp.pct) + (pre ? ' before the open' : '') + ', at ' + fmtPx(sp.px) + '.' }); const g = d.up[0]; if (g && mvv(g)) L.push({ b: 'Top pre-market gainer: ' + g.symbol + '.', t: (nm(g.name) || g.symbol) + ' ' + fmtPct(mvv(g).pct) + '.' }); return L; })() : matters;
-  const v = (s) => pv(d.idx[s]);
-  const subject = W.subject || ('Morning brief · ' + dateShort(now.day));
-  const m = shell({ type: 'morning', subject, pre: W.pre || '', dateLine: date + ' · ' + lead, headline: W.headline || '', tiles: idxTiles({ SPY: v('SPY'), QQQ: v('QQQ'), DIA: v('DIA'), IWM: v('IWM') }), sub: W.sector || (pre ? 'Index tiles: pre-market price and change vs yesterday’s close.' : 'Index tiles: price at ' + hmTxt(now.hm) + ' ET and change vs yesterday’s close.'),
-    cards: [card('What matters today', bullets(fb)), withMine ? card('Your stocks', mine) : '', card('Pre-market movers', mv), card('Headlines', hl || hl0), card('Deals', deals), card('Earnings', earn || earn0, W.earnings ? '' : 'companies over $10B'), card('Coming up', coming)],
-    asOf: (pre ? 'Pre-market prices' : 'Prices') + ' as of ' + hmTxt(now.hm) + ' ET, ' + dateShort(now.day) + '.', sources: 'Data: ' + (d.src || 'Webull') + (w ? '; written with AI from that data only.' : '; headlines from news feeds; earnings from the Nasdaq calendar.'), link: '#today',
-    text: [...fb.map((x) => '- ' + x.b + ' ' + x.t), '', 'INDEXES (PRE-MARKET)', ...IDX.map((x) => x[0] + ' (' + x[1] + ') ' + (v(x[0]) ? fmtPx(v(x[0]).px) + ' ' + fmtChg(v(x[0]).ch) + ' ' + fmtPct(v(x[0]).pct) : '—')),
+  const fb = !matters.length ? (() => { const L = []; const g = d.up[0]; if (g && mvv(g)) L.push({ b: 'Top pre-market gainer: ' + g.symbol + '.', t: (nm(g.name) || g.symbol) + ' ' + fmtPct(mvv(g).pct) + '.' }); return L; })() : matters;
+  const tiles = pickIndexTiles(d.idx, indexSession(now) === 'pre' ? 'pre' : 'reg');
+  const v = (s) => (tiles.vals && tiles.vals[s]) || pv(d.idx[s]);
+  const sp = (tiles.vals && (tiles.vals['^GSPC'] || tiles.vals.SPY)) || v('SPY'), nq = (tiles.vals && (tiles.vals['^NDX'] || tiles.vals.QQQ)) || v('QQQ');
+  const subject = W.subject || moveSubject('Morning brief', sp, nq);
+  const head = W.headline || (sp ? 'S&P ' + fmtPct(sp.pct, 1) + (nq ? ', Nasdaq ' + fmtPct(nq.pct, 1) : '') : '');
+  const m = shell({ type: 'morning', theme: T.id, subject, pre: W.pre || '', dateLine: dateLineOf(now.day, now.hm), headline: head,
+    cards: [
+      pulseBlock(d.major, tiles.vals, T, img, pulseKicker('morning', now), 'Market pulse', tiles.labels),
+      fb.length ? sectionBlock('TODAY', 'What matters', bullets(fb), T) : '',
+      withMine ? sectionBlock('YOUR LIST', 'Your stocks', mine, T) : '',
+      sectionBlock('PRE-MARKET', 'Early movers', mv, T),
+      sectionBlock(newsKicker(now), 'Top news', hl || hl0, T),
+      deals ? sectionBlock('DEALS', 'Deals', deals, T) : '',
+      sectionBlock('TODAY', 'Earnings', earn || earn0, T),
+      coming ? sectionBlock('COMING UP', 'Coming up', coming, T) : '',
+    ],
+    asOf: (pre ? 'Pre-market prices' : 'Prices') + ' as of ' + hmTxt(now.hm) + ' ET, ' + dateShortY(now.day) + '.', sources: 'Data: ' + (d.src || 'Webull') + (w ? '; written with AI from that data only.' : '; headlines from news feeds; earnings from the Nasdaq calendar.'), link: '#today',
+    text: [...fb.map((x) => '- ' + x.b + ' ' + x.t), '', (pre ? 'INDEXES (PRE-MARKET)' : (now.hm >= closeOf(now) ? 'INDEXES (AFTER HOURS)' : 'INDEXES')), ...tiles.labels.map((x) => x[0] + ' (' + x[1] + ') ' + (tiles.vals[x[0]] ? fmtPxOf(tiles.vals[x[0]]) + ' ' + fmtChgOf(tiles.vals[x[0]]) + ' ' + fmtPct(tiles.vals[x[0]].pct) : '—')),
       ...(withMine && d.mine.length ? ['', 'YOUR STOCKS', ...d.mine.slice(0, 5).map((r) => r.s + ' ' + (pv(r.q) ? fmtPx(pv(r.q).px) + ' ' + fmtChg(pv(r.q).ch) + ' ' + fmtPct(pv(r.q).pct) : '') + ' ' + (yours[r.s] || ''))] : []),
       '', 'PRE-MARKET MOVERS', ...mvl.map((x) => x.symbol + (x.name ? ' (' + nm(x.name) + ')' : '') + ' ' + (mvv(x) ? fmtPx(mvv(x).px) + ' ' + fmtChg(mvv(x).ch) + ' ' + fmtPct(mvv(x).pct) : '') + ' ' + (movers[x.symbol] || '')), '', ...(W.headlines || []).map((h) => '[' + h.tag + '] ' + h.title)] });
   return m;
 }
 
 // Builds both versions from one data pull and one AI call: `html`/`text` with the owner's stocks, `other` without.
-export async function buildBrief(env, H) { const d = await gather(env, H); if (H.names) d.names = await H.names().catch(() => ({})); const w = env.ANTHROPIC_API_KEY ? await write(env, H, d) : null; const mine = render(d, w, true);
-  return Object.assign(mine, { type: 'morning', other: render(d, w, false), ai: !!w, n: { mine: d.mine.length, up: d.up.length, news: d.news.length } }); }
+export async function buildBrief(env, H) { const d = await gather(env, H); if (H.names) d.names = await H.names().catch(() => ({})); const w = env.ANTHROPIC_API_KEY ? await write(env, H, d) : null;
+  const theme = themeOf(H.theme); if (H.chartImg) d.chartImg = H.chartImg; d.theme = theme.id;
+  const mine = render(d, w, true, theme.id);
+  return Object.assign(mine, { type: 'morning', theme: theme.id, other: render(d, w, false, theme.id), ai: !!w, n: { mine: d.mine.length, up: d.up.length, news: d.news.length } }); }
 
 // Send through Resend, one email per recipient (batch call, up to 100 a call) so nobody sees anyone else's address.
 // `to` is addresses or {email} records. Emails with {{UNSUB}} links get each person's own signed unsubscribe links and
