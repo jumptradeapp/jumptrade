@@ -131,7 +131,7 @@ test('L4/L5/L6 keep B-Light structure, swoop up/down, navy chrome on L4 header a
   assert.match(css, /html\[data-design="l6"\] body \.card[^{]*\{background:#FFFFFF!important/);
   assert.match(css, /html\[data-design="l4"\] body \.sat\{background:#0B1B33\}/);
   assert.match(css, /html\[data-design="l6"\] body \.sat\{background:#0B1B33\}/);
-  assert.match(css, /html\[data-design="l6"\] body #nav\.nav:before\{background-image:url\(\/v2\/img\/jump-lockup\.svg\?v=8\)!important\}/);
+  assert.match(css, /html\[data-design="l6"\] body #nav\.nav:before\{background-image:url\(\/v2\/img\/jump-lockup\.svg\?v=9\)!important\}/);
   // existing light overlay palette, still unchanged
   for (const [k, hex] of [['vwap', '9A6200'], ['e9', '00788F'], ['e21', '6A4AD6'], ['s50', 'B95100'], ['s200', 'B52E7C'], ['sup', '0B8169'], ['res', 'C0433A'], ['pat', '7F6A00']]) {
     assert.match(css, new RegExp('html\\[data-x2t="light"\\] \\.ov-' + k + '\\{--ov:#' + hex + '\\}'));

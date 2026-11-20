@@ -25,7 +25,7 @@ assert 'privTool' in v and 'V2SETREAL' in v and 'privLogo' in v
 open(DST+'/v2/v2.js','w').write(v)
 open(DST+'/v2/v2x.js','w').write(fix(open(SRC+'/v2/v2x.js').read()))
 h=open(SRC+'/index.html').read()
-h=fix(h).replace('href="/manifest.webmanifest?v=2"','href="manifest.webmanifest"').replace('href="/manifest.webmanifest?v=7"','href="manifest.webmanifest"').replace('href="/manifest.webmanifest?v=8"','href="manifest.webmanifest"').replace('href="/apple-touch-icon.png','href="apple-touch-icon.png').replace('href="/apple-touch-icon-v4.png','href="apple-touch-icon-v4.png').replace('href="/apple-touch-icon-v5.png','href="apple-touch-icon-v5.png')
+h=fix(h).replace('href="/manifest.webmanifest?v=2"','href="manifest.webmanifest"').replace('href="/manifest.webmanifest?v=7"','href="manifest.webmanifest"').replace('href="/manifest.webmanifest?v=8"','href="manifest.webmanifest"').replace('href="/manifest.webmanifest?v=9"','href="manifest.webmanifest"').replace('href="/apple-touch-icon.png','href="apple-touch-icon.png').replace('href="/apple-touch-icon-v4.png','href="apple-touch-icon-v4.png').replace('href="/apple-touch-icon-v5.png','href="apple-touch-icon-v5.png').replace('href="/apple-touch-icon-v6.png','href="apple-touch-icon-v6.png')
 h=re.sub(r'<script src="/shim\.js[^"]*"></script>','',h); h=re.sub(r'<script src="/auth\.js[^"]*"></script>','',h)
 h=re.sub(r'<script src="/devsync\.js[^"]*"></script>','',h); h=re.sub(r'<script src="/alerts\.js[^"]*"></script>','',h); h=re.sub(r'<script src="/owner\.js[^"]*"></script>','',h); h=re.sub(r'<script src="/landing\.js[^"]*"></script>','',h)
 h=h.replace('src="/nthumb.js','src="nthumb.js').replace('src="/dip.js','src="dip.js').replace('src="/val.js','src="val.js')

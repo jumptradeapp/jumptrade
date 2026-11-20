@@ -1,8 +1,8 @@
 """jumptrade. rings brand set.
 
 Rings: Maze mark (Nov 19, 2026; Jason approved). Three concentric rings,
-stroke 50/1024, one staggered gap each at 1:00 / 8:15 / 5:00. App tile keeps
-the V5 Deep swoop background (deep navy → swoop-blue).
+stroke 50/1024, one staggered gap each at 1:00 / 8:15 / 5:00. App tile is L1
+(Nov 20, 2026): flat slate #1A1A1D, lavender rings #D3D9EE. No blue.
 
 Wordmark: the white rounded 'jumptrade.' Jason picked, with the lighter
 'trade.' (~60% stroke) as the default. Outlines live in this folder so the
@@ -89,42 +89,23 @@ def rings(fill='#FFFFFF', cx=RCX, cy=RCY, k=K, extra='', stroke=STROKE):
 def word(fill='#FFFFFF'):
     return '<path transform="translate(%.1f 0)" fill="%s" fill-rule="evenodd" d="%s"/>' % (WX, fill, word_d())
 
-def lockup(ring='#FFFFFF', wm='#FFFFFF', defs=''):
+def lockup(ring=None, wm='#FFFFFF', defs=''):
+    if ring is None:
+        ring = RING_TILE  # #D3D9EE on dark lockups; wordmark stays white
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="%s">%s%s%s</svg>' % (VB, defs, rings(ring), word(wm))
 
 def mark(stroke='#FFFFFF', defs=''):  # the rings alone, square, edge to edge
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="%s">%s%s</svg>' % (MARK_VB, defs, rings(stroke, 512, 512, 1.0))
 
-# V5 tile background: deep navy → swoop blue, richer top-right light than tile D.
-BG_V5 = '''<defs>
-  <linearGradient id="bg" x1="0.12" y1="1" x2="0.88" y2="0">
-    <stop offset="0" stop-color="#080D18"/>
-    <stop offset="0.38" stop-color="#0E2A52"/>
-    <stop offset="1" stop-color="#1E62C4"/>
-  </linearGradient>
-  <radialGradient id="sh" cx="0.82" cy="0.08" r="0.64">
-    <stop offset="0" stop-color="#7EB6F5" stop-opacity="0.42"/>
-    <stop offset="0.35" stop-color="#4A8FE8" stop-opacity="0.28"/>
-    <stop offset="1" stop-color="#4A8FE8" stop-opacity="0"/>
-  </radialGradient>
-  <radialGradient id="vg" cx="0.5" cy="0.55" r="0.74">
-    <stop offset="0.55" stop-color="#080D18" stop-opacity="0"/>
-    <stop offset="1" stop-color="#05080F" stop-opacity="0.40"/>
-  </radialGradient>
-  <filter id="bl" x="-20%" y="-20%" width="140%" height="140%">
-    <feGaussianBlur stdDeviation="38"/>
-  </filter>
-</defs>
-<rect width="1024" height="1024" fill="url(#bg)"/>
-<rect width="1024" height="1024" fill="url(#sh)"/>
-<path d="M-120 980 C 180 700, 560 560, 1150 520 L1150 640 C 600 680, 240 820, -120 1120Z" fill="#4A8FE8" opacity="0.11" filter="url(#bl)"/>
-<rect width="1024" height="1024" fill="url(#vg)"/>
-'''
+# L1 tile: flat slate, lavender Maze rings. No blue, no swoop.
+SLATE = '#1A1A1D'
+RING_TILE = '#D3D9EE'
+BG_L1 = '<rect width="1024" height="1024" fill="%s"/>' % SLATE
 
 def tile_svg(rounded=False, mark_scale=1.0):
-    """Full 1024 app tile, V5 background + rings. mark_scale < 1 shrinks the rings for maskable."""
-    mark = rings('#FFFFFF', 512, 512, mark_scale, stroke=STROKE)
-    body = BG_V5 + mark
+    """Full 1024 app tile, L1 slate + lavender rings. mark_scale < 1 shrinks the rings for maskable."""
+    mark = rings(RING_TILE, 512, 512, mark_scale, stroke=STROKE)
+    body = BG_L1 + mark
     if rounded:
         return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">'
                 '<clipPath id="rr"><rect width="1024" height="1024" rx="228"/></clipPath>'
@@ -167,6 +148,7 @@ def write_app_icons():
     save('apple-touch-icon-v3.svg', square, APP_ICON)  # keep old names in sync
     save('apple-touch-icon-v4.svg', square, APP_ICON)
     save('apple-touch-icon-v5.svg', square, APP_ICON)
+    save('apple-touch-icon-v6.svg', square, APP_ICON)
     save('icon-maskable-512.svg', maskable, APP_ICON)
     # rasters (opaque, like the previously shipped icons)
     def rgb(svg, size, rel):
@@ -177,7 +159,7 @@ def write_app_icons():
     rgb(square, 192, 'icon-192.png')
     for name in ('apple-touch-icon.png', 'apple-touch-icon-precomposed.png',
                  'apple-touch-icon-v2.png', 'apple-touch-icon-v3.png', 'apple-touch-icon-v4.png',
-                 'apple-touch-icon-v5.png'):
+                 'apple-touch-icon-v5.png', 'apple-touch-icon-v6.png'):
         rgb(square, 180, name)
     rgb(maskable, 512, 'icon-maskable-512.png')
     # favicon png (rounded) + ico + svg
@@ -195,33 +177,31 @@ def main():
     save('v2/img/jump-lockup-navy.svg', lockup('#0B2A55', '#0B2A55'))  # B-Light / light sidebar
     save('v2/img/jump-rings.svg', mark())            # rings alone, white
     tile = tile_svg(rounded=True)
-    save('v2/img/jump-icon.svg', tile)               # V5-deep tile, Maze rings, rounded corners
-    # emails: 3x of 240x44 so it stays sharp on phones; transparent, white, sits on the navy email header
-    em = png(white, 726); save('v2/img/email-logo-rings1118l.png', em)
+    save('v2/img/jump-icon.svg', tile)               # L1 slate tile, lavender Maze rings, rounded corners
+    # emails: 3x of 240x44 so it stays sharp on phones; transparent, lavender rings + white wordmark, sits on the navy email header
+    em = png(white, 726); save('v2/img/email-logo-rings1118l.png', em); save('v2/img/email-logo-rings1120l.png', em)
     save('v2/img/email-logo.png', png(white, 325))   # the older email name, in case an old email is still opened
     # the sign-in / install mark (jmMark): the rings in swoop blues so they read on light and dark
     mk = png(mark('url(#g)', GRAD_MID), 232); save('v2/img/mark-rings.png', mk); save('v2/img/mark-blue.png', fit(mk, (161, 116)))
     # classic app: same names and sizes as before
     save('img/jump-mark.png', fit(png(mark('url(#g)', GRAD_ICE), 426), (716, 426)))
     save('img/jump-mark-light.png', fit(png(mark('url(#g)', GRAD_DEEP), 426), (716, 426)))
-    save('img/jump-trade.png', fit(png(lockup('url(#g)', '#FFFFFF', GRAD_ICE.replace('%.2f' % MARK_VB0, '0').replace('%.2f' % (1024 - MARK_VB0), '112')), 1400), (1455, 493)))
+    save('img/jump-trade.png', fit(png(lockup(RING_TILE, '#FFFFFF'), 1400), (1455, 493)))
     save('img/jump-trade-light.png', fit(png(lockup('#2E6DB4', '#0A1F40'), 1400), (1455, 493)))
     write_app_icons()
     og()
 
-# Share tile: same lockup, V5-deep background so it matches the new app tile.
+# Share tile: same lockup, L1 slate background so it matches the new app tile. No blue.
 OG_HTML = '''<!doctype html><html><head><meta charset="utf-8"><style>
 @font-face{font-family:P;src:url(file://%(W)s/fonts/Poppins-500-latin.woff2) format("woff2");font-weight:500}
 @font-face{font-family:P;src:url(file://%(W)s/fonts/Poppins-700-latin.woff2) format("woff2");font-weight:700}
 html,body{margin:0;width:1200px;height:630px;overflow:hidden}
-.t{position:relative;width:1200px;height:630px;background:linear-gradient(200deg,#1E62C4 0%%,#0E2A52 48%%,#080D18 100%%);font-family:P,sans-serif}
-.t:before{content:"";position:absolute;inset:0;background:radial-gradient(70%% 80%% at 88%% 6%%,rgba(126,182,245,.42),rgba(74,143,232,.14) 45%%,rgba(74,143,232,0) 70%%)}
-.t:after{content:"";position:absolute;inset:0;background:radial-gradient(75%% 85%% at 50%% 50%%,rgba(5,8,15,0) 60%%,rgba(5,8,15,.40))}
-.sw{position:absolute;left:-120px;right:-120px;bottom:-40px;height:260px;background:#4A8FE8;opacity:.11;filter:blur(40px);border-radius:50%%;transform:rotate(-9deg)}
+.t{position:relative;width:1200px;height:630px;background:#1A1A1D;font-family:P,sans-serif}
+.t:after{content:"";position:absolute;inset:0;background:radial-gradient(75%% 85%% at 50%% 50%%,rgba(26,26,29,0) 60%%,rgba(10,10,12,.28))}
 .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2}
 .c svg{width:640px;height:auto;display:block}
-.tg{margin-top:42px;color:#E1F0FF;font-weight:500;font-size:27px;letter-spacing:.26em}.tg b{font-weight:700;color:#fff}
-</style></head><body><div class="t"><div class="sw"></div><div class="c">%(LOCK)s<div class="tg">KNOW BEFORE YOU <b>JUMP.</b></div></div></div></body></html>'''
+.tg{margin-top:42px;color:#F3F4EE;font-weight:500;font-size:27px;letter-spacing:.26em}.tg b{font-weight:700;color:#fff}
+</style></head><body><div class="t"><div class="c">%(LOCK)s<div class="tg">KNOW BEFORE YOU <b>JUMP.</b></div></div></div></body></html>'''
 
 def og():
     try:
@@ -239,7 +219,30 @@ def og():
     im.save(os.path.join(W, 'og.png'), optimize=True); im.save(os.path.join(W, 'og.jpg'), quality=90, optimize=True, progressive=True)
     print('wrote og.png og.jpg')
 
+def write_dark_lockups():
+    """Dark-theme lockups only: lavender rings, white wordmark.
+    Does not touch B-Light / light-email / jump-trade-light assets."""
+    dark = lockup(RING_TILE, '#FFFFFF')
+    save('v2/img/jump-lockup.svg', dark)
+    save('v2/img/jumptrade-logo.svg', dark)
+    em = png(dark, 726)
+    save('v2/img/email-logo-rings1118l.png', em)
+    save('v2/img/email-logo-rings1120l.png', em)
+    save('v2/img/email-logo.png', png(dark, 325))
+    save('img/jump-trade.png', fit(png(lockup(RING_TILE, '#FFFFFF'), 1400), (1455, 493)))
+    og()
+
+def write_tile_assets():
+    """Rebuild the L1 app tile, favicons, jump-icon.svg, dark lockups and the og share tile.
+    Does not rewrite light-theme lockups or sign-in marks."""
+    save('v2/img/jump-icon.svg', tile_svg(rounded=True))
+    write_app_icons()
+    write_dark_lockups()
+
 if __name__ == '__main__':
     if '--trade' in sys.argv: TRADE = sys.argv[sys.argv.index('--trade') + 1]
     assert TRADE in ('bold', 'light', 'light45'), TRADE
-    main()
+    if '--icons' in sys.argv:
+        write_tile_assets()
+    else:
+        main()

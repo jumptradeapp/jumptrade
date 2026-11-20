@@ -1365,7 +1365,7 @@ html[data-design="l6"] body .top.tc .brand img,html[data-x2t="light"][data-desig
   html[data-design="l6"] body .top.tc .ttl,html[data-design="l6"] body .top.tc .ib,html[data-design="l6"] body .top.tc .acts,html[data-design="l6"] body .top.tc .acts *{color:#0B1B33!important}
   html[data-design="l6"] body .top.tc .brand img,html[data-x2t="light"][data-design="l6"] .brand img{filter:brightness(0) saturate(100%) invert(22%) sepia(30%) saturate(900%) hue-rotate(185deg) brightness(1.02)!important}
   html[data-design="l6"] body #nav.nav{background:#0B1B33!important;border-right:1px solid #1A2E50!important}
-  html[data-design="l6"] body #nav.nav:before{background-image:url(/v2/img/jump-lockup.svg?v=8)!important}
+  html[data-design="l6"] body #nav.nav:before{background-image:url(/v2/img/jump-lockup.svg?v=9)!important}
   html[data-design="l6"] body #nav .ni,html[data-design="l6"] body #nav .ni *{color:#C9D6E8!important}
   html[data-design="l6"] body #nav .ni.on{background:rgba(142,197,255,.12)!important;box-shadow:inset 2px 0 0 #8EC5FF!important}
   html[data-design="l6"] body #nav .ni.on,html[data-design="l6"] body #nav .ni.on *{color:#8EC5FF!important}

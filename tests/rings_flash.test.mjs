@@ -14,26 +14,30 @@ test('the old JU/MP email logo is gone from every email, the invite and the unsu
   assert.doesNotMatch(src, /email-logo-jt1118/);
   for (const type of ['morning', 'close', 'ah', 'week']) {
     const html = shell({ type, subject: 's', dateLine: 'Nov 18', cards: [], text: [] }).html;
-    assert.match(html, /\/v2\/img\/email-logo-rings1118l\.png/);
+    assert.match(html, /\/v2\/img\/email-logo-rings1120l\.png/);
   }
-  assert.ok(fs.existsSync(W + 'v2/img/email-logo-rings1118l.png'));
+  assert.ok(fs.existsSync(W + 'v2/img/email-logo-rings1120l.png'));
 });
 
 test('home page, landing and app header use the rings lockup; share tile and favicon are cache-busted', () => {
   const idx = R('index.html');
-  assert.match(idx, /og\.jpg\?v=6/); assert.doesNotMatch(idx, /og\.jpg\?v=5/);
+  assert.match(idx, /og\.jpg\?v=7/); assert.doesNotMatch(idx, /og\.jpg\?v=5/);
+  assert.match(idx, /apple-touch-icon-v6\.png/); assert.doesNotMatch(idx, /apple-touch-icon-v5\.png/);
+  assert.match(idx, /favicon\.png\?v=7/); assert.match(idx, /favicon\.svg\?v=7/);
   assert.match(idx, /mark-rings\.png\?v=3/); assert.doesNotMatch(idx, /mark-blue\.png/);
-  assert.match(R('landing.js'), /jump-lockup\.svg\?v=8/); assert.match(R('v2/v2.js'), /jump-lockup\.svg\?v=8/); assert.match(R('v2/v2.css'), /jump-lockup\.svg\?v=8/);
-  assert.match(R('classic.html'), /og\.jpg\?v=6/);
+  assert.match(R('landing.js'), /jump-lockup\.svg\?v=9/); assert.match(R('v2/v2.js'), /jump-lockup\.svg\?v=9/); assert.match(R('v2/v2.css'), /jump-lockup\.svg\?v=9/);
+  assert.match(R('classic.html'), /og\.jpg\?v=7/);
   const lock = R('v2/img/jump-lockup.svg');
   assert.equal((lock.match(/<path d="M/g) || []).length, 3, 'the 3 arcs of the Maze mark');
+  assert.match(lock, /stroke="#D3D9EE"/, 'dark lockup rings are L1 lavender');
+  assert.match(lock, /fill="#FFFFFF"/, 'wordmark stays white');
   assert.doesNotMatch(lock, /#8FC0FF/, 'no old two-tone rings');
   // shipped Nov 18: option B with the lighter 'trade.' (make.py --trade light): 'jump' as traced + trade_light60.d
   const BR = (f) => fs.readFileSync(new URL('../tools/brand_rings/' + f, import.meta.url), 'utf8').trim();
   const jump = BR('wordmark.d').match(/M[^M]+/g).filter((sp) => Math.min(...sp.match(/-?\d+\.?\d*/g).filter((_, i) => i % 2 === 0).map(Number)) < 418).join('');
   assert.ok(lock.includes(jump + BR('trade_light60.d')), "rings + 'jump' + the lighter 'trade.'");
   assert.doesNotMatch(lock, /translate\(241\.3 0\)/, 'not the old JUMP + trade. lockup');
-  assert.match(R('sw.js'), /jt-shell-v38/);
+  assert.match(R('sw.js'), /jt-shell-v39/);
 });
 
 test('unsubscribe error page points to Settings › Emails', () => {

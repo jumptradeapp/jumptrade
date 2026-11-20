@@ -984,7 +984,7 @@ html body #jtGate .lp h1{font-family:LoraI,Lora,Georgia,serif!important;font-sty
 /*desktop layout (1024px+): sidebar navigation, wide content, two-column Today*/
 @media (min-width:1024px){
 html body #nav.nav{position:fixed!important;left:0!important;right:auto!important;top:0!important;bottom:0!important;width:232px!important;height:auto!important;flex-direction:column!important;justify-content:flex-start!important;align-items:stretch!important;gap:4px!important;padding:26px 14px!important;border-radius:0!important;border:0!important;border-right:1px solid rgba(140,180,215,.12)!important;background:rgba(5,10,18,.94)!important;box-shadow:none!important;z-index:50}
-html body #nav.nav:before{content:"";display:block;height:28px;margin:0 10px 26px;background:url(/v2/img/jump-lockup.svg?v=8) left center/auto 26px no-repeat}
+html body #nav.nav:before{content:"";display:block;height:28px;margin:0 10px 26px;background:url(/v2/img/jump-lockup.svg?v=9) left center/auto 26px no-repeat}
 html body #nav .ni{width:auto!important;height:46px!important;flex-direction:row!important;justify-content:flex-start!important;gap:12px!important;padding:0 14px!important;border-radius:12px!important}
 html body #nav .ni span{font-size:15px!important;font-weight:500!important;line-height:20px}
 html body #nav .ni.on{background:rgba(91,155,234,.18)!important;color:#EAF3FF!important}
