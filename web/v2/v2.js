@@ -385,7 +385,10 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   }
 
   function pulse() {
-    return card('<div class="pzh"><span class="pzk">' + ic('activity', 16, 2.2) + 'Market pulse</span></div>' + pulseLeadLag() + '<div class="pzh2">' + hoursBar() + '</div>', 'padding:14px 16px;margin-top:14px', 'pulse2 hpulse-c');
+    return card('<div class="pzh"><span class="pzk">' + ic('activity', 16, 2.2) + 'Market pulse</span></div>' + pulseLeadLag(), 'padding:14px 16px;margin-top:14px', 'pulse2 hpulse-c');
+  }
+  function dayCard() {
+    return '<div class="card cbody hdaycard">' + hoursBar() + '</div>';
   }
   // Top news = what matters to you first: your holdings and watchlist, then market-moving events, then big outlets; skips clickbait
   const FLUFF = /\b(here'?s why|should you (buy|sell)|is it time to|could make you|millionaire|best .{0,20}stocks? to buy|top \d+ |\d+ (stocks|reasons)|i'?m buying|my favorite|forever stock|retire|dividend stocks? to|plaque|boasted|jaw|affair|wife|petition|tribute)\b/i;
@@ -532,9 +535,9 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       al.map((a) => '<a class="row" href="#stock/' + encodeURIComponent(a.s) + '" style="min-height:58px">' + tl(a.s, 32) + '<span class="nm"><b style="font-weight:500">' + a.h + '</b>' + (a.sub ? '<small>' + a.sub + '</small>' : '') + '</span></a>').join(''));
   }
   function today() {
-    if (DESK.matches) return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="dk2"><div class="dkL"><div class="hero ptile">' + RIB + portCard() + '</div>' + f13Tile() + '</div><div class="dkR">' + pulse() + lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + '</div></div>' +
+    if (DESK.matches) return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="dk2"><div class="dkL"><div class="hero ptile">' + RIB + portCard() + '</div>' + f13Tile() + '</div><div class="dkR">' + pulse() + dayCard() + lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + '</div></div>' +
       '<div class="dk3"><div>' + catTile() + '</div><div>' + comingUp() + '</div></div><div class="dkN">' + filingsTile() + '</div></div>';
-    return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="hero ptile">' + RIB + portCard() + '</div>' + pulse() +
+    return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="hero ptile">' + RIB + portCard() + '</div>' + pulse() + dayCard() +
       lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + f13Tile() + catTile() + comingUp() + filingsTile() + '</div>';
   }
 

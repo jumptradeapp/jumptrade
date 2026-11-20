@@ -1876,3 +1876,17 @@ html[data-design="d7c2"] body .hpulse-c{padding:18px 16px 16px!important}
   .hpc-name{font-size:14px}
   .hpc-chd{font-size:13px}
 }
+
+/* Trading-day progress is its own thin tile under Market pulse. */
+html[data-design="d7c2"] body .hdaycard,
+html[data-design="d7c2"] body .card.hdaycard,
+html[data-design="d7c2"] body .app2 .wrap>.card.hdaycard{
+  margin-top:8px;box-sizing:border-box;
+  min-height:44px;height:52px!important;max-height:52px!important;
+  padding:6px 16px!important;overflow:hidden;
+  display:flex;align-items:center;
+  border-radius:var(--r-card,24px)!important
+}
+html[data-design="d7c2"] body .hdaycard .hbar{margin:0!important;max-width:none!important;width:100%}
+html[data-design="d7c2"] body .hdaycard .hbl{margin-top:2px!important;font-size:12px!important;line-height:1.2}
+html[data-design="d7c2"] body .hdaycard .hbt{height:3px!important}
