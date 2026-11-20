@@ -1064,9 +1064,11 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   function moveFill(p, all) {
     const mx = Math.max.apply(null, all.map((x) => Math.abs(x))) || 1;
     const t = Math.max(0, Math.min(1, Math.abs(p) / mx));
-    const a = 0.08 + 0.37 * t;
-    const ba = Math.min(0.72, a + 0.18);
-    const rgb = p >= 0 ? '92,176,255' : '235,140,134';
+    // Down: pinker coral #F08A84 at a lighter wash so it stays rose on slate, not muddy brown.
+    // Up: swoop-blue wash with a brighter blue edge so it still reads clearly blue.
+    const rgb = p >= 0 ? '92,176,255' : '240,138,132';
+    const a = p >= 0 ? (0.10 + 0.24 * t) : (0.06 + 0.16 * t);
+    const ba = p >= 0 ? Math.min(0.95, 0.48 + 0.42 * t) : Math.min(0.95, 0.62 + 0.33 * t);
     return { bg: 'rgba(' + rgb + ',' + a.toFixed(3) + ')', border: 'rgba(' + rgb + ',' + ba.toFixed(3) + ')', ink: '#F4F4F5', pct: p >= 0 ? '#A8DDB5' : '#F4F4F5', cls: p >= 0 ? 'tint-up' : 'tint-dn' };
   }
   const heatStyleLegacy = (p, all) => { const mx = Math.max.apply(null, all.map((x) => Math.abs(x))) || 1; const a = (0.05 + 0.27 * Math.min(1, Math.abs(p) / mx)).toFixed(3); const UR = { d6a: '184,230,192', d6b: '168,221,181', d6c: '198,235,203', d6d: '184,230,192', d7a: '184,230,192', d7b: '168,221,181', d7c: '168,221,181', d7d: '168,221,181', d7c2: '168,221,181' }; const DR = { d6a: '242,196,160', d6b: '237,187,148', d6c: '245,207,174', d6d: '242,196,160', d7a: '242,196,160', d7b: '237,187,148', d7c: '235,140,134', d7d: '235,140,134', d7c2: '235,140,134' }; const d = DZ(); const flat = UR[d] ? 'rgba(28,28,32,.55)' : 'rgba(20,40,70,.55)'; const up = UR[d] ? 'rgba(' + UR[d] + ',' + a + ')' : 'rgba(95,191,143,' + a + ')'; const dn = DR[d] ? 'rgba(' + DR[d] + ',' + a + ')' : 'rgba(224,122,122,' + a + ')'; return 'background:' + (Math.abs(p) < 0.005 ? flat : p > 0 ? up : dn); };

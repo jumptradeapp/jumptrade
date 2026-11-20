@@ -43,8 +43,9 @@ test('clean-1120 pins, nav clip, colors, pulse C, indexes, heat, Ask Jump and ta
   assert.doesNotMatch(v2.slice(v2.indexOf('function marketsScreen')), /IDX\.map\(\(s\) => \{ const x = S\.q\[s\]; return '<a class="card ixc"/);
 
   assert.match(v2, /92,176,255/);
-  assert.match(v2, /235,140,134/);
-  assert.match(v2, /0\.08 \+ 0\.37 \* t/);
+  assert.match(v2, /240,138,132/);
+  assert.match(v2, /240,138,132/);
+  assert.match(v2, /0\.06 \+ 0\.16 \* t/);
   assert.match(v2, /function moveFill/);
 
   assert.match(v2, /class="ajbtn" data-aj="/);
