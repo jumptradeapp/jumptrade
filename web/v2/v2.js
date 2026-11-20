@@ -861,7 +861,16 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const heatAt = (t) => { t = Math.max(0, Math.min(1, t)) * (HEAT.length - 1); const i = Math.min(HEAT.length - 2, Math.floor(t)), f = t - i; const c = HEAT[i].map((v, k) => Math.round(v + (HEAT[i + 1][k] - v) * f)); return c; };
   const heatT = (p, all) => { const a = Math.abs(p), mx = Math.max.apply(null, all.map(Math.abs)) || 1; const rk = all.filter((z) => Math.abs(z) < a).length / Math.max(1, all.length - 1); return 0.12 + 0.88 * (0.5 * a / mx + 0.5 * rk); };
   // calm heat tiles: dark base, a green or red wash whose strength follows the size of the move
-  const heatStyle = (p, all) => { const mx = Math.max.apply(null, all.map((x) => Math.abs(x))) || 1; const a = (0.05 + 0.27 * Math.min(1, Math.abs(p) / mx)).toFixed(3); const UR = { d6a: '184,230,192', d6b: '168,221,181', d6c: '198,235,203', d6d: '184,230,192', d7a: '184,230,192', d7b: '168,221,181', d7c: '168,221,181', d7d: '168,221,181', d7c2: '168,221,181' }; const DR = { d6a: '242,196,160', d6b: '237,187,148', d6c: '245,207,174', d6d: '242,196,160', d7a: '242,196,160', d7b: '237,187,148', d7c: '235,140,134', d7d: '235,140,134', d7c2: '235,140,134' }; const d = DZ(); const flat = UR[d] ? 'rgba(28,28,32,.55)' : 'rgba(20,40,70,.55)'; const up = UR[d] ? 'rgba(' + UR[d] + ',' + a + ')' : 'rgba(95,191,143,' + a + ')'; const dn = DR[d] ? 'rgba(' + DR[d] + ',' + a + ')' : 'rgba(224,122,122,' + a + ')'; return 'background:' + (Math.abs(p) < 0.005 ? flat : p > 0 ? up : dn); };
+  function moveFill(p, all) {
+    const mx = Math.max.apply(null, all.map((x) => Math.abs(x))) || 1;
+    const t = Math.max(0, Math.min(1, Math.abs(p) / mx));
+    const a = 0.08 + 0.37 * t;
+    const ba = Math.min(0.72, a + 0.18);
+    const rgb = p >= 0 ? '92,176,255' : '235,140,134';
+    return { bg: 'rgba(' + rgb + ',' + a.toFixed(3) + ')', border: 'rgba(' + rgb + ',' + ba.toFixed(3) + ')', ink: '#F4F4F5', pct: p >= 0 ? '#A8DDB5' : '#F4F4F5', cls: p >= 0 ? 'tint-up' : 'tint-dn' };
+  }
+  const heatStyleLegacy = (p, all) => { const mx = Math.max.apply(null, all.map((x) => Math.abs(x))) || 1; const a = (0.05 + 0.27 * Math.min(1, Math.abs(p) / mx)).toFixed(3); const UR = { d6a: '184,230,192', d6b: '168,221,181', d6c: '198,235,203', d6d: '184,230,192', d7a: '184,230,192', d7b: '168,221,181', d7c: '168,221,181', d7d: '168,221,181', d7c2: '168,221,181' }; const DR = { d6a: '242,196,160', d6b: '237,187,148', d6c: '245,207,174', d6d: '242,196,160', d7a: '242,196,160', d7b: '237,187,148', d7c: '235,140,134', d7d: '235,140,134', d7c2: '235,140,134' }; const d = DZ(); const flat = UR[d] ? 'rgba(28,28,32,.55)' : 'rgba(20,40,70,.55)'; const up = UR[d] ? 'rgba(' + UR[d] + ',' + a + ')' : 'rgba(95,191,143,' + a + ')'; const dn = DR[d] ? 'rgba(' + DR[d] + ',' + a + ')' : 'rgba(224,122,122,' + a + ')'; return 'background:' + (Math.abs(p) < 0.005 ? flat : p > 0 ? up : dn); };
+  const heatStyle = (p, all) => { if (DZ() !== 'd7c2') return heatStyleLegacy(p, all); const f = moveFill(p, all); return '--ht-bg:' + f.bg + ';--ht-bd:' + f.border + ';--ht-ink:' + f.ink + ';--ht-pct:' + f.pct + ';background:' + f.bg + ';border:1px solid ' + f.border + ';color:' + f.ink; };
   function whatsHot() {
     loadThemes(); const T2 = themeRows();
     if (!T2) return ''; if (!T2.length) return '';
@@ -876,7 +885,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const ix = '<div class="ixg">' + IDX_LEVELS.map(([s, n]) => { const x = S.q[s]; return '<div class="card ixc"><span class="mini">' + E(n) + '</span><b>' + (x ? idxPx(x.price) : '—') + '</b><small class="' + (x ? cls(x.pct) : '') + '">' + (x && isFinite(x.pct) ? pct(x.pct) : '&nbsp;') + '</small></div>'; }).join('') + '</div>';
     const T2 = themeRows();
     const heat = !T2 ? rowsBox(skel(4), 'padding:14px') : !T2.length ? rowsBox('<div class="err">Theme prices aren’t loading right now.</div>') :
-      '<div class="heat">' + T2.map((t, _i, A) => '<a class="ht' + (t.pct >= 0 ? ' hp' : '') + '" href="#markets/theme/' + E(t.id) + '" style="' + heatStyle(t.pct, A.map((z) => z.pct)) + '"><span>' + E(t.name) + '</span><b class="' + (Math.abs(t.pct) < 0.005 ? '' : t.pct > 0 ? 'up' : 'dn') + '">' + (Math.abs(t.pct) < 0.005 ? '' : t.pct > 0 ? '+' : '−') + Math.abs(t.pct).toFixed(2) + '%</b></a>').join('') + '</div><p class="note">Each tile is the average move today of the stocks in that theme (live). Stronger color = bigger move.</p>';
+      '<div class="heat">' + T2.map((t, _i, A) => '<a class="ht' + (t.pct >= 0 ? ' hp' : ' hn') + ' ' + moveFill(t.pct, A.map((z) => z.pct)).cls + '" href="#markets/theme/' + E(t.id) + '" style="' + heatStyle(t.pct, A.map((z) => z.pct)) + '"><span>' + E(t.name) + '</span><b class="' + (Math.abs(t.pct) < 0.005 ? '' : t.pct > 0 ? 'up' : 'dn') + '">' + (Math.abs(t.pct) < 0.005 ? '' : t.pct > 0 ? '+' : '−') + Math.abs(t.pct).toFixed(2) + '%</b></a>').join('') + '</div><p class="note">Each tile is the average move today of the stocks in that theme (live). Stronger tint = bigger move. Blue is up, coral is down.</p>';
     let rot = '';
     if (!S.rot) rot = rowsBox(skel(4), 'padding:14px');
     else if (S.rot.err || !S.rot[S.rotW]) rot = rowsBox('<div class="err">Money-flow data isn’t available right now.</div>');

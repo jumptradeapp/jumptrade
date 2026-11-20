@@ -1912,3 +1912,24 @@ html[data-design="d7c2"] body .hixc .q i{font-style:normal;font-family:GeistMono
   html[data-design="d7c2"] body .hixg{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 18px}
   html[data-design="d7c2"] body .hixc .q b{font-size:18px;line-height:22px}
 }
+
+/* Markets heat: translucent swoop-blue / coral tints, light names, AA on every tile. */
+html[data-design="d7c2"] body .ht,
+html[data-design="d7c2"] body .ht.hp,
+html[data-design="d7c2"] body .ht.hn,
+html[data-design="d7c2"] body .heat>.ht{
+  background:var(--ht-bg,rgba(255,255,255,.04))!important;
+  border:1px solid var(--ht-bd,rgba(255,255,255,.10))!important;
+  color:var(--ht-ink,#F4F4F5)!important
+}
+html[data-design="d7c2"] body .ht span{
+  color:var(--ht-ink,#F4F4F5)!important;
+  letter-spacing:.08em
+}
+html[data-design="d7c2"] body .ht b,
+html[data-design="d7c2"] body .ht b.up,
+html[data-design="d7c2"] body .ht b.dn{
+  color:var(--ht-pct,#F4F4F5)!important
+}
+html[data-design="d7c2"] body .ht.tint-up b{color:#A8DDB5!important}
+html[data-design="d7c2"] body .ht.tint-dn b{color:#F4F4F5!important}
