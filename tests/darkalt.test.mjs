@@ -1,22 +1,22 @@
 // Run with: node --test tests/*.test.mjs
-// Dark + light alternative looks (Nov 19–20): ?design=n|s|g|d4|d5|d6|d7|d6a|d6b|d6c|d6d|d7a|d7b|l1|l2|l3|l4|l5|l6 on top of shipped B / B-Light. Options only.
+// Dark + light alternative looks (Nov 19–20): ?design=n|s|g|d4|d5|d6|d7|d6a|d6b|d6c|d6d|d7a|d7b|d7c|d7d|l1|l2|l3|l4|l5|l6 on top of shipped B / B-Light. Options only.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const W = new URL('../web/', import.meta.url).pathname;
 const R = (p) => fs.readFileSync(W + p, 'utf8');
 
-test('?design=n|s|g|d4-d7|d6a-d|d7a-b|l1-l6 is kept on the device, off/b clears, default stays B / B-Light, old a/c not accepted', () => {
+test('?design=n|s|g|d4-d7|d6a-d|d7a-d|l1-l6 is kept on the device, off/b clears, default stays B / B-Light, old a/c not accepted', () => {
   const idx = R('index.html');
   assert.match(idx, /URLSearchParams\(location\.search\)\.get\("design"\)/);
-  assert.match(idx, /if\(\/\^\(n\|s\|g\|d4\|d5\|d6\|d7\|d6a\|d6b\|d6c\|d6d\|d7a\|d7b\|l1\|l2\|l3\|l4\|l5\|l6\)\$\/\.test\(dq\)\)/);
+  assert.match(idx, /if\(\/\^\(n\|s\|g\|d4\|d5\|d6\|d7\|d6a\|d6b\|d6c\|d6d\|d7a\|d7b\|d7c\|d7d\|l1\|l2\|l3\|l4\|l5\|l6\)\$\/\.test\(dq\)\)/);
   assert.match(idx, /else localStorage\.removeItem\("jt\.design"\)/);
   assert.match(idx, /dataset\.design=dalt/);
   assert.match(idx, /dataset\.design=xt==="light"\?"bl":"b"/);
   assert.doesNotMatch(idx, /\^\[abc\]/);
   const vx = R('v2/v2x.js');
   assert.match(vx, /lsGet\('jt\.design', ''\)/);
-  assert.match(vx, /if \(t !== 'light' && \/\^\(\?:\[nsg\]\|d\[4-7\]\|d6\[a-d\]\|d7\[ab\]\)\$\/\.test\(alt\)\) dz = alt/);
+  assert.match(vx, /if \(t !== 'light' && \/\^\(\?:\[nsg\]\|d\[4-7\]\|d6\[a-d\]\|d7\[a-d\]\)\$\/\.test\(alt\)\) dz = alt/);
   assert.match(vx, /if \(t === 'light' && \/\^l\[1-6\]\$\/\.test\(alt\)\) dz = alt/);
   assert.match(vx, /n:'#0E1A2E'/);
   assert.match(vx, /s:'#1A2030'/);
@@ -28,15 +28,15 @@ test('?design=n|s|g|d4-d7|d6a-d|d7a-b|l1-l6 is kept on the device, off/b clears,
   assert.match(vx, /l6:'#0B1B33'/);
   const js = R('v2/v2.js');
   assert.match(js, /LIGHTDZ = \(\) => \{ const d = DZ\(\); return d === 'bl' \|\| \/\^l\[1-6\]\$\/\.test\(d\); \}/);
-  assert.match(js, /UPX = \{ d6a: '#B8E6C0', d6b: '#A8DDB5', d6c: '#C6EBCB', d6d: '#B8E6C0', d7a: '#B8E6C0', d7b: '#A8DDB5' \}/);
-  assert.match(js, /DNX = \{ d6a: '#F2C4A0', d6b: '#EDBB94', d6c: '#F5CFAE', d6d: '#F2C4A0', d7a: '#F2C4A0', d7b: '#EDBB94' \}/);
+  assert.match(js, /UPX = \{ d6a: '#B8E6C0', d6b: '#A8DDB5', d6c: '#C6EBCB', d6d: '#B8E6C0', d7a: '#B8E6C0', d7b: '#A8DDB5', d7c: '#A8DDB5', d7d: '#A8DDB5' \}/);
+  assert.match(js, /DNX = \{ d6a: '#F2C4A0', d6b: '#EDBB94', d6c: '#F5CFAE', d6d: '#F2C4A0', d7a: '#F2C4A0', d7b: '#EDBB94', d7c: '#EB8C86', d7d: '#EB8C86' \}/);
   assert.match(js, /UPC = \(\) => \(UPX\[DZ\(\)\] \|\| \(LIGHTDZ\(\) \? '#1F5FB8' : '#5CB0FF'\)\)/);
   assert.match(js, /DNC = \(\) => \(DNX\[DZ\(\)\] \|\| \(LIGHTDZ\(\) \? '#B8453E' : '#EB8C86'\)\)/);
 });
 
 test('N/S/G keep B Terminal structure, swoop up/down, and unchanged chart overlay colours', () => {
   const css = R('v2/design.css');
-  assert.match(css, /html:is\(\[data-design="b"\],\[data-design="n"\],\[data-design="s"\],\[data-design="g"\],\[data-design="d4"\],\[data-design="d5"\],\[data-design="d6"\],\[data-design="d6a"\],\[data-design="d6b"\],\[data-design="d6c"\],\[data-design="d6d"\],\[data-design="d7"\],\[data-design="d7a"\],\[data-design="d7b"\]\) body \.q b/);
+  assert.match(css, /html:is\(\[data-design="b"\],\[data-design="n"\],\[data-design="s"\],\[data-design="g"\],\[data-design="d4"\],\[data-design="d5"\],\[data-design="d6"\],\[data-design="d6a"\],\[data-design="d6b"\],\[data-design="d6c"\],\[data-design="d6d"\],\[data-design="d7"\],\[data-design="d7a"\],\[data-design="d7b"\],\[data-design="d7c"\],\[data-design="d7d"\]\) body \.q b/);
   for (const d of ['n', 's', 'g']) {
     assert.match(css, new RegExp('html\\[data-design="' + d + '"\\]\\{--up:#5CB0FF;--dn:#EB8C86'));
   }
@@ -57,7 +57,7 @@ test('N/S/G keep B Terminal structure, swoop up/down, and unchanged chart overla
 test('L1/L2/L3 keep B-Light structure, swoop up/down, and the existing light overlay palette', () => {
   const css = R('v2/design.css');
   assert.match(css, /html:is\(\[data-design="bl"\],\[data-design="l1"\],\[data-design="l2"\],\[data-design="l3"\],\[data-design="l4"\],\[data-design="l5"\],\[data-design="l6"\]\)/);
-  assert.match(css, /html:is\(\[data-design="b"\],\[data-design="bl"\],\[data-design="n"\],\[data-design="s"\],\[data-design="g"\],\[data-design="d4"\],\[data-design="d5"\],\[data-design="d6"\],\[data-design="d6a"\],\[data-design="d6b"\],\[data-design="d6c"\],\[data-design="d6d"\],\[data-design="d7"\],\[data-design="d7a"\],\[data-design="d7b"\],\[data-design="l1"\],\[data-design="l2"\],\[data-design="l3"\],\[data-design="l4"\],\[data-design="l5"\],\[data-design="l6"\]\) body \.card/);
+  assert.match(css, /html:is\(\[data-design="b"\],\[data-design="bl"\],\[data-design="n"\],\[data-design="s"\],\[data-design="g"\],\[data-design="d4"\],\[data-design="d5"\],\[data-design="d6"\],\[data-design="d6a"\],\[data-design="d6b"\],\[data-design="d6c"\],\[data-design="d6d"\],\[data-design="d7"\],\[data-design="d7a"\],\[data-design="d7b"\],\[data-design="d7c"\],\[data-design="d7d"\],\[data-design="l1"\],\[data-design="l2"\],\[data-design="l3"\],\[data-design="l4"\],\[data-design="l5"\],\[data-design="l6"\]\) body \.card/);
   for (const d of ['l1', 'l2', 'l3']) {
     assert.match(css, new RegExp('html\\[data-design="' + d + '"\\]\\{--up:#1F5FB8;--dn:#B8453E'));
   }
@@ -109,6 +109,8 @@ test('D4/D5/D6/D7 keep B structure, swoop up / coral down, and self-hosted Geist
   assert.match(vx, /d7:'#141416'/);
   assert.match(vx, /d7a:'#141416'/);
   assert.match(vx, /d7b:'#141416'/);
+  assert.match(vx, /d7c:'#141416'/);
+  assert.match(vx, /d7d:'#141416'/);
   assert.match(vx, /d6a:'#1E1D1F'/);
   assert.match(vx, /d6d:'#0E0E10'/);
 });
@@ -173,23 +175,45 @@ test('D7A–D7B keep Advisor chrome and Geist, mint/peach prices, swoop-blue spa
   assert.match(css, /html\[data-design="d7b"\]\{--up:#A8DDB5;--dn:#EDBB94/);
   assert.match(css, /html\[data-design="d7a"\]\{[^}]*--acc:#5CB0FF/);
   assert.match(css, /html\[data-design="d7b"\]\{[^}]*--acc:#5CB0FF/);
-  assert.match(css, /html:is\(\[data-design="d7a"\],\[data-design="d7b"\]\)[^{]*\{background:#141416!important/);
-  assert.match(css, /html:is\(\[data-design="d7a"\],\[data-design="d7b"\]\) body \.card[^{]*\{background:linear-gradient\(180deg,#202024 0%,#1C1C1F 100%\)!important;border:1px solid rgba\(255,255,255,\.08\)!important;border-radius:22px!important/);
-  assert.match(css, /html:is\(\[data-design="d7a"\],\[data-design="d7b"\]\) body \.chip\.on[^{]*\{background:var\(--acc-fill\)!important/);
-  assert.match(css, /html:is\(\[data-design="d7a"\],\[data-design="d7b"\]\) body \.chip\.on[^{]*\{[^}]*box-shadow:0 0 6px var\(--acc-glow\)!important/);
-  assert.match(css, /html:is\(\[data-design="d7a"\],\[data-design="d7b"\]\) body \.hbt i\{[^}]*background:linear-gradient\(90deg,#5CB0FF,rgba\(92,176,255,0\)\)!important;box-shadow:0 0 5px var\(--acc-glow\)!important/);
-  assert.match(css, /html:is\(\[data-design="d7a"\],\[data-design="d7b"\]\) body \.row svg path\[stroke\][^{]*\{stroke:#5CB0FF!important;stroke-width:1\.35px!important\}/);
-  assert.match(css, /html:is\(\[data-design="d7a"\],\[data-design="d7b"\]\) body \.q small i\{/);
-  assert.match(css, /html:is\(\[data-design="d7a"\],\[data-design="d7b"\]\) body \.q b[^{]*\{font-family:GeistSans,Inter,system-ui,sans-serif!important;font-variant-numeric:tabular-nums/);
-  assert.match(css, /html:is\(\[data-design="d7a"\],\[data-design="d7b"\]\) body \.wrap>\.lab[^{]*\{font-family:GeistMono,JBM,"IBM Plex Mono",ui-monospace,monospace!important/);
+  assert.match(css, /html:is\(\[data-design="d7a"\],\[data-design="d7b"\],\[data-design="d7c"\],\[data-design="d7d"\]\)[^{]*\{background:#141416!important/);
+  assert.match(css, /html:is\(\[data-design="d7a"\],\[data-design="d7b"\],\[data-design="d7c"\],\[data-design="d7d"\]\) body \.card[^{]*\{background:linear-gradient\(180deg,#202024 0%,#1C1C1F 100%\)!important;border:1px solid rgba\(255,255,255,\.08\)!important;border-radius:22px!important/);
+  assert.match(css, /html:is\(\[data-design="d7a"\],\[data-design="d7b"\],\[data-design="d7c"\],\[data-design="d7d"\]\) body \.chip\.on[^{]*\{background:var\(--acc-fill\)!important/);
+  assert.match(css, /html:is\(\[data-design="d7a"\],\[data-design="d7b"\],\[data-design="d7c"\],\[data-design="d7d"\]\) body \.chip\.on[^{]*\{[^}]*box-shadow:0 0 6px var\(--acc-glow\)!important/);
+  assert.match(css, /html:is\(\[data-design="d7a"\],\[data-design="d7b"\],\[data-design="d7c"\],\[data-design="d7d"\]\) body \.hbt i\{[^}]*background:linear-gradient\(90deg,#5CB0FF,rgba\(92,176,255,0\)\)!important;box-shadow:0 0 5px var\(--acc-glow\)!important/);
+  assert.match(css, /html:is\(\[data-design="d7a"\],\[data-design="d7b"\],\[data-design="d7c"\],\[data-design="d7d"\]\) body \.row svg path\[stroke\][^{]*\{stroke:#5CB0FF!important;stroke-width:1\.35px!important\}/);
+  assert.match(css, /html:is\(\[data-design="d7a"\],\[data-design="d7b"\],\[data-design="d7c"\],\[data-design="d7d"\]\) body \.q small i\{/);
+  assert.match(css, /html:is\(\[data-design="d7a"\],\[data-design="d7b"\],\[data-design="d7c"\],\[data-design="d7d"\]\) body \.q b[^{]*\{font-family:GeistSans,Inter,system-ui,sans-serif!important;font-variant-numeric:tabular-nums/);
+  assert.match(css, /html:is\(\[data-design="d7a"\],\[data-design="d7b"\],\[data-design="d7c"\],\[data-design="d7d"\]\) body \.wrap>\.lab[^{]*\{font-family:GeistMono,JBM,"IBM Plex Mono",ui-monospace,monospace!important/);
   // overlays unchanged
   for (const [k, hex] of [['vwap', 'F2B84B'], ['e9', '3FD0E0'], ['e21', 'B49CFF'], ['s50', 'FF9A4D'], ['s200', 'F472C4'], ['sup', '2FC9A9'], ['res', 'FF8C7E'], ['pat', 'F2DC5D']]) {
     assert.match(css, new RegExp('\\.ov-' + k + '\\{--ov:#' + hex + '\\}'));
   }
-  assert.match(js, /advBlue = \/\^d7\[ab\]\$\/\.test\(dzs\)/);
-  assert.match(js, /col = advBlue \? '#5CB0FF' : adv \? '#E8EEF6' : stroke/);
+  assert.match(js, /advBlue = \/\^d7\[abc\]\$\/\.test\(dzs\)/);
+  assert.match(js, /col = advTeal \? '#9FD8D0' : advBlue \? '#5CB0FF' : adv \? '#E8EEF6' : stroke/);
   assert.match(js, /d7a: '184,230,192', d7b: '168,221,181'/);
   // portfolio mini chart stays swoop blue (pastel is d6-only)
   assert.match(js, /const pastel = typeof DZ === 'function' && \/\^d6\[a-d\]\$\/\.test\(DZ\(\)\)/);
+});
+
+test('D7C keeps Advisor chrome with soft mint up and original coral down; D7D uses mint-teal sparklines', () => {
+  const css = R('v2/design.css');
+  const js = R('v2/v2.js');
+  assert.match(css, /html\[data-design="d7c"\]\{--up:#A8DDB5;--dn:#EB8C86/);
+  assert.match(css, /html\[data-design="d7d"\]\{--up:#A8DDB5;--dn:#EB8C86/);
+  assert.match(css, /html\[data-design="d7c"\]\{[^}]*--acc:#5CB0FF/);
+  assert.match(css, /html\[data-design="d7d"\]\{[^}]*--acc:#5CB0FF/);
+  assert.match(css, /html:is\(\[data-design="d7a"\],\[data-design="d7b"\],\[data-design="d7c"\],\[data-design="d7d"\]\)[^{]*\{background:#141416!important/);
+  assert.match(css, /html:is\(\[data-design="d7a"\],\[data-design="d7b"\],\[data-design="d7c"\],\[data-design="d7d"\]\) body \.card[^{]*\{background:linear-gradient\(180deg,#202024 0%,#1C1C1F 100%\)!important;border:1px solid rgba\(255,255,255,\.08\)!important;border-radius:22px!important/);
+  assert.match(css, /html:is\(\[data-design="d7a"\],\[data-design="d7b"\],\[data-design="d7c"\],\[data-design="d7d"\]\) body \.hbt i\{[^}]*background:linear-gradient\(90deg,#5CB0FF,rgba\(92,176,255,0\)\)!important;box-shadow:0 0 5px var\(--acc-glow\)!important/);
+  assert.match(css, /html:is\(\[data-design="d7a"\],\[data-design="d7b"\],\[data-design="d7c"\],\[data-design="d7d"\]\) body \.row svg path\[stroke\][^{]*\{stroke:#5CB0FF!important/);
+  assert.match(css, /html\[data-design="d7d"\] body \.row svg path\[stroke\][^{]*\{stroke:#9FD8D0!important/);
+  assert.match(css, /html:is\(\[data-design="d7a"\],\[data-design="d7b"\],\[data-design="d7c"\],\[data-design="d7d"\]\) body \.q small i\{/);
+  assert.match(js, /advTeal = dzs === 'd7d'/);
+  assert.match(js, /col = advTeal \? '#9FD8D0' : advBlue \? '#5CB0FF'/);
+  assert.match(js, /teal = typeof DZ === 'function' && DZ\(\) === 'd7d'/);
+  assert.match(js, /d7c: '235,140,134', d7d: '235,140,134'/);
+  for (const [k, hex] of [['vwap', 'F2B84B'], ['e9', '3FD0E0'], ['e21', 'B49CFF'], ['s50', 'FF9A4D'], ['s200', 'F472C4'], ['sup', '2FC9A9'], ['res', 'FF8C7E'], ['pat', 'F2DC5D']]) {
+    assert.match(css, new RegExp('\\.ov-' + k + '\\{--ov:#' + hex + '\\}'));
+  }
 });
 
