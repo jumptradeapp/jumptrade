@@ -44,7 +44,9 @@ test('Ask Jump sheet has why / monitor / report tabs, glowing entry points, and 
   assert.match(sheet, /isOwner/);
   assert.doesNotMatch(sheet, /ACCTS/);
   assert.match(v2, /class="ajbtn" data-aj="/);
-  assert.match(v2, /class="ajbar"/);
+  assert.match(v2, /class="ajchip"/);
+  assert.match(v2, /askChip =/);
+  assert.doesNotMatch(v2, /class="ajbar"/);
   assert.doesNotMatch(v2, /class="ajico"/);
   assert.doesNotMatch(v2x, /class="ajico"/);
   assert.match(v2, /head\('Portfolio'/);
@@ -53,11 +55,11 @@ test('Ask Jump sheet has why / monitor / report tabs, glowing entry points, and 
   assert.match(css, /\.asklbl\{[^}]*font-size:12px/);
   assert.match(css, /\.ajth\{[^}]*font-size:12px/);
   assert.match(idx, /v2\/asksheet\.js\?v=1/);
-  assert.match(idx, /v2\/v2\.js\?v=130/);
+  assert.match(idx, /v2\/v2\.js\?v=131/);
   assert.match(idx, /v2\/v2\.css\?v=104/);
-  assert.match(idx, /v2\/design\.css\?v=19/);
-  assert.match(idx, /v2x\.js\?v=49/);
-  assert.match(R('sw.js'), /jt-shell-v36/);
+  assert.match(idx, /v2\/design\.css\?v=20/);
+  assert.match(idx, /v2x\.js\?v=50/);
+  assert.match(R('sw.js'), /jt-shell-v37/);
   assert.match(R('sw.js'), /asksheet\.js/);
 });
 
