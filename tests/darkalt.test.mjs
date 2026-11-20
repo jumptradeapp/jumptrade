@@ -1,22 +1,24 @@
 // Run with: node --test tests/*.test.mjs
-// Dark + light alternative looks (Nov 19–20): ?design=n|s|g|d4|d5|d6|d7|d6a|d6b|d6c|d6d|d7a|d7b|d7c|d7d|d7c2|l1|l2|l3|l4|l5|l6 on top of shipped B / B-Light. Options only.
+// Dark + light looks (Nov 20 ship): default dark is D7C2, default light is B-Light. ?design=n|s|g|d4|d5|d6|d7|d6a|d6b|d6c|d6d|d7a|d7b|d7c|d7d|d7c2|l1|l2|l3|l4|l5|l6 still override; ?design=b or off gives B Terminal.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 const W = new URL('../web/', import.meta.url).pathname;
 const R = (p) => fs.readFileSync(W + p, 'utf8');
 
-test('?design=n|s|g|d4-d7|d6a-d|d7a-d|d7c2|l1-l6 is kept on the device, off/b clears, default stays B / B-Light, old a/c not accepted', () => {
+test('?design=n|s|g|d4-d7|d6a-d|d7a-d|d7c2|l1-l6 is kept on the device, off/b gives B Terminal, default is D7C2 / B-Light, old a/c not accepted', () => {
   const idx = R('index.html');
   assert.match(idx, /URLSearchParams\(location\.search\)\.get\("design"\)/);
-  assert.match(idx, /if\(\/\^\(n\|s\|g\|d4\|d5\|d6\|d7\|d6a\|d6b\|d6c\|d6d\|d7a\|d7b\|d7c\|d7d\|d7c2\|l1\|l2\|l3\|l4\|l5\|l6\)\$\/\.test\(dq\)\)/);
+  assert.match(idx, /if\(dq==="off"\)dq="b"/);
+  assert.match(idx, /if\(\/\^\(b\|n\|s\|g\|d4\|d5\|d6\|d7\|d6a\|d6b\|d6c\|d6d\|d7a\|d7b\|d7c\|d7d\|d7c2\|l1\|l2\|l3\|l4\|l5\|l6\)\$\/\.test\(dq\)\)/);
   assert.match(idx, /else localStorage\.removeItem\("jt\.design"\)/);
   assert.match(idx, /dataset\.design=dalt/);
-  assert.match(idx, /dataset\.design=xt==="light"\?"bl":"b"/);
+  assert.match(idx, /dataset\.design=xt==="light"\?"bl":"d7c2"/);
   assert.doesNotMatch(idx, /\^\[abc\]/);
   const vx = R('v2/v2x.js');
   assert.match(vx, /lsGet\('jt\.design', ''\)/);
-  assert.match(vx, /if \(t !== 'light' && \/\^\(\?:\[nsg\]\|d\[4-7\]\|d6\[a-d\]\|d7\[a-d\]\|d7c2\)\$\/\.test\(alt\)\) dz = alt/);
+  assert.match(vx, /let dz = t === 'light' \? 'bl' : 'd7c2'/);
+  assert.match(vx, /if \(t !== 'light' && \/\^\(\?:b\|\[nsg\]\|d\[4-7\]\|d6\[a-d\]\|d7\[a-d\]\|d7c2\)\$\/\.test\(alt\)\) dz = alt/);
   assert.match(vx, /if \(t === 'light' && \/\^l\[1-6\]\$\/\.test\(alt\)\) dz = alt/);
   assert.match(vx, /n:'#0E1A2E'/);
   assert.match(vx, /s:'#1A2030'/);
