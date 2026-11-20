@@ -8,7 +8,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   'use strict';
   const D = document;
   const E = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const DZ = () => document.documentElement.dataset.design; const LIGHTDZ = () => { const d = DZ(); return d === 'bl' || /^l[1-6]$/.test(d); }; const UPC = () => (LIGHTDZ() ? '#1F5FB8' : '#5CB0FF'), DNC = () => (LIGHTDZ() ? '#B8453E' : '#EB8C86'); // up/down: B-Light / l1-l6 on light, B swoop blue / soft coral on B and dark alts n/s/g/d4-d7
+  const DZ = () => document.documentElement.dataset.design; const LIGHTDZ = () => { const d = DZ(); return d === 'bl' || /^l[1-6]$/.test(d); }; const UPX = { d6a: '#B8E6C0', d6b: '#A8DDB5', d6c: '#C6EBCB', d6d: '#B8E6C0' }; const DNX = { d6a: '#F2C4A0', d6b: '#EDBB94', d6c: '#F5CFAE', d6d: '#F2C4A0' }; const UPC = () => (UPX[DZ()] || (LIGHTDZ() ? '#1F5FB8' : '#5CB0FF')), DNC = () => (DNX[DZ()] || (LIGHTDZ() ? '#B8453E' : '#EB8C86')); // up/down: B-Light / l1-l6 on light, faded mint/peach on d6a-d, else B swoop blue / soft coral
   const TXA = D.createElement('textarea'); const dec = (s) => { TXA.innerHTML = String(s == null ? '' : s); return TXA.value; }; // feed headlines arrive with HTML entities (&#x2019;)
   const ic = (n, s, sw) => '<svg class="ic" width="' + (s || 20) + '" height="' + (s || 20) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (sw || 1.9) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + I[n] + '</svg>';
   const f2 = (v, d) => Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: d == null ? 2 : d, maximumFractionDigits: d == null ? 2 : d });
@@ -24,9 +24,9 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     let lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals); const rng = (hi - lo) || 1;
     const pts = vals.map((v, i) => [pad + i * (w - 2 * pad) / (vals.length - 1), pad + (h - 2 * pad) * (1 - (v - lo) / rng)]);
     const d = 'M' + pts.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' L');
-    const last = pts[pts.length - 1]; const adv = (typeof DZ === 'function' && DZ() === 'd7');
-    const col = adv ? '#E8EEF6' : stroke, wid = adv ? 1.35 : sw, fop = adv ? 0.1 : op;
-    const dot = adv ? '<circle class="spk-end" cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="2.4" fill="#fff"/>' : '';
+    const last = pts[pts.length - 1]; const dzs = (typeof DZ === 'function' && DZ()) || ''; const adv = dzs === 'd7'; const pastel = /^d6[a-d]$/.test(dzs);
+    const col = adv ? '#E8EEF6' : stroke, wid = (adv || pastel) ? 1.35 : sw, fop = (adv || pastel) ? 0.1 : op;
+    const dot = (adv || pastel) ? '<circle class="spk-end" cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="2.4" fill="' + (pastel ? col : '#fff') + '"/>' : '';
     return '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" fill="none" style="display:block;overflow:visible" aria-hidden="true"><defs><linearGradient id="' + g + '" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="' + col + '" stop-opacity="' + fop + '"/><stop offset="1" stop-color="' + col + '" stop-opacity="0"/></linearGradient></defs><path d="' + d + ' L' + last[0].toFixed(1) + ',' + h + ' L' + pts[0][0].toFixed(1) + ',' + h + ' Z" fill="url(#' + g + ')"/><path d="' + d + '" stroke="' + col + '" stroke-width="' + wid + '" stroke-linejoin="round" stroke-linecap="round"/>' + dot + '</svg>';
   }
   const smooth = (v, k) => v.map((_, i) => { const s = v.slice(Math.max(0, i - k), i + k + 1); return s.reduce((a, b) => a + b, 0) / s.length; });
@@ -42,10 +42,10 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const hasPrev = isFinite(prev) && prev > 0;
     let lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals); if (hasPrev) { lo = Math.min(lo, prev); hi = Math.max(hi, prev); }
     const r = (hi - lo) || 1, top = 3, bot = h - 3; const Y = (x) => top + (bot - top) * (1 - (x - lo) / r);
-    const col = '#5B9BEA'; void up; gid++; const g = 'v2m' + gid; // the swoop accent (--acc), not green/red
+    const pastel = typeof DZ === 'function' && /^d6[a-d]$/.test(DZ()); const col = pastel ? (up ? UPC() : DNC()) : '#5B9BEA'; gid++; const g = 'v2m' + gid; // swoop accent, or faded mint/peach on d6a-d
     const pts = vals.map((x, i) => (i * w / (vals.length - 1)).toFixed(2) + ',' + Y(x).toFixed(2));
     const d = 'M' + pts.join('L');
-    const base = hasPrev ? '<line x1="0" x2="' + w + '" y1="' + Y(prev).toFixed(2) + '" y2="' + Y(prev).toFixed(2) + '" stroke="#B7C4D3" stroke-opacity=".45" stroke-width="1" stroke-dasharray="1.5 3" stroke-linecap="round"/>' : '';
+    const base = hasPrev ? '<line x1="0" x2="' + w + '" y1="' + Y(prev).toFixed(2) + '" y2="' + Y(prev).toFixed(2) + '" stroke="' + (pastel ? '#FFFFFF' : '#B7C4D3') + '" stroke-opacity="' + (pastel ? '.35' : '.45') + '" stroke-width="1" stroke-dasharray="1.5 3" stroke-linecap="round"/>' : '';
     const end = pts[pts.length - 1].split(',');
     return '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" style="display:block;overflow:visible" shape-rendering="geometricPrecision" aria-hidden="true"><defs><linearGradient id="' + g + '" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="' + col + '" stop-opacity=".22"/><stop offset="1" stop-color="' + col + '" stop-opacity="0"/></linearGradient></defs>' +
       '<path d="' + d + 'L' + w + ',' + h + 'L0,' + h + 'Z" fill="url(#' + g + ')"/>' + base +
@@ -799,7 +799,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const heatAt = (t) => { t = Math.max(0, Math.min(1, t)) * (HEAT.length - 1); const i = Math.min(HEAT.length - 2, Math.floor(t)), f = t - i; const c = HEAT[i].map((v, k) => Math.round(v + (HEAT[i + 1][k] - v) * f)); return c; };
   const heatT = (p, all) => { const a = Math.abs(p), mx = Math.max.apply(null, all.map(Math.abs)) || 1; const rk = all.filter((z) => Math.abs(z) < a).length / Math.max(1, all.length - 1); return 0.12 + 0.88 * (0.5 * a / mx + 0.5 * rk); };
   // calm heat tiles: dark base, a green or red wash whose strength follows the size of the move
-  const heatStyle = (p, all) => { const mx = Math.max.apply(null, all.map((x) => Math.abs(x))) || 1; const a = (0.05 + 0.27 * Math.min(1, Math.abs(p) / mx)).toFixed(3); return 'background:' + (Math.abs(p) < 0.005 ? 'rgba(20,40,70,.55)' : p > 0 ? 'rgba(95,191,143,' + a + ')' : 'rgba(224,122,122,' + a + ')'); };
+  const heatStyle = (p, all) => { const mx = Math.max.apply(null, all.map((x) => Math.abs(x))) || 1; const a = (0.05 + 0.27 * Math.min(1, Math.abs(p) / mx)).toFixed(3); const UR = { d6a: '184,230,192', d6b: '168,221,181', d6c: '198,235,203', d6d: '184,230,192' }; const DR = { d6a: '242,196,160', d6b: '237,187,148', d6c: '245,207,174', d6d: '242,196,160' }; const d = DZ(); const flat = UR[d] ? 'rgba(28,28,32,.55)' : 'rgba(20,40,70,.55)'; const up = UR[d] ? 'rgba(' + UR[d] + ',' + a + ')' : 'rgba(95,191,143,' + a + ')'; const dn = DR[d] ? 'rgba(' + DR[d] + ',' + a + ')' : 'rgba(224,122,122,' + a + ')'; return 'background:' + (Math.abs(p) < 0.005 ? flat : p > 0 ? up : dn); };
   function whatsHot() {
     loadThemes(); const T2 = themeRows();
     if (!T2) return ''; if (!T2.length) return '';
