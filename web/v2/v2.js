@@ -218,6 +218,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const skel = (n) => Array.from({ length: n || 3 }, (_, i) => '<div class="skel" style="width:' + (90 - i * 15) + '%"></div>').join('');
   // first-load placeholder rows, each as tall as the row that replaces it, so nothing below jumps when the data lands
   const skelRows = (n, h) => '<div class="card rows" style="padding:2px 14px">' + Array.from({ length: n }, (_, i) => '<div class="row skr" style="min-height:' + h + 'px!important"><div class="skel" style="width:' + (78 - (i % 3) * 14) + '%"></div></div>').join('') + '</div>';
+  const askChip = (target, label) => '<button type="button" class="ajbtn" data-aj="' + E(target || '#ask') + '" aria-label="' + E(label || 'Ask Jump anything') + '"><span class="ajchip">' + ic('spark', 13, 2.2) + ' Ask Jump</span></button>';
   const topbar = () => '<div class="top tc"><a class="ib" href="#menu" aria-label="All pages">' + ic('menu') + '</a><span class="brand"><img src="/v2/img/jump-lockup.svg?v=8" alt="jumptrade." width="141" height="26"></span><div class="acts">' + (REAL || !/^(today|portfolio)$/.test(route().v) ? '' : DEMO) + (V2_STAGE >= 3 ? '<a class="ib" href="#alerts" aria-label="Alerts">' + ic('bell') + (alertCount() ? '<em class="bdot"></em>' : '') + '</a>' : '<a class="ib" href="#calendar" aria-label="Alerts and events">' + ic('bell') + '<em class="bdot"></em></a>') + '</div></div>';
   const backbar = (title, href) => '<div class="top"><div style="display:flex;align-items:center;gap:6px;min-width:0"><a class="ib" style="margin-left:-10px" href="' + href + '" aria-label="Back">' + ic('back', 22) + '</a><b class="tbt">' + title + '</b></div><div class="acts">' + (REAL || route().v !== 'connect' ? '' : DEMO) + '</div></div>';
   const head = (t, sub) => { const p = t.lastIndexOf(' '); return '<h1>' + (p > 0 ? t.slice(0, p) + ' <em>' + t.slice(p + 1) + '</em>' : '<em>' + t + '</em>') + '</h1>' + (sub ? '<p class="sub">' + sub + '</p>' : ''); };
@@ -303,7 +304,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   }
   function portCard() {
     if (window.JT_PRIV && !REAL && Date.now() - T0 < 25000) { setTimeout(render, 1500); return card('<div style="position:relative">' + kick('Portfolio') + '<div class="mini" style="margin:6px 0 10px;color:var(--fg2)">Loading your Webull accounts…</div>' + skel(3) + '</div>', 'padding:16px 20px 14px;margin-top:8px', 'pglass pt2'); } // private copy: never flash the demo accounts before the real ones arrive
-    if (!ACCTS.length && !(window.JT_PRIV && Date.now() - T0 < 25000)) return card('<div class="pt2h"><a class="pt2k" href="#portfolio">Portfolio</a><span class="acct2 solo"><i></i>No brokerage connected</span><a class="pt2go" href="#portfolio" aria-label="Open portfolio">' + ic('chev', 20, 2.2) + '</a></div>' + (window.JT_OWN && JT_OWN.card() ? JT_OWN.card() : '<div class="pt2b">$0<small>.00</small></div><a class="pt2p pt2cn" href="#connect">Connect a brokerage to see your balance</a>') + '<div class="pt2gap"></div>', 'margin-top:12px', 'pglass pt2');
+    if (!ACCTS.length && !(window.JT_PRIV && Date.now() - T0 < 25000)) return card('<div class="pt2h"><a class="pt2k" href="#portfolio">Portfolio</a><span class="acct2 solo"><i></i>No brokerage connected</span><a class="pt2go" href="#portfolio" aria-label="Open portfolio">' + ic('chev', 20, 2.2) + '</a></div>' + (window.JT_OWN && JT_OWN.card() ? JT_OWN.card() : '<div class="pt2bw"><div class="pt2b">$0<small>.00</small></div>' + askChip('#ask') + '</div><a class="pt2p pt2cn" href="#connect">Connect a brokerage to see your balance</a>') + '<div class="pt2gap"></div>', 'margin-top:12px', 'pglass pt2');
     const all = allCalc(); const c0 = all.c;
     if (!c0.ready) return card('<div style="position:relative">' + kick('Portfolio') + (S.loaded && S.err.q ? '<div class="err">Prices aren’t loading right now, so balances can’t be worked out. Retrying every 30 seconds.</div>' : skel(4)) + '</div>', 'padding:16px 20px 12px;margin-top:12px');
     const cards = [{ a: all.a, c: c0 }].concat(ACCTS.length > 1 ? ACCTS.map((a) => ({ a, c: acctCalc(a) })) : []);
@@ -317,7 +318,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const menu = cards.length > 1 ? '<button class="acct2" data-acctmenu="1" aria-haspopup="listbox" aria-expanded="' + S.amenu + '"><i></i>' + E(name) + ic('chev', 14, 2.4) + '</button>' : '<span class="acct2 solo"><i></i>' + E(name) + '</span>';
     const list = S.amenu ? '<div class="amenu" role="listbox">' + cards.map((x, k) => '<button role="option" aria-selected="' + (k === idx) + '" data-acct="' + k + '"><i></i><span class="am-n"><b>' + E(k === 0 ? 'All accounts' : x.a.name) + '</b><small>' + E(x.a.sub || '') + '</small></span><span class="am-v"><b>' + (HB ? '$••••' : money(x.c.val)) + '</b><small class="' + cls(x.c.dayPct) + '">' + pct(x.c.dayPct) + '</small></span>' + (k === idx ? '<em>✓</em>' : '<em></em>') + '</button>').join('') + '</div>' : '';
     return card('<div class="pt2h"><a class="pt2k" href="#portfolio' + (idx ? '/' + idx : '') + '">Portfolio</a>' + menu + '<a class="pt2go" href="#portfolio' + (idx ? '/' + idx : '') + '" aria-label="Open portfolio">' + ic('chev', 20, 2.2) + '</a></div>' + list + staleNote() +
-      '<div class="pt2bw"><div class="pt2b">' + (dot > 0 ? m.slice(0, dot) + '<small>' + m.slice(dot) + '</small>' : m) + '</div><button type="button" class="eyeb" data-hidebal="1" aria-label="' + (HB ? 'Show balance' : 'Hide balance') + '" aria-pressed="' + HB + '">' + ic(HB ? 'eyeoff' : 'eye', 20, 2.0) + '</button></div>' +
+      '<div class="pt2bw"><div class="pt2b">' + (dot > 0 ? m.slice(0, dot) + '<small>' + m.slice(dot) + '</small>' : m) + '</div>' + askChip('#ask') + '<button type="button" class="eyeb" data-hidebal="1" aria-label="' + (HB ? 'Show balance' : 'Hide balance') + '" aria-pressed="' + HB + '">' + ic(HB ? 'eyeoff' : 'eye', 20, 2.0) + '</button></div>' +
       '<div class="pt2p ' + (amt == null ? '' : amt >= 0 ? 'u' : 'd') + '">' + (amt == null ? 'Loading ' + tf[2] + '…' : (amt >= 0 ? '▲ ' : '▼ ') + (HB ? '' : chg(amt).replace(/^[+−-]/, '') + ' · ') + pct(Math.abs(pc)).replace(/^[+−-]/, '') + ' ' + tf[2]) + '</div>' +
       areaChart(ser, (amt || 0) >= 0, c.val - c.day) + mixRow(c) +
       '<button class="ptog' + (S.pOpen ? ' on' : '') + '" data-ptog="1" aria-expanded="' + !!S.pOpen + '"><span>Top performers today</span><i>' + ic('chev', 16, 2.4) + '</i></button>' + (S.pOpen ? '<div class="rows" style="padding:0!important">' + (c.top.length ? perf(c.top, 3, 60) : '<div class="err">No stock holdings in this account.</div>') + '</div>' : ''),
@@ -418,9 +419,13 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       const tipY = up ? (mid - h) : (mid + h);
       const tip = '<span class="popt-tip ' + cls(r.pct) + (up ? ' above' : ' below') + '" style="top:' + tipY + 'px">' + pct(r.pct) + '</span>';
       const bar = vBarSvg('p' + kind + '-' + r.s + i, h, up, mid, svgH, barW, up);
-      const name = '<div class="popt-nwell"><span class="popt-nrot">' + E(r.name) + '</span></div>';
+      let name = '<div class="popt-nwell"><span class="popt-nrot">' + E(r.name) + '</span></div>';
       if (kind === 'a3') {
-        return '<div class="popt-col"><div class="popt-a3pair">' + name + '<div class="popt-vslot">' + bar + tip + '</div></div></div>';
+        const keep = 14, extra = 80;
+        const top = up ? (tipY + keep) : -extra;
+        const nh = up ? ((svgH - top) + extra) : ((tipY - keep) - top);
+        name = '<div class="popt-nwell" style="top:' + top + 'px;height:' + nh + 'px"><span class="popt-nrot">' + E(r.name) + '</span></div>';
+        return '<div class="popt-col"><div class="popt-a3pair ' + (up ? 'popt-up' : 'popt-dn') + '">' + name + '<div class="popt-vslot">' + bar + tip + '</div></div></div>';
       }
       return '<div class="popt-col"><div class="popt-vslot">' + bar + tip + '</div>' + name + '</div>';
     });
@@ -494,7 +499,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const have = L.map((x) => S.q[x]).filter((q) => q && isFinite(q.pct)); const up = have.filter((q) => q.pct > 0).length, dn = have.filter((q) => q.pct < 0).length;
     const tot = have.reduce((a, q) => a + q.pct * 10, 0); const flat = Math.abs(tot) < 0.5;
     const sum = have.length >= 2 ? '<div class="wsum2"><b>' + up + ' up · ' + dn + ' down today' + (flat ? '' : ' · <span class="' + (tot > 0 ? 'up' : 'dn') + '">' + (tot > 0 ? '+' : '−') + '$' + Math.abs(Math.round(tot)).toLocaleString('en-US') + '</span>') + '</b><small>' + (flat ? 'Flat overall today' : 'If you’d put $1,000 in each' + (own ? '' : ' of these') + ', you’d be ' + (tot > 0 ? 'up' : 'down') + ' $' + Math.abs(Math.round(tot)).toLocaleString('en-US') + ' today') + '</small></div>' : '';
-    return (window.V2X && V2X.listPicker ? V2X.listPicker() : '') + rowsBox(sum + V5.map((x) => srow(x, 64)).join('')) + (own ? '' : '<p class="note">Suggested stocks. Add your own from any stock page and they show here.</p>');
+    return (window.V2X && V2X.listPicker ? V2X.listPicker() : '') + rowsBox(sum + V5.map((x) => srow(x, 64)).join(''));
   }
   function moves() {
     const st = (S.setups || []).filter((x) => x && x.symbol).slice(0, 3);
@@ -609,10 +614,9 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       al.map((a) => '<a class="row" href="#stock/' + encodeURIComponent(a.s) + '" style="min-height:58px">' + tl(a.s, 32) + '<span class="nm"><b style="font-weight:500">' + a.h + '</b>' + (a.sub ? '<small>' + a.sub + '</small>' : '') + '</span></a>').join(''));
   }
   function today() {
-    const todayAsk = '<div class="ajbar"><button type="button" class="ajbtn" data-aj="#ask" aria-label="Ask Jump anything">' + ic('spark', 16, 2.1) + ' Ask Jump</button></div>';
-    if (DESK.matches) return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + todayAsk + '<div class="dk2"><div class="dkL"><div class="hero ptile">' + RIB + portCard() + '</div>' + f13Tile() + '</div><div class="dkR">' + pulse() + dayCard() + lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + '</div></div>' +
+    if (DESK.matches) return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="dk2"><div class="dkL"><div class="hero ptile">' + RIB + portCard() + '</div>' + f13Tile() + '</div><div class="dkR">' + pulse() + dayCard() + lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + '</div></div>' +
       '<div class="dk3"><div>' + catTile() + '</div><div>' + comingUp() + '</div></div><div class="dkN">' + filingsTile() + '</div></div>';
-    return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + todayAsk + '<div class="hero ptile">' + RIB + portCard() + '</div>' + pulse() + dayCard() +
+    return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="hero ptile">' + RIB + portCard() + '</div>' + pulse() + dayCard() +
       lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + f13Tile() + catTile() + comingUp() + filingsTile() + '</div>';
   }
 
@@ -640,8 +644,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
         '<span class="hlv"><b>' + money(r.mv, 0) + '</b><small>of ' + money(tot, 0) + '</small></span>' + q(s) + '</a>'; };
     const hd = sh('Holdings · ' + E(cur.a.name), c.rows.length > 5 ? (S.allHold ? 'Show less' : 'View all') : '', '#hold', 'layers') + (hl.length ? rowsBox(hl.map((s) => holdRow(s)).join('')) : ACCTS.length && c.ready && !Object.keys(cur.a.pos || {}).length && !cur.a.err ? rowsBox('<div class="err">No positions' + (on ? ' in this account' : '') + '. Cash only.</div>', 'padding:14px') : c.ready || !ACCTS.length ? (window.JT_OWN && JT_OWN.card() ? card(JT_OWN.card(), 'padding:14px 16px;margin-top:6px') : rowsBox('<div class="err">No positions. <a href="#connect">Connect a brokerage</a> to see your holdings.</div>', 'padding:14px')) : rowsBox(skel(4), 'padding:14px'));
     const link = '<a class="card act" style="margin-top:12px" href="#connect"><span class="ibx">' + tl('BULL', 30) + '</span><span class="tx"><b>Webull accounts</b><small>' + (ACCTS.length ? ACCTS.length + ' linked · add or manage' : 'None connected yet') + '</small></span><span class="chv">' + ic('chev', 22, 2.4) + '</span></a>';
-    return swoosh() + '<div class="wrap">' + topbar() + head('Portfolio', 'Your accounts &amp; model portfolios') +
-      '<div class="ajbar"><button type="button" class="ajbtn" data-aj="#ask" aria-label="Ask Jump anything">' + ic('spark', 16, 2.1) + ' Ask Jump</button></div>' +
+    return swoosh() + '<div class="wrap">' + topbar() + '<div class="hdrow">' + head('Portfolio') + askChip('#ask') + '</div>' +
       seg + staleNote() + car + ct + hd + link + '</div>';
   }
   function connect() {
@@ -771,11 +774,10 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     if (!d || (rows == null && !d.err)) body = skelRows(8, 72); // same height as the rows that replace it (no jump when they load)
     else if (!rows || !rows.length) body = rowsBox('<div class="err">' + (d.err ? 'Movers aren’t loading right now. Retrying every 10 seconds.' : 'No ' + lbl.toLowerCase() + ' movers in the feed right now.' + ({ pre: ' Pre-market trading runs 4:00–9:30 AM ET.', after: ' After-hours trading runs 4:00–8:00 PM ET.' }[S.mv.sess] || '')) + '</div>');
     else body = moversTable(rows);
-    return '<div class="wrap">' + topbar() + head('Top movers', '<span class="dot"></span>Live · ' + lbl + (d && d.t ? ' · ' + ago2(d.t) : '') + ' · tap for why') +
+    return '<div class="wrap">' + topbar() + head('Top movers', '<span class="dot" aria-hidden="true"></span>' + lbl) +
       '<div style="margin-top:12px">' + chipsHTML(MV_SESS, S.mv.sess, 'data-mvs') + '</div>' +
       '<div style="margin-top:10px"><div class="seg">' + [['up', 'Gainers'], ['dn', 'Losers']].map((x) => '<span class="' + (S.mv.dir === x[0] ? 'on' : '') + '" data-mvd="' + x[0] + '" role="button">' + x[1] + '</span>').join('') + '</div></div>' +
       '<div style="margin-top:10px">' + body + '</div>' +
-      '<p class="note">All US stocks, small caps included. Why lines are real headlines from the last 36 hours; “No news found” means we didn’t find one. Refreshes every few seconds.</p>' +
       (V2_STAGE >= 2 ? whatsHot() + lab('radar', 'Starting to run', 'Open', '#radar') + radarStrip(true) : '') + '</div>';
   }
 
@@ -1087,15 +1089,15 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const ix = '<div class="ixg">' + IDX_LEVELS.map(([s, n]) => { const x = S.q[s]; return '<div class="card ixc"><span class="mini">' + E(n) + '</span><b>' + (x ? idxPx(x.price) : '—') + '</b><small class="' + (x ? cls(x.pct) : '') + '">' + (x && isFinite(x.pct) ? pct(x.pct) : '&nbsp;') + '</small></div>'; }).join('') + '</div>';
     const T2 = themeRows();
     const heat = !T2 ? rowsBox(skel(4), 'padding:14px') : !T2.length ? rowsBox('<div class="err">Theme prices aren’t loading right now.</div>') :
-      '<div class="heat">' + T2.map((t, _i, A) => '<a class="ht' + (t.pct >= 0 ? ' hp' : ' hn') + ' ' + moveFill(t.pct, A.map((z) => z.pct)).cls + '" href="#markets/theme/' + E(t.id) + '" style="' + heatStyle(t.pct, A.map((z) => z.pct)) + '"><span>' + E(t.name) + '</span><b class="' + (Math.abs(t.pct) < 0.005 ? '' : t.pct > 0 ? 'up' : 'dn') + '">' + (Math.abs(t.pct) < 0.005 ? '' : t.pct > 0 ? '+' : '−') + Math.abs(t.pct).toFixed(2) + '%</b></a>').join('') + '</div><p class="note">Each tile is the average move today of the stocks in that theme (live). Stronger tint = bigger move. Blue is up, coral is down.</p>';
+      '<div class="heat">' + T2.map((t, _i, A) => '<a class="ht' + (t.pct >= 0 ? ' hp' : ' hn') + ' ' + moveFill(t.pct, A.map((z) => z.pct)).cls + '" href="#markets/theme/' + E(t.id) + '" style="' + heatStyle(t.pct, A.map((z) => z.pct)) + '"><span>' + E(t.name) + '</span><b class="' + (Math.abs(t.pct) < 0.005 ? '' : t.pct > 0 ? 'up' : 'dn') + '">' + (Math.abs(t.pct) < 0.005 ? '' : t.pct > 0 ? '+' : '−') + Math.abs(t.pct).toFixed(2) + '%</b></a>').join('') + '</div>';
     let rot = '';
     if (!S.rot) rot = rowsBox(skel(4), 'padding:14px');
     else if (S.rot.err || !S.rot[S.rotW]) rot = rowsBox('<div class="err">Money-flow data isn’t available right now.</div>');
     else { const R = Object.entries(S.rot[S.rotW]).sort((a, b) => b[1] - a[1]); const mx = Math.max.apply(null, R.map((r) => Math.abs(r[1]))) || 1;
       rot = '<div style="margin:4px 0 14px">' + chipsHTML([['r1', 'Day'], ['r5', 'Week'], ['r20', 'Month']].filter((c) => S.rot[c[0]]), S.rotW, 'data-rotw') + '</div>' +
         card(R.map((r) => '<div class="rbar"><span class="rbn">' + E(r[0]) + '</span><span class="rbt"><i class="' + (r[1] >= 0 ? 'p' : 'n') + '" style="width:' + (Math.abs(r[1]) / mx * 50).toFixed(1) + '%"></i></span><b class="' + cls(r[1]) + '">' + (r[1] >= 0 ? '+' : '−') + Math.abs(r[1]).toFixed(1) + '%</b></div>').join(''), 'padding:12px 14px') +
-        '<p class="note">' + (S.rot.lead ? 'Leading this month: ' + S.rot.lead.map(E).join(', ') + '. Lagging: ' + (S.rot.lag || []).map(E).join(', ') + '. ' : '') + 'Average move of each theme’s stocks, through the ' + E(shortD(S.rot.asOf)) + ' close' + (S.rot.live ? ' (today counts as it trades)' : '') + '.</p>'; }
-    return swoosh() + '<div class="wrap">' + topbar() + head('Markets', 'Themes, indexes and where money is moving') + pxAge() + ix +
+        (S.rot.lead ? '<p class="note">Leading this month: ' + S.rot.lead.map(E).join(', ') + '. Lagging: ' + (S.rot.lag || []).map(E).join(', ') + '.</p>' : ''); }
+    return swoosh() + '<div class="wrap">' + topbar() + head('Markets') + ix +
       sh('Themes today', 'All themes', '#sectors', 'grid', '#sectors') + heat + sh('Money flow', '', '', 'activity', '#money') + rot +
       lab('target', 'Your next moves', '', '#ideas') + moves() + earnCard() + act('target', 'Analyst calls', 'Upgrades, downgrades and price-target changes', '#analysts') + act('cal', 'Earnings week', 'Who reports this week, beat or miss', '#earnings') + (V2_STAGE >= 3 ? act('bank', 'Follow the money', 'Big options bets, Congress trades, short interest', '#money') : '') + '</div>';
   }
@@ -1327,9 +1329,9 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const tgtCard = anTarget(tg, cur, rN || (tg && tg.analyst_count)) + anMix(S.rat[sym]) + anEps(S.eps[sym]);
     return '<div class="wrap">' + backbar(E(sym), 'javascript:history.back()') +
       '<div class="sth">' + tl(sym, 48) + '<div class="nm"><h1 style="margin:0">' + E(sym) + '</h1><small>' + E(nameOf(sym)) + '</small></div>' + (q ? qv(q.price, q.chg, q.pct) : qv(null)) +
-      '<button type="button" class="ajbtn" data-aj="' + E(sym) + '" aria-label="Ask Jump about ' + E(sym) + '">' + ic('spark', 16, 2.1) + ' Ask Jump</button></div>' + '<div class="stg2"><div class="stL">' + (window.V2X && V2X.stockTop ? V2X.stockTop(sym) : '') + myPos(sym, q) +
+      askChip(sym, 'Ask Jump about ' + sym) + '</div>' + '<div class="stg2"><div class="stL">' + (window.V2X && V2X.stockTop ? V2X.stockTop(sym) : '') + myPos(sym, q) +
       (false ? '' : lab('radar', 'Setup', '', '') + (x && x.tag ? setupBox(sym, sess) : x ? '<p class="note">No setup read for this session.</p>' : rowsBox(skel(2), 'padding:14px;min-height:104px')) + facts +
-      '<p class="note">Updates through the trading day. Float and short interest are reported twice a month. A rules-based read, not advice.</p>') +
+      '') +
       '</div><div class="stR">' + lab('news', 'Why it’s moving', '', '') + '<div class="card" style="padding:12px 14px"><small class="why" style="white-space:normal;color:' + w.c + '">' + E(w.t) + '</small>' + (w.h && w.h.url ? '<a class="srcl" href="' + E(w.h.url) + '" target="_blank" rel="noopener">Open the article</a>' : '') + '</div>' +
       (window.V2X && V2X.topNews ? V2X.topNews(sym, nameOf(sym)) : '') +
       lab('activity', 'Analyst ratings', 'All calls', '#analysts') + tgtCard +

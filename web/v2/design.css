@@ -2006,10 +2006,99 @@ html[data-design="d7c2"] body .popt-sub{
 .popt-a3 .popt-cols{align-items:center}
 .popt-a3 .popt-col{align-items:stretch;overflow:visible}
 .popt-a3pair{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:3px;height:130px;width:100%;overflow:visible}
-.popt-a3 .popt-nwell{width:14px;height:168px;flex:none;margin:0;overflow:visible}
+.popt-card.popt-a3,.popt-chart.popt-a3{overflow:visible}
+.popt-chart.popt-a3{padding-top:80px;padding-bottom:80px}
+.popt-a3 .popt-plot{overflow:visible}
+.popt-a3pair{position:relative;overflow:visible;padding-left:16px;box-sizing:border-box}
+.popt-a3 .popt-nwell{position:absolute;left:0;width:14px;flex:none;margin:0;overflow:visible;display:flex;align-items:center;justify-content:center}
 .popt-a3 .popt-vslot{width:28px;flex:none}
 @media (min-width:1024px){
   .popt-nrot{font-size:13px}
   .popt-a2 .popt-nwell{height:176px}
   .popt-a3 .popt-nwell{height:186px;width:16px}
 }
+
+/* Compact Ask Jump chip: 28px visual, 44px tap, no own row, no decorative glow. */
+html[data-design="d7c2"] body .ajbtn{
+  position:relative;display:inline-flex;align-items:center;justify-content:center;
+  min-width:44px;min-height:44px;height:44px;padding:0 2px;margin:0;
+  border:0!important;background:transparent!important;box-shadow:none!important;
+  color:#C9E4FF!important;cursor:pointer;flex:none;white-space:nowrap
+}
+html[data-design="d7c2"] body .ajbtn .ajchip{
+  display:inline-flex;align-items:center;justify-content:center;gap:4px;
+  height:28px;padding:0 10px;border-radius:var(--r-pill,999px);
+  border:1px solid rgba(92,176,255,.45);background:rgba(92,176,255,.16);
+  font-family:GeistSans,Inter,system-ui,sans-serif;font-size:12px;font-weight:600;line-height:1;
+  color:#C9E4FF;box-shadow:none
+}
+html[data-design="d7c2"] body .ajbtn .ajchip svg{width:13px;height:13px;flex:none;display:block}
+html[data-design="d7c2"] body .hdrow{display:flex;align-items:center;gap:8px;margin:0 0 8px}
+html[data-design="d7c2"] body .hdrow h1{flex:1;min-width:0;margin:0!important}
+html[data-design="d7c2"] body .hdrow .ajbtn{margin-left:auto}
+html[data-design="d7c2"] body .pt2h .ajbtn{flex:none;margin:0 0 0 auto}
+html[data-design="d7c2"] body .pt2bw{display:flex;align-items:center;gap:8px}
+html[data-design="d7c2"] body .pt2bw .pt2b{flex:1;min-width:0}
+html[data-design="d7c2"] body .pt2bw .ajbtn{margin-left:auto;flex:none}
+html[data-design="d7c2"] body .pt2bw .eyeb{flex:none}
+html[data-design="d7c2"] body .sth{
+  display:grid!important;
+  grid-template-columns:auto minmax(0,1fr) auto!important;
+  grid-template-areas:"l n a" "q q q"!important;
+  column-gap:12px!important;row-gap:8px!important;align-items:center;flex-wrap:nowrap
+}
+html[data-design="d7c2"] body .sth>.tl{grid-area:l}
+html[data-design="d7c2"] body .sth>.nm{grid-area:n}
+html[data-design="d7c2"] body .sth>.q{grid-area:q}
+html[data-design="d7c2"] body .sth>.ajbtn{grid-area:a;margin:0!important;justify-self:end;align-self:center}
+
+/* Declutter: no sparkle glyphs on chips; sparkles stay on Ask Jump only. */
+html[data-design="d7c2"] body .chips .chip:not(.on):before,
+html[data-design="d7c2"] body .xchips .chip:not(.on):before,
+html[data-design="d7c2"] body .chips .chip.on:before,
+html[data-design="d7c2"] body .xchips .chip.on:before{content:none!important;display:none!important;width:0!important;height:0!important;margin:0!important;background:none!important}
+
+/* Declutter: no decorative glows on chrome, sparklines, or handles. Hairlines stay. */
+html[data-design="d7c2"] body .chip.on,
+html[data-design="d7c2"] body .seg span.on,
+html[data-design="d7c2"] body .seg a.on,
+html[data-design="d7c2"] body .xbtn:not(.ghost),
+html[data-design="d7c2"] body .ni.on{box-shadow:none!important}
+html[data-design="d7c2"] body .row svg path[stroke],
+html[data-design="d7c2"] body .mvsp svg path[stroke],
+html[data-design="d7c2"] body .wlnk svg path[stroke],
+html[data-design="d7c2"] body .pt2w svg path[stroke],
+html[data-design="d7c2"] body svg .spk-end,
+html[data-design="d7c2"] body .pt2w svg circle,
+html[data-design="d7c2"] body svg.anrg .bar,
+html[data-design="d7c2"] body .xch path[stroke],
+html[data-design="d7c2"] body svg.xch path[stroke="#5CB0FF"],
+html[data-design="d7c2"] body svg.xch path[stroke="#5B9BEA"]{filter:none!important}
+html[data-design="d7c2"] body .pt2w .pt2d{box-shadow:none!important}
+html[data-design="d7c2"] body .hbt i,
+html[data-design="d7c2"] body .hbt em,
+html[data-design="d7c2"] body .mixb{box-shadow:none!important}
+html[data-design="d7c2"] body .hero.ptile .ribbon,
+html[data-design="d7c2"] body .ribbon{display:none!important}
+
+/* One spacing rhythm: 8 / 12 / 16 / 24. */
+html[data-design="d7c2"] body .wrap>.card,
+html[data-design="d7c2"] body .wrap>.hero{margin-top:16px}
+html[data-design="d7c2"] body .heat{margin:8px 0 16px}
+html[data-design="d7c2"] body .ixg{margin:8px 0 16px}
+html[data-design="d7c2"] body .lab,
+html[data-design="d7c2"] body .sh{margin:16px 0 8px}
+html[data-design="d7c2"] body .sub{margin:8px 0 12px}
+html[data-design="d7c2"] body .chips,
+html[data-design="d7c2"] body .seg{margin:0 0 12px}
+
+/* A2/A3 names: vertical writing-mode so rotate does not overflow into bars and percents. */
+.popt-nrot{
+  writing-mode:vertical-rl;
+  transform:rotate(180deg);
+  transform-origin:center center;
+  white-space:nowrap;word-break:normal;overflow-wrap:normal;
+  font-family:GeistSans,Inter,system-ui,sans-serif;font-size:12px;line-height:1.15;font-weight:500;color:#F4F4F5
+}
+.popt-nwell{overflow:hidden}
+.popt-a3 .popt-nwell{overflow:visible}
