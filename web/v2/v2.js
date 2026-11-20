@@ -364,7 +364,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const up = pct >= 0;
     const col = up ? '#5CB0FF' : '#EB8C86';
     const bw = Math.max(12, Math.round((w - 4) * Math.sqrt(Math.abs(pct) / mx)));
-    const h = 14, r = 7, y = 3;
+    const h = 14, r = 2, y = 3;
     let d;
     if (side === 'right') {
       d = 'M0,' + y + ' L' + Math.max(0, bw - r) + ',' + y + ' A' + r + ',' + r + ' 0 0 1 ' + bw + ',' + (y + r) + ' L' + bw + ',' + (y + h - r) + ' A' + r + ',' + r + ' 0 0 1 ' + Math.max(0, bw - r) + ',' + (y + h) + ' L0,' + (y + h) + ' Z';
