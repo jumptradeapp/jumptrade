@@ -546,7 +546,7 @@ body[data-tab=setups] #vSetups,body[data-tab=leaders] #vLeaders,body[data-tab=ru
 .inlogo{display:flex;justify-content:center;margin:-4px 0 6px}
 .inico{width:62px;height:62px;border-radius:20px;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(160deg,var(--blue-2),var(--blue-deep))}
 .inbx h2{font-family:'Inter',system-ui,sans-serif;font-size:27px;font-weight:800;letter-spacing:-.02em;margin:4px 0 8px}
-.inbx h2 em{font-style:normal;color:var(--blue)}
+.inbx h2 em{font-style:normal;color:var(--blue)}.inbx h2 .inSoft{font-weight:400;color:#C9CFD9}.inbx h2 b{font-weight:800;color:#F4F6FA}
 .inbx p{font-size:14.5px;line-height:1.5;margin:0 0 16px}
 .indots{display:flex;justify-content:center;gap:6px;margin-bottom:16px}
 .indots i{width:7px;height:7px;border-radius:99px;background:rgba(127,140,160,.4);transition:width .2s}
@@ -2169,6 +2169,7 @@ body.sheet-open:before{content:'';position:fixed;inset:0;z-index:29;background:r
 :is(#_,html) .orcHero{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px}
 :is(#_,html) .orcHero .orcTt b{font-size:22px;letter-spacing:.18em;font-weight:800;background:linear-gradient(180deg,#FFFFFF 30%,var(--blue-pale));-webkit-background-clip:text;background-clip:text;color:transparent}
 :is(#_,html) .orcHero .orcTt small{font-size:13px;color:#A9BCD8;margin-top:4px}
+:is(#_,html) .orcTt small .tgJump{font-weight:700;color:#F4F6FA;font-style:normal;letter-spacing:inherit;background:none;-webkit-text-fill-color:#F4F6FA;filter:none}
 :is(#_,html) .orcCard.v2 .orcFake{border-color:#3A5A92;background:rgba(6,10,20,.85);box-shadow:0 0 0 4px rgba(59,123,255,.10),0 10px 30px -12px rgba(59,123,255,.6);color:var(--text-2)}
 :is(#_,html) .orcType{flex:none;white-space:nowrap;overflow:hidden;max-width:calc(100% - 64px)}
 @keyframes orcBlink{50%{opacity:0}}

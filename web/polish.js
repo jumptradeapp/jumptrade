@@ -27,7 +27,7 @@
   if (seenNow()) return;
   const CARDS = [
     ['Find the move.', 'Top Gainers shows what’s jumping right now, why it’s moving, and whether it’s a squeeze, a breakout or a fade.', 'M'],
-    ['Know before you jump.', 'Every stock page explains the move: the chart with VWAP, its history after big jumps, money flow, analysts and earnings.', 'K'],
+    ['<span class="inSoft">Know before you </span><b>jump</b>.', 'Every stock page explains the move: the chart with VWAP, its history after big jumps, money flow, analysts and earnings.', 'K'],
     ['Plan the trade.', 'Setups ranks the best entries with stops, targets and real win rates. Size it, log it, and the journal grades you.', 'P'],
   ];
   if (window.JT_WEB) CARDS.unshift(['You’ve been selected.', 'You’re one of a small group beta testing jumptrade before launch. We’d appreciate your feedback on bugs, ideas that would help you, and the overall experience and navigation. Send it anytime from the menu: Settings → Send feedback.', 'B']);

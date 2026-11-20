@@ -948,7 +948,7 @@ html[data-x2t="light"] .tapd{background-color:rgba(30,80,150,.06)!important}
 .lpTop{display:flex;align-items:center;justify-content:space-between;height:44px}.lpTop img{display:block;height:26px;width:auto}
 .lpLink{background:none;border:0;color:#BBD7F9;font:600 15px Inter,system-ui,sans-serif;padding:10px 4px;min-height:44px;cursor:pointer}
 .lpHero{display:grid;gap:28px;margin-top:40px}
-.lp h1{font-family:LoraI,Lora,Georgia,serif;font-style:italic;font-weight:500;font-size:46px;line-height:1.05;letter-spacing:-.5px;margin:0;color:#F3F8FF;text-wrap:balance}
+.lp h1{font-family:LoraI,Lora,Georgia,serif;font-style:italic;font-weight:400;font-size:46px;line-height:1.05;letter-spacing:-.5px;margin:0;color:#C9D3E0;text-wrap:balance}.lp h1 b{font-weight:700;color:#F3F8FF;font-style:inherit}
 .lpSub{font-size:17px;line-height:26px;color:#AFC4E0;margin:16px 0 0;max-width:30em}
 .lpCta{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
 .lpBtn,.lpBtn2,.lpRow button{font:600 16px Inter,system-ui,sans-serif;min-height:50px;padding:0 22px;border-radius:14px;cursor:pointer;border:0}

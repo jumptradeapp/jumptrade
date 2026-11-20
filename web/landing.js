@@ -10,7 +10,7 @@
   const html = () => '<div class="lp">' +
     '<header class="lpTop"><img src="/v2/img/jump-lockup.svg?v=8" alt="jumptrade." width="141" height="26"><button class="lpLink" data-lp="code">Sign in</button></header><main class="lpMain">' +
     '<section class="lpHero"><div class="lpPitch">' +
-      '<h1>Know before you jump.</h1>' +
+      '<h1>Know before you <b>jump</b>.</h1>' +
       '<p class="lpSub">See what’s moving right now, why it’s moving, and what the biggest funds just bought. One fast app for people who trade.</p>' +
       '<div class="lpCta"><button class="lpBtn" data-lp="req">Request an invite</button><button class="lpBtn2" data-lp="code">Sign in with a code</button></div>' +
       '<div class="lpCode" id="lpCode" hidden><label for="gCode">Sign-in code or invite link</label><div class="lpRow"><input id="gCode" type="text" maxlength="80" autocapitalize="characters" autocomplete="one-time-code" spellcheck="false" placeholder="K7F2-9QXA"><button id="gGo">Sign in</button></div><p id="gMsg" class="lpMsg" role="status"></p>' +

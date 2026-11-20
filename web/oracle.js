@@ -72,7 +72,7 @@
     const last = ORC.msgs.filter((x) => x.a && !x.live).slice(-1)[0], M = movers(), sug = suggestions();
     const chip = (s) => { const t = (s.match(/\b[A-Z]{1,5}\b/) || [])[0]; return '<button data-orcq="' + E(s) + '">' + (t && typeof logoHTML === 'function' ? logoHTML(t, 20) : '<span class="orcSi">✦</span>') + '<span>' + E(s) + '</span></button>'; };
     return '<div class="orcCard v2"><div class="orcGlow"></div>' +
-      '<div class="orcHero">' + MK(34) + '<div class="orcTt"><b>Ask Jump</b><small>Know before you jump</small></div></div>' +
+      '<div class="orcHero">' + MK(34) + '<div class="orcTt"><b>Ask Jump</b><small>Know before you <span class="tgJump">jump</span></small></div></div>' +
       (last ? '<button class="orcLast" data-orcopen="1"><small>Last answer</small>' + E(last.a.slice(0, 150)) + (last.a.length > 150 ? '…' : '') + '</button>' : '') +
       '<button class="orcFake" data-orcopen="1"><span class="orcTw"><span class="orcType" data-orctype="' + E(JSON.stringify(sug)) + '">Ask anything…</span></span><em>↑</em></button>' +
       '<div class="orcSug">' + sug.map(chip).join('') + '</div></div>';
