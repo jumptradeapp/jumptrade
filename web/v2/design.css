@@ -1916,8 +1916,11 @@ html[data-design="d7c2"] body .hixc .q b{
   font-variant-numeric:tabular-nums
 }
 html[data-design="d7c2"] body .hixc .q i{font-style:normal;font-family:GeistMono,ui-monospace,Menlo,monospace;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+html[data-design="d7c2"] body .hixc .q{flex-wrap:wrap;min-width:0}
+html[data-design="d7c2"] body .hixc .q b,html[data-design="d7c2"] body .hixc .q i{min-width:0}
 @media (min-width:1024px){
-  html[data-design="d7c2"] body .hixg{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 18px}
+  /* Stay on a 2×2 grid: the Today rail is too narrow for four index cells in one row. */
+  html[data-design="d7c2"] body .hixg{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px}
   html[data-design="d7c2"] body .hixc .q b{font-size:18px;line-height:22px}
 }
 

@@ -55,9 +55,9 @@ test('Ask Jump sheet has why / monitor / report tabs, glowing entry points, and 
   assert.match(idx, /v2\/asksheet\.js\?v=1/);
   assert.match(idx, /v2\/v2\.js\?v=130/);
   assert.match(idx, /v2\/v2\.css\?v=104/);
-  assert.match(idx, /v2\/design\.css\?v=18/);
+  assert.match(idx, /v2\/design\.css\?v=19/);
   assert.match(idx, /v2x\.js\?v=49/);
-  assert.match(R('sw.js'), /jt-shell-v35/);
+  assert.match(R('sw.js'), /jt-shell-v36/);
   assert.match(R('sw.js'), /asksheet\.js/);
 });
 

@@ -10,12 +10,12 @@ test('clean-1120 pins, nav clip, colors, pulse C, indexes, heat, Ask Jump and ta
   const v2 = R('v2/v2.js'), css = R('v2/v2.css'), design = R('v2/design.css');
   const v2x = R('v2/v2x.js'), land = R('landing.js');
   assert.match(idx, /v2\/v2\.css\?v=104/);
-  assert.match(idx, /v2\/design\.css\?v=18/);
+  assert.match(idx, /v2\/design\.css\?v=19/);
   assert.match(idx, /v2\/v2\.js\?v=130/);
   assert.match(idx, /v2x\.js\?v=49/);
   assert.match(idx, /landing\.js\?v=10/);
   assert.match(idx, /v2\/asksheet\.js\?v=1/);
-  assert.match(sw, /jt-shell-v35/);
+  assert.match(sw, /jt-shell-v36/);
   assert.match(sw, /\/v2\/asksheet\.js/);
 
   assert.match(css, /html,body\{max-width:100%;overscroll-behavior:none\}/);
