@@ -71,7 +71,7 @@ test('L1/L2/L3 keep B-Light structure, swoop up/down, and the existing light ove
   }
 });
 
-test('D4/D5/D6/D7 keep B structure, swoop up / coral down, and self-hosted Geist on D7', () => {
+test('D4/D5/D6/D7 keep B structure, swoop up / coral down, and self-hosted Geist on D7 Advisor', () => {
   const css = R('v2/design.css');
   for (const d of ['d4', 'd5', 'd6', 'd7']) {
     assert.match(css, new RegExp('html\\[data-design="' + d + '"\\]\\{--up:#5CB0FF;--dn:#EB8C86'));
@@ -79,11 +79,14 @@ test('D4/D5/D6/D7 keep B structure, swoop up / coral down, and self-hosted Geist
   assert.match(css, /html\[data-design="d4"\][^{]*\{background:#0D1F24!important/);
   assert.match(css, /html\[data-design="d5"\][^{]*\{background:#1A1B33!important/);
   assert.match(css, /html\[data-design="d6"\][^{]*\{background:#1E1D1F!important/);
-  assert.match(css, /html\[data-design="d7"\][^{]*\{background:#000600!important/);
+  assert.match(css, /html\[data-design="d7"\][^{]*\{background:#141416!important/);
   assert.match(css, /html\[data-design="d4"\] body \.card[^{]*\{background:#16343C!important/);
   assert.match(css, /html\[data-design="d5"\] body \.card[^{]*\{background:#262748!important/);
   assert.match(css, /html\[data-design="d6"\] body \.card[^{]*\{background:#262528!important/);
-  assert.match(css, /html\[data-design="d7"\] body \.card[^{]*\{background:#121214!important/);
+  assert.match(css, /html\[data-design="d7"\] body \.card[^{]*\{background:linear-gradient\(180deg,#202024 0%,#1C1C1F 100%\)!important/);
+  assert.match(css, /html\[data-design="d7"\] body \.card[^{]*\{background:linear-gradient\(180deg,#202024 0%,#1C1C1F 100%\)!important;border:1px solid rgba\(255,255,255,\.08\)!important;border-radius:22px!important/);
+  assert.match(css, /html\[data-design="d7"\] body \.chip\.on[^{]*\{background:rgba\(92,176,255,\.20\)!important/);
+  assert.match(css, /html\[data-design="d7"\] body \.hbt i\{border-radius:999px!important;background:linear-gradient\(90deg,#5CB0FF,rgba\(92,176,255,0\)\)!important/);
   assert.match(css, /html\[data-design="d4"\]\{[^}]*--fg3:#93B6B9/);
   assert.match(css, /html\[data-design="d5"\]\{[^}]*--fg3:#B0AACA/);
   assert.match(css, /html\[data-design="d6"\]\{[^}]*--fg3:#A39E99/);
@@ -101,7 +104,7 @@ test('D4/D5/D6/D7 keep B structure, swoop up / coral down, and self-hosted Geist
   assert.match(ofl, /Geist Project Authors/);
   const vx = R('v2/v2x.js');
   assert.match(vx, /d4:'#0D1F24'/);
-  assert.match(vx, /d7:'#000600'/);
+  assert.match(vx, /d7:'#141416'/);
 });
 
 test('L4/L5/L6 keep B-Light structure, swoop up/down, navy chrome on L4 header and L6 nav', () => {

@@ -7,7 +7,7 @@
      ?design=d4  Midnight teal
      ?design=d5  Dusk indigo
      ?design=d6  Warm charcoal
-     ?design=d7  Ink (reference type: Geist Sans + Geist Mono)
+     ?design=d7  Advisor (soft charcoal, lifted cards, Geist Sans + Geist Mono)
    Light alternatives (same, on top of B-Light):
      ?design=l1  Paper
      ?design=l2  Mist blue
@@ -778,36 +778,79 @@ html[data-design="d6"] body .row.mvd:hover{background:rgba(92,176,255,.08)}
 html[data-design="d6"] #jtGate.lpGate{background:#1E1D1F!important}
 html[data-design="d6"] #jtGate .lpCard,html[data-design="d6"] #jtGate .lpReq{background:#262528!important;border:1px solid #3A393C!important}
 
-/* ---------- D7 · Ink (reference type) ---------- */
-html[data-design="d7"]{--up:#5CB0FF;--dn:#EB8C86;--fg2:#C4C4C8;--fg3:#A3A3A8;--hair:rgba(255,255,255,.10);--b2:#5CB0FF;--b3:#8EC5FF}
+/* ---------- D7 · Advisor (soft charcoal, lifted graphite cards, reference type) ---------- */
+html[data-design="d7"]{--up:#5CB0FF;--dn:#EB8C86;--fg2:#C8C8CC;--fg3:#A3A3A8;--hair:rgba(255,255,255,.08);--b2:#5CB0FF;--b3:#8EC5FF}
 html[data-design="d7"],
 html[data-design="d7"] body,
 html[data-design="d7"] .app2,
 html[data-x2t]:not([data-x2t="light"])[data-design="d7"] body,
-html[data-x2t]:not([data-x2t="light"])[data-design="d7"] .app2{background:#000600!important;color:#F4F4F5!important;font-family:GeistSans,Inter,system-ui,sans-serif}
+html[data-x2t]:not([data-x2t="light"])[data-design="d7"] .app2{background:#141416!important;color:#F4F4F5!important;font-family:GeistSans,Inter,system-ui,sans-serif}
 html[data-design="d7"] .bgfx{background:none!important;opacity:0}
-html[data-design="d7"] body .card,html[data-design="d7"] body .card.pglass{background:#121214!important;border:1px solid #2A2A2C!important;box-shadow:none!important}
-html[data-design="d7"] body .chip,html[data-design="d7"] body .seg{background:#0E0E10!important;border:1px solid #2A2A2C!important;color:#E8E8EA!important}
-html[data-design="d7"] body .chip.on,html[data-design="d7"] body .seg span.on{background:#1C1C1E!important;color:#F4F4F5!important;border-color:#5CB0FF!important;box-shadow:inset 0 -2px 0 #5CB0FF!important}
+html[data-x2t]:not([data-x2t="light"])[data-design="d7"] .app2:before,
+html[data-design="d7"] .app2:before{background:none!important;content:none!important}
+/* lifted graphite cards: lighter at the top, hairline, 22px radius, shadow so they sit off the page */
+html[data-design="d7"] body .card,
+html[data-design="d7"] body .card.pglass,
+html[data-x2t]:not([data-x2t="light"])[data-design="d7"] body .card,
+html[data-x2t]:not([data-x2t="light"])[data-design="d7"] body .card.pglass{background:linear-gradient(180deg,#202024 0%,#1C1C1F 100%)!important;border:1px solid rgba(255,255,255,.08)!important;border-radius:22px!important;box-shadow:0 10px 32px rgba(0,0,0,.38),0 1px 0 rgba(255,255,255,.07) inset!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;padding:18px 20px!important}
+html[data-design="d7"] body .card.rows{padding:10px 16px!important}
+html[data-design="d7"] body .card.rows:has(.mvd){padding:0!important;overflow:hidden}
+html[data-design="d7"] body .card.pulse2,html[data-design="d7"] body .app2 .wrap>.card.pulse2{padding:18px 20px!important}
+html[data-design="d7"] body .xchc{padding:16px 18px 14px!important}
+/* portfolio tile is a real lifted card in Advisor (B Terminal flattens it) */
+html[data-x2t]:not([data-x2t="light"])[data-design="d7"] body .hero.ptile{margin:8px 0 0!important;padding:0!important;overflow:visible!important;background:none!important;border:0!important;box-shadow:none!important}
+html[data-x2t]:not([data-x2t="light"])[data-design="d7"] body .hero.ptile .card,
+html[data-x2t]:not([data-x2t="light"])[data-design="d7"] body .hero.ptile .card.pglass{background:linear-gradient(180deg,#202024 0%,#1C1C1F 100%)!important;border:1px solid rgba(255,255,255,.08)!important;border-radius:22px!important;box-shadow:0 10px 32px rgba(0,0,0,.38),0 1px 0 rgba(255,255,255,.07) inset!important;padding:20px 20px 18px!important}
+html[data-design="d7"] body .chip,html[data-design="d7"] body .seg{background:rgba(255,255,255,.04)!important;border:1px solid rgba(255,255,255,.08)!important;color:#E8E8EA!important;border-radius:999px!important;box-shadow:none!important}
+html[data-design="d7"] body .seg{padding:3px!important}
+html[data-design="d7"] body .seg span,html[data-design="d7"] body .seg a{border-radius:999px!important;border-color:transparent!important}
+html[data-design="d7"] body .chip.on,html[data-design="d7"] body .seg span.on,html[data-design="d7"] body .seg a.on{background:rgba(92,176,255,.20)!important;color:#F4F7FF!important;border:1px solid #5CB0FF!important;box-shadow:0 0 14px rgba(92,176,255,.22)!important}
+/* segmented time-range: one track, filled active pill */
+html[data-design="d7"] body .xtf{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:999px;padding:3px;gap:2px;justify-content:stretch}
+html[data-design="d7"] body .xtf .chip{background:transparent!important;border:1px solid transparent!important;border-radius:999px!important;box-shadow:none!important;flex:1;min-height:32px;height:32px}
+html[data-design="d7"] body .xtf .chip.on{background:rgba(92,176,255,.22)!important;border:1px solid #5CB0FF!important;color:#fff!important;box-shadow:0 0 16px rgba(92,176,255,.25)!important}
 html[data-design="d7"] body .up{color:#5CB0FF!important}
 html[data-design="d7"] body .dn{color:#EB8C86!important}
-html[data-design="d7"] body .nm b,html[data-design="d7"] body .q b,html[data-design="d7"] body .top.tc .ttl{color:#F4F4F5!important}
-html[data-design="d7"] body .nm small{color:#C4C4C8!important}
+html[data-design="d7"] body .nm b,html[data-design="d7"] body .top.tc .ttl{color:#F4F4F5!important}
+html[data-design="d7"] body .q b,html[data-design="d7"] body .sth>.q b,html[data-design="d7"] body .pt2b,html[data-design="d7"] body .wsum2 b{color:#FFFFFF!important}
+html[data-design="d7"] body .sth>.q small,html[data-design="d7"] body .q small,html[data-design="d7"] body .pt2p:not(.pt2cn){font-weight:500!important;opacity:.88}
+html[data-design="d7"] body .nm small{color:#C8C8CC!important}
 html[data-design="d7"] body .wrap>.lab,html[data-design="d7"] body .lab{color:#A3A3A8!important}
 html[data-design="d7"] body .lab .labt{color:#E8E8EA!important}
 html[data-design="d7"] body .lab a:not(.labt){color:#5CB0FF}
-html[data-design="d7"] body .mvhd{background:#0E0E10;border-bottom:1px solid #2A2A2C;color:#A3A3A8}
+html[data-design="d7"] body .mvhd{background:#1A1A1D;border-bottom:1px solid rgba(255,255,255,.08);color:#A3A3A8}
 html[data-design="d7"] body .row.mvd:hover{background:rgba(92,176,255,.08)}
+html[data-design="d7"] body .xbtn{border-radius:999px!important}
+html[data-design="d7"] body .stbox,html[data-design="d7"] body .fct{border-radius:16px!important;border-color:rgba(255,255,255,.08)!important;box-shadow:none!important}
+/* swoop-blue-to-transparent glowing pill bars (market pulse, analyst range) */
+html[data-design="d7"] body .hbt{height:10px!important;border-radius:999px!important;background:rgba(255,255,255,.06)!important;overflow:visible!important}
+html[data-design="d7"] body .hbt i{border-radius:999px!important;background:linear-gradient(90deg,#5CB0FF,rgba(92,176,255,0))!important;box-shadow:0 0 12px rgba(92,176,255,.5)!important}
+html[data-design="d7"] body .hbt em{background:#fff!important;box-shadow:0 0 10px rgba(92,176,255,.8)!important}
+html[data-design="d7"] body .hbs small{font-size:12px!important}
+html[data-design="d7"] body svg.anrg .bar{fill:url(#none);fill:#5CB0FF;fill-opacity:.85;filter:drop-shadow(0 0 6px rgba(92,176,255,.55))}
+html[data-design="d7"] body .mixb{border-radius:999px;overflow:hidden;height:10px;box-shadow:0 0 12px rgba(92,176,255,.25)}
+html[data-design="d7"] body .mixb i{border-radius:0}
+/* thin light sparklines + glowing endpoint */
+html[data-design="d7"] body .row svg path[stroke],
+html[data-design="d7"] body .mvsp svg path[stroke],
+html[data-design="d7"] body .wlnk svg path[stroke],
+html[data-design="d7"] body .pt2w svg path[stroke]{stroke:#E8EEF6!important;stroke-width:1.35px!important}
+html[data-design="d7"] body .row svg path[fill]:not([fill="none"]),
+html[data-design="d7"] body .mvsp svg path[fill]:not([fill="none"]),
+html[data-design="d7"] body .wlnk svg path[fill]:not([fill="none"]){fill-opacity:.12}
+html[data-design="d7"] body svg .spk-end,
+html[data-design="d7"] body .pt2w svg circle{fill:#fff!important;filter:drop-shadow(0 0 6px rgba(92,176,255,.9))}
+html[data-design="d7"] body .pt2w .pt2d{background:#fff!important;box-shadow:0 0 0 4px rgba(92,176,255,.22),0 0 14px 3px rgba(92,176,255,.6)!important}
 @media (max-width:1023px){
-  html[data-design="d7"] body .nav{background:rgba(0,6,0,.97)!important;border-top:1px solid #2A2A2C!important}
+  html[data-design="d7"] body .nav{background:rgba(20,20,22,.97)!important;border-top:1px solid rgba(255,255,255,.08)!important}
   html[data-design="d7"] body .ni.on,html[data-design="d7"] body .ni.on *{color:#5CB0FF!important}
 }
 @media (min-width:1024px){
-  html[data-design="d7"] body #nav.nav{background:#000600!important;border-right:1px solid #2A2A2C!important}
-  html[data-design="d7"] body #nav .ni.on{background:#121214!important;box-shadow:inset 2px 0 0 #5CB0FF!important}
+  html[data-design="d7"] body #nav.nav{background:#141416!important;border-right:1px solid rgba(255,255,255,.08)!important}
+  html[data-design="d7"] body #nav .ni.on{background:#1C1C1F!important;box-shadow:inset 2px 0 0 #5CB0FF!important}
 }
-html[data-design="d7"] #jtGate.lpGate{background:#000600!important}
-html[data-design="d7"] #jtGate .lpCard,html[data-design="d7"] #jtGate .lpReq{background:#121214!important;border:1px solid #2A2A2C!important}
+html[data-design="d7"] #jtGate.lpGate{background:#141416!important}
+html[data-design="d7"] #jtGate .lpCard,html[data-design="d7"] #jtGate .lpReq{background:linear-gradient(180deg,#202024,#1C1C1F)!important;border:1px solid rgba(255,255,255,.08)!important;border-radius:22px!important}
 
 /* D7 type: geometric sans for body + numbers (tabular prices); mono for small uppercase letter-spaced labels and axis/ticks. 12px floor kept. */
 html[data-design="d7"] body,
