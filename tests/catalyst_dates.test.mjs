@@ -142,8 +142,8 @@ test('the app loads dates.js, recomputes labels at render, and no longer rounds 
   const idx = R('index.html'), v2 = R('v2/v2.js'), v2x = R('v2/v2x.js'), sw = R('sw.js');
   assert.match(idx, /<script src="\/v2\/dates\.js\?v=1"><\/script>/);
   assert.match(idx, /v2\/v2x\.js\?v=50/);
-  assert.match(idx, /v2\/v2\.js\?v=131/);
-  assert.match(sw, /jt-shell-v37/);
+  assert.match(idx, /v2\/v2\.js\?v=132/);
+  assert.match(sw, /jt-shell-v38/);
   assert.match(sw, /\/v2\/dates\.js/);
   assert.match(v2, /JTDates\.dayDelta/);
   assert.match(v2, /JTDates\.relativeLabel/);

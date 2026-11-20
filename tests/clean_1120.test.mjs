@@ -10,12 +10,12 @@ test('clean-1120 pins, nav clip, colors, pulse C, indexes, heat, Ask Jump and ta
   const v2 = R('v2/v2.js'), css = R('v2/v2.css'), design = R('v2/design.css');
   const v2x = R('v2/v2x.js'), land = R('landing.js');
   assert.match(idx, /v2\/v2\.css\?v=104/);
-  assert.match(idx, /v2\/design\.css\?v=20/);
-  assert.match(idx, /v2\/v2\.js\?v=131/);
+  assert.match(idx, /v2\/design\.css\?v=21/);
+  assert.match(idx, /v2\/v2\.js\?v=132/);
   assert.match(idx, /v2x\.js\?v=50/);
   assert.match(idx, /landing\.js\?v=10/);
   assert.match(idx, /v2\/asksheet\.js\?v=1/);
-  assert.match(sw, /jt-shell-v37/);
+  assert.match(sw, /jt-shell-v38/);
   assert.match(sw, /\/v2\/asksheet\.js/);
 
   assert.match(css, /html,body\{max-width:100%;overscroll-behavior:none\}/);
@@ -32,13 +32,8 @@ test('clean-1120 pins, nav clip, colors, pulse C, indexes, heat, Ask Jump and ta
   assert.match(v2, /Leading/);
   assert.match(v2, /Lagging/);
   assert.match(v2, /const h = 14, r = 2, y = 3;/);
-  assert.match(v2, /function pulseOptionsPage\(/);
-  assert.match(v2, /function pulseOptA2\(/);
-  assert.match(v2, /function pulseOptA3\(/);
-  assert.match(v2, /a2\|a3\|c/);
-  // Today still uses option C, not the A2/A3 preview.
+  assert.doesNotMatch(v2, /pulseOptionsPage|pulseOptA2|pulseOptA3|pulseopt/);
   assert.match(v2, /function pulse\(\) \{\s*if \(IDX_LEVELS/);
-  assert.doesNotMatch(v2.slice(v2.indexOf('function pulse()'), v2.indexOf('function dayCard(')), /pulseOptA2|pulseOptA3/);
   assert.match(v2, /function dayCard\(/);
   assert.match(v2, /class="card cbody hdaycard"/);
   assert.match(design, /\.hdaycard/);

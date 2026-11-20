@@ -388,71 +388,6 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   }
 
 
-  function pulseBarH(pct, mx) {
-    // 130px plot, mid at 65; leave ~18px at each end for the tip %
-    return Math.max(12, Math.min(47, Math.round(47 * Math.sqrt(Math.abs(pct) / mx))));
-  }
-  function vBarPath(x, mid, w, h, up) {
-    const r = Math.min(2, Math.max(0, h - 0.5), w / 2);
-    if (up) {
-      const y1 = mid - h;
-      return 'M' + x + ',' + mid + ' L' + x + ',' + (y1 + r) + ' A' + r + ',' + r + ' 0 0 1 ' + (x + r) + ',' + y1 + ' L' + (x + w - r) + ',' + y1 + ' A' + r + ',' + r + ' 0 0 1 ' + (x + w) + ',' + (y1 + r) + ' L' + (x + w) + ',' + mid + ' Z';
-    }
-    const y2 = mid + h;
-    return 'M' + x + ',' + mid + ' L' + x + ',' + (y2 - r) + ' A' + r + ',' + r + ' 0 0 0 ' + (x + r) + ',' + y2 + ' L' + (x + w - r) + ',' + y2 + ' A' + r + ',' + r + ' 0 0 0 ' + (x + w) + ',' + (y2 - r) + ' L' + (x + w) + ',' + mid + ' Z';
-  }
-  function vBarSvg(gid, h, growUp, mid, svgH, barW, positive) {
-    const col = (positive == null ? growUp : positive) ? '#5CB0FF' : '#EB8C86';
-    const x = (24 - barW) / 2;
-    const y1 = growUp ? '0' : '1', y2 = growUp ? '1' : '0';
-    return '<svg class="popt-vsvg" viewBox="0 0 24 ' + svgH + '" width="24" height="' + svgH + '" aria-hidden="true"><defs><linearGradient id="' + gid + '" gradientUnits="objectBoundingBox" x1="0" y1="' + y1 + '" x2="0" y2="' + y2 + '"><stop offset="0" stop-color="' + col + '" stop-opacity="1"/><stop offset="1" stop-color="' + col + '" stop-opacity="0"/></linearGradient></defs><path d="' + vBarPath(x, mid, barW, h, growUp) + '" fill="url(#' + gid + ')"></path></svg>';
-  }
-  function pulseBaseline() {
-    return '<svg class="popt-base" viewBox="0 0 100 130" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="65" x2="96.5" y2="65" stroke="rgba(243,244,238,.42)" stroke-width="1" stroke-dasharray="2.2 2.6" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg><i class="popt-enddot" aria-hidden="true"></i>';
-  }
-  function pulseACols(data, kind) {
-    const mid = 65, svgH = 130, barW = 10;
-    const all = data.lead.concat(data.lag);
-    const cells = all.map((r, i) => {
-      const up = r.pct >= 0;
-      const h = pulseBarH(r.pct, data.mx);
-      const tipY = up ? (mid - h) : (mid + h);
-      const tip = '<span class="popt-tip ' + cls(r.pct) + (up ? ' above' : ' below') + '" style="top:' + tipY + 'px">' + pct(r.pct) + '</span>';
-      const bar = vBarSvg('p' + kind + '-' + r.s + i, h, up, mid, svgH, barW, up);
-      let name = '<div class="popt-nwell"><span class="popt-nrot">' + E(r.name) + '</span></div>';
-      if (kind === 'a3') {
-        const keep = 14, extra = 80;
-        const top = up ? (tipY + keep) : -extra;
-        const nh = up ? ((svgH - top) + extra) : ((tipY - keep) - top);
-        name = '<div class="popt-nwell" style="top:' + top + 'px;height:' + nh + 'px"><span class="popt-nrot">' + E(r.name) + '</span></div>';
-        return '<div class="popt-col"><div class="popt-a3pair ' + (up ? 'popt-up' : 'popt-dn') + '">' + name + '<div class="popt-vslot">' + bar + tip + '</div></div></div>';
-      }
-      return '<div class="popt-col"><div class="popt-vslot">' + bar + tip + '</div>' + name + '</div>';
-    });
-    return cells.slice(0, 3).join('') + '<div class="popt-gutter" aria-hidden="true"></div>' + cells.slice(3).join('');
-  }
-  function pulseOptA2(data) {
-    return card('<div class="popt-hd"><span class="popt-lab">Market pulse</span><span class="popt-sub">A2 · names under</span></div><div class="popt-chart popt-a2"><div class="popt-plot">' + pulseBaseline() + '<div class="popt-cols">' + pulseACols(data, 'a2') + '</div></div></div>', 'padding:16px 14px 12px', 'popt-card popt-a2');
-  }
-  function pulseOptA3(data) {
-    return card('<div class="popt-hd"><span class="popt-lab">Market pulse</span><span class="popt-sub">A3 · names left</span></div><div class="popt-chart popt-a3"><div class="popt-plot">' + pulseBaseline() + '<div class="popt-cols">' + pulseACols(data, 'a3') + '</div></div></div>', 'padding:16px 12px 18px', 'popt-card popt-a3');
-  }
-  function pulseOptC(data) {
-    return card('<div class="pzh"><span class="pzk">' + ic('activity', 16, 2.2) + 'Market pulse</span><span class="popt-sub">C · leading / lagging</span></div>' + (data.ready ? pulseLeadLag() : '<div class="hpc-sk"><div></div><div></div><div></div></div>'), 'padding:16px 14px', 'popt-card popt-c hpulse-c');
-  }
-  function pulseOptionsPage() {
-    const data = leadLagSectors();
-    const id = (route().id || '').toLowerCase();
-    const empty = card('<div class="popt-hd"><span class="popt-lab">Market pulse</span></div><div class="hpc-sk"><div></div><div></div><div></div></div>', 'padding:16px 14px', 'popt-card');
-    const one = (fn) => (data.ready ? fn(data) : empty);
-    let body;
-    if (id === 'a2') body = one(pulseOptA2);
-    else if (id === 'a3') body = one(pulseOptA3);
-    else if (id === 'c') body = one(pulseOptC);
-    else body = one(pulseOptA2) + one(pulseOptA3) + one(pulseOptC);
-    return '<div class="wrap popt-page"><h1 class="ttl">Market pulse options</h1>' + body + '</div>';
-  }
-
   function pulse() {
     if (IDX_LEVELS.some(([s]) => !S.q[s]) && !S.idxAsk) {
       S.idxAsk = 1;
@@ -708,7 +643,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       S.t.q = Date.now(); S.err.q = null;
     });
   }
-  const visibleSyms = () => { const r = route(); let L = IDX.slice(); if (window.V2X && V2X.syms) L = L.concat(V2X.syms(r) || []); if (r.v === 'today' || r.v === 'portfolio' || r.v === 'pulseopt') L = L.concat(HOLD_SYMS, wlSyms(), (S.tg || []).map((x) => x.symbol), SECTOR_FULL.map((x) => x[0]), IDX_LEVELS.map((x) => x[0])); if (r.v === 'markets') L = L.concat(IDX_LEVELS.map((x) => x[0]), SECTOR_FULL.map((x) => x[0])); if (r.v === 'fund' && S.fundSel) L = L.concat(S.fundSel); if (r.v === 'mtheme' && S.themeSel) L = L.concat(S.themeSel); if (r.v === 'money' && S.moneySyms) L = L.concat(S.moneySyms); if (r.v === 'earnings' && S.earnSyms) L = L.concat(S.earnSyms); if (r.v === 'stock') L.push(r.id); return Array.from(new Set(L)).slice(0, 120); };
+  const visibleSyms = () => { const r = route(); let L = IDX.slice(); if (window.V2X && V2X.syms) L = L.concat(V2X.syms(r) || []); if (r.v === 'today' || r.v === 'portfolio') L = L.concat(HOLD_SYMS, wlSyms(), (S.tg || []).map((x) => x.symbol), SECTOR_FULL.map((x) => x[0]), IDX_LEVELS.map((x) => x[0])); if (r.v === 'markets') L = L.concat(IDX_LEVELS.map((x) => x[0]), SECTOR_FULL.map((x) => x[0])); if (r.v === 'fund' && S.fundSel) L = L.concat(S.fundSel); if (r.v === 'mtheme' && S.themeSel) L = L.concat(S.themeSel); if (r.v === 'money' && S.moneySyms) L = L.concat(S.moneySyms); if (r.v === 'earnings' && S.earnSyms) L = L.concat(S.earnSyms); if (r.v === 'stock') L.push(r.id); return Array.from(new Set(L)).slice(0, 120); };
   // live prices: ask again as soon as the last answer lands (at most every ~1.5s), so prices track the market instead of waiting on a fixed 5s timer
   function pxLoop() { const t0 = Date.now(); const next = () => setTimeout(pxLoop, Math.max(300, 1500 - (Date.now() - t0)));
     if (D.hidden || !canLoad()) return setTimeout(pxLoop, 1500); const r = route(); if (r.v === 'movers' || r.v === 'radar' || r.v === 'ask' || r.v === 'alerts') return setTimeout(pxLoop, 1500);
@@ -1373,7 +1308,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   function route0() { const h = location.hash.replace(/^#/, ''); if (window.V2X) { const xr = V2X.route(h); if (xr) return xr; } const m = /^portfolio(?:\/(\d))?$/.exec(h); if (m) return { v: 'portfolio', i: +(m[1] || 0) }; if (h === 'connect') return { v: 'connect' };
     let x; if ((x = /^fund\/([a-z0-9\-]+)$/.exec(h))) return { v: 'fund', id: x[1] }; if ((x = /^markets\/theme\/([a-z0-9\-]+)$/.exec(h))) return { v: 'mtheme', id: x[1] }; if ((x = /^money(?:\/(options|congress|shorts))?$/.exec(h))) return { v: 'money', id: x[1] || 'options' };
     const sm = /^stock\/([A-Z.]{1,6})$/.exec(h); if (sm) return { v: 'stock', id: sm[1] };
-    if (/^(movers|markets|radar|earnings|alerts|ask|funds|analysts)$/.test(h)) return { v: h }; if ((x = /^pulseopt(?:=(a2|a3|c))?$/.exec(h))) return { v: 'pulseopt', id: x[1] || '' }; return { v: 'today' }; }
+    if (/^(movers|markets|radar|earnings|alerts|ask|funds|analysts)$/.test(h)) return { v: h }; return { v: 'today' }; }
   function route() { const r = route0(); return (ST[r.v] || 0) > V2_STAGE ? { v: 'today' } : r; }
   let lastV = null, carI = 0;
   let touching = 0, pend = 0;
@@ -1476,7 +1411,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const app = D.getElementById('app'), nav = D.getElementById('nav'); if (!app) return;
     const r = route(); const car0 = D.getElementById('car'); const keepScroll = car0 && r.v === 'portfolio' && lastV === 'portfolio' ? car0.scrollLeft : null;
     if (r.v === 'portfolio' && lastV !== 'portfolio') carI = r.i;
-    const VIEW = { portfolio: () => portfolio(carI), connect, movers, markets: marketsScreen, mtheme: () => themeScreen(r.id), radar: radarScreen, earnings: earnScreen, alerts: alertsScreen, ask: askScreen, funds: fundsScreen, fund: () => fundScreen(r.id), money: () => moneyScreen(r.id), stock: () => stockScreen(r.id), analysts: analystsScreen, pulseopt: pulseOptionsPage, today };
+    const VIEW = { portfolio: () => portfolio(carI), connect, movers, markets: marketsScreen, mtheme: () => themeScreen(r.id), radar: radarScreen, earnings: earnScreen, alerts: alertsScreen, ask: askScreen, funds: fundsScreen, fund: () => fundScreen(r.id), money: () => moneyScreen(r.id), stock: () => stockScreen(r.id), analysts: analystsScreen, today };
     if (lastV !== r.v) { if (r.v === 'movers') loadMovers().then(render); }
     if (window.V2X) Object.assign(VIEW, V2X.views(r));
     const newPage = render.h !== location.hash;

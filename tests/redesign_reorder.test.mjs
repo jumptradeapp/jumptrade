@@ -32,7 +32,7 @@ test('shipped look: D7C2 for dark, B-Light for light; ?design=b|off gives B Term
   const vx = R('v2/v2x.js');
   assert.match(vx, /let dz = t === 'light' \? 'bl' : 'd7c2'/);
   assert.match(vx, /if \(t !== 'light' && \/\^\(\?:b\|\[nsg\]\|d\[4-7\]\|d6\[a-d\]\|d7\[a-d\]\|d7c2\)\$\/\.test\(alt\)\) dz = alt/);
-  assert.match(R('sw.js'), /jt-shell-v37/);
+  assert.match(R('sw.js'), /jt-shell-v38/);
   assert.match(R('sw.js'), /'\/v2\/design\.css'/);
   assert.match(idx, /\/v2\/design\.css\?v=\d+/);
   const css = R('v2/design.css');
