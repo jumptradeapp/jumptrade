@@ -1406,7 +1406,7 @@ html[data-design="d7c2"] body .card.rows:has(.mvd),
 html[data-design="d7c2"] body .card.rows:has(.mvcell){padding:10px!important;overflow:visible}
 html[data-design="d7c2"] body .card.pulse2,html[data-design="d7c2"] body .app2 .wrap>.card.pulse2{padding:22px 22px 20px!important}
 
-/* In-card titles: tiny uppercase Geist Mono, 0.12em, muted #9A9AA0. 44px hit on linked titles. */
+/* In-card titles: tiny uppercase Geist Mono, 0.12em, lavender #C9D0E8. 44px hit on linked titles. */
 html[data-design="d7c2"] body .pt2k,
 html[data-design="d7c2"] body .pzk,
 html[data-design="d7c2"] body .kick,
@@ -1418,11 +1418,11 @@ html[data-design="d7c2"] body .mvhd{
   font-weight:600!important;
   letter-spacing:.12em!important;
   text-transform:uppercase!important;
-  color:#9A9AA0!important
+  color:#C9D0E8!important
 }
-html[data-design="d7c2"] body .pzk{gap:8px;color:#9A9AA0!important}
-html[data-design="d7c2"] body .pzk svg{color:#9A9AA0!important;width:12px;height:12px}
-html[data-design="d7c2"] body .pt2k{color:#9A9AA0!important;font-weight:600!important;margin-right:10px}
+html[data-design="d7c2"] body .pzk{gap:8px;color:#C9D0E8!important}
+html[data-design="d7c2"] body .pzk svg{color:#C9D0E8!important;width:12px;height:12px}
+html[data-design="d7c2"] body .pt2k{color:#C9D0E8!important;font-weight:600!important;margin-right:10px}
 html[data-design="d7c2"] body .lab a:not(.labt){font-family:GeistSans,Inter,system-ui,sans-serif!important;letter-spacing:0!important;text-transform:none!important;font-size:13.5px!important;color:#5CB0FF}
 
 /* Big number: Geist medium, white, 28–34px */
@@ -1830,4 +1830,29 @@ html[data-design="d7c2"] body .ptog,
 html[data-design="d7c2"] body .xtf .chip,
 html[data-design="d7c2"] body .fmore .fmc{
   border-radius:var(--r-pill,999px)!important
+}
+
+/* Tile and section headers: lavender. Page titles: Geist + cream. Card fills stay live D7C2. */
+html[data-design="d7c2"] body .pt2k,
+html[data-design="d7c2"] body .pzk,
+html[data-design="d7c2"] body .pzk svg,
+html[data-design="d7c2"] body .kick,
+html[data-design="d7c2"] body .wrap>.lab,
+html[data-design="d7c2"] body .lab,
+html[data-design="d7c2"] body .mvhd,
+html[data-design="d7c2"] body .pzi small,
+html[data-design="d7c2"] body .ht span,
+html[data-design="d7c2"] body .ixc .mini,
+html[data-design="d7c2"] body .sh h2,
+html[data-design="d7c2"] body .hotl{
+  color:#C9D0E8!important
+}
+html[data-design="d7c2"] body .ttl,
+html[data-design="d7c2"] body .top.tc .ttl,
+html[data-design="d7c2"] body .tbt,
+html[data-design="d7c2"] body .top .tbt,
+html[data-design="d7c2"] body h1.ttl,
+html[data-design="d7c2"] body .wrap>.top .ttl{
+  font-family:GeistSans,Inter,system-ui,sans-serif!important;
+  color:#F3F4EE!important
 }
