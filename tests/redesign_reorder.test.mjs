@@ -24,21 +24,21 @@ test('every Movers child is keyed, so the dense design rows move instead of bein
   assert.match(js, /data-mvx="' \+ E\(sym\) \+ '" role="button"><span class="rk">/);
 });
 
-test('shipped look: B for dark, B-Light for light; dark alts via ?design=n|s|g; sliding rows get will-change only while moving', () => {
+test('shipped look: B for dark, B-Light for light; dark alts via ?design=n|s|g|d4-d7; sliding rows get will-change only while moving', () => {
   const idx = R('index.html');
   assert.match(idx, /URLSearchParams\(location\.search\)\.get\("design"\)/);
-  assert.match(idx, /\^\[nsg\]\$/);
+  assert.match(idx, /\^\(\?:\[nsg\]\|d\[4-7\]\)\$/);
   assert.match(idx, /dataset\.design=document\.documentElement\.dataset\.x2t==="light"\?"bl":"b"/);
   const vx = R('v2/v2x.js');
   assert.match(vx, /let dz = t === 'light' \? 'bl' : 'b'/);
-  assert.match(vx, /if \(t !== 'light' && \/\^\[nsg\]\$\/\.test\(alt\)\) dz = alt/);
-  assert.match(R('sw.js'), /jt-shell-v27/);
+  assert.match(vx, /if \(t !== 'light' && \/\^\(\?:\[nsg\]\|d\[4-7\]\)\$\/\.test\(alt\)\) dz = alt/);
+  assert.match(R('sw.js'), /jt-shell-v28/);
   assert.match(R('sw.js'), /'\/v2\/design\.css'/);
   assert.match(idx, /\/v2\/design\.css\?v=\d+/);
   const css = R('v2/design.css');
   assert.match(css, /\.mvrow\.flp\{will-change:transform/);
   assert.match(css, /content-visibility:auto/);
-  assert.match(css, /html:is\(\[data-design="bl"\],\[data-design="l1"\],\[data-design="l2"\],\[data-design="l3"\]\)\{--up:#1F5FB8;--dn:#B8453E/);
+  assert.match(css, /html:is\(\[data-design="bl"\],\[data-design="l1"\],\[data-design="l2"\],\[data-design="l3"\],\[data-design="l4"\],\[data-design="l5"\],\[data-design="l6"\]\)\{--up:#1F5FB8;--dn:#B8453E/);
 });
 
 test('refresh only re-patches what changed (memoized sections/rows/cells)', () => {

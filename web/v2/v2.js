@@ -8,7 +8,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   'use strict';
   const D = document;
   const E = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const DZ = () => document.documentElement.dataset.design; const LIGHTDZ = () => { const d = DZ(); return d === 'bl' || d === 'l1' || d === 'l2' || d === 'l3'; }; const UPC = () => (LIGHTDZ() ? '#1F5FB8' : '#5CB0FF'), DNC = () => (LIGHTDZ() ? '#B8453E' : '#EB8C86'); // up/down: B-Light / l1-l3 on light, B swoop blue / soft coral on B and dark alts n/s/g
+  const DZ = () => document.documentElement.dataset.design; const LIGHTDZ = () => { const d = DZ(); return d === 'bl' || /^l[1-6]$/.test(d); }; const UPC = () => (LIGHTDZ() ? '#1F5FB8' : '#5CB0FF'), DNC = () => (LIGHTDZ() ? '#B8453E' : '#EB8C86'); // up/down: B-Light / l1-l6 on light, B swoop blue / soft coral on B and dark alts n/s/g/d4-d7
   const TXA = D.createElement('textarea'); const dec = (s) => { TXA.innerHTML = String(s == null ? '' : s); return TXA.value; }; // feed headlines arrive with HTML entities (&#x2019;)
   const ic = (n, s, sw) => '<svg class="ic" width="' + (s || 20) + '" height="' + (s || 20) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (sw || 1.9) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + I[n] + '</svg>';
   const f2 = (v, d) => Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: d == null ? 2 : d, maximumFractionDigits: d == null ? 2 : d });
