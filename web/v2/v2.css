@@ -1226,3 +1226,94 @@ html body .tnc .tnr .skel{height:14px;margin:0}
 html body .tnc .tne{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;font-size:14px;color:var(--fg2);padding:12px}
 html body .tnc a.tnr:hover b{color:#93C0F6}html[data-x2t="light"] .tnc .tnr b{color:#10203A}html[data-x2t="light"] .tnc a.tnr:hover b{color:#1F5FB8}
 html[data-x2t="light"] .brk{color:#92400E!important}
+
+/* Ask Jump: Vega-style line-by-line summary reveal */
+.ajsum,.ajsum-measure{min-height:1.4em;margin-top:8px}.ajsum{transition:min-height .32s ease}
+.ajbody{font-size:15px;line-height:22px;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.ajcur{display:inline-block;width:2px;height:1.05em;margin:0 0 -0.15em 2px;vertical-align:-0.12em;border-radius:1px;background:#5CB0FF;box-shadow:0 0 6px rgba(92,176,255,.85),0 0 14px rgba(92,176,255,.4);animation:ajcur 1s ease-in-out infinite}
+@keyframes ajcur{0%,100%{opacity:1}50%{opacity:.22}}
+.ajcite{display:inline-flex;align-items:center;justify-content:center;min-width:18px;min-height:18px;margin:0 1px;padding:0 5px;border-radius:999px;font-size:12px;font-weight:600;line-height:18px;text-decoration:none;vertical-align:2px;color:#5CB0FF;background:rgba(92,176,255,.16)}
+.ajsrc{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.ajsrc li{font-size:12.5px;line-height:18px;color:#9AA4B2;padding-left:0}
+.ajsrc a{color:#C9D6E2;text-decoration:none}
+.ajsrc a:hover{text-decoration:underline}
+.ajsrcn{display:inline-flex;align-items:center;justify-content:center;min-width:18px;min-height:18px;margin-right:4px;border-radius:999px;font-size:12px;font-weight:600;color:#5CB0FF;background:rgba(92,176,255,.16);vertical-align:middle}
+html[data-x2t="light"] .ajcur{background:#1F5FB8;box-shadow:0 0 6px rgba(31,95,184,.7),0 0 12px rgba(31,95,184,.3)}
+html[data-x2t="light"] .ajcite,html[data-x2t="light"] .ajsrcn{color:#1F5FB8;background:rgba(31,95,184,.12)}
+html[data-x2t="light"] .ajsrc li{color:#5A6B80}
+html[data-x2t="light"] .ajsrc a{color:#243248}
+
+/* Ask Jump: answer streams at the top, composer pinned at the bottom */
+html.ask-on,html.ask-on body,html.ask-on .app2{height:100%;overflow:hidden}
+.askpage{display:flex;flex-direction:column;min-height:calc(100dvh - env(safe-area-inset-top,0px));padding-bottom:calc(88px + env(safe-area-inset-bottom,0px));box-sizing:border-box}
+.askstage{flex:1 1 auto;overflow:auto;-webkit-overflow-scrolling:touch;min-height:0;padding-bottom:8px}
+.askdock{flex:none;position:sticky;bottom:0;z-index:8;margin:0 -16px;padding:10px 16px 12px;border-top:1px solid rgba(140,180,215,.16);background:linear-gradient(180deg,rgba(20,20,22,.92),#141416 28%);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.asklbl{display:block;font-size:12px;line-height:16px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#9AA4B2;margin:0 0 6px}
+.askdock .askq{min-height:44px;font-size:15px;line-height:21px}
+.askdock .btn.pri{width:100%;margin-top:8px;min-height:44px}
+.askchips{margin-top:10px;flex-wrap:wrap}
+.askchips .chip{min-height:44px}
+.ajhint{font-size:14px;line-height:20px;color:#9AA4B2;margin:8px 0 0}
+.askdisc{margin:10px 0 0}.ajsheet .askdisc{flex:none;margin:0;padding:6px 16px 8px;font-size:12px;line-height:16px;color:#9AA4B2}
+.ajbar{margin:8px 0 0}
+.ajbtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid rgba(92,176,255,.4);background:rgba(92,176,255,.16);color:#C9E4FF;font:600 13px/18px inherit;box-shadow:0 0 12px rgba(92,176,255,.28),0 0 22px rgba(92,176,255,.12);cursor:pointer;flex:none;white-space:nowrap}
+.ajbtn:hover,.ajbtn:focus-visible{box-shadow:0 0 16px rgba(92,176,255,.45)}
+.ajico{flex:none;width:44px;height:44px;min-width:44px;min-height:44px;border-radius:50%;border:1px solid rgba(92,176,255,.35);background:rgba(92,176,255,.14);color:#9CD0FF;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(92,176,255,.3);cursor:pointer;padding:0}
+.sth{flex-wrap:wrap}
+.sth .ajbtn{margin-left:auto}
+.hlrow{display:flex;align-items:center;gap:6px}
+.hlrow .wlnk{flex:1;min-width:0;display:flex;align-items:center;gap:10px;color:inherit;min-height:44px}
+.mvrow{position:relative}
+.mvrow .ajico{margin-left:4px}
+
+/* Ask Jump sheet / desktop side panel */
+html.ajs-open,html.ajs-open body{overflow:hidden}
+.ajscrim{position:fixed;inset:0;z-index:70;background:rgba(4,6,10,.55)}
+.ajsheet{position:fixed;left:0;right:0;bottom:0;z-index:71;max-height:92dvh;display:flex;flex-direction:column;border-radius:20px 20px 0 0;border:1px solid rgba(140,180,215,.22);border-bottom:0;background:#141416;box-shadow:0 -16px 48px rgba(0,0,0,.55),0 0 28px rgba(92,176,255,.16);padding:0 0 calc(8px + env(safe-area-inset-bottom,0px))}
+.ajs-handle{width:36px;height:4px;border-radius:99px;background:rgba(200,214,226,.28);margin:8px auto 4px}
+.ajs-head{display:flex;align-items:center;gap:10px;padding:4px 16px 8px;flex-wrap:wrap}
+.ajs-id{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+.ajs-id .nm{min-width:0}
+.ajs-id .nm b{display:block;font-size:18px;line-height:22px;font-weight:700}
+.ajs-id .nm small{display:block;font-size:12px;line-height:16px;color:#9AA4B2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ajs-x{width:44px;height:44px;min-width:44px;border-radius:50%;border:0;background:rgba(140,180,215,.12);color:#E9F1F7;font-size:22px;line-height:44px;cursor:pointer;order:-1}
+.ajs-setup{padding:0 16px 8px}
+.ajs-setup .stg{min-height:28px;font-size:12px}
+.ajs-tabs{display:flex;gap:6px;padding:0 12px 8px;flex:none}
+.ajs-tab{flex:1;min-height:44px;padding:0 8px;border-radius:12px;border:1px solid rgba(140,180,215,.16);background:transparent;color:#C9D6E2;font:600 12px/16px inherit;cursor:pointer}
+.ajs-tab.on{background:rgba(92,176,255,.16);color:#F3F8FF;border-color:rgba(92,176,255,.4);box-shadow:0 0 12px rgba(92,176,255,.18)}
+.ajs-stage{flex:1 1 auto;overflow:auto;-webkit-overflow-scrolling:touch;padding:4px 16px 12px;min-height:0}
+.ajs-dock{margin:0;border-radius:0 0 0 0}
+.ajth{font-size:12px;line-height:18px;color:#9AA4B2;margin:0 0 12px}
+.ajlog{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.ajlog li{padding:10px 12px;border-radius:12px;border:1px solid rgba(140,180,215,.12);background:rgba(255,255,255,.03);display:flex;flex-direction:column;gap:2px;min-height:44px}
+.ajlog li b{font-size:14px;line-height:20px;font-weight:600}
+.ajlog li small{font-size:12px;line-height:16px;color:#9AA4B2}
+.ajlt{font-size:12px;line-height:16px;color:#9AA4B2}
+.ajlog li.up{border-color:rgba(168,221,181,.28)}
+.ajlog li.up b{color:#A8DDB5}
+.ajlog li.dn{border-color:rgba(235,140,134,.28)}
+.ajlog li.dn b{color:#EB8C86}
+.ajpills{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 10px}
+.ajpill{display:inline-flex;flex-direction:column;align-items:flex-start;justify-content:center;min-height:44px;padding:6px 12px;border-radius:12px;border:1px solid rgba(140,180,215,.2);background:rgba(255,255,255,.03);color:#E9F1F7;font:600 13px/18px inherit;cursor:pointer;text-align:left}
+.ajpill small{display:block;font-size:12px;line-height:16px;font-weight:500;color:#9AA4B2;margin-top:1px}
+.ajpill.on{border-color:rgba(92,176,255,.45);background:rgba(92,176,255,.16);box-shadow:0 0 10px rgba(92,176,255,.2)}
+.ajpill.off,.ajpill:disabled{opacity:.55;cursor:not-allowed;color:#9AA4B2}
+@media (min-width:1024px){
+  html.ask-on,html.ask-on body,html.ask-on .app2{overflow:auto;height:auto}
+  .askpage{min-height:calc(100dvh - 24px);padding-bottom:24px}
+  .askdock{margin-left:-32px;margin-right:-32px;padding-left:32px;padding-right:32px}
+  .ajsheet{left:auto;top:0;right:0;bottom:0;width:min(440px,42vw);max-height:none;border-radius:0;border:0;border-left:1px solid rgba(140,180,215,.22);padding-bottom:0}
+  .ajs-handle{display:none}
+  .ajscrim{background:rgba(4,6,10,.35)}
+}
+html[data-x2t="light"] .askdock,html[data-x2t="light"] .ajsheet{background:#F4F6F9;border-color:#DCE5F0}
+html[data-x2t="light"] .asklbl,html[data-x2t="light"] .ajhint,html[data-x2t="light"] .ajth,html[data-x2t="light"] .ajlt,html[data-x2t="light"] .ajpill small,html[data-x2t="light"] .ajs-id .nm small{color:#5A6B80}
+html[data-x2t="light"] .ajbtn,html[data-x2t="light"] .ajico{color:#1F5FB8;background:rgba(31,95,184,.12);border-color:rgba(31,95,184,.3)}
+html[data-x2t="light"] .ajs-tab.on,html[data-x2t="light"] .ajpill.on{color:#10203A}
+html[data-x2t="light"] .ajlog li.up b{color:#1B7A46}
+html[data-x2t="light"] .ajlog li.dn b{color:#B42318}
+
+.ajrepbar{flex:none;padding:8px 16px 0}
+.ajrepbar .ajpills{margin:0 0 8px;max-height:120px;overflow:auto}
+.ajrepbar .btn.pri{width:100%;min-height:44px;margin:0 0 4px}

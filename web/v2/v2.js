@@ -547,9 +547,10 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       al.map((a) => '<a class="row" href="#stock/' + encodeURIComponent(a.s) + '" style="min-height:58px">' + tl(a.s, 32) + '<span class="nm"><b style="font-weight:500">' + a.h + '</b>' + (a.sub ? '<small>' + a.sub + '</small>' : '') + '</span></a>').join(''));
   }
   function today() {
-    if (DESK.matches) return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="dk2"><div class="dkL"><div class="hero ptile">' + RIB + portCard() + '</div>' + f13Tile() + '</div><div class="dkR">' + pulse() + dayCard() + lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + '</div></div>' +
+    const todayAsk = '<div class="ajbar"><button type="button" class="ajbtn" data-aj="#ask" aria-label="Ask Jump anything">' + ic('spark', 16, 2.1) + ' Ask Jump</button></div>';
+    if (DESK.matches) return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + todayAsk + '<div class="dk2"><div class="dkL"><div class="hero ptile">' + RIB + portCard() + '</div>' + f13Tile() + '</div><div class="dkR">' + pulse() + dayCard() + lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + '</div></div>' +
       '<div class="dk3"><div>' + catTile() + '</div><div>' + comingUp() + '</div></div><div class="dkN">' + filingsTile() + '</div></div>';
-    return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + '<div class="hero ptile">' + RIB + portCard() + '</div>' + pulse() + dayCard() +
+    return '<div class="wrap" style="position:relative;z-index:1">' + topbar() + todayAsk + '<div class="hero ptile">' + RIB + portCard() + '</div>' + pulse() + dayCard() +
       lab('trend', ({ pre: 'Pre-market gainers', day: 'Top gainers' })[curSess()] || 'After-hours gainers', 'See all', '#movers') + tgRows() + lab('star', 'Watchlist', 'View all', '#watch') + watchRows() + f13Tile() + catTile() + comingUp() + filingsTile() + '</div>';
   }
 
@@ -577,7 +578,9 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
         '<span class="hlv"><b>' + money(r.mv, 0) + '</b><small>of ' + money(tot, 0) + '</small></span>' + q(s) + '</a>'; };
     const hd = sh('Holdings · ' + E(cur.a.name), c.rows.length > 5 ? (S.allHold ? 'Show less' : 'View all') : '', '#hold', 'layers') + (hl.length ? rowsBox(hl.map((s) => holdRow(s)).join('')) : ACCTS.length && c.ready && !Object.keys(cur.a.pos || {}).length && !cur.a.err ? rowsBox('<div class="err">No positions' + (on ? ' in this account' : '') + '. Cash only.</div>', 'padding:14px') : c.ready || !ACCTS.length ? (window.JT_OWN && JT_OWN.card() ? card(JT_OWN.card(), 'padding:14px 16px;margin-top:6px') : rowsBox('<div class="err">No positions. <a href="#connect">Connect a brokerage</a> to see your holdings.</div>', 'padding:14px')) : rowsBox(skel(4), 'padding:14px'));
     const link = '<a class="card act" style="margin-top:12px" href="#connect"><span class="ibx">' + tl('BULL', 30) + '</span><span class="tx"><b>Webull accounts</b><small>' + (ACCTS.length ? ACCTS.length + ' linked · add or manage' : 'None connected yet') + '</small></span><span class="chv">' + ic('chev', 22, 2.4) + '</span></a>';
-    return swoosh() + '<div class="wrap">' + topbar() + head('Portfolio', 'Your accounts &amp; model portfolios') + seg + staleNote() + car + ct + hd + link + '</div>';
+    return swoosh() + '<div class="wrap">' + topbar() + head('Portfolio', 'Your accounts &amp; model portfolios') +
+      '<div class="ajbar"><button type="button" class="ajbtn" data-aj="#ask" aria-label="Ask Jump anything">' + ic('spark', 16, 2.1) + ' Ask Jump</button></div>' +
+      seg + staleNote() + car + ct + hd + link + '</div>';
   }
   function connect() {
     const all = allCalc();
@@ -715,29 +718,164 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   }
 
   // ---------- (4) Ask Jump ----------
-  S.ai = { on: null, q: '', a: null, busy: false, err: null };
+  S.ai = { on: null, q: '', a: null, busy: false, err: null, streaming: false, shown: '', full: '', sources: [], height: 0, tid: 0, li: 0, ci: 0, lines: [] };
   function aiStatus() { if (S.ai.on != null || S.ai.chk) return; S.ai.chk = 1; getJ('/api/ai/status').then((j) => { S.ai.on = !!(j && j.on); render(); }).catch(() => { S.ai.on = false; render(); }); }
+  function askSplit(text) {
+    const t = String(text || ''); const parts = [];
+    const re = /[^\n]+?(?:[.!?](?!\d)["')\]]*|\n+|$)/g; let m, last = 0;
+    while ((m = re.exec(t))) { parts.push(m[0]); last = m.index + m[0].length; }
+    if (last < t.length) parts.push(t.slice(last));
+    return parts.filter((p) => p.length);
+  }
+  function askCited(text) {
+    const set = new Set(); String(text || '').replace(/\[(\d+)\]/g, (_, n) => { set.add(+n); return _; });
+    return [...set].sort((a, b) => a - b);
+  }
+  function askFmt(text) {
+    const s = String(text || ''); let out = '', i = 0, m; const re = /\[(\d+)\]/g;
+    while ((m = re.exec(s))) { out += E(s.slice(i, m.index)) + '<a class="ajcite" href="#ajsrc-' + m[1] + '">' + m[1] + '</a>'; i = m.index + m[0].length; }
+    out += E(s.slice(i));
+    return out.replace(/\n/g, '<br>');
+  }
+  function askSrcHtml(src, cited) {
+    const shown = (src || []).filter((x) => cited.indexOf(x.n) >= 0);
+    if (!shown.length) return '';
+    return '<ul class="ajsrc">' + shown.map((x) => {
+      const label = E(x.label); const body = x.url ? '<a href="' + E(x.url) + '" target="_blank" rel="noopener">' + label + '</a>' : label;
+      return '<li id="ajsrc-' + x.n + '"><span class="ajsrcn">' + x.n + '</span> ' + body + '</li>';
+    }).join('') + '</ul>';
+  }
+  function askBodyHTML(shown, cursor, sources) {
+    const cur = cursor ? '<span class="ajcur" aria-hidden="true"></span>' : '';
+    const cited = askCited(shown);
+    return '<p class="ajbody">' + (shown ? askFmt(shown) : '') + cur + '</p>' + (cited.length ? '<div class="ajsrcbox">' + askSrcHtml(sources, cited) + '</div>' : '');
+  }
+  function askSumEl() {
+    const root = S.ai.host && D.querySelector(S.ai.host);
+    return (root && root.querySelector('.ajsum')) || D.querySelector('.askstage .ajsum') || D.querySelector('#ajsheet .ajsum') || D.querySelector('.ajsum');
+  }
+  function askMeasureHeight(full, sources) {
+    const host = askSumEl();
+    const w = (host && host.clientWidth) || Math.max(280, ((D.querySelector('.askstage') || D.querySelector('#ajsheet .ajs-stage') || D.querySelector('.app2 .wrap') || D.body).clientWidth || 360) - 64);
+    let box = D.getElementById('ajMeasure');
+    if (!box) { box = D.createElement('div'); box.id = 'ajMeasure'; box.className = 'ajsum-measure'; box.setAttribute('aria-hidden', 'true'); box.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;pointer-events:none'; D.body.appendChild(box); }
+    box.style.width = w + 'px';
+    box.innerHTML = askBodyHTML(full, false, sources);
+    return Math.max(72, box.scrollHeight);
+  }
+  function askPaintLive() {
+    const el = askSumEl();
+    if (!el) { render(); return; }
+    const st = S.ai;
+    if (st.height) el.style.minHeight = st.height + 'px';
+    el.innerHTML = askBodyHTML(st.shown, !!(st.busy || st.streaming), st.sources);
+    el.setAttribute('aria-busy', (st.busy || st.streaming) ? 'true' : 'false');
+  }
+  function askStop() { if (S.ai.tid) { clearTimeout(S.ai.tid); S.ai.tid = 0; } S.ai.streaming = false; }
+  function askAdvance() {
+    const st = S.ai; if (!st.streaming) return;
+    const lines = st.lines || []; const line = lines[st.li] || '';
+    if (st.ci < line.length) {
+      const step = (line[st.ci] === ' ' || line[st.ci] === '\n') ? 1 : (line.length - st.ci > 90 ? 3 : 2);
+      st.ci = Math.min(line.length, st.ci + step);
+      st.shown = lines.slice(0, st.li).join('') + line.slice(0, st.ci);
+      askPaintLive();
+      st.tid = setTimeout(askAdvance, 16);
+    } else if (st.li + 1 < lines.length) {
+      st.li += 1; st.ci = 0;
+      st.tid = setTimeout(askAdvance, 200);
+    } else {
+      st.shown = st.full; st.streaming = false; st.busy = false; st.tid = 0;
+      askPaintLive();
+      render();
+    }
+  }
+  function askPlay(q, answer, sources, host) {
+    askStop();
+    if (host) S.ai.host = host;
+    const full = String(answer || '').slice(0, 1500) || 'No answer came back.';
+    const src = sources || [];
+    S.ai.q = q || S.ai.q; S.ai.a = full; S.ai.full = full; S.ai.sources = src; S.ai.err = null;
+    S.ai.busy = true; S.ai.streaming = true; S.ai.shown = ''; S.ai.lines = askSplit(full); S.ai.li = 0; S.ai.ci = 0;
+    S.ai.height = askMeasureHeight(full, src);
+    render();
+    S.ai.height = askMeasureHeight(full, src);
+    askPaintLive();
+    S.ai.tid = setTimeout(askAdvance, 80);
+  }
+  function askCollectSources() {
+    const src = [];
+    IDX.forEach((s) => { if (S.q[s] && isFinite(S.q[s].pct)) src.push({ label: s + ' ' + pct(S.q[s].pct), kind: 'index' }); });
+    (((S.mv && S.mv.data && S.mv.data['day:up']) || {}).rows || []).slice(0, 8).forEach((x) => {
+      const why = S.why && S.why[x.symbol] ? ' · ' + S.why[x.symbol].kind : '';
+      src.push({ label: x.symbol + ' ' + (x.change_ratio * 100).toFixed(1) + '%' + why, kind: 'mover', ticker: x.symbol });
+    });
+    (S.news || []).slice(0, 8).forEach((n) => {
+      src.push({ label: (n.source ? n.source + ': ' : '') + dec(n.title), kind: 'news', url: n.url, source: n.source });
+    });
+    return src.map((x, i) => Object.assign({ n: i + 1 }, x));
+  }
+  function askAnswerCard() {
+    const st = S.ai;
+    if (st.err) return '<div class="err">' + E(st.err) + '</div>';
+    if (!st.busy && !st.streaming && !st.a) return '';
+    const shown = st.streaming || st.busy ? st.shown : (st.a || '');
+    const cur = (st.busy || st.streaming);
+    const h = st.height ? ' style="min-height:' + st.height + 'px"' : '';
+    return card('<div class="kick">Jump</div><div class="ajsum" aria-live="polite" aria-busy="' + (cur ? 'true' : 'false') + '"' + h + '>' + askBodyHTML(shown, cur, st.sources) + '</div>', 'padding:16px;margin-top:8px');
+  }
+  function askComposer() {
+    const sugg = ['Why is the market down today?', 'What are the biggest movers saying?', 'Which themes are leading this week?'];
+    const busy = !!(S.ai.busy || S.ai.streaming);
+    return '<div class="askdock">' +
+      '<label class="asklbl" for="askq">Ask Jump anything</label>' +
+      '<textarea id="askq" class="askq" rows="2" maxlength="400" placeholder="Ask about the market, a stock or a theme">' + E(S.ai.q) + '</textarea>' +
+      '<button type="button" class="btn pri" id="askgo"' + (busy ? ' disabled' : '') + '>' + ic('spark', 18, 2.1) + ((S.ai.busy && !S.ai.streaming) ? 'Thinking…' : (S.ai.streaming ? 'Generating…' : 'Ask Jump')) + '</button>' +
+      '<div class="chips askchips">' + sugg.map((t) => '<button type="button" class="chip" data-askq="' + E(t) + '">' + E(t) + '</button>').join('') + '</div></div>';
+  }
   function askScreen() {
     aiStatus();
-    const sugg = ['Why is the market down today?', 'What are the biggest movers saying?', 'Which themes are leading this week?'];
+    askMaybeDemo();
+    S.ai.host = '.askstage';
     let body;
-    if (S.ai.on == null) body = card(skel(3), 'padding:16px;margin-top:16px');
-    else if (!S.ai.on) body = card('<div style="display:flex;gap:12px;align-items:flex-start"><span class="ctri" style="width:34px;height:34px;flex:none">' + ic('spark', 18) + '</span><div><b style="font-size:16px">Ask Jump is offline right now</b><p style="font-size:13.5px;line-height:20px;color:#D5DEE8;margin-top:6px">It answers from live market data. Try again in a minute; everything else works without it.</p></div></div>', 'padding:16px;margin-top:16px');
-    else body = card('<textarea id="askq" class="askq" rows="3" maxlength="400" placeholder="Ask about the market, a stock or a theme">' + E(S.ai.q) + '</textarea><button type="button" class="btn pri" id="askgo" style="width:100%;margin-top:10px"' + (S.ai.busy ? ' disabled' : '') + '>' + ic('spark', 18, 2.1) + (S.ai.busy ? 'Thinking…' : 'Ask Jump') + '</button>' +
-      '<div class="chips" style="margin-top:12px;flex-wrap:wrap">' + sugg.map((t) => '<button type="button" class="chip" data-askq="' + E(t) + '">' + E(t) + '</button>').join('') + '</div>', 'padding:16px;margin-top:16px') +
-      (S.ai.err ? '<div class="err">' + E(S.ai.err) + '</div>' : '') + (S.ai.a ? card('<div class="kick">Jump</div><p style="font-size:15px;line-height:22px;margin-top:8px;white-space:pre-wrap">' + E(S.ai.a) + '</p><p class="note" style="margin:10px 0 0">Answered from live index, mover and news data. Not financial advice.</p>', 'padding:16px;margin-top:12px') : '');
-    return '<div class="wrap">' + backbar('Ask Jump', '#today') + head('Ask Jump', 'Plain-English answers from live market data') + body + '</div>';
+    if (S.ai.on == null && !S.ai.demoRan) body = card(skel(3), 'padding:16px;margin-top:8px');
+    else if (!S.ai.on && !S.ai.demoRan && !S.ai.a) body = card('<div style="display:flex;gap:12px;align-items:flex-start"><span class="ctri" style="width:34px;height:34px;flex:none">' + ic('spark', 18) + '</span><div><b style="font-size:16px">Ask Jump is offline right now</b><p style="font-size:13.5px;line-height:20px;color:#D5DEE8;margin-top:6px">It answers from live market data. Try again in a minute; everything else works without it.</p></div></div>', 'padding:16px;margin-top:8px');
+    else if (!S.ai.busy && !S.ai.streaming && !S.ai.a && !S.ai.err) body = card('<div class="kick">Jump</div><p class="ajhint">Answers show up here.</p>', 'padding:16px;margin-top:8px');
+    else body = askAnswerCard();
+    const disc = (S.ai.a || S.ai.streaming || S.ai.busy) ? '<p class="note askdisc">Answered from live index, mover and news data. Not financial advice.</p>' : '';
+    return '<div class="wrap askpage">' + backbar('Ask Jump', '#today') + head('Ask Jump', 'Plain-English answers from live market data') +
+      '<div class="askstage">' + body + disc + '</div>' + askComposer() + '</div>';
   }
   function askSend(qtext) {
-    qtext = String(qtext || '').trim(); if (qtext.length < 3 || S.ai.busy) return; S.ai.q = qtext; S.ai.busy = true; S.ai.err = null; S.ai.a = null; render();
-    const ix = IDX.map((s) => S.q[s] ? s + ' ' + S.q[s].pct.toFixed(2) + '%' : '').filter(Boolean).join(', ');
-    const mv = ((S.mv.data['day:up'] || {}).rows || []).slice(0, 8).map((x) => x.symbol + ' ' + (x.change_ratio * 100).toFixed(1) + '% ' + (S.why[x.symbol] ? S.why[x.symbol].kind : '')).join('; ');
-    const nw = (S.news || []).slice(0, 8).map((n) => dec(n.title)).join(' | ');
-    const prompt = 'Question: ' + qtext + '\n\nLive data (' + dateLine() + '):\nIndexes: ' + ix + '\nTop gainers: ' + mv + '\nHeadlines: ' + nw + '\n\nReturn {"answer": 2-5 plain sentences using only this data}.';
+    qtext = String(qtext || '').trim(); if (qtext.length < 3 || S.ai.busy || S.ai.streaming) return;
+    askStop();
+    S.ai.q = qtext; S.ai.busy = true; S.ai.err = null; S.ai.a = null; S.ai.shown = ''; S.ai.full = ''; S.ai.height = 72; S.ai.sources = askCollectSources(); render();
+    const src = S.ai.sources;
+    const listed = src.map((x) => '[' + x.n + '] ' + x.label).join('\n');
+    const prompt = 'Question: ' + qtext + '\n\nLive data (' + dateLine() + '). Cite a fact with [n] only when you use that numbered source. Do not invent sources, tickers or numbers.\n' + listed + '\n\nReturn {"answer": "2-5 plain sentences using only this data, with [n] citations"}.';
     fetch('/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: 'ask', prompt }) }).then((r) => r.json().then((j) => ({ ok: r.ok, j }))).then(({ ok, j }) => {
-      S.ai.busy = false; if (!ok) { S.ai.err = (j && j.error && j.error.code === 'not_granted') ? 'AI isn’t connected on this server.' : (j && j.error && j.error.message) || 'Couldn’t get an answer. Try again.'; if (j && j.error && j.error.code === 'not_granted') S.ai.on = false; }
-      else S.ai.a = String((j.payload && (j.payload.answer || j.payload.text)) || '').slice(0, 1500) || 'No answer came back.'; render();
-    }).catch(() => { S.ai.busy = false; S.ai.err = 'Couldn’t reach the server. Try again.'; render(); });
+      if (!ok) { askStop(); S.ai.busy = false; S.ai.streaming = false; S.ai.err = (j && j.error && j.error.code === 'not_granted') ? 'AI isn’t connected on this server.' : (j && j.error && j.error.message) || 'Couldn’t get an answer. Try again.'; if (j && j.error && j.error.code === 'not_granted') S.ai.on = false; render(); }
+      else askPlay(qtext, String((j.payload && (j.payload.answer || j.payload.text)) || ''), src);
+    }).catch(() => { askStop(); S.ai.busy = false; S.ai.streaming = false; S.ai.err = 'Couldn’t reach the server. Try again.'; render(); });
+  }
+  function askDemo(answer, sources, q) {
+    S.ai.on = true; S.ai.demoRan = 1;
+    const src = (sources || []).map((x, i) => Object.assign({ n: x.n || (i + 1) }, x));
+    askPlay(q || 'Why is the market down today?', answer, src);
+  }
+  function askMaybeDemo() {
+    if (S.ai.demoRan) return;
+    try { if (new URLSearchParams(location.search).get('askdemo') !== '1') return; } catch (e) { return; }
+    if (route().v !== 'ask') return;
+    S.ai.demoRan = 1; S.ai.on = true;
+    const src = [
+      { n: 1, label: 'SPY −0.42%', kind: 'index' },
+      { n: 2, label: 'QQQ −0.18%', kind: 'index' },
+      { n: 3, label: 'NXAT +14.6% · squeeze', kind: 'mover', ticker: 'NXAT' },
+      { n: 4, label: 'Reuters: Chip demand holds up in the latest supplier reports', kind: 'news' }
+    ];
+    const a = 'The tape is mixed this session: the S&P 500 is off 0.42% [1] while the Nasdaq is only slightly lower [2]. The standout gainer is NXAT, up 14.6% on squeeze-type flow [3]. Morning headlines are still focused on chip demand holding up [4]. This is the current tape and the news, not a forecast.';
+    setTimeout(() => askDemo(a, src, 'Why is the market down today?'), 350);
   }
 
   // ---------- (5) Funds: 13F copier from funds.json, live P/L vs the S&P ----------
@@ -1124,7 +1262,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     loadAnGraphs(sym); const rN = S.rat[sym] && S.rat[sym].d ? ((num(S.rat[sym].d.number)) || null) : null;
     const tgtCard = anTarget(tg, cur, rN || (tg && tg.analyst_count)) + anMix(S.rat[sym]) + anEps(S.eps[sym]);
     return '<div class="wrap">' + backbar(E(sym), 'javascript:history.back()') +
-      '<div class="sth">' + tl(sym, 48) + '<div class="nm"><h1 style="margin:0">' + E(sym) + '</h1><small>' + E(nameOf(sym)) + '</small></div>' + (q ? qv(q.price, q.chg, q.pct) : qv(null)) + '</div>' + '<div class="stg2"><div class="stL">' + (window.V2X && V2X.stockTop ? V2X.stockTop(sym) : '') + myPos(sym, q) +
+      '<div class="sth">' + tl(sym, 48) + '<div class="nm"><h1 style="margin:0">' + E(sym) + '</h1><small>' + E(nameOf(sym)) + '</small></div>' + (q ? qv(q.price, q.chg, q.pct) : qv(null)) +
+      '<button type="button" class="ajbtn" data-aj="' + E(sym) + '" aria-label="Ask Jump about ' + E(sym) + '">' + ic('spark', 16, 2.1) + ' Ask Jump</button></div>' + '<div class="stg2"><div class="stL">' + (window.V2X && V2X.stockTop ? V2X.stockTop(sym) : '') + myPos(sym, q) +
       (false ? '' : lab('radar', 'Setup', '', '') + (x && x.tag ? setupBox(sym, sess) : x ? '<p class="note">No setup read for this session.</p>' : rowsBox(skel(2), 'padding:14px;min-height:104px')) + facts +
       '<p class="note">Updates through the trading day. Float and short interest are reported twice a month. A rules-based read, not advice.</p>') +
       '</div><div class="stR">' + lab('news', 'Why it’s moving', '', '') + '<div class="card" style="padding:12px 14px"><small class="why" style="white-space:normal;color:' + w.c + '">' + E(w.t) + '</small>' + (w.h && w.h.url ? '<a class="srcl" href="' + E(w.h.url) + '" target="_blank" rel="noopener">Open the article</a>' : '') + '</div>' +
@@ -1267,7 +1406,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   }
   function render() {
     if (touching) { pend = 1; return; }
-    { const ae = D.activeElement; if (ae && (ae.id === 'askq' || ae.tagName === 'SELECT' || (ae.classList && ae.classList.contains('xin')))) return; } // don't wipe something being typed
+    { const ae = D.activeElement; if (ae && (ae.id === 'askq' || ae.id === 'ajq' || ae.tagName === 'SELECT' || (ae.classList && ae.classList.contains('xin')))) return; } // don't wipe something being typed
     const app = D.getElementById('app'), nav = D.getElementById('nav'); if (!app) return;
     const r = route(); const car0 = D.getElementById('car'); const keepScroll = car0 && r.v === 'portfolio' && lastV === 'portfolio' ? car0.scrollLeft : null;
     if (r.v === 'portfolio' && lastV !== 'portfolio') carI = r.i;
@@ -1307,6 +1446,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     if (r.v === 'today') wireHome(hKeep);
     if (newPage || lastV !== r.v) { window.scrollTo(0, 0); const se = D.scrollingElement; if (se) se.scrollTop = 0; }
     lastV = r.v;
+    D.documentElement.classList.toggle('ask-on', r.v === 'ask');
+    if (window.V2Ask && V2Ask.afterRender) V2Ask.afterRender();
   }
   window.render = render; // auth.js calls this once sign-in is known
   function wireCarousel(keep, fresh) {
@@ -1322,7 +1463,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     if (e.target.closest('#addAcct') || e.target.closest('a[href="#edit"]')) { e.preventDefault(); toast('Linking Webull accounts is coming soon.'); return; }
     let b;
     if ((b = e.target.closest('[data-mvsort]'))) { const k = b.dataset.mvsort; const so = S.mv.sort; S.mv.sort = so && so.k === k ? (so.d === 'desc' ? { k, d: 'asc' } : null) : { k, d: k === 'sym' || k === 'tag' ? 'asc' : 'desc' }; render(); return; }
-    if ((b = e.target.closest('[data-mvx]')) && !e.target.closest('a')) { const k = S.mv.sess + ':' + b.dataset.mvx; S.mvOpen[k] = !S.mvOpen[k]; render(); return; }
+    if ((b = e.target.closest('[data-mvx]')) && !e.target.closest('a,[data-aj]')) { const k = S.mv.sess + ':' + b.dataset.mvx; S.mvOpen[k] = !S.mvOpen[k]; render(); return; }
     if ((b = e.target.closest('[data-setup]'))) { e.preventDefault(); e.stopPropagation(); const k = b.dataset.ss + ':' + b.dataset.setup; S.setupOpen[k] = !S.setupOpen[k]; render(); return; }
     if ((b = e.target.closest('[data-anf]'))) { S.anF = b.dataset.anf; render(); return; }
     if ((b = e.target.closest('[data-ant]'))) { S.anTab = b.dataset.ant; render(); return; }
@@ -1367,7 +1508,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
 
   S.qx = S.qx || {};
   window.V2 = { extHTML, AT, I, S, call, fastSnap, E, dec, ic, tl, qv, px, pct, cls, head, backbar, topbar, lab, act, rowsBox, snapNote, chipsHTML, skel, nameOf, getJ, render: () => render(), route, toast,
-    setupOf, loadSetup, SETUP, sp, sparks, whyText, nfmt, pxs, sgn, agoL, ago2, shortD, wl, HOLD_SYMS, IDX, ACCTS, curSess, BL, DEMO, anRow, loadAnalyst, snapAn, ratW, stockScreen, canLoad };
+    setupOf, loadSetup, SETUP, sp, sparks, whyText, nfmt, pxs, sgn, agoL, ago2, shortD, wl, HOLD_SYMS, IDX, ACCTS, curSess, BL, DEMO, anRow, loadAnalyst, snapAn, ratW, stockScreen, canLoad,
+    askFmt, askCited, askSplit, askDemo, askPlay, askSend, askStop, askPaintLive, askBodyHTML, askMeasureHeight, askCollectSources, askSumEl, card, setupChip, loadFunds, loadMoney };
   if (window.V2X && V2X.init) V2X.init();
   render();
   // data is behind the sign-in check; start loading once auth.js knows who this is (or right away if the site is open)

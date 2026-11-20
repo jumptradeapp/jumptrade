@@ -1933,3 +1933,18 @@ html[data-design="d7c2"] body .ht b.dn{
 }
 html[data-design="d7c2"] body .ht.tint-up b{color:#A8DDB5!important}
 html[data-design="d7c2"] body .ht.tint-dn b{color:#F4F4F5!important}
+
+/* Ask Jump stream cursor + cites follow the active look's accent */
+html[data-design] .ajcur{background:var(--acc,#5CB0FF);box-shadow:0 0 6px var(--acc-glow,rgba(92,176,255,.85)),0 0 14px var(--acc-glow,rgba(92,176,255,.4))}
+html[data-design] .ajcite,html[data-design] .ajsrcn{color:var(--acc,#5CB0FF);background:var(--acc-fill,rgba(92,176,255,.16));box-shadow:0 0 8px var(--acc-glow,rgba(92,176,255,.21))}
+
+/* Ask Jump sheet + dock, design tokens. No row-icon grid changes. */
+html[data-design] .askdock,html[data-design] .ajsheet{background:var(--bg,#141416);border-color:rgba(140,180,215,.2)}
+html[data-design] .ajbtn,html[data-design] .ajs-tab.on,html[data-design] .ajpill.on{color:var(--acc,#5CB0FF);background:var(--acc-fill,rgba(92,176,255,.16));border-color:var(--acc,#5CB0FF);box-shadow:0 0 12px var(--acc-glow,rgba(92,176,255,.28))}
+html[data-design] .ajlog li.up b{color:var(--up,#A8DDB5)}
+html[data-design] .ajlog li.dn b{color:var(--dn,#EB8C86)}
+html[data-design="d7c2"] body .ajbtn{border-radius:var(--r-pill,999px)!important;min-height:var(--h-ctrl,44px)}
+html[data-design="d7c2"] body .ajsheet{border-radius:var(--r-card,24px) var(--r-card,24px) 0 0}
+@media (min-width:1024px){
+  html[data-design="d7c2"] body .ajsheet{border-radius:0}
+}
