@@ -342,10 +342,50 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     if (best && worst && best !== worst) d += ' ' + E(best.name) + ' ' + (best.change_ratio >= 0 ? 'lead' : 'hold up best') + ', ' + E(sn(worst)) + ' ' + (worst.change_ratio < 0 ? 'lag' : 'trail') + '.';
     return { title: verb + lead, desc: d };
   }
+
+  const SECTOR_FULL = [['XLK', 'Technology'], ['XLF', 'Financials'], ['XLE', 'Energy'], ['XLV', 'Health Care'], ['XLY', 'Consumer Discretionary'], ['XLP', 'Consumer Staples'], ['XLI', 'Industrials'], ['XLB', 'Materials'], ['XLU', 'Utilities'], ['XLRE', 'Real Estate'], ['XLC', 'Communication Services']];
+  function leadLagSectors() {
+    const syms = SECTOR_FULL.map((x) => x[0]);
+    if (syms.some((s) => !S.q[s]) && !S.secAsk) {
+      S.secAsk = 1;
+      snap(syms).catch(() => {}).finally(() => { S.secAsk = 0; render(); });
+    }
+    const rows = SECTOR_FULL.map(([s, name]) => {
+      const q = S.q[s];
+      return { s, name, pct: q && isFinite(q.pct) ? +q.pct : null };
+    }).filter((r) => r.pct != null);
+    const byPct = rows.slice().sort((a, b) => b.pct - a.pct);
+    const lead = byPct.slice(0, 3);
+    const lag = byPct.slice(-3).reverse();
+    const mx = Math.max.apply(null, lead.concat(lag).map((r) => Math.abs(r.pct)).concat([0.01]));
+    return { lead, lag, mx, ready: lead.length === 3 && lag.length === 3 };
+  }
+  function hBarSvg(gid, pct, mx, side, w) {
+    const up = pct >= 0;
+    const col = up ? '#5CB0FF' : '#EB8C86';
+    const bw = Math.max(12, Math.round((w - 4) * Math.sqrt(Math.abs(pct) / mx)));
+    const h = 14, r = 7, y = 3;
+    let d;
+    if (side === 'right') {
+      d = 'M0,' + y + ' L' + Math.max(0, bw - r) + ',' + y + ' A' + r + ',' + r + ' 0 0 1 ' + bw + ',' + (y + r) + ' L' + bw + ',' + (y + h - r) + ' A' + r + ',' + r + ' 0 0 1 ' + Math.max(0, bw - r) + ',' + (y + h) + ' L0,' + (y + h) + ' Z';
+    } else {
+      const x0 = w - bw;
+      d = 'M' + w + ',' + y + ' L' + Math.min(w, x0 + r) + ',' + y + ' A' + r + ',' + r + ' 0 0 0 ' + x0 + ',' + (y + r) + ' L' + x0 + ',' + (y + h - r) + ' A' + r + ',' + r + ' 0 0 0 ' + Math.min(w, x0 + r) + ',' + (y + h) + ' L' + w + ',' + (y + h) + ' Z';
+    }
+    const x1 = side === 'right' ? '1' : '0', x2 = side === 'right' ? '0' : '1';
+    return '<svg class="hpc-bar" viewBox="0 0 ' + w + ' 20" width="' + w + '" height="20" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="' + gid + '" gradientUnits="objectBoundingBox" x1="' + x1 + '" y1="0" x2="' + x2 + '" y2="0"><stop offset="0" stop-color="' + col + '" stop-opacity="1"/><stop offset="1" stop-color="' + col + '" stop-opacity="0"/></linearGradient></defs><path d="' + d + '" fill="url(#' + gid + ')"></path></svg>';
+  }
+  function pulseLeadLag() {
+    const data = leadLagSectors();
+    if (!data.ready) return '<div class="hpc-sk"><div></div><div></div><div></div></div>';
+    const col = (title, list, side) => '<div class="hpc-col"><div class="hpc-chd">' + title + '</div>' + list.map((r, i) => {
+      return '<a class="hpc-row" href="#stock/' + r.s + '"><div class="hpc-nm"><span class="hpc-name">' + E(r.name) + '</span><span class="hpc-pct ' + cls(r.pct) + '">' + pct(r.pct) + '</span></div><div class="hpc-track">' + hBarSvg('hpc-' + side + r.s + i, r.pct, data.mx, 'right', 200) + '</div></a>';
+    }).join('') + '</div>';
+    return '<div class="hpc-grid">' + col('Leading', data.lead, 'L') + col('Lagging', data.lag, 'G') + '</div>';
+  }
+
   function pulse() {
-    const t = pulseText(); const ix = [['SPY', 'S&P 500'], ['QQQ', 'Nasdaq'], ['IWM', 'Russell']];
-    return card('<div class="pzh"><span class="pzk">' + ic('activity', 16, 2.2) + 'Market pulse</span><span class="pzt">' + (() => { const d = etNow(); return E(d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })) + ' · ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' ET'; })() + '</span></div>' + '<p class="pzl">' + (t ? E(t.title) : '&nbsp;') + '</p>' +
-      '<div class="pzi">' + ix.map((x) => { const q = S.q[x[0]]; return '<div><small>' + x[1] + '</small><b class="' + (q ? cls(q.pct) : '') + '">' + (q ? pct(q.pct) : '—') + '</b></div>'; }).join('') + '</div>' + '<div class="pzh2">' + hoursBar() + '</div>', 'padding:14px 16px;margin-top:14px', 'pulse2', 'a', ' href="' + (V2_STAGE >= 2 ? '#markets' : '#sectors') + '"');
+    return card('<div class="pzh"><span class="pzk">' + ic('activity', 16, 2.2) + 'Market pulse</span></div>' + pulseLeadLag() + '<div class="pzh2">' + hoursBar() + '</div>', 'padding:14px 16px;margin-top:14px', 'pulse2 hpulse-c');
   }
   // Top news = what matters to you first: your holdings and watchlist, then market-moving events, then big outlets; skips clickbait
   const FLUFF = /\b(here'?s why|should you (buy|sell)|is it time to|could make you|millionaire|best .{0,20}stocks? to buy|top \d+ |\d+ (stocks|reasons)|i'?m buying|my favorite|forever stock|retire|dividend stocks? to|plaque|boasted|jaw|affair|wife|petition|tribute)\b/i;
@@ -585,7 +625,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       S.t.q = Date.now(); S.err.q = null;
     });
   }
-  const visibleSyms = () => { const r = route(); let L = IDX.slice(); if (window.V2X && V2X.syms) L = L.concat(V2X.syms(r) || []); if (r.v === 'today' || r.v === 'portfolio') L = L.concat(HOLD_SYMS, wlSyms(), (S.tg || []).map((x) => x.symbol)); if (r.v === 'fund' && S.fundSel) L = L.concat(S.fundSel); if (r.v === 'mtheme' && S.themeSel) L = L.concat(S.themeSel); if (r.v === 'money' && S.moneySyms) L = L.concat(S.moneySyms); if (r.v === 'earnings' && S.earnSyms) L = L.concat(S.earnSyms); if (r.v === 'stock') L.push(r.id); return Array.from(new Set(L)).slice(0, 120); };
+  const visibleSyms = () => { const r = route(); let L = IDX.slice(); if (window.V2X && V2X.syms) L = L.concat(V2X.syms(r) || []); if (r.v === 'today' || r.v === 'portfolio') L = L.concat(HOLD_SYMS, wlSyms(), (S.tg || []).map((x) => x.symbol), SECTOR_FULL.map((x) => x[0])); if (r.v === 'fund' && S.fundSel) L = L.concat(S.fundSel); if (r.v === 'mtheme' && S.themeSel) L = L.concat(S.themeSel); if (r.v === 'money' && S.moneySyms) L = L.concat(S.moneySyms); if (r.v === 'earnings' && S.earnSyms) L = L.concat(S.earnSyms); if (r.v === 'stock') L.push(r.id); return Array.from(new Set(L)).slice(0, 120); };
   // live prices: ask again as soon as the last answer lands (at most every ~1.5s), so prices track the market instead of waiting on a fixed 5s timer
   function pxLoop() { const t0 = Date.now(); const next = () => setTimeout(pxLoop, Math.max(300, 1500 - (Date.now() - t0)));
     if (D.hidden || !canLoad()) return setTimeout(pxLoop, 1500); const r = route(); if (r.v === 'movers' || r.v === 'radar' || r.v === 'ask' || r.v === 'alerts') return setTimeout(pxLoop, 1500);

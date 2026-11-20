@@ -1856,3 +1856,23 @@ html[data-design="d7c2"] body .wrap>.top .ttl{
   font-family:GeistSans,Inter,system-ui,sans-serif!important;
   color:#F3F4EE!important
 }
+
+/* Market pulse option C: two columns, 3 leading + 3 lagging, horizontal fade bars. */
+html[data-design="d7c2"] body .card.pulse2.hpulse-c,
+html[data-design="d7c2"] body .hpulse-c{padding:18px 16px 16px!important}
+.hpc-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px 16px;margin-top:6px}
+.hpc-chd{font-family:GeistSans,Inter,system-ui,sans-serif;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#C9D0E8;margin:0 0 12px}
+.hpc-row{display:block;margin:0 0 14px;min-width:0;overflow:hidden;text-decoration:none;color:inherit}
+.hpc-row:last-child{margin-bottom:0}
+.hpc-nm{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:0 0 6px}
+.hpc-name{font-family:GeistSans,Inter,system-ui,sans-serif;font-size:13px;line-height:1.25;font-weight:500;color:#F4F4F5;text-align:left;flex:1 1 auto;min-width:0;overflow-wrap:break-word;word-break:normal}
+.hpc-pct{font-family:GeistMono,ui-monospace,Menlo,monospace;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;flex:none}
+.hpc-track{display:block;width:100%;max-width:100%;overflow:hidden;min-width:0}
+.hpc-track .hpc-bar{display:block;width:100%;max-width:100%;height:14px;filter:none!important}
+.hpc-sk{display:flex;flex-direction:column;gap:12px;min-height:120px;margin-top:8px}
+.hpc-sk div{height:14px;border-radius:8px;background:rgba(255,255,255,.06)}
+@media (min-width:1024px){
+  .hpc-grid{gap:22px 32px}
+  .hpc-name{font-size:14px}
+  .hpc-chd{font-size:13px}
+}
