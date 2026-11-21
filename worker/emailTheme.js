@@ -80,7 +80,7 @@ export function cssFor(theme) {
     '.sec{margin:0 0 18px;border-collapse:collapse}' +
     '.secbar{width:4px;background:' + T.kickerBar + ';border-radius:2px}' +
     '.secin{padding:0 0 0 12px}' +
-    '.kicker{font-family:' + SANS + ';font-size:11px;line-height:14px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:' + T.kicker + ';margin:0 0 2px}' +
+    '.kicker{font-family:' + SANS + ';font-size:12px;line-height:16px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:' + T.kicker + ';margin:0 0 2px}' +
     '.stitle{font-family:' + titleFont + ';font-size:22px;line-height:1.2;font-weight:' + titleWeight + ';color:' + titleColor + ';margin:0 0 10px}' +
     '.tg{width:100%;border-collapse:separate;border-spacing:8px;margin:0 -8px}' +
     '.td{background:' + T.tile + ';border:1px solid ' + T.tileBorder + ';border-radius:8px;padding:14px 14px 12px;vertical-align:top}' +
@@ -170,19 +170,20 @@ export function pulseBlock(secs, idxVals, theme, img, kicker, title, idxLabels) 
     bar +
     '<td class="secin" style="padding:0 0 0 12px">' +
     '<div class="kicker" style="color:' + T.kicker + '">' + E(kicker || 'MARKET PULSE') + '</div>' +
-    '<div class="stitle" style="color:' + (T.title || T.ink) + ';margin-bottom:0">' + E(title || 'Sectors and indexes') + '</div>' +
+    '<div class="stitle" style="color:' + (T.title || T.ink) + ';margin-bottom:0">' + E(title || 'Indexes and sectors') + '</div>' +
     '</td></tr></table>'
   );
   const tilePart = tiles
-    ? ('<table class="sec pulse-tiles" width="100%" cellpadding="0" cellspacing="0" role="presentation"><tr>' +
+    ? ('<table class="sec pulse-tiles" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:0;border-collapse:collapse"><tr>' +
        bar +
        '<td class="secin" style="padding:0 0 0 12px">' + tiles + '</td></tr></table>')
     : '';
   const chartPart = chart
-    ? ('<table class="sec pulse-chart" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:0;border-collapse:collapse"><tr>' +
+    ? ('<table class="sec pulse-chart" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse"><tr>' +
        bar + '<td class="secin" style="padding:0 0 0 12px">' + chart + '</td></tr></table>')
     : '';
-  return head + chartPart + tilePart;
+  // index tiles first, the sectors directly under them (Jason, Nov 21)
+  return head + tilePart + chartPart;
 }
 
 export function buildShell(o, TYPES, ORIGIN) {

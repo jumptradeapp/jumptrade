@@ -8,10 +8,10 @@ const R = (f) => fs.readFileSync(W + f, 'utf8');
 test('advisor.js and advisor.css load after v2x and before v2, with cache pins and in the service worker shell', () => {
   const html = R('index.html');
   assert.match(html, /\/v2\/v2x\.js\?v=54"><\/script><script src="\/v2\/advisor\.js\?v=3"><\/script>/);
-  assert.match(html, /\/v2\/v2\.js\?v=136/);
+  assert.match(html, /\/v2\/v2\.js\?v=137/);
   assert.match(html, /\/v2\/advisor\.css\?v=2/);
   const sw = R('sw.js');
-  assert.match(sw, /jt-shell-v43/);
+  assert.match(sw, /jt-shell-v44/);
   assert.match(sw, /'\/v2\/advisor\.js'/); assert.match(sw, /'\/v2\/advisor\.css'/);
   assert.match(R('v2/v2x.js'), /X\.bars = bars; X\.file = file;/);
 });

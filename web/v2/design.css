@@ -2091,3 +2091,11 @@ html[data-x2t="light"] .ov-res{--ov:#A5352D}
 /* the "/" search shortcut hint: 12px, readable in light too */
 html body .nsrch kbd{font-size:12px!important}
 html[data-x2t="light"] body .nsrch kbd{color:#4A5A70!important;border-color:rgba(74,90,112,.35)!important}
+
+/* Market pulse order (Nov 21): the 6 index tiles first, the sectors (leading / lagging, incl. crypto) directly under them.
+   The divider moves with them: no rule above the indexes, one rule above the sectors. Sizes unchanged. */
+html body .hpulse-c .hixg{margin-top:10px!important;padding-top:0!important;border-top:0!important}
+html body .hpulse-c .hpc-grid,html body .hpulse-c .hpc-sk{margin-top:16px!important;padding-top:14px!important;border-top:1px solid rgba(255,255,255,.08)}
+html[data-x2t="light"] body .hpulse-c .hpc-grid,html[data-x2t="light"] body .hpulse-c .hpc-sk{border-top-color:#E2E4E8}
+/* 12px floor: the dark index names were 11px (light was already 12px) */
+html[data-design="d7c2"] body .hixn{font-size:12px;line-height:16px}

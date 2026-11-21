@@ -414,7 +414,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       const p = q && isFinite(q.pct) ? '<i class="' + cls(q.pct) + '">' + pct(q.pct) + '</i>' : '';
       return '<div class="hixc"><span class="hixn">' + n + '</span><span class="q"><b>' + price + '</b>' + p + '</span></div>';
     }).join('') + '</div>';
-    return card('<div class="pzh"><span class="pzk">' + ic('activity', 16, 2.2) + 'Market pulse</span></div>' + pulseLeadLag() + ix, 'padding:14px 16px;margin-top:14px', 'pulse2 hpulse-c');
+    return card('<div class="pzh"><span class="pzk">' + ic('activity', 16, 2.2) + 'Market pulse</span></div>' + ix + pulseLeadLag(), 'padding:14px 16px;margin-top:14px', 'pulse2 hpulse-c');
   }
   function dayCard() {
     return '<div class="card cbody hdaycard">' + hoursBar() + '</div>';
