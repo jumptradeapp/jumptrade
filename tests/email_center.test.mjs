@@ -126,7 +126,7 @@ test('owner-only: the email controls, previews and sends refuse testers and sign
 test('owner list: per-address, per-email switches; the old list migrates; the classic page stays in step', async () => {
   const { env, storage } = makeEnv(); const { own } = people(storage); storage._m.set('mail_to', ['jason@example.com']);
   let j = await (await call(env, '/api/admin/mail', own)).json();
-  assert.deepEqual(j.list, [{ email: 'jason@example.com', types: ['morning'], mine: true, t: 0 }]); assert.equal(j.types.length, 4);
+  assert.deepEqual(j.list, [{ email: 'jason@example.com', types: ['morning'], mine: true, t: 0 }]); assert.equal(j.types.length, 5); // + Week ahead (Nov 21 2026)
   j = await (await call(env, '/api/admin/mail/addr', own, { email: 'Jason@Example.com', types: ['close', 'morning', 'week', 'nope'] })).json();
   assert.deepEqual(j.list.find((x) => x.email === 'jason@example.com').types, ['morning', 'close', 'week']); assert.equal(j.counts.close, 1);
   j = await (await call(env, '/api/admin/mail/addr', own, { email: 'pat@example.com', types: ['ah'] })).json();
@@ -148,7 +148,7 @@ test('signed-in people choose their own emails; choosing again clears an old uns
   const { env, storage } = makeEnv(); const { t1 } = people(storage); storage._m.set('mail_unsub', { 'ann@example.com': ['close'] });
   let j = await (await call(env, '/api/me/mail', t1, { email: 'ann@example.com', types: ['close', 'week'] })).json();
   assert.deepEqual(j.types, ['close', 'week']); assert.equal(storage._m.get('mail_unsub')['ann@example.com'], undefined);
-  j = await (await call(env, '/api/me/mail', t1)).json(); assert.deepEqual(j.types, ['close', 'week']); assert.equal(j.all.length, 4);
+  j = await (await call(env, '/api/me/mail', t1)).json(); assert.deepEqual(j.types, ['close', 'week']); assert.equal(j.all.length, 5);
   j = await (await call(env, '/api/me/mail', t1, { on: true, email: 'ann@example.com' })).json(); assert.deepEqual(j.types, ['close', 'week']); // the old one-switch call keeps the choices
   j = await (await call(env, '/api/me/mail', t1, { types: [] })).json(); assert.equal(j.on, false); assert.equal(storage._m.get('mail_optin').t1, undefined);
 });

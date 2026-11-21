@@ -12,7 +12,7 @@ test('clean-1120 pins, nav clip, colors, pulse C, indexes, heat, Ask Jump and ta
   assert.match(idx, /v2\/v2\.css\?v=106/);
   assert.match(idx, /v2\/design\.css\?v=23/);
   assert.match(idx, /v2\/v2\.js\?v=135/);
-  assert.match(idx, /v2x\.js\?v=52/);
+  assert.match(idx, /v2x\.js\?v=53/);
   assert.match(idx, /landing\.js\?v=11/);
   assert.match(idx, /v2\/asksheet\.js\?v=1/);
   assert.match(sw, /jt-shell-v41/);

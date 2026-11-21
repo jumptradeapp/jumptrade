@@ -1423,7 +1423,18 @@ function mailH(env, ctx) {
       const p = await wb('get_macroeconomic_calendar', { start_date: mon.toISOString().slice(0, 10), end_date: fri.toISOString().slice(0, 10) }); return arr0(p).filter((c) => c && c.event_name && (c.importance == null || +c.importance >= 2)).map((c) => ({ e: c.event_name, at: c.publish_time, f: c.forecast_value, p: c.prior_value })); },
     names: async () => { if (!SYMNAMES) { try { const r = await env.ASSETS.fetch(new Request('https://jumptrade.app/symbols.json')); const j = await r.json(); const m = {}; (Array.isArray(j) ? j : []).forEach((x) => { if (x && x[0]) { m[x[0]] = x[1]; m[String(x[0]).replace('.', '-')] = x[1]; } }); SYMNAMES = m; } catch (e) { return {}; } } return SYMNAMES; },
     srcName: () => [...used].join(' and ') || 'Yahoo Finance',
+    assetJson: async (path) => { const r = await env.ASSETS.fetch(new Request('https://jumptrade.app' + path)); return r.ok ? r.json() : null; }, // catalysts.json for the Week ahead
+    ipoCal: (from, to) => ipoCalendar(from, to),
   };
+}
+// Upcoming US IPOs from Nasdaq's public IPO calendar (no key; its data comes from EDGAR Online): expected pricing dates from..to
+async function ipoCalendar(from, to) {
+  const months = [...new Set([from.slice(0, 7), to.slice(0, 7)])]; const rows = []; let got = 0;
+  for (const m of months) { try { const r = await fetch('https://api.nasdaq.com/api/ipo/calendar?date=' + m, { headers: NQH }); if (!r.ok) continue; const j = await r.json(); got++;
+    (((j && j.data && j.data.upcoming && j.data.upcoming.upcomingTable) || {}).rows || []).forEach((x) => { const md = String(x.expectedPriceDate || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); if (!md) return;
+      rows.push({ s: String(x.proposedTickerSymbol || '').trim(), n: x.companyName || '', date: md[3] + '-' + md[1].padStart(2, '0') + '-' + md[2].padStart(2, '0'), px: x.proposedSharePrice || '', sh: x.sharesOffered || '', ex: x.proposedExchange || '', amt: x.dollarValueOfSharesOffered || '' }); }); } catch (e) {} }
+  if (!got) return null;
+  return { rows: rows.filter((x) => x.s && x.date >= from && x.date <= to), src: 'the Nasdaq IPO calendar (EDGAR Online)' };
 }
 // change for the week so far (or the full week on the weekend): latest daily close vs the last close before this week's Monday
 async function weekChg(list) {

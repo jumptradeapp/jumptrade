@@ -800,7 +800,7 @@
   // Emails (#email): everyone signed in picks which emails come to their own address; the owner also sees every email we send
   // (last sent, a full preview in the app, "send me a preview") and who gets which, with a switch per email per address. Saved on the server.
   st.mym = null; st.mya = null;
-  const MT = [['morning', 'Morning'], ['close', 'Close'], ['ah', 'After hours'], ['week', 'Weekly']];
+  const MT = [['morning', 'Morning'], ['close', 'Close'], ['ah', 'After hours'], ['week', 'Weekly'], ['ahead', 'Week ahead']];
   const mailJ = (u, b) => fetch(u, Object.assign({ credentials: 'same-origin', cache: 'no-store' }, b ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) } : {})).then((r) => r.json().then((j) => { if (!r.ok && !j.error) j.error = 'Something went wrong (' + r.status + ').'; return j; }));
   const etT = (t) => new Date(t).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' ET';
   function mailSection() {

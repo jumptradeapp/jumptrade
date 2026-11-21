@@ -6,6 +6,7 @@ export { closeOf, ahEndOf };
 import { E, ND } from './mailsFmt.js';
 import { themeOf, changeColor, sectionBlock, indexTiles, pulseBlock, buildShell } from './emailTheme.js';
 import { SECTOR_ETFS, SECTOR_TICKERS, sectorAlt } from './sectorChart.js';
+import { gatherAhead, renderAhead } from './weekAhead.js';
 export { E, ND } from './mailsFmt.js';
 export { themeOf, sectionBlock, indexTiles, pulseBlock } from './emailTheme.js';
 export { SECTOR_ETFS, SECTOR_TICKERS } from './sectorChart.js';
@@ -15,6 +16,7 @@ export const TYPES = {
   close: { name: 'Closing recap', when: 'Market days at about 4:15 PM ET (1:15 PM on early-close days)', short: 'How the day ended: indexes, top movers and why, sectors, earnings and analyst calls', last: 'mail_last_close' },
   ah: { name: 'After-hours wrap', when: 'Market days at about 8:05 PM ET (5:05 PM on early-close days)', short: 'After-hours movers and earnings reactions', last: 'mail_last_ah' },
   week: { name: 'Weekly recap', when: 'Saturdays at 9:00 AM ET', short: 'The week in indexes, biggest movers, sector rotation and next week’s earnings', last: 'mail_last_week' },
+  ahead: { name: 'Week ahead', when: 'Sundays at about 6:00 PM ET', short: 'Next week only: earnings by day, catalysts and the economy, IPOs and the news to read', last: 'mail_last_ahead' },
 };
 export const TYPE_IDS = Object.keys(TYPES);
 export const ORIGIN = 'https://jumptrade.app';
@@ -28,6 +30,7 @@ export function windowFor(type, n) {
   if (type === 'close') { const a = closeOf(n) + 15; return mkt && n.hm >= a && n.hm <= a + 20 ? n.day : null; }
   if (type === 'ah') { const a = ahEndOf(n) + 5; return mkt && n.hm >= a && n.hm <= a + 20 ? n.day : null; }
   if (type === 'week') return /Sat/.test(n.wd) && n.hm >= 540 && n.hm <= 570 ? n.day : null;
+  if (type === 'ahead') return /Sun/.test(n.wd) && n.hm >= 1080 && n.hm <= 1110 ? n.day : null; // Sundays 6:00-6:30 PM ET
   return null;
 }
 export const dueTypes = (n) => TYPE_IDS.filter((t) => windowFor(t, n));
@@ -370,6 +373,11 @@ const aiData = {
 };
 const GATHER = { close: gatherClose, ah: gatherAH, week: gatherWeek }, RENDER = { close: renderClose, ah: renderAH, week: renderWeek };
 export async function buildMail(type, env, H) {
+  if (type === 'ahead') { // Week ahead: no AI write-up and no market numbers; each story's own photo when it has one
+    const d = await gatherAhead(H); const theme = themeOf(H.theme);
+    if (H.articleImg) { const to = (p) => Promise.race([p, new Promise((r) => setTimeout(() => r(null), 8000))]); d.newsImg = await Promise.all(d.news.map((n) => to(H.articleImg({ image: n.img, url: n.u, title: n.t })).catch(() => null))); }
+    return Object.assign(renderAhead(d, shell, srow, theme), { type, ai: false, theme: theme.id });
+  }
   const d = await GATHER[type](H); const w = H.ai ? await aiWrite(env, H, type, aiData[type](d)) : null;
   if (H.chartImg) d.chartImg = H.chartImg;
   const theme = themeOf(H.theme);

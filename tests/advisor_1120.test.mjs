@@ -7,7 +7,7 @@ const R = (f) => fs.readFileSync(W + f, 'utf8');
 
 test('advisor.js and advisor.css load after v2x and before v2, with cache pins and in the service worker shell', () => {
   const html = R('index.html');
-  assert.match(html, /\/v2\/v2x\.js\?v=52"><\/script><script src="\/v2\/advisor\.js\?v=2"><\/script>/);
+  assert.match(html, /\/v2\/v2x\.js\?v=53"><\/script><script src="\/v2\/advisor\.js\?v=2"><\/script>/);
   assert.match(html, /\/v2\/v2\.js\?v=135/);
   assert.match(html, /\/v2\/advisor\.css\?v=1/);
   const sw = R('sw.js');

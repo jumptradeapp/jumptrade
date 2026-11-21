@@ -11,7 +11,7 @@ import path from 'node:path';
 const WT = path.resolve(process.argv[2] || '/workspace/jt_emails_src');
 const OUT = path.resolve(process.argv[3] || '/workspace/jt_emails_1120');
 const THEMES = ['light']; // email is always light (Jason, Nov 20 2026)
-const TYPES = ['morning', 'morning:0', 'close', 'ah', 'week'];
+const TYPES = (process.env.TYPES || 'morning,morning:0,close,ah,week,ahead').split(',');
 
 const puppeteer = createRequire('/home/box/.local/lib/node_modules/lighthouse/node_modules/puppeteer-core/package.json')('puppeteer-core');
 
