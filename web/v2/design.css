@@ -2051,17 +2051,6 @@ html[data-x2t="light"] body .hpulse-c .hixn{font-family:GeistMono,JBM,"IBM Plex 
 html[data-x2t="light"] body .hpulse-c .hixc .q{display:flex!important;flex-direction:row!important;align-items:baseline!important;justify-content:flex-start!important;gap:8px;flex-wrap:wrap;min-width:0;text-align:left!important;float:none!important;margin:0!important}
 html[data-x2t="light"] body .hpulse-c .hixc .q b{font-family:GeistSans,Inter,system-ui,sans-serif!important;font-size:16px!important;line-height:20px!important;font-weight:500!important;letter-spacing:0!important;font-variant-numeric:tabular-nums}
 html[data-x2t="light"] body .hpulse-c .hixc .q i{display:inline!important;font-style:normal!important;font-family:GeistMono,ui-monospace,Menlo,monospace!important;font-size:12px!important;font-weight:600;font-variant-numeric:tabular-nums}
-/* Bitcoin + Gold: two plain rows under the index grid. Name left; price, $ and % change on one line right. */
-.hcx{margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;gap:6px}
-.hcxr{display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-width:0}
-.hcxn{font-family:GeistMono,JBM,"IBM Plex Mono",ui-monospace,monospace;font-size:12px;line-height:16px;letter-spacing:.10em;text-transform:uppercase;color:#C9D0E8;white-space:nowrap}
-.hcxn small{font-size:12px;letter-spacing:0;text-transform:none;opacity:.75}
-.hcxv{display:flex;align-items:baseline;gap:8px;white-space:nowrap;font-variant-numeric:tabular-nums}
-.hcxv b{font-family:GeistSans,Inter,system-ui,sans-serif;font-size:14px;line-height:18px;font-weight:500;color:#F4F4F5}
-.hcxv i{font-style:normal;font-family:GeistMono,ui-monospace,Menlo,monospace;font-size:12px;font-weight:600}
-.card.hcxc{padding:4px 14px 12px;margin-top:10px}.card.hcxc .hcx{border-top:0;margin-top:0}
-html[data-x2t="light"] body .hcx{border-top-color:#E2E4E8}html[data-x2t="light"] body .card.hcxc .hcx{border-top:0}
-html[data-x2t="light"] body .hcxn{color:#4A5263}html[data-x2t="light"] body .hcxv b{color:#12141A}
 /* Light theme: dark ink on white, AA labels (the pulse names/headers were #F4F4F5 / #C9D0E8 on white). */
 html[data-x2t="light"] body .hpc-name{color:#12141A!important}
 html[data-x2t="light"] body .hpc-chd,html[data-x2t="light"] body .hpulse-c .hixn{color:#4A5263!important}

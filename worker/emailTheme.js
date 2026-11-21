@@ -157,16 +157,10 @@ export function indexTiles(vals, theme, labels) {
   return '<table class="tg" width="100%" cellpadding="0" cellspacing="8" role="presentation">' + rows.join('') + '</table>';
 }
 
-export function pulseBlock(secs, idxVals, theme, img, kicker, title, idxLabels, extra) {
+export function pulseBlock(secs, idxVals, theme, img, kicker, title, idxLabels) {
   const T = themeOf(theme && theme.id ? theme.id : theme);
   const chart = secs && secs.length ? sectorBlock(secs, T) : '';
   const tiles = idxVals ? indexTiles(idxVals, T, idxLabels) : '';
-  // Bitcoin / Gold: plain rows under the tiles. Name left; price, $ and % change on one line right. Only real quotes.
-  const xr = (extra || []).filter((k) => idxVals && idxVals[k[0]] && isFinite(+idxVals[k[0]].px)).map((k) => { const v = idxVals[k[0]]; const ok = isFinite(+v.pct); const col = ok ? changeColor(v.pct, T) : T.muted;
-    return '<tr><td style="padding:7px 0;border-top:1px solid ' + T.hair + ';font-size:13px;line-height:18px;color:' + T.muted + ';font-family:' + SANS + '">' + E(k[1]) + '</td>' +
-      '<td align="right" style="padding:7px 0;border-top:1px solid ' + T.hair + ';white-space:nowrap;font-family:' + SANS + '"><b style="font-size:15px;line-height:18px;color:' + T.ink + '">$' + fmtNum(v.px) + '</b>' +
-      (ok ? '<span style="font-size:13px;font-weight:700;color:' + col + '">&nbsp;&nbsp;' + (isFinite(+v.ch) ? (v.ch >= 0 ? '+' : '−') + '$' + fmtNum(Math.abs(+v.ch)) + '&nbsp;&nbsp;' : '') + (v.pct >= 0 ? '+' : '−') + Math.abs(+v.pct).toFixed(2) + '%</span>' : '') + '</td></tr>'; }).join('');
-  const xtra = xr ? '<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse"><tr><td style="padding:0 8px 0 0"><table class="xs" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;margin:2px 0 0">' + xr + '</table></td></tr></table>' : ''; // right edge lines up with the tiles
   if (!chart && !tiles) return '';
   // Header is its own secbar table so the 390px chart can bleed only the 14px
   // body padding and not cover the 4px Market pulse accent bar.
@@ -182,7 +176,7 @@ export function pulseBlock(secs, idxVals, theme, img, kicker, title, idxLabels, 
   const tilePart = tiles
     ? ('<table class="sec pulse-tiles" width="100%" cellpadding="0" cellspacing="0" role="presentation"><tr>' +
        bar +
-       '<td class="secin" style="padding:0 0 0 12px">' + tiles + xtra + '</td></tr></table>')
+       '<td class="secin" style="padding:0 0 0 12px">' + tiles + '</td></tr></table>')
     : '';
   const chartPart = chart
     ? ('<table class="sec pulse-chart" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:0;border-collapse:collapse"><tr>' +

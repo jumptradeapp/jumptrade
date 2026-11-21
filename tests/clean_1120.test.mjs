@@ -40,7 +40,7 @@ test('clean-1120 pins, nav clip, colors, pulse C, indexes, heat, Ask Jump and ta
 
   assert.match(v2, /const IDX_LEVELS = \[\['\^GSPC', 'S&P 500'\], \['\^NDX', 'Nasdaq 100'\], \['\^DJI', 'Dow'\], \['\^RUT', 'Russell'\]\]/);
   assert.match(v2, /function idxPx|const idxPx/);
-  assert.match(v2, /IDX_LEVELS\.map/);
+  assert.match(v2, /IDX_FETCH\.map/); // the 4 index levels + Bitcoin + Gold, same tiles
   assert.doesNotMatch(v2.slice(v2.indexOf('function marketsScreen')), /IDX\.map\(\(s\) => \{ const x = S\.q\[s\]; return '<a class="card ixc"/);
 
   assert.match(v2, /92,176,255/);

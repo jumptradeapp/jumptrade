@@ -119,14 +119,11 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const wlSyms = () => wl() || WL_SUGGEST;
   const IDX = ['SPY', 'QQQ', 'DIA', 'IWM'];
   const IDX_LEVELS = [['^GSPC', 'S&P 500'], ['^NDX', 'Nasdaq 100'], ['^DJI', 'Dow'], ['^RUT', 'Russell']];
-  // Bitcoin and Gold (Jason, Nov 20 2026): two plain rows under the index grid, name, price, $ and % change. Real Yahoo quotes:
-  // BTC-USD trades 24/7 (its day runs from 00:00 UTC); GC=F is the front-month COMEX gold future, $ per troy ounce.
-  const XTRA = [['BTC-USD', 'Bitcoin', '24/7'], ['GC=F', 'Gold', '']];
+  // Bitcoin and Gold (Jason, Nov 20 2026): two more tiles in the same index grid, identical markup (name, price, %).
+  // Real Yahoo quotes: BTC-USD trades 24/7 (its day runs from 00:00 UTC); GC=F is the front-month COMEX gold future.
+  const XTRA = [['BTC-USD', 'Bitcoin'], ['GC=F', 'Gold']];
   const IDX_FETCH = IDX_LEVELS.concat(XTRA);
   const idxPx = (v) => (v == null || v === '' || !isFinite(v = +v) ? '—' : Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-  const usdChg = (v) => (v == null || v === '' || !isFinite(v = +v) ? '' : (v >= 0 ? '+' : '−') + '$' + Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-  const xtraRows = () => '<div class="hcx">' + XTRA.map(([s, n, tag]) => { const q = S.q[s]; const ok = q && isFinite(q.pct);
-    return '<div class="hcxr"><span class="hcxn">' + E(n) + (tag ? ' <small>' + E(tag) + '</small>' : '') + '</span><span class="hcxv"><b>' + (q ? '$' + idxPx(q.price) : '—') + '</b>' + (ok ? '<i class="' + cls(q.pct) + '">' + usdChg(q.chg) + '</i><i class="' + cls(q.pct) + '">' + pct(q.pct) + '</i>' : '') + '</span></div>'; }).join('') + '</div>';
 
   function snap(list) {
     const ovn = session() === 'Overnight'; return call('get_stock_snapshot', Object.assign({ symbols: list.join(','), category: 'US_STOCK', extend_hour_required: true }, ovn ? { overnight_required: true } : {})).then((p) => {
@@ -411,12 +408,12 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       S.idxAsk = 1;
       snap(IDX_FETCH.map((x) => x[0])).catch(() => {}).finally(() => { S.idxAsk = 0; render(); });
     }
-    const ix = '<div class="hixg">' + IDX_LEVELS.map(([s, n]) => {
+    const ix = '<div class="hixg">' + IDX_FETCH.map(([s, n]) => {
       const q = S.q[s];
       const price = q ? idxPx(q.price) : '—';
       const p = q && isFinite(q.pct) ? '<i class="' + cls(q.pct) + '">' + pct(q.pct) + '</i>' : '';
       return '<div class="hixc"><span class="hixn">' + n + '</span><span class="q"><b>' + price + '</b>' + p + '</span></div>';
-    }).join('') + '</div>' + xtraRows();
+    }).join('') + '</div>';
     return card('<div class="pzh"><span class="pzk">' + ic('activity', 16, 2.2) + 'Market pulse</span></div>' + pulseLeadLag() + ix, 'padding:14px 16px;margin-top:14px', 'pulse2 hpulse-c');
   }
   function dayCard() {
@@ -1036,7 +1033,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       S.idxAsk = 1;
       snap(IDX_FETCH.map((x) => x[0])).catch(() => {}).finally(() => { S.idxAsk = 0; render(); });
     }
-    const ix = '<div class="ixg">' + IDX_LEVELS.map(([s, n]) => { const x = S.q[s]; return '<div class="card ixc"><span class="mini">' + E(n) + '</span><b>' + (x ? idxPx(x.price) : '—') + '</b><small class="' + (x ? cls(x.pct) : '') + '">' + (x && isFinite(x.pct) ? pct(x.pct) : '&nbsp;') + '</small></div>'; }).join('') + '</div>' + '<div class="card hcxc">' + xtraRows() + '</div>';
+    const ix = '<div class="ixg">' + IDX_FETCH.map(([s, n]) => { const x = S.q[s]; return '<div class="card ixc"><span class="mini">' + E(n) + '</span><b>' + (x ? idxPx(x.price) : '—') + '</b><small class="' + (x ? cls(x.pct) : '') + '">' + (x && isFinite(x.pct) ? pct(x.pct) : '&nbsp;') + '</small></div>'; }).join('') + '</div>';
     const T2 = themeRows();
     const heat = !T2 ? rowsBox(skel(4), 'padding:14px') : !T2.length ? rowsBox('<div class="err">Theme prices aren’t loading right now.</div>') :
       '<div class="heat">' + T2.map((t, _i, A) => '<a class="ht' + (t.pct >= 0 ? ' hp' : ' hn') + ' ' + moveFill(t.pct, A.map((z) => z.pct)).cls + '" href="#markets/theme/' + E(t.id) + '" style="' + heatStyle(t.pct, A.map((z) => z.pct)) + '"><span>' + E(t.name) + '</span><b class="' + (Math.abs(t.pct) < 0.005 ? '' : t.pct > 0 ? 'up' : 'dn') + '">' + (Math.abs(t.pct) < 0.005 ? '' : t.pct > 0 ? '+' : '−') + Math.abs(t.pct).toFixed(2) + '%</b></a>').join('') + '</div>';
