@@ -51,7 +51,7 @@ async function write(env, H, d) {
   const data = { date: d.now.day, time_et: '8:45 AM', indexes: { SP500: q(d.idx.SPY), Nasdaq: q(d.idx.QQQ), Dow: q(d.idx.DIA), Russell: q(d.idx.IWM) },
     your_stocks: d.mine.slice(0, 8).map((r) => ({ t: r.s, pct: +r.p.toFixed(2) })), premarket_up: d.up.map((x) => ({ t: x.symbol, name: x.name, pct: +(x.change_ratio * 100).toFixed(1) })), premarket_down: d.dn.map((x) => ({ t: x.symbol, name: x.name, pct: +(x.change_ratio * 100).toFixed(1) })),
     stock_news: d.newsSym, headlines: d.news.map((n, i) => ({ i, k: n.k, t: n.t, s: n.s, src: n.src, at: n.at, syms: n.syms })), calendar: d.cal };
-  const user = 'DATA:\n' + JSON.stringify(data).slice(0, 60000) + '\n\nReturn JSON exactly like: {"subject": email subject under 70 characters naming the 2-3 biggest things, "pre": inbox preview line under 90 characters, "headline": under 55 characters, "sector": under 6 words like "Staples up, chips down" or "" if unclear, ' +
+  const user = 'DATA:\n' + JSON.stringify(data).slice(0, 60000) + '\n\nReturn JSON exactly like: {"subject": email subject under 40 characters, the 1-2 biggest things, no ending punctuation, "pre": inbox preview line under 90 characters, "headline": under 55 characters, "sector": under 6 words like "Staples up, chips down" or "" if unclear, ' +
     '"matters": [3 items {"b": bold lead under 6 words ending with a period, "t": one short sentence}], "yours": {"TICKER": "why it moved, under 7 words, or No news yet"} for each your_stocks ticker, "movers": {"TICKER": "why, under 7 words"} for each premarket ticker, ' +
     '"headlines": [up to 4 {"i": the i of the DATA headline this is about, "tag": one of Breaking|Policy|Fed|Economy|Earnings|IPO|Trade|Markets, "title": under 70 chars, "why": one short sentence on why it matters to markets}], "deals": [up to 3 real acquisitions/mergers/big contracts {"t": ticker of the company in the deal or "", "text": "Buys X · $size" under 45 chars}], ' +
     '"earnings": [up to 4 {"t": ticker, "label": Beat|Missed|Mixed|Tonight|Today, "text": under 35 chars}], "coming": [up to 2 {"when": "Wed" or "Mon, Nov 23" (never Today/Tomorrow — those go stale if the email is opened later), "text": under 45 chars}]}. Use only companies and events that appear in DATA. Use "Breaking" only for a truly market-moving development.';
@@ -118,7 +118,7 @@ function render(d, w, withMine, theme) {
   const tiles = pickIndexTiles(d.idx, indexSession(now) === 'pre' ? 'pre' : 'reg');
   const v = (s) => (tiles.vals && tiles.vals[s]) || pv(d.idx[s]);
   const sp = (tiles.vals && (tiles.vals['^GSPC'] || tiles.vals.SPY)) || v('SPY'), nq = (tiles.vals && (tiles.vals['^NDX'] || tiles.vals.QQQ)) || v('QQQ');
-  const subject = W.subject || moveSubject('Morning brief', sp, nq);
+  const subject = W.subject || moveSubject('Morning', sp, nq);
   const head = W.headline || (sp ? 'S&P ' + fmtPct(sp.pct, 1) + (nq ? ', Nasdaq ' + fmtPct(nq.pct, 1) : '') : '');
   const m = shell({ type: 'morning', theme: T.id, subject, pre: W.pre || '', dateLine: dateLineOf(now.day, now.hm), headline: head,
     cards: [

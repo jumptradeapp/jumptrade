@@ -74,16 +74,16 @@ function storyRow(n, im, T) {
   return '<div class="hl"><table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse"><tr><td valign="top" style="padding:0 12px 0 0">' + text + '</td><td width="' + w + '" valign="top" style="width:' + w + 'px;padding:2px 0 0"><a href="' + E(n.u) + '">' + pic + '</a></td></tr></table></div>';
 }
 
-export function aheadSubject(d) {
+export function aheadSubject(d) { // under 40 characters, never an index %
   const tk = d.eDays.flatMap((x) => x.tiles.slice(0, 2)).sort((a, b) => (b.mc || 0) - (a.mc || 0)).slice(0, 2).map((t) => t.s);
   const mac = d.cats.filter((c) => c.type === 'macro').map((c) => macroShort(c.title)).filter(Boolean)[0];
   const hol = d.days.find((x) => MKT_HOLIDAYS.has(x));
   const bits = [];
-  if (hol) bits.push(holName(hol) + ' week');
   if (tk.length) bits.push(tk.join(', ') + ' earnings');
+  if (hol) bits.push(holName(hol));
   if (mac) bits.push(mac);
-  let s = 'Week ahead' + (bits.length ? ': ' + bits[0] : '');
-  for (const b of bits.slice(1)) { if ((s + ' · ' + b).length <= 50) s += ' · ' + b; }
+  let s = 'Week ahead';
+  for (const b of bits) { const n = s + (s === 'Week ahead' ? ': ' : ' · ') + b; if (n.length <= 40) s = n; }
   return s;
 }
 

@@ -26,7 +26,7 @@ test('Week ahead has no market pulse, index tiles or index numbers; short subjec
   const m = renderAhead(D, shell, srow, themeOf('light'));
   assert.doesNotMatch(m.html, /Market pulse|S&amp;P|S&P|Nasdaq 100|Bitcoin|Gold|class="td"|data-sector-chart/);
   assert.doesNotMatch(m.subject, /%|S&P|Nasdaq/); assert.ok(m.subject.length <= 50, m.subject);
-  assert.equal(m.subject, 'Week ahead: Thanksgiving week · ADI, DELL earnings');
+  assert.equal(m.subject, 'Week ahead: ADI, DELL earnings'); assert.ok(m.subject.length <= 40);
   assert.match(m.html, /Markets closed for Thanksgiving/); assert.match(m.html, /Stocks close early, 1:00 PM ET/);
   assert.match(m.html, /After the close · expected \$2\.50 a share/); assert.match(m.html, /Before the open/);
   assert.match(m.html, /PCE inflation/); assert.match(m.html, /FBLLU/); assert.match(m.html, /Nasdaq IPO calendar/);

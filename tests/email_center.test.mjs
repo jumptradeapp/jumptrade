@@ -53,7 +53,7 @@ test('each email renders with real fields only: no NaN/undefined, company names,
   assert.match(c.html, /NVDA<\/b> <span class="nm">NVIDIA<\/span>/); assert.match(c.html, /\$182\.40/); assert.match(c.html, /\+\$4\.20/); assert.match(c.html, /Hyster-Yale/);
   assert.match(c.html, /Goldman Sachs/); assert.match(c.html, /Walmart/); assert.match(c.html, /Tonight/);
   assert.doesNotMatch(c.html, /Unusual Volume Leaders/); // a list-of-tickers headline is never shown as the reason
-  assert.match(c.subject, /^Closing recap: S&P −0\.3%, Nasdaq \+0\.4%$/);
+  assert.match(c.subject, /^Close: S&P −0\.3%, Nasdaq \+0\.4%$/);
   const a = await M.buildMail('ah', {}, fakeH(at('2026-11-19T01:10:00Z'))); assert.match(a.html, /after-hours trading closed 8:(&#8288;)?00(&nbsp;| )PM ET/); assert.match(a.html, /Palo Alto Networks/);
   const w = await M.buildMail('week', {}, fakeH(at('2026-11-21T14:05:00Z'))); assert.match(w.html, /Advanced Micro Devices/); assert.match(w.html, /Earnings next week/); assert.match(w.html, /Intuit/);
 });

@@ -186,11 +186,11 @@ test('every email type gets Market pulse bars and keeps owner holdings off the p
   const brief = await buildBrief({}, morningH);
   assert.match(brief.html, /Your stocks/); assert.match(brief.html, /AAPL/);
   assert.doesNotMatch(brief.other.html, /Your stocks/); assert.doesNotMatch(brief.other.html, /AAPL/);
-  assert.match(brief.html, /Market pulse/); assert.match(brief.subject, /^Morning brief: S&P /);
+  assert.match(brief.html, /Market pulse/); assert.match(brief.subject, /^Morning: S&P /);
   assert.match(brief.html, /BEFORE THE OPEN/);
 
   const close = await M.buildMail('close', {}, fakeH(at('2026-11-18T21:20:00Z')));
-  assert.match(close.html, /Market pulse/); assert.match(close.subject, /^Closing recap: S&P /);
+  assert.match(close.html, /Market pulse/); assert.match(close.subject, /^Close: S&P /);
   const ah = await M.buildMail('ah', {}, fakeH(at('2026-11-19T01:10:00Z')));
   assert.match(ah.html, /Market pulse/);
   const week = await M.buildMail('week', {}, fakeH(at('2026-11-21T14:05:00Z')));

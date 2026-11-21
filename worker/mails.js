@@ -167,7 +167,16 @@ export function pulseKicker(type, now) {
   if (now.hm < ahEndOf(now)) return type === 'ah' ? 'AFTER HOURS' : 'AFTER THE CLOSE';
   return 'AFTER HOURS';
 }
-export function shell(o) { return buildShell(o, TYPES, ORIGIN); }
+// Subject lines stay short (Jason, Nov 21 2026: "cap subjects at about 40 characters"): the AI is asked for under 40; every
+// subject, written or fallback, is then clamped here at a word boundary (42 max) with no dangling joiner or ending punctuation.
+export const SUBJ_MAX = 42;
+export function capSubject(s, max) {
+  const M = max || SUBJ_MAX; const tidy = (x) => x.replace(/[\s·,;:|\-–—(]+$/u, '').replace(/[.!?…]+$/u, '').replace(/\s+(and|or|to|vs\.?|as|the|a|of|on|in|for|with|after|before|·)$/i, '').replace(/[\s·,;:|\-–—(]+$/u, '');
+  let t = String(s == null ? '' : s).replace(/\s+/g, ' ').trim(); if (t.length <= M) return tidy(t);
+  const cut = t.slice(0, M + 1); const i = cut.lastIndexOf(' ');
+  return tidy(i >= 16 ? cut.slice(0, i) : t.slice(0, M));
+}
+export function shell(o) { return buildShell(Object.assign({}, o, { subject: capSubject(o.subject) }), TYPES, ORIGIN); }
 export async function majorSectors(H, sess) {
   if (H.sectorsMajor) { const rows = await H.sectorsMajor(sess).catch(() => []); if (rows && rows.length) return rows; }
   if (!H.snap) return [];
@@ -202,7 +211,7 @@ export function numbersInData(text, dataStr) {
 }
 async function aiWrite(env, H, type, data) {
   if (!H.ai) return null; const ds = JSON.stringify(data).slice(0, 50000);
-  const user = 'EMAIL: ' + TYPES[type].name + '\nDATA:\n' + ds + '\n\nReturn JSON exactly like {"subject": under 70 characters naming the 2-3 biggest things, "pre": inbox preview under 90 characters, "headline": under 55 characters, "points": [3 items {"b": bold lead under 6 words ending with a period, "t": one short sentence}]}.';
+  const user = 'EMAIL: ' + TYPES[type].name + '\nDATA:\n' + ds + '\n\nReturn JSON exactly like {"subject": under 40 characters, the 1-2 biggest things, no ending punctuation, "pre": inbox preview under 90 characters, "headline": under 55 characters, "points": [3 items {"b": bold lead under 6 words ending with a period, "t": one short sentence}]}.';
   let w; try { w = await H.ai(SYS, user, 900); } catch (e) { return null; }
   if (!w || typeof w !== 'object') return null;
   const clean = (s, n) => (typeof s === 'string' && s.trim() && numbersInData(s, ds) ? s.trim().slice(0, n) : '');
@@ -263,7 +272,7 @@ export function renderClose(d, w, theme) {
   const whenC = T.id === 'light' ? '#9A5B12' : '#E8B86D';
   const er = d.reported.map((t) => srow(t.s, shortName(t.n), resLbl(t) + E(epsLine(t)), qv(d.eq[t.s]), null, T)).join('') + (d.tonight.length ? '<div class="dy">Reporting after the close tonight</div>' + d.tonight.map((t) => srow(t.s, shortName(t.n), E(epsLine(t)), null, '<b class="px" style="font-size:13px;color:' + whenC + '">Tonight</b>', T)).join('') : '');
   const an = d.an.map((a) => srow(a.s, shortName((d.aq[a.s] && d.aq[a.s].name) || d.names[a.s]), '<i class="lb' + (a.rdir === 'up' ? ' b' : a.rdir === 'down' ? ' m' : '') + '">' + E(a.action) + '</i>' + E(a.firm) + (a.to ? ': ' + E((a.from ? a.from + ' → ' : '') + a.to) : '') + (a.ptTo ? ' · target ' + fmtPx(a.ptTo) + (a.ptFrom ? ' (was ' + fmtPx(a.ptFrom) + ')' : '') : ''), qv(d.aq[a.s]), null, T)).join('');
-  const subject = W.subject || moveSubject('Closing recap', sp, nq);
+  const subject = W.subject || moveSubject('Close', sp, nq);
   const dir = (x) => (!x ? 0 : x.pct >= 0.1 ? 1 : x.pct <= -0.1 ? -1 : 0);
   const head = W.headline || (sp ? (nq && dir(sp) * dir(nq) < 0 ? 'S&P ' + fmtPct(sp.pct, 1) + ', Nasdaq ' + fmtPct(nq.pct, 1) : 'S&P ' + fmtPct(sp.pct, 1) + (nq ? ', Nasdaq ' + fmtPct(nq.pct, 1) : '')) : 'How the market closed');
   const cl = closeOf(d.now);
@@ -307,7 +316,7 @@ export function renderAH(d, w, theme) {
   const er = d.amc.map((t) => srow(t.s, shortName(t.n), (t.eps != null ? resLbl(t) + E(epsLine(t)) : 'Results not in the calendar yet'), ext(d.eq[t.s]) || null, ext(d.eq[t.s]) ? null : '<b class="px" style="font-size:13px;color:' + muted + '">No trades yet</b>', T)).join('');
   const bmo = d.bmo.map((t) => srow(t.s, shortName(t.n), E(epsLine(t)), null, '<b class="px" style="font-size:13px;color:' + whenC + '">' + E(dateShort(d.nextDay).split(',')[0]) + ' a.m.</b>', T)).join('');
   const top = d.up[0]; const sp = v('SPY'), nq = v('QQQ');
-  const subject = W.subject || (moveSubject('After-hours wrap', sp, nq) + (top ? ' · ' + top.symbol + ' ' + fmtPct(ext(top).pct, 0) : ''));
+  const subject = W.subject || (top ? 'After hours: ' + top.symbol + ' ' + fmtPct(ext(top).pct, 0) + (sp ? ' · S&P ' + fmtPct(sp.pct, 1) : '') : moveSubject('After hours', sp, nq));
   const ae = ahEndOf(d.now);
   const built = d.now.hm >= ae ? 'after-hours trading closed ' + hmTxt(ae) + ' ET' : 'after hours so far, as of ' + hmTxt(d.now.hm) + ' ET';
   return Object.assign(shell({ type: 'ah', theme: T.id, subject, pre: W.pre || P.map((p) => p.b).join(' '), dateLine: dateLineOf(d.now.day, d.now.hm), headline: W.headline || (top ? top.symbol + ' leads after hours' : (sp ? 'S&P ' + fmtPct(sp.pct, 1) + ' after hours' : 'After-hours trading')),
@@ -349,7 +358,7 @@ export function renderWeek(d, w, theme) {
   const days = ((d.earn && d.earn.days) || []).filter((x) => x.d > d.now.day && x.tiles && x.tiles.length);
   const cal = days.map((x) => '<div class="dy">' + E(dateShort(x.d)) + '</div>' + x.tiles.slice(0, 4).map((t) => srow(t.s, shortName(t.n), (t.when === 'bmo' ? 'Before the open' : t.when === 'amc' ? 'After the close' : 'Time not set') + (ok(t.est) ? ' · expected $' + (+t.est).toFixed(2) + ' a share' : ''), null, '', T)).join('')).join('');
   const mac = d.macro.map((m) => srow(dateShort(String(m.at).slice(0, 10)).split(',')[0], '', ND(m.e) + (m.f != null && m.f !== '' ? ' · forecast ' + E(m.f) : ''), null, '', T)).join('');
-  const subject = W.subject || (moveSubject('Weekly recap', sp, nq) + ' for the week');
+  const subject = W.subject || moveSubject('Week', sp, nq);
   return Object.assign(shell({ type: 'week', theme: T.id, subject, pre: W.pre || P.map((p) => p.b).join(' '), dateLine: dateLineOf(d.now.day, d.now.hm), headline: W.headline || (sp ? 'S&P ' + fmtPct(sp.pct, 1) + ' for the week' + (nq ? ', Nasdaq ' + fmtPct(nq.pct, 1) : '') : 'The week in markets'),
     cards: [
       pulseBlock(major, tiles.vals, T, img, pulseKicker('week', d.now), 'Market pulse', tiles.labels),
