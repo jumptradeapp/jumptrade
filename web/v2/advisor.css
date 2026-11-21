@@ -48,3 +48,7 @@ html[data-x2t="light"] .avs-z{stroke:rgba(16,40,80,.18)}
 html[data-x2t="light"] .avs-c.on,html[data-x2t="light"] .acg-c.on{background:rgba(78,86,184,.10);border-color:rgba(78,86,184,.45);color:#12141A}
 html[data-x2t="light"] .acg-c{background:rgba(16,40,80,.03)}
 html[data-x2t="light"] .acg-ty{background:rgba(78,86,184,.10);color:#4E56B8}
+/* company logos next to every ticker (Nov 21): chart legend, week strip */
+.avs-leg span{display:inline-flex;align-items:center}.avs-leg .tl{border-radius:5px;margin-right:6px}.avs-leg .tl img{width:13px;height:13px}
+.acg-tk span{display:flex;align-items:center;gap:4px;min-width:0}.acg-tk .tl{border-radius:4px}.acg-tk .tl img{width:12px;height:12px}
+html body .avs-leg span > small{margin-left:5px}

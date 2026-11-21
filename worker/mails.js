@@ -4,11 +4,11 @@
 import { closeOf, ahEndOf } from './market.js';
 export { closeOf, ahEndOf };
 import { E, ND } from './mailsFmt.js';
-import { themeOf, changeColor, sectionBlock, indexTiles, pulseBlock, buildShell } from './emailTheme.js';
+import { themeOf, changeColor, sectionBlock, indexTiles, pulseBlock, buildShell, logoTiles, dayBand, logoImg, wantLogos, useLogos } from './emailTheme.js';
 import { SECTOR_ETFS, SECTOR_TICKERS, sectorAlt } from './sectorChart.js';
 import { gatherAhead, renderAhead } from './weekAhead.js';
 export { E, ND } from './mailsFmt.js';
-export { themeOf, sectionBlock, indexTiles, pulseBlock } from './emailTheme.js';
+export { themeOf, sectionBlock, indexTiles, pulseBlock, logoTiles, dayBand, logoImg, wantLogos, useLogos } from './emailTheme.js';
 export { SECTOR_ETFS, SECTOR_TICKERS } from './sectorChart.js';
 
 export const TYPES = {
@@ -109,8 +109,14 @@ export function qv(q, sess) {
 // price on top, $ and % change side by side under it
 export const pxCell = (v, theme) => (!v ? '<b class="px">—</b>' : '<b class="px">' + fmtPx(v.px) + '</b><span class="cg" style="color:' + col(v.pct, theme) + '">' + fmtChg(v.ch) + '&nbsp;&nbsp;' + fmtPct(v.pct) + '</span>');
 // a stock row: ticker, company name and a short line on the left; price and change on the right
-export const srow = (sym, name, line, v, right, theme) => '<table class="sr" width="100%" cellpadding="0" cellspacing="0" role="presentation"><tr><td class="l"><b class="tk">' + E(sym) + '</b> <span class="nm">' + E(name || '') + '</span>' +
+export const srow = (sym, name, line, v, right, theme) => '<table class="sr" width="100%" cellpadding="0" cellspacing="0" role="presentation"><tr>' + ((lg) => (lg ? '<td width="38" valign="top" style="width:38px;padding:10px 10px 10px 0">' + lg + '</td>' : ''))(logoImg(sym, 28, name)) + '<td class="l"><b class="tk">' + E(sym) + '</b> <span class="nm">' + E(name || '') + '</span>' +
   (line ? '<div class="ln">' + line + '</div>' : '') + '</td><td class="r">' + (right != null ? right : pxCell(v, theme)) + '</td></tr></table>';
+// company tiles (3 across, logo + ticker + short name + one detail): a % change, a result, or a time
+export const dayLong = (day) => new Date(day + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' });
+export const pctTile = (sym, name, v, T) => ({ s: sym, n: name, d: v && ok(v.pct) ? fmtPct(v.pct) : '', dc: v && ok(v.pct) ? changeColor(v.pct, (T && T.id) || 'light') : null });
+export const resTxt = (t) => (t.res === 'beat' ? 'Beat' : t.res === 'miss' ? 'Missed' : t.res === 'inline' ? 'In line' : '');
+export const resCol = (t) => (t.res === 'beat' ? UP : t.res === 'miss' ? DN : null);
+export const whenTxt = (w) => (w === 'bmo' ? 'Before open' : w === 'amc' ? 'After close' : 'Time not set');
 export const card = (title, inner, sub, theme, kicker) => sectionBlock(kicker || '', title, inner, theme);
 export const bullets = (L) => (L && L.length ? '<ul>' + L.map((m) => '<li>' + (m.b ? '<b>' + ND(m.b) + '</b> ' : '') + ND(m.t) + '</li>').join('') + '</ul>' : '');
 export const INDEX_LEVELS = [['^GSPC', 'S&P 500'], ['^NDX', 'Nasdaq 100'], ['^DJI', 'Dow'], ['^RUT', 'Russell 2000']];
@@ -267,11 +273,10 @@ export function renderClose(d, w, theme) {
   const T = themeOf(theme || (d && d.theme) || 'light'); const img = d.chartImg;
   const W = w || {}; const tiles = pickIndexTiles(d.idx); const v = (s) => (tiles.vals && tiles.vals[s]) || qv(d.idx[s]); const sp = (tiles.vals && (tiles.vals['^GSPC'] || tiles.vals.SPY)) || v('SPY'), nq = (tiles.vals && (tiles.vals['^NDX'] || tiles.vals.QQQ)) || v('QQQ');
   const P = W.points && W.points.length ? W.points : closeTemplate(d);
-  const mrow = (x) => srow(x.symbol, nameOf(x, d.names), whyLine(x, d), qv(x), null, T);
+  const mt = (L) => logoTiles(L.map((x) => pctTile(x.symbol, nameOf(x, d.names), qv(x), T)), T);
   const major = (d.major && d.major.length ? d.major : d.secs).filter((x) => ok(x.pct));
-  const whenC = T.id === 'light' ? '#9A5B12' : '#E8B86D';
-  const er = d.reported.map((t) => srow(t.s, shortName(t.n), resLbl(t) + E(epsLine(t)), qv(d.eq[t.s]), null, T)).join('') + (d.tonight.length ? '<div class="dy">Reporting after the close tonight</div>' + d.tonight.map((t) => srow(t.s, shortName(t.n), E(epsLine(t)), null, '<b class="px" style="font-size:13px;color:' + whenC + '">Tonight</b>', T)).join('') : '');
-  const an = d.an.map((a) => srow(a.s, shortName((d.aq[a.s] && d.aq[a.s].name) || d.names[a.s]), '<i class="lb' + (a.rdir === 'up' ? ' b' : a.rdir === 'down' ? ' m' : '') + '">' + E(a.action) + '</i>' + E(a.firm) + (a.to ? ': ' + E((a.from ? a.from + ' → ' : '') + a.to) : '') + (a.ptTo ? ' · target ' + fmtPx(a.ptTo) + (a.ptFrom ? ' (was ' + fmtPx(a.ptFrom) + ')' : '') : ''), qv(d.aq[a.s]), null, T)).join('');
+  const er = logoTiles(d.reported.map((t) => ({ s: t.s, n: shortName(t.n), d: resTxt(t) || (qv(d.eq[t.s]) ? fmtPct(qv(d.eq[t.s]).pct) : ''), dc: resCol(t) })), T) + (d.tonight.length ? dayBand('Tonight', 'after the close', T) + logoTiles(d.tonight.map((t) => ({ s: t.s, n: shortName(t.n), d: 'After close' })), T) : '');
+  const an = logoTiles(d.an.map((a) => ({ s: a.s, n: shortName((d.aq[a.s] && d.aq[a.s].name) || d.names[a.s]), d: a.action, dc: a.rdir === 'up' ? UP : a.rdir === 'down' ? DN : null })), T);
   const subject = W.subject || moveSubject('Close', sp, nq);
   const dir = (x) => (!x ? 0 : x.pct >= 0.1 ? 1 : x.pct <= -0.1 ? -1 : 0);
   const head = W.headline || (sp ? (nq && dir(sp) * dir(nq) < 0 ? 'S&P ' + fmtPct(sp.pct, 1) + ', Nasdaq ' + fmtPct(nq.pct, 1) : 'S&P ' + fmtPct(sp.pct, 1) + (nq ? ', Nasdaq ' + fmtPct(nq.pct, 1) : '')) : 'How the market closed');
@@ -281,8 +286,8 @@ export function renderClose(d, w, theme) {
     cards: [
       pulseBlock(major, tiles.vals, T, img, pulseKicker('close', d.now), 'Market pulse', tiles.labels),
       sectionBlock('TODAY', 'The day in brief', bullets(P), T),
-      sectionBlock('SESSION', 'Top gainers', d.up.map(mrow).join(''), T),
-      sectionBlock('SESSION', 'Top losers', d.dn.map(mrow).join(''), T),
+      sectionBlock('SESSION', 'Top gainers', mt(d.up), T),
+      sectionBlock('SESSION', 'Top losers', mt(d.dn), T),
       sectionBlock('RESULTS', 'Earnings', er, T),
       sectionBlock('WALL STREET', 'Analyst calls today', an, T),
     ],
@@ -311,10 +316,9 @@ export function renderAH(d, w, theme) {
     const r = d.amc.filter((t) => t.eps != null); if (r.length) { const big = r.map((t) => ({ t, x: ext(d.eq[t.s]) })).filter((y) => y.x).sort((a, b) => Math.abs(b.x.pct) - Math.abs(a.x.pct))[0]; L.push({ b: 'Earnings tonight.', t: r.filter((t) => t.res === 'beat').length + ' of ' + r.length + ' big reporters beat profit estimates' + (big ? '; ' + big.t.s + ' moved most, ' + fmtPct(big.x.pct) + ' after hours' : '') + '.' }); }
     const g = d.up[0]; if (g) { const wt = whyText(g, d); L.push({ b: 'Top mover: ' + g.symbol + '.', t: nameOf(g, d.names) + ' ' + fmtPct(ext(g).pct) + ' after hours' + (wt ? ' — ' + wt : '') + '.' }); }
     return L; })();
-  const mrow = (x) => srow(x.symbol, nameOf(x, d.names), whyLine(x, d), ext(x), null, T);
-  const muted = T.muted; const whenC = T.id === 'light' ? '#9A5B12' : '#E8B86D';
-  const er = d.amc.map((t) => srow(t.s, shortName(t.n), (t.eps != null ? resLbl(t) + E(epsLine(t)) : 'Results not in the calendar yet'), ext(d.eq[t.s]) || null, ext(d.eq[t.s]) ? null : '<b class="px" style="font-size:13px;color:' + muted + '">No trades yet</b>', T)).join('');
-  const bmo = d.bmo.map((t) => srow(t.s, shortName(t.n), E(epsLine(t)), null, '<b class="px" style="font-size:13px;color:' + whenC + '">' + E(dateShort(d.nextDay).split(',')[0]) + ' a.m.</b>', T)).join('');
+  const mt = (L) => logoTiles(L.map((x) => pctTile(x.symbol, nameOf(x, d.names), ext(x), T)), T);
+  const er = logoTiles(d.amc.map((t) => { const x = ext(d.eq[t.s]); return x ? pctTile(t.s, shortName(t.n), x, T) : { s: t.s, n: shortName(t.n), d: resTxt(t) || 'No trades yet', dc: resCol(t) }; }), T);
+  const bmo = d.bmo.length ? dayBand(dayLong(d.nextDay), 'before the open', T) + logoTiles(d.bmo.map((t) => ({ s: t.s, n: shortName(t.n), d: 'Before open' })), T) : '';
   const top = d.up[0]; const sp = v('SPY'), nq = v('QQQ');
   const subject = W.subject || (top ? 'After hours: ' + top.symbol + ' ' + fmtPct(ext(top).pct, 0) + (sp ? ' · S&P ' + fmtPct(sp.pct, 1) : '') : moveSubject('After hours', sp, nq));
   const ae = ahEndOf(d.now);
@@ -324,8 +328,8 @@ export function renderAH(d, w, theme) {
       pulseBlock(d.major, tiles.vals, T, img, pulseKicker('ah', d.now), 'Market pulse', tiles.labels),
       sectionBlock('AFTER HOURS', 'The session in brief', bullets(P), T),
       sectionBlock('RESULTS', 'Earnings reactions', er, T),
-      sectionBlock('MOVERS', 'After-hours gainers', d.up.map(mrow).join(''), T),
-      sectionBlock('MOVERS', 'After-hours losers', d.dn.map(mrow).join(''), T),
+      sectionBlock('MOVERS', 'After-hours gainers', mt(d.up), T),
+      sectionBlock('MOVERS', 'After-hours losers', mt(d.dn), T),
       sectionBlock('NEXT OPEN', 'Reporting before the next open', bmo, T),
     ],
     asOf: (d.now.hm >= ae ? 'after-hours trading closed ' + hmTxt(ae) + ' ET, ' : 'After-hours prices as of ' + hmTxt(d.now.hm) + ' ET, ') + dateShortY(d.now.day) + '. Thin after-hours trading can swing on small volume.', sources: 'Data: ' + (d.src || 'market data') + '; earnings from the Nasdaq calendar.', link: '#today',
@@ -354,17 +358,17 @@ export function renderWeek(d, w, theme) {
     if (major.length >= 2) L.push({ b: 'Rotation.', t: 'Strongest: ' + major.slice(0, 2).map((x) => x.name + ' ' + fmtPct(x.pct)).join(', ') + '. Weakest: ' + major.slice(-2).reverse().map((x) => x.name + ' ' + fmtPct(x.pct)).join(', ') + '. ' + major.filter((x) => x.pct > 0).length + ' of ' + major.length + ' sectors rose.' });
     if (d.up[0]) L.push({ b: 'Biggest gainer: ' + d.up[0].symbol + '.', t: nameOf(d.up[0], d.names) + ' ' + fmtPct(d.up[0].pct) + ' for the week' + (d.dn[0] ? '; ' + d.dn[0].symbol + ' fell the most, ' + fmtPct(d.dn[0].pct) : '') + '.' });
     return L; })();
-  const wrow = (x) => srow(x.symbol, nameOf(x, d.names), '', { px: x.px, ch: x.ch, pct: x.pct }, null, T);
+  const wt = (L) => logoTiles(L.map((x) => pctTile(x.symbol, nameOf(x, d.names), x, T)), T);
   const days = ((d.earn && d.earn.days) || []).filter((x) => x.d > d.now.day && x.tiles && x.tiles.length);
-  const cal = days.map((x) => '<div class="dy">' + E(dateShort(x.d)) + '</div>' + x.tiles.slice(0, 4).map((t) => srow(t.s, shortName(t.n), (t.when === 'bmo' ? 'Before the open' : t.when === 'amc' ? 'After the close' : 'Time not set') + (ok(t.est) ? ' · expected $' + (+t.est).toFixed(2) + ' a share' : ''), null, '', T)).join('')).join('');
+  const cal = days.map((x) => dayBand(dayLong(x.d), '', T) + logoTiles(x.tiles.slice(0, 6).map((t) => ({ s: t.s, n: shortName(t.n), d: whenTxt(t.when) })), T)).join('');
   const mac = d.macro.map((m) => srow(dateShort(String(m.at).slice(0, 10)).split(',')[0], '', ND(m.e) + (m.f != null && m.f !== '' ? ' · forecast ' + E(m.f) : ''), null, '', T)).join('');
   const subject = W.subject || moveSubject('Week', sp, nq);
   return Object.assign(shell({ type: 'week', theme: T.id, subject, pre: W.pre || P.map((p) => p.b).join(' '), dateLine: dateLineOf(d.now.day, d.now.hm), headline: W.headline || (sp ? 'S&P ' + fmtPct(sp.pct, 1) + ' for the week' + (nq ? ', Nasdaq ' + fmtPct(nq.pct, 1) : '') : 'The week in markets'),
     cards: [
       pulseBlock(major, tiles.vals, T, img, pulseKicker('week', d.now), 'Market pulse', tiles.labels),
       sectionBlock('THE WEEK', 'In brief', bullets(P), T),
-      sectionBlock('MOVERS', 'Biggest gainers this week', d.up.map(wrow).join(''), T),
-      sectionBlock('MOVERS', 'Biggest losers this week', d.dn.map(wrow).join(''), T),
+      sectionBlock('MOVERS', 'Biggest gainers this week', wt(d.up), T),
+      sectionBlock('MOVERS', 'Biggest losers this week', wt(d.dn), T),
       sectionBlock(/Sat|Sun/.test(d.now.wd) ? 'NEXT WEEK' : 'STILL AHEAD', /Sat|Sun/.test(d.now.wd) ? 'Earnings next week' : 'Earnings still to come this week', cal, T),
       sectionBlock('ECONOMY', 'Economy next week', mac, T),
     ],
@@ -381,14 +385,19 @@ const aiData = {
   week: (d) => ({ week: [d.from, d.to], indexes: Object.fromEntries(IDX.map((x) => [x[1], d.idx[x[0]] && { pct: +d.idx[x[0]].pct.toFixed(2) }])), gainers: d.up.map((x) => ({ t: x.symbol, name: nameOf(x, d.names), pct: +x.pct.toFixed(1) })), losers: d.dn.map((x) => ({ t: x.symbol, name: nameOf(x, d.names), pct: +x.pct.toFixed(1) })), sectors: (d.major || d.secs).map((s) => ({ n: s.name, pct: +s.pct.toFixed(1) })) }),
 };
 const GATHER = { close: gatherClose, ah: gatherAH, week: gatherWeek }, RENDER = { close: renderClose, ah: renderAH, week: renderWeek };
+// Render once to learn which companies appear, look up their logos, then render for real (logos only where one exists)
+export async function withLogos(H, render) {
+  const want = wantLogos(); render(); const map = H.elogos && want.size ? await H.elogos([...want]).catch(() => ({})) : {};
+  useLogos(map); try { return render(); } finally { useLogos(null); }
+}
 export async function buildMail(type, env, H) {
   if (type === 'ahead') { // Week ahead: no AI write-up and no market numbers; each story's own photo when it has one
     const d = await gatherAhead(H); const theme = themeOf(H.theme);
     if (H.articleImg) { const to = (p) => Promise.race([p, new Promise((r) => setTimeout(() => r(null), 8000))]); d.newsImg = await Promise.all(d.news.map((n) => to(H.articleImg({ image: n.img, url: n.u, title: n.t })).catch(() => null))); }
-    return Object.assign(renderAhead(d, shell, srow, theme), { type, ai: false, theme: theme.id });
+    return Object.assign(await withLogos(H, () => renderAhead(d, shell, srow, theme)), { type, ai: false, theme: theme.id });
   }
   const d = await GATHER[type](H); const w = H.ai ? await aiWrite(env, H, type, aiData[type](d)) : null;
   if (H.chartImg) d.chartImg = H.chartImg;
   const theme = themeOf(H.theme);
-  return Object.assign(RENDER[type](d, w, theme.id), { type, ai: !!(w && (w.points.length || w.headline)), theme: theme.id });
+  return Object.assign(await withLogos(H, () => RENDER[type](d, w, theme.id)), { type, ai: !!(w && (w.points.length || w.headline)), theme: theme.id });
 }

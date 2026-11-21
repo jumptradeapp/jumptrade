@@ -2,11 +2,12 @@
 // numbers: after the header it goes straight to earnings, catalysts (incl. the economy), IPOs and news with the stories' own photos.
 // Every line comes from a real source named in the footer; a section with nothing honest to show is left out.
 import { E, ND } from './mailsFmt.js';
-import { sectionBlock } from './emailTheme.js';
+import { sectionBlock, logoTiles, dayBand } from './emailTheme.js';
 import { MKT_HOLIDAYS, MKT_EARLY } from './market.js';
 
 const DAY = 864e5;
 const iso = (t) => new Date(t).toISOString().slice(0, 10);
+const dLong = (day) => new Date(day + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' });
 const dShort = (day) => new Date(day + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
 const md = (day) => new Date(day + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 const HOLNAME = { '11-26': 'Thanksgiving', '12-25': 'Christmas', '01-01': 'New Year’s Day', '07-03': 'Independence Day', '07-04': 'Independence Day', '07-05': 'Independence Day' };
@@ -92,11 +93,16 @@ export function renderAhead(d, shell, srow, T) {
   const hol = days.filter((x) => MKT_HOLIDAYS.has(x)); const early = days.filter((x) => MKT_EARLY.has(x));
   const dayNote = (x) => (MKT_HOLIDAYS.has(x) ? 'Markets closed for ' + holName(x) : MKT_EARLY.has(x) ? 'Stocks close early, 1:00 PM ET' : '');
   // earnings by day, biggest companies first, up to 5 a day
-  const earn = days.map((x) => { const e = d.eDays.find((y) => y.d === x); const L = e ? e.tiles.slice(0, 5) : []; const note = dayNote(x); if (!L.length && !note) return '';
-    return '<div class="dy">' + E(dShort(x)) + (note ? ' · ' + E(note) : '') + '</div>' + L.map((t) => srow(t.s, shortCo(t.n), (t.when === 'bmo' ? 'Before the open' : t.when === 'amc' ? 'After the close' : 'Time not set') + (okN(t.est) ? ' · expected $' + (+t.est).toFixed(2) + ' a share' : ''), null, '', T)).join(''); }).join('');
-  const cats = days.map((x) => { const L = d.cats.filter((c) => c.date === x).slice(0, 6); if (!L.length) return '';
-    return '<div class="dy">' + E(dShort(x)) + '</div>' + L.map((c) => srow(c.ticker || '', c.type === 'macro' ? 'Economy' : shortCo(c.company), ND(c.title) + (c.time ? ' · ' + E(c.time) : ''), null, '', T)).join(''); }).join('');
-  const ipoRows = d.ipos.map((r) => srow(r.s, shortCo(r.n), r.line ? ND(r.line) : ['Expected ' + md(r.date), r.px ? '$' + E(r.px) + ' a share' : '', r.sh ? E(r.sh) + ' shares' : '', r.ex ? E(r.ex) : ''].filter(Boolean).join(' · '), null, '', T)).join('');
+  const CT = { fda: 'FDA decision', trial: 'Trial data', lockup: 'Lockup ends', index: 'Index change', event: 'Event', ipo: 'IPO' };
+  const ctLabel = (c) => (/vote/i.test(c.title) ? 'Shareholder vote' : /investor day/i.test(c.title) ? 'Investor day' : CT[c.type] || 'Event');
+  // earnings: a clear day band, then the day's companies as logo tiles, 3 across (biggest first, up to 6)
+  const earn = days.map((x) => { const e = d.eDays.find((y) => y.d === x); const L = e ? e.tiles.slice(0, 6) : []; const note = dayNote(x); if (!L.length && !note) return '';
+    return dayBand(dLong(x), note, T) + logoTiles(L.map((t) => ({ s: t.s, n: shortCo(t.n), d: t.when === 'bmo' ? 'Before open' : t.when === 'amc' ? 'After close' : 'Time not set' })), T); }).join('');
+  // catalysts: companies as logo tiles (one key detail: what happens), the economy and companies without a US ticker as plain lines
+  const cats = days.map((x) => { const L = d.cats.filter((c) => c.date === x).slice(0, 8); if (!L.length) return '';
+    const co = L.filter((c) => c.type !== 'macro' && c.ticker && /^[A-Z][A-Z.\-]{0,5}$/.test(c.ticker)); const other = L.filter((c) => co.indexOf(c) < 0);
+    return dayBand(dLong(x), '', T) + logoTiles(co.map((c) => ({ s: c.ticker, n: shortCo(c.company), d: ctLabel(c) })), T) + other.map((c) => srow('', c.type === 'macro' ? 'Economy' : shortCo(c.company), ND(c.title) + (c.time ? ' · ' + E(c.time) : ''), null, '', T)).join(''); }).join('');
+  const ipoRows = logoTiles(d.ipos.map((r) => ({ s: r.s, n: shortCo(r.n), d: 'Expected ' + md(r.date) })), T);
   const imgs = d.newsImg || [];
   const news = d.news.map((n, i) => storyRow(n, imgs[i], T)).join('');
   const subject = aheadSubject(d);

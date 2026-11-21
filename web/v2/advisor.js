@@ -59,7 +59,7 @@
       if (!r) body = '<div class="err">Not enough shared trading days to compare yet.</div>';
       else { const ra = r.a[r.a.length - 1], rb = r.b[r.b.length - 1], d = ra - rb;
         body = '<div class="avs-ch">' + lineSvg(r) + '</div>' +
-          '<div class="avs-leg"><span><i class="t"></i><b>' + E(sym) + '</b> <em class="' + (ra >= 0 ? 'up' : 'dn') + '">' + sP(ra) + '</em></span><span><i class="s"></i><b>S&amp;P 500</b> <small>SPY</small> <em class="' + (rb >= 0 ? 'up' : 'dn') + '">' + sP(rb) + '</em></span></div>' +
+          '<div class="avs-leg"><span><i class="t"></i>' + V().tl(sym, 18) + '<b>' + E(sym) + '</b> <em class="' + (ra >= 0 ? 'up' : 'dn') + '">' + sP(ra) + '</em></span><span><i class="s"></i>' + V().tl('SPY', 18) + '<b>S&amp;P 500</b> <small>SPY</small> <em class="' + (rb >= 0 ? 'up' : 'dn') + '">' + sP(rb) + '</em></span></div>' +
           '<p class="avs-sum">' + E(sym) + ' ' + (Math.abs(d) < 0.05 ? 'matched' : d > 0 ? 'beat' : 'trailed') + ' the S&amp;P 500 by <b class="' + (d >= 0 ? 'up' : 'dn') + '">' + Math.abs(d).toFixed(1) + ' pts</b> over the ' + ({ '1M': 'past month', '6M': 'past 6 months', '1Y': 'past year' })[tf[0]] + '. Daily closes.</p>'; } }
     return V().lab('trend', 'vs S&amp;P 500', '', '') + '<div class="card avs">' + chips + body + '</div>';
   };
@@ -73,7 +73,7 @@
     const C = cats() || []; const today = W.today || '';
     const cell = (d) => { const rel = window.JTDates ? JTDates.dayDelta(d.d) : null; const dt = new Date(d.d + 'T12:00:00Z');
       const wd = rel === 0 ? 'Today' : dt.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }); const cs = C.filter((c) => c.date === d.d);
-      const top = d.tiles.slice(0, 2).map((t) => '<span>' + E(t.s) + '</span>').join('');
+      const top = d.tiles.slice(0, 2).map((t) => '<span>' + V().tl(t.s, 16) + E(t.s) + '</span>').join('');
       return '<button type="button" class="acg-c' + (d.d === on ? ' on' : '') + (d.d < today ? ' past' : '') + '" data-ewd="' + E(d.d) + '" aria-pressed="' + (d.d === on) + '" aria-label="' + E(wd + ' ' + dt.getUTCDate() + ': ' + d.tiles.length + ' earnings, ' + cs.length + ' catalysts') + '">' +
         '<em>' + wd + '</em><b>' + dt.getUTCDate() + '</b><small class="acg-n">' + d.tiles.length + ' report' + (d.tiles.length === 1 ? '' : 's') + '</small><span class="acg-tk">' + (top || '&nbsp;') + '</span>' +
         (cs.length ? '<small class="acg-k">+' + cs.length + ' event' + (cs.length === 1 ? '' : 's') + '</small>' : '<small class="acg-k none">&nbsp;</small>') + '</button>'; };

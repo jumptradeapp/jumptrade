@@ -50,19 +50,19 @@ test('each email renders with real fields only: no NaN/undefined, company names,
     assert.match(m.html, /Nov(&nbsp;|\s)\d+/); assert.match(m.html, /2026/); // dated
   }
   const c = await M.buildMail('close', {}, fakeH(at('2026-11-18T21:20:00Z')));
-  assert.match(c.html, /NVDA<\/b> <span class="nm">NVIDIA<\/span>/); assert.match(c.html, /\$182\.40/); assert.match(c.html, /\+\$4\.20/); assert.match(c.html, /Hyster-Yale/);
-  assert.match(c.html, /Goldman Sachs/); assert.match(c.html, /Walmart/); assert.match(c.html, /Tonight/);
+  assert.match(c.html, />NVDA<\/div><div[^>]*>NVIDIA<\/div>/); assert.match(c.html, />NVDA<\/div>[\s\S]{0,400}?>\+2\.3\d%<\/div>/); assert.match(c.html, /Hyster-Yale/);
+  assert.match(c.html, />Upgrade<\/div>/); assert.match(c.html, /Walmart/); assert.match(c.html, /Tonight/);
   assert.doesNotMatch(c.html, /Unusual Volume Leaders/); // a list-of-tickers headline is never shown as the reason
   assert.match(c.subject, /^Close: S&P −0\.3%, Nasdaq \+0\.4%$/);
-  const a = await M.buildMail('ah', {}, fakeH(at('2026-11-19T01:10:00Z'))); assert.match(a.html, /after-hours trading closed 8:(&#8288;)?00(&nbsp;| )PM ET/); assert.match(a.html, /Palo Alto Networks/);
-  const w = await M.buildMail('week', {}, fakeH(at('2026-11-21T14:05:00Z'))); assert.match(w.html, /Advanced Micro Devices/); assert.match(w.html, /Earnings next week/); assert.match(w.html, /Intuit/);
+  const a = await M.buildMail('ah', {}, fakeH(at('2026-11-19T01:10:00Z'))); assert.match(a.html, /after-hours trading closed 8:(&#8288;)?00(&nbsp;| )PM ET/); assert.match(a.html, /Palo Alto/);
+  const w = await M.buildMail('week', {}, fakeH(at('2026-11-21T14:05:00Z'))); assert.match(w.html, /Advanced Micro/); assert.match(w.html, /Earnings next week/); assert.match(w.html, /Intuit/);
 });
 
 test('morning brief: the owner’s stocks only in the version for addresses marked "your stocks"', async () => {
   const H = fakeH(at('2026-11-18T13:45:00Z')); H._mem.set('subs', { d1: { syms: ['AAPL'] } }); H._mem.set('ownerSubs', ['d1']);
   const { buildBrief } = await import('../worker/brief.js'); const m = await buildBrief({}, H);
   assert.match(m.html, /Your stocks/); assert.doesNotMatch(m.other.html, /Your stocks/); assert.doesNotMatch(m.other.html, /AAPL/);
-  for (const x of [m, m.other]) { assert.ok(!bad.test(x.html.replace(/<style>[\s\S]*?<\/style>/, '')), (x.html.match(bad) || [])[0]); assert.match(x.html, /Bellring Brands/); assert.match(x.html, /\$13\.07/); assert.match(x.html, /Walmart/); assert.match(x.html, /Pre-market prices as of 8:(&#8288;)?45/); }
+  for (const x of [m, m.other]) { assert.ok(!bad.test(x.html.replace(/<style>[\s\S]*?<\/style>/, '')), (x.html.match(bad) || [])[0]); assert.match(x.html, /Bellring Brands/); assert.match(x.html, />BRBR<\/div>/); assert.match(x.html, /Walmart/); assert.match(x.html, /Pre-market prices as of 8:(&#8288;)?45/); }
 });
 
 test('AI sentences with numbers that aren’t in the data are dropped', () => {
@@ -189,7 +189,7 @@ test('no price or company-size floor: tiny and sub-$1 movers show up; zero/missi
   H.wbCall = async (e, tool, input) => tool === 'get_gainers_losers' && input.direction === 'DESC'
     ? { payload: [q('TINY', 'Tiny Micro Corp', 0.4123, 0.15, { market_value: 5e6 }), q('BAD', 'Bad Print Inc', 0, 0, { market_value: 1e9 }), q('ONE', 'One Share Inc', 9, 4, { volume: 1, market_value: 1e9 })] } : base(e, tool, input);
   const { buildBrief } = await import('../worker/brief.js'); const m = await buildBrief({}, H);
-  assert.match(m.other.html, /Tiny Micro/); assert.match(m.other.html, /\$0\.4123/); assert.doesNotMatch(m.other.html, /Bad Print|One Share/);
+  assert.match(m.other.html, /Tiny Micro/); assert.match(m.other.html, />TINY<\/div>/); assert.doesNotMatch(m.other.html, /Bad Print|One Share/);
 });
 
 test('email header uses the new jumptrade. logo (cache-busted name, alt text, inline header colour)', async () => {

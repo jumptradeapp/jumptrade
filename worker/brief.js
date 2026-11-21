@@ -5,7 +5,7 @@
 // Sender (Jason, Nov 21 2026): the inbox shows exactly "JumpTrade" (capital J and T, not all caps). Every email goes out
 // through sendMail below (morning, close, after-hours, weekly, invites, the diag check), so this is the one place it's set.
 export const FROM = 'JumpTrade <brief@jumptrade.app>';
-import { E, ND, fmtPct, fmtPx, fmtChg, fmtPxOf, fmtChgOf, srow, bullets, shell, INDEX_SYMS, dateShort, dateShortY, hmTxt, shortName, unsubUrl, ORIGIN, MAIL_RE, cleanMail, recipients, loadSubs, realMover, themeOf, sectionBlock, pulseBlock, moveSubject, dateLineOf, SECTOR_TICKERS, SECTOR_ETFS, pickIndexTiles, pulseKicker, newsKicker, indexSession, closeOf } from './mails.js';
+import { E, ND, fmtPct, fmtPx, fmtChg, fmtPxOf, fmtChgOf, srow, bullets, shell, INDEX_SYMS, dateShort, dateShortY, hmTxt, shortName, unsubUrl, ORIGIN, MAIL_RE, cleanMail, recipients, loadSubs, realMover, themeOf, sectionBlock, logoTiles, pctTile, resTxt, resCol, withLogos, pulseBlock, moveSubject, dateLineOf, SECTOR_TICKERS, SECTOR_ETFS, pickIndexTiles, pulseKicker, newsKicker, indexSession, closeOf } from './mails.js';
 const arr = (p) => (Array.isArray(p) ? p : (p && (p.data || p.list || p.items)) || []);
 const pctOf = (q) => { if (!q) return null; const pre = /PRE|POST|AFTER/i.test(q.trade_status || '') && q.extend_hour_change_ratio != null && q.extend_hour_last_price; const pc = +q.pre_close; const px = pre ? +q.extend_hour_last_price : +q.price;
   return pc > 0 && px > 0 ? (px / pc - 1) * 100 : q.change_ratio != null ? +q.change_ratio * 100 : null; };
@@ -99,19 +99,19 @@ function render(d, w, withMine, theme) {
   const mvv = (x) => { const px = +x.price, r = +x.change_ratio; if (!(px > 0) || !isFinite(r)) return null; return { px, ch: x.change != null && isFinite(+x.change) ? +x.change : px - px / (1 + r), pct: r * 100 }; };
   const nm = (x) => shortName(x);
   const matters = (W.matters || []).slice(0, 3);
-  const mine = d.mine.slice(0, 5).map((r) => srow(r.s, nm((r.q && r.q.name) || (d.names || {})[r.s]), ND(yours[r.s] || ''), pv(r.q), null, T)).join('');
-  const mvl = [...d.up.slice(0, 3), ...d.dn.slice(0, 2)];
-  const mv = mvl.map((x) => srow(x.symbol, nm(x.name || (d.names || {})[x.symbol]), ND(movers[x.symbol] || ''), mvv(x), null, T)).join('');
+  const mine = logoTiles(d.mine.slice(0, 6).map((r) => pctTile(r.s, nm((r.q && r.q.name) || (d.names || {})[r.s]), pv(r.q), T)), T);
+  const mvl = [...d.up.slice(0, 3), ...d.dn.slice(0, 3)];
+  const mv = logoTiles(mvl.map((x) => pctTile(x.symbol, nm(x.name || (d.names || {})[x.symbol]), mvv(x), T)), T);
   const hl = newsRows(d, W, T, true);
   const symQ = (t) => { const r = d.mine.find((x) => x.s === t); if (r) return pv(r.q); const u = [...d.up, ...d.dn].find((x) => x.symbol === t); return u ? mvv(u) : null; };
   const nameFor = (t) => { const u = [...d.up, ...d.dn].find((x) => x.symbol === t); return nm((u && u.name) || (d.names || {})[t] || ''); };
   const deals = (W.deals || []).slice(0, 3).map((x) => srow(x.t || '', nameFor(x.t), ND(x.text), symQ(x.t), symQ(x.t) ? null : '', T)).join('');
   const whenC = T.id === 'light' ? '#9A5B12' : '#E8B86D';
-  const earn = (W.earnings || []).slice(0, 4).map((x) => srow(x.t, nameFor(x.t), (/(beat|missed|mixed)/i.test(x.label) ? '<i class="lb' + (/beat/i.test(x.label) ? ' b' : /missed/i.test(x.label) ? ' m' : '') + '">' + E(x.label) + '</i>' : '') + ND(x.text), symQ(x.t), /tonight|today/i.test(x.label) ? '<b class="px" style="font-size:13px;color:' + whenC + '">' + E(x.label) + '</b>' : symQ(x.t) ? null : '', T)).join('');
+  const earn = logoTiles((W.earnings || []).slice(0, 6).map((x) => ({ s: x.t, n: nameFor(x.t), d: /beat/i.test(x.label) ? 'Beat' : /missed/i.test(x.label) ? 'Missed' : /tonight/i.test(x.label) ? 'Tonight' : /today|morning/i.test(x.label) ? 'Today' : String(x.label || '').slice(0, 14), dc: /beat/i.test(x.label) ? '#187A44' : /missed/i.test(x.label) ? '#C8463D' : null })), T);
   const KT = { 'stock market today': 'Markets', futures: 'Markets', 'to acquire': 'Deals', acquisition: 'Deals', 'merger agreement': 'Deals', 'beats estimates': 'Earnings', 'data center deal': 'Deals', 'Fed rate': 'Fed' };
   const hl0 = !W.headlines ? newsRows(d, W, T, false) : '';
   const td = ((d.ew && d.ew.days) || []).find((x) => x.d === now.day); const tl = (td && td.tiles) || [];
-  const earn0 = !W.earnings ? tl.filter((t) => t.when === 'bmo' || t.eps == null).slice(0, 5).map((t) => srow(t.s, nm(t.n), (t.eps != null ? '<i class="lb' + (t.res === 'beat' ? ' b' : t.res === 'miss' ? ' m' : '') + '">' + (t.res === 'beat' ? 'Beat' : t.res === 'miss' ? 'Missed' : 'In line') + '</i>Profit $' + (+t.eps).toFixed(2) + ' a share vs $' + (+t.est).toFixed(2) + ' expected' : t.est != null ? 'Expected profit $' + (+t.est).toFixed(2) + ' a share' : ''), t.eps != null ? symQ(t.s) : null, t.eps != null && symQ(t.s) ? null : '<b class="px" style="font-size:13px;color:' + whenC + '">' + (t.when === 'amc' ? 'Tonight' : t.when === 'bmo' ? (t.eps != null || now.hm >= 570 ? 'This morning' : 'Before the open') : 'Today') + '</b>', T)).join('') : '';
+  const earn0 = !W.earnings ? logoTiles(tl.filter((t) => t.when === 'bmo' || t.eps == null).slice(0, 6).map((t) => ({ s: t.s, n: nm(t.n), d: t.eps != null ? resTxt(t) : t.when === 'amc' ? 'Tonight' : t.when === 'bmo' ? (now.hm >= 570 ? 'This morning' : 'Before open') : 'Today', dc: t.eps != null ? resCol(t) : null })), T) : '';
   const coming = (W.coming || []).slice(0, 2).map((x) => '<div class="hl"><span class="tag">' + E(x.when) + '</span><div class="why" style="margin-top:4px">' + ND(x.text) + '</div></div>').join('');
   const pre = now.hm < 570;
   const fb = !matters.length ? (() => { const L = []; const g = d.up[0]; if (g && mvv(g)) L.push({ b: 'Top pre-market gainer: ' + g.symbol + '.', t: (nm(g.name) || g.symbol) + ' ' + fmtPct(mvv(g).pct) + '.' }); return L; })() : matters;
@@ -142,8 +142,8 @@ function render(d, w, withMine, theme) {
 export async function buildBrief(env, H) { const d = await gather(env, H); if (H.names) d.names = await H.names().catch(() => ({})); const w = env.ANTHROPIC_API_KEY ? await write(env, H, d) : null;
   const theme = themeOf(H.theme); if (H.chartImg) d.chartImg = H.chartImg; d.theme = theme.id;
   if (H.articleImg) { const to = (p) => Promise.race([p, new Promise((r) => setTimeout(() => r(null), 8000))]); d.newsImg = await Promise.all(newsPicks(d, w || {}).map((p) => (p.art ? to(H.articleImg({ image: p.art.img, url: p.art.u, title: p.art.t, sym: (p.art.syms || [])[0] }).catch(() => null)) : null))); }
-  const mine = render(d, w, true, theme.id);
-  return Object.assign(mine, { type: 'morning', theme: theme.id, other: render(d, w, false, theme.id), ai: !!w, n: { mine: d.mine.length, up: d.up.length, news: d.news.length } }); }
+  const mine = await withLogos(H, () => render(d, w, true, theme.id)); const other = await withLogos(H, () => render(d, w, false, theme.id));
+  return Object.assign(mine, { type: 'morning', theme: theme.id, other, ai: !!w, n: { mine: d.mine.length, up: d.up.length, news: d.news.length } }); }
 
 // Send through Resend, one email per recipient (batch call, up to 100 a call) so nobody sees anyone else's address.
 // `to` is addresses or {email} records. Emails with {{UNSUB}} links get each person's own signed unsubscribe links and

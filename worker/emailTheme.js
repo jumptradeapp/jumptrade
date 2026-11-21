@@ -222,3 +222,49 @@ export function buildShell(o, TYPES, ORIGIN) {
 }
 
 export { aa };
+
+// ---------- company tiles and day bands (Jason, Nov 21 2026) ----------
+// "As straightforward as possible ... in every email logos need to be shown": every company list is a grid of simple tiles,
+// 3 across on phone and desktop (fixed-layout tables, so Gmail, Apple Mail and Outlook all keep 3 columns): the company's real
+// logo, ticker, short name and one key detail. No logo -> the tile simply has no picture (never initials or a stand-in).
+// Logos are looked up before the final render: a first render collects the tickers (wantLogos), then the map is set (useLogos).
+let LOGOS = null, WANT = null;
+export function wantLogos() { WANT = new Set(); LOGOS = null; return WANT; }
+export function useLogos(map) { LOGOS = map || {}; WANT = null; }
+export const SHORT_MAX = 15;
+export const shortTile = (n) => { let t = String(n || '').replace(/\s*\(.*$/, '').replace(/\s+/g, ' ').trim().replace(/[,.]?\s+(Inc|Corp|Corporation|Co|Company|Ltd|Limited|plc|PLC|SA|S\.A|NV|N\.V|AG|SE|LLC|LP|Holdings?|Group|Class [A-C]|Ordinary Shares|Common Stock|ADR|ADS)\.?$/i, '').trim();
+  t = t.replace(/[,.]?\s+(Inc|Corp|Holdings?|Group|Ltd)\.?$/i, '').replace(/\s+(&|and)$/i, '').trim(); if (t.length <= SHORT_MAX) return t;
+  // whole words only, no ellipsis: "Palo Alto Networks" -> "Palo Alto"
+  let o = ''; for (const w of t.split(' ')) { if ((o ? o + ' ' + w : w).length > SHORT_MAX) break; o = o ? o + ' ' + w : w; } return (o || t.slice(0, SHORT_MAX)).replace(/\s+(&|and|of|the)$/i, '').replace(/[\s,.&-]+$/, ''); };
+// one company logo (absolute PNG URL with width/height) or '' when the company has none
+export function logoImg(sym, size, name, extra) {
+  const s = String(sym || '').toUpperCase(); if (!/^[A-Z][A-Z.\-]{0,5}$/.test(s)) return '';
+  if (WANT) WANT.add(s); const src = LOGOS && LOGOS[s]; if (!src) return '';
+  return '<img src="' + E(src) + '" width="' + size + '" height="' + size + '" alt="' + E((name || s) + ' logo') + '" style="display:block;width:' + size + 'px;height:' + size + 'px;border:0;border-radius:' + Math.round(size / 4) + 'px;outline:none;text-decoration:none' + (extra ? ';' + extra : '') + '">';
+}
+// items: [{ s: ticker, n: short name, d: detail (plain text), dc: detail color (optional) }]
+export function logoTiles(items, theme) {
+  const L = (items || []).filter((x) => x && x.s); if (!L.length) return '';
+  const T = themeOf(theme && theme.id ? theme.id : theme);
+  // tiles in a row stay the same height: a blank 32px space where a company has no logo (never initials or a stand-in), and
+  // the name/detail lines are kept (blank) when another tile in the row has them
+  let rowLogo = false, rowName = false, rowDet = false;
+  const cell = (x) => {
+    const pic = logoImg(x.s, 32, x.n, 'margin:0 auto 6px') || (rowLogo ? '<div style="height:38px;line-height:38px;font-size:1px">&nbsp;</div>' : '');
+    return '<td width="33%" valign="top" style="width:33.33%;padding:4px;vertical-align:top"><table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:separate;table-layout:fixed;background-color:' + T.tile + ';border:1px solid ' + T.tileBorder + ';border-radius:8px"><tr><td align="center" style="padding:10px 4px 9px;text-align:center;font-family:Inter,Arial,Helvetica,sans-serif">' +
+      pic + '<div style="font-size:14px;line-height:18px;font-weight:700;color:' + T.ink + '">' + E(x.s) + '</div>' +
+      (x.n || rowName ? '<div style="font-size:12px;line-height:16px;color:' + T.muted + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (x.n ? E(shortTile(x.n)) : '&nbsp;') + '</div>' : '') +
+      (x.d || rowDet ? '<div style="font-size:12px;line-height:16px;font-weight:700;margin-top:3px;color:' + (x.dc || T.ink) + '">' + (x.d ? E(x.d) : '&nbsp;') + '</div>' : '') +
+      '</td></tr></table></td>';
+  };
+  let rows = '';
+  for (let i = 0; i < L.length; i += 3) { const r = L.slice(i, i + 3);
+    rowLogo = r.some((x) => logoImg(x.s, 32, x.n)); rowName = r.some((x) => x.n); rowDet = r.some((x) => x.d); rows += '<tr>' + r.map(cell).join('') + '<td width="33%" style="width:33.33%;padding:4px"></td>'.repeat(3 - r.length) + '</tr>'; }
+  return '<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;table-layout:fixed">' + rows + '</table>';
+}
+// A clear day header: "Monday, Nov 23" in a full-width band, with an optional note (holiday, early close)
+export function dayBand(label, note, theme) {
+  const T = themeOf(theme && theme.id ? theme.id : theme);
+  return '<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;margin:14px 0 6px"><tr><td style="background-color:#EEF0F3;border-radius:6px;padding:8px 10px;font-family:Inter,Arial,Helvetica,sans-serif">' +
+    '<span style="font-size:16px;line-height:20px;font-weight:700;color:' + T.ink + '">' + E(label) + '</span>' + (note ? '<span style="font-size:13px;line-height:20px;font-weight:600;color:#9A3A33"> · ' + E(note) + '</span>' : '') + '</td></tr></table>';
+}

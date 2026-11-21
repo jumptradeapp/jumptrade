@@ -100,6 +100,8 @@ for (const t of TYPES) {
     const subject = decodeURIComponent(r.headers.get('x-subject') || '');
     const slug = fileName(ty, mine, theme);
     html = html.replace(originImg, imgRoot);
+    // logo PNGs ship with this branch (web/lgp); point the preview at the local copies until they are live
+    html = html.split('https://jumptrade.app/lgp/').join('file://' + WT + '/web/lgp/');
     html = html.replace('</head>', '<style>@font-face{font-family:Geist;src:url("file:///usr/share/fonts/truetype/sand-box/google/Geist/Geist-VariableFont_wght.ttf") format("truetype");font-weight:100 900;font-display:swap}@font-face{font-family:Inter;src:url("file:///usr/share/fonts/truetype/sand-box/google/Inter/Inter-VariableFont_opsz,wght.ttf") format("truetype");font-weight:100 900;font-display:swap}</style></head>');
     const inj = injectChart(html, theme, slug);
     html = inj.html;

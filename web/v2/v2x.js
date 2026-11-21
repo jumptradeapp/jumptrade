@@ -348,7 +348,7 @@
     return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" style="transform:rotate(-90deg);flex:none" aria-hidden="true">' + arcs + '</svg>'; }
   function donutCard(rows, cash) { const tot = rows.reduce((a, r) => a + r.v, 0) + (cash || 0) || 1; const top = rows.slice().sort((a, b) => b.v - a.v); const big = top.slice(0, 7), rest = top.slice(7).reduce((a, r) => a + r.v, 0);
     const sl = big.map((r, i) => ({ k: r.s, v: r.v, c: DC[i % DC.length] })); if (rest > 0) sl.push({ k: 'Other', v: rest, c: '#4E6585' }); if (cash > 0.5) sl.push({ k: 'Cash', v: cash, c: '#2A3B55' });
-    return card('<div class="dnw">' + donut(sl) + '<div class="dnl">' + sl.map((x) => '<span><i style="background:' + x.c + '"></i><b>' + E(x.k) + '</b><em>' + (x.v / tot * 100).toFixed(x.v / tot < 0.1 ? 1 : 0) + '%</em></span>').join('') + '</div></div>', 'padding:14px 16px'); }
+    return card('<div class="dnw">' + donut(sl) + '<div class="dnl">' + sl.map((x) => '<span><i style="background:' + x.c + '"></i>' + (x.k === 'Other' || x.k === 'Cash' ? '' : V().tl(x.k, 20)) + '<b>' + E(x.k) + '</b><em>' + (x.v / tot * 100).toFixed(x.v / tot < 0.1 ? 1 : 0) + '%</em></span>').join('') + '</div></div>', 'padding:14px 16px'); }
   X.donutCard = donutCard;
   // live value of a paper portfolio
   function papCalc(p) { const S = V().S; let val = p.cash || 0, day = 0, ready = true; const rows = p.h.map((h) => { const q = S.q[h.s]; if (!q || !q.price) { ready = false; return { s: h.s, sh: h.sh, px: h.px, v: h.sh * h.px, cost: h.sh * h.px }; } const v = h.sh * q.price; val += v; day += h.sh * (q.chg || 0); return { s: h.s, sh: h.sh, px: h.px, q, v, cost: h.sh * h.px }; });

@@ -19,5 +19,5 @@ test('one pill component: 20px rounded rect, 12px one line, no inline ovals; amb
   for (const k of ['display:inline-flex!important', 'height:20px!important', 'border-radius:6px!important', 'font-size:12px!important', 'white-space:nowrap!important', 'vertical-align:middle']) assert.ok(m[1].includes(k), k);
   assert.match(css, /html\[data-x2t="light"\] body :is\(\.upd,\.cuSoon,\.fnew\)\{color:#7A4A00!important;background:#FDF0D8!important/);
   assert.match(css, /html\[data-x2t="light"\] body :is\(\.ftag,\.tag2,\.catT,\.ana\)\{color:#1F5FB8!important;background:#E8F1FC!important/);
-  assert.match(R('index.html'), /design\.css\?v=24/); assert.match(R('sw.js'), /jt-shell-v42/);
+  assert.match(R('index.html'), /design\.css\?v=24/); assert.match(R('sw.js'), /jt-shell-v43/);
 });

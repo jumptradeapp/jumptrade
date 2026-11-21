@@ -28,7 +28,7 @@ test('Week ahead has no market pulse, index tiles or index numbers; short subjec
   assert.doesNotMatch(m.subject, /%|S&P|Nasdaq/); assert.ok(m.subject.length <= 50, m.subject);
   assert.equal(m.subject, 'Week ahead: ADI, DELL earnings'); assert.ok(m.subject.length <= 40);
   assert.match(m.html, /Markets closed for Thanksgiving/); assert.match(m.html, /Stocks close early, 1:00 PM ET/);
-  assert.match(m.html, /After the close · expected \$2\.50 a share/); assert.match(m.html, /Before the open/);
+  assert.match(m.html, /After close/); assert.match(m.html, /Before open/);
   assert.match(m.html, /PCE inflation/); assert.match(m.html, /FBLLU/); assert.match(m.html, /Nasdaq IPO calendar/);
   assert.match(m.html, /<img src="https:\/\/example\.com\/a\.jpg" width="96" height="64" alt="Photo from the article: What to watch next week"/);
   assert.match(m.html, /Week of Nov(&nbsp;| )23–27/);

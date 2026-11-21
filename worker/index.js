@@ -1425,7 +1425,22 @@ function mailH(env, ctx) {
     srcName: () => [...used].join(' and ') || 'Yahoo Finance',
     assetJson: async (path) => { const r = await env.ASSETS.fetch(new Request('https://jumptrade.app' + path)); return r.ok ? r.json() : null; }, // catalysts.json for the Week ahead
     ipoCal: (from, to) => ipoCalendar(from, to),
+    elogos: (list) => emailLogos(env, list), // company logos for the emails: absolute PNG URLs, only ones that exist
   };
+}
+// Company logos for emails (Jason, Nov 21 2026): the app's own logo set as PNG (web/lgp, see tools/make_email_logos.py), else the
+// same backup source /api/logo uses, checked now so an email never carries a broken image. No logo -> null (the tile has no picture).
+let ELG = null; const ELGB = new Map();
+async function emailLogos(env, list) {
+  if (!ELG) { try { const r = await env.ASSETS.fetch(new Request('https://jumptrade.app/lgp/index.json')); ELG = new Set(r.ok ? await r.json() : []); } catch (e) { ELG = new Set(); } }
+  const out = {}; const L = [...new Set((list || []).map((s) => String(s || '').toUpperCase()).filter((s) => /^[A-Z][A-Z.\-]{0,5}$/.test(s)))].slice(0, 120);
+  await Promise.all(L.map(async (s) => {
+    if (ELG.has(s)) { out[s] = 'https://jumptrade.app/lgp/' + encodeURIComponent(s) + '.png'; return; }
+    if (!ELGB.has(s)) { ELGB.set(s, (async () => { try { const r = await Promise.race([fetch('https://assets.parqet.com/logos/symbol/' + s + '?format=png&size=128', { headers: { 'user-agent': NUA }, cf: { cacheTtl: 604800 } }), new Promise((res) => setTimeout(() => res(null), 4000))]);
+      if (!r || !r.ok || !/image\/(png|jpeg)/.test(r.headers.get('content-type') || '')) return false; const b = await r.arrayBuffer(); return b.byteLength > 300; } catch (e) { return false; } })()); }
+    if (await ELGB.get(s)) out[s] = 'https://jumptrade.app/api/logo/' + encodeURIComponent(s);
+  }));
+  return out;
 }
 // Upcoming US IPOs from Nasdaq's public IPO calendar (no key; its data comes from EDGAR Online): expected pricing dates from..to
 async function ipoCalendar(from, to) {

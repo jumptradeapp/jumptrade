@@ -1328,3 +1328,6 @@ html body .tnc .tnr{gap:0}
 html body .row.noimg .nm{padding-left:0}
 @media (min-width:1024px){html body .nimgb.lg{width:96px;height:72px}}
 html body .tnc .tnr .nm{min-width:0;flex:1 1 auto}html body .tnc .tnr .nm small{display:block;white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis}
+
+/* fund holdings legend: logo next to each ticker (Nov 21) */
+.dnl .tl{border-radius:6px}.dnl .tl img{width:14px;height:14px}
