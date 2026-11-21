@@ -141,9 +141,9 @@ test('catalysts.json stores absolute dates only; no Today/Tomorrow/Yesterday in 
 test('the app loads dates.js, recomputes labels at render, and no longer rounds a half-day offset', () => {
   const idx = R('index.html'), v2 = R('v2/v2.js'), v2x = R('v2/v2x.js'), sw = R('sw.js');
   assert.match(idx, /<script src="\/v2\/dates\.js\?v=1"><\/script>/);
-  assert.match(idx, /v2\/v2x\.js\?v=50/);
-  assert.match(idx, /v2\/v2\.js\?v=133/);
-  assert.match(sw, /jt-shell-v39/);
+  assert.match(idx, /v2\/v2x\.js\?v=51/);
+  assert.match(idx, /v2\/v2\.js\?v=134/);
+  assert.match(sw, /jt-shell-v40/);
   assert.match(sw, /\/v2\/dates\.js/);
   assert.match(v2, /JTDates\.dayDelta/);
   assert.match(v2, /JTDates\.relativeLabel/);

@@ -802,6 +802,32 @@ T.get_insider_transactions = async (i) => {
   out.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
   return { symbol: sym, src: 'SEC EDGAR Form 4', data: out };
 };
+// Form 144: notice of a planned insider sale (filed under the issuer on SEC EDGAR). Real filings only; no estimates.
+const md = (v) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(v || '').trim()); return m ? m[3] + '-' + m[1] + '-' + m[2] : String(v || '').trim(); };
+export function parseForm144(x) {
+  const tag = (s, t) => { const m = new RegExp('<' + t + '>\\s*([^<]*)', 'i').exec(s); return m ? m[1].trim().replace(/&amp;/g, '&') : ''; };
+  const si = (/<securitiesInformation>[\s\S]*?<\/securitiesInformation>/.exec(x) || [''])[0];
+  const rel = (x.match(/<relationshipToIssuer>([^<]*)<\/relationshipToIssuer>/g) || []).map((r) => r.replace(/<[^>]+>/g, '').trim()).filter(Boolean);
+  const sh = +tag(si, 'noOfUnitsSold'), val = +tag(si, 'aggregateMarketValue');
+  return { name: tag(x, 'nameOfPersonForWhoseAccountTheSecuritiesAreToBeSold'), rel: rel.join(', '), shares: sh || null, value: val || null,
+    saleDate: md(tag(si, 'approxSaleDate')), broker: tag((/<brokerOrMarketmakerDetails>[\s\S]*?<\/brokerOrMarketmakerDetails>/.exec(si) || [''])[0], 'name'),
+    how: tag((/<securitiesToBeSold>[\s\S]*?<\/securitiesToBeSold>/.exec(x) || [''])[0], 'natureOfAcquisitionTransaction'), exch: tag(si, 'securitiesExchangeName') };
+}
+T.get_form144 = async (i) => {
+  const sym = String(i.symbol || '').toUpperCase(); if (!/^[A-Z.\-]{1,7}$/.test(sym)) throw Object.assign(new Error('symbol needed'), { status: 400 });
+  const cik = await secCik(sym); if (!cik) return { symbol: sym, src: 'SEC EDGAR Form 144', data: [] };
+  const r = await fetch('https://data.sec.gov/submissions/CIK' + String(cik).padStart(10, '0') + '.json', { headers: SEC_H }); if (!r.ok) throw Object.assign(new Error('SEC ' + r.status), { status: 502 });
+  const rc = ((await r.json()).filings || {}).recent || {}; const idx = []; (rc.form || []).forEach((f, k) => { if ((f === '144' || f === '144/A') && idx.length < Math.min(+i.count || 8, 10)) idx.push(k); });
+  const out = [];
+  await Promise.all(idx.map(async (k) => {
+    const acc = rc.accessionNumber[k], doc = String(rc.primaryDocument[k] || '').replace(/^xsl[^/]+\//, ''); const base = 'https://www.sec.gov/Archives/edgar/data/' + cik + '/' + acc.replace(/-/g, '') + '/';
+    const x = /\.xml$/i.test(doc) ? await fetch(base + doc, { headers: SEC_H, cf: { cacheTtl: 86400, cacheEverything: true } }).then((y) => (y.ok ? y.text() : '')).catch(() => '') : '';
+    if (!x) return; const f = parseForm144(x); if (!f.name) return;
+    out.push(Object.assign({ symbol: sym, filed: rc.filingDate[k], form: rc.form[k], url: base + acc + '-index.htm' }, f));
+  }));
+  out.sort((a, b) => (a.filed < b.filed ? 1 : a.filed > b.filed ? -1 : 0));
+  return { symbol: sym, src: 'SEC EDGAR Form 144', data: out };
+};
 T.get_market_sectors = async (i) => {
   const per = PERDAYS[i.period] ? i.period : 'D1';
   const all = [...new Set(GROUPS.flatMap((g) => g[3].split(',')))];
@@ -827,7 +853,7 @@ T.get_market_sectors_detail = async (i) => {
   return { data: rows };
 };
 // How long each answer may be reused (seconds). Prices: short. Fundamentals: long.
-const TTL = { get_news_feed: 60, get_mover_setup: 60, get_insider_transactions: 3600, get_analyst_actions: 900, get_mover_why: 300, get_earnings_week: 600, get_pick_record: 600, get_playbook: 60, get_stock_unusual_activities: 60, get_community_hot_stocks: 180, get_runners: 60, get_sparks: 60, get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 60, search_news: 45, get_top_news: 300,
+const TTL = { get_news_feed: 60, get_mover_setup: 60, get_insider_transactions: 3600, get_form144: 3600, get_analyst_actions: 900, get_mover_why: 300, get_earnings_week: 600, get_pick_record: 600, get_playbook: 60, get_stock_unusual_activities: 60, get_community_hot_stocks: 180, get_runners: 60, get_sparks: 60, get_market_sectors: 60, get_market_sectors_detail: 15, get_stock_snapshot: 1, get_gainers_losers: 4, get_stock_bars: 15, get_stock_bars_single: 15, get_stock_news: 60, search_news: 45, get_top_news: 300,
   get_company_profile: 86400, get_analyst_target_price: 21600, get_analyst_rating: 21600, get_stock_forecast_eps: 21600, get_stock_earnings_calendar: 21600,
   get_fund_brief: 86400, get_fund_holdings: 86400, get_fund_performance: 86400 };
 

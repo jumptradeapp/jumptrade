@@ -382,7 +382,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const data = leadLagSectors();
     if (!data.ready) return '<div class="hpc-sk"><div></div><div></div><div></div></div>';
     const col = (title, list, side) => '<div class="hpc-col"><div class="hpc-chd">' + title + '</div>' + list.map((r, i) => {
-      return '<a class="hpc-row" href="#stock/' + r.s + '"><div class="hpc-nm"><span class="hpc-name">' + E(r.name) + '</span><span class="hpc-pct ' + cls(r.pct) + '">' + pct(r.pct) + '</span></div><div class="hpc-track">' + hBarSvg('hpc-' + side + r.s + i, r.pct, data.mx, 'right', 200) + '</div></a>';
+      return '<a class="hpc-row" href="#sector/' + r.s + '" aria-label="' + E(r.name) + ' sector movers"><div class="hpc-nm"><span class="hpc-name">' + E(r.name) + '</span><span class="hpc-pct ' + cls(r.pct) + '">' + pct(r.pct) + '</span></div><div class="hpc-track">' + hBarSvg('hpc-' + side + r.s + i, r.pct, data.mx, 'right', 200) + '</div></a>';
     }).join('') + '</div>';
     return '<div class="hpc-grid">' + col('Leading', data.lead, 'L') + col('Lagging', data.lag, 'G') + '</div>';
   }
@@ -1054,14 +1054,14 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     else {
       const days = W.days || []; if (!S.ewDay) S.ewDay = (days.find((d) => d.d >= W.today) || days[0] || {}).d;
       const dd = days.find((d) => d.d === S.ewDay) || { tiles: [] };
-      body = chipsHTML(days.map((d) => { const rel = window.JTDates ? JTDates.dayDelta(d.d) : null; const lab = rel === 0 ? 'Today' : rel === 1 ? 'Tomorrow' : new Date(d.d + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }) + ' ' + (+d.d.slice(8)); return [d.d, lab + ' <small>' + d.tiles.length + '</small>']; }), S.ewDay, 'data-ewd') +
+      body = (window.JTADV && JTADV.calGrid ? JTADV.calGrid(W, S.ewDay) : '') + (window.JTADV && JTADV.calGrid ? '' : chipsHTML(days.map((d) => { const rel = window.JTDates ? JTDates.dayDelta(d.d) : null; const lab = rel === 0 ? 'Today' : rel === 1 ? 'Tomorrow' : new Date(d.d + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }) + ' ' + (+d.d.slice(8)); return [d.d, lab + ' <small>' + d.tiles.length + '</small>']; }), S.ewDay, 'data-ewd')) +
         (dd.tiles.length ? rowsBox(dd.tiles.map((t) => { const x = S.q[t.s]; const when = t.when === 'bmo' ? 'Before open' : t.when === 'amc' ? 'After close' : 'Time not given';
           const res = t.res ? '<span class="res ' + (t.res === 'beat' ? 'up' : t.res === 'miss' ? 'dn' : '') + '">' + t.res.toUpperCase() + '</span>' : '';
           const eps = t.eps != null ? 'EPS $' + t.eps.toFixed(2) + ' vs $' + (t.est != null ? t.est.toFixed(2) : '—') + ' est.' : 'EPS est. ' + (t.est != null ? '$' + t.est.toFixed(2) : '—');
-          return '<a class="row" href="#stock/' + encodeURIComponent(t.s) + '">' + tl(t.s, 38) + '<span class="nm"><b>' + E(t.s) + ' ' + res + '</b><small>' + E(t.n) + '</small><small style="color:' + BL.b3 + '">' + when + ' · ' + eps + '</small></span>' + (x ? qv(x.price, x.chg, x.pct) : qv(null)) + '</a>'; }).join(''), 'margin-top:10px') : rowsBox('<div class="err">No $10B+ companies report this day.</div>', 'margin-top:10px')) +
+          return '<a class="row" href="#stock/' + encodeURIComponent(t.s) + '">' + tl(t.s, 38) + '<span class="nm"><b>' + E(t.s) + ' ' + res + '</b><small>' + E(t.n) + '</small><small style="color:' + BL.b3 + '">' + when + ' · ' + eps + '</small></span>' + (x ? qv(x.price, x.chg, x.pct) : qv(null)) + '</a>'; }).join(''), 'margin-top:10px') : rowsBox('<div class="err">No $10B+ companies report this day.</div>', 'margin-top:10px')) + (window.JTADV && JTADV.catDay ? JTADV.catDay(S.ewDay) : '') +
         '<p class="note">' + E(W.note || '') + ' Source: <a href="' + E(W.srcUrl) + '" target="_blank" rel="noopener" style="color:' + BL.b2 + '">' + E(W.src) + '</a>. Results appear once Nasdaq posts them;' + (W.partial ? ' Some days didn’t load.' : '') + '</p>';
     }
-    return '<div class="wrap">' + backbar('Earnings week', '#markets') + head('Earnings week', 'Who reports this week, and beat or miss') + '<div style="margin-top:12px">' + body + '</div></div>';
+    return '<div class="wrap">' + backbar('Earnings week', '#markets') + head('Earnings week', 'Who reports this week, beat or miss, and the catalysts around it') + '<div style="margin-top:12px">' + body + '</div></div>';
   }
 
   // ---------- (6) Alerts center (bell) ----------
@@ -1255,7 +1255,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       fact('Rel. volume', f.rvol != null ? (f.rvol >= 10 ? f.rvol.toFixed(0) : f.rvol.toFixed(1)) + '×' : 'n/a', nfmt(f.vol) + ' vs ' + nfmt(f.avgVol) + ' avg') +
       fact('VWAP', pxs(f.vwap), f.vwap && f.last ? (f.last >= f.vwap ? 'price above' : 'price below') : '') +
       fact('Gap', f.gap != null ? sgn(f.gap) : '—', 'open vs prior close') +
-      fact('Day range', pxs(f.lo) + ' – ' + pxs(f.hi), 'open ' + pxs(f.open)) +
+      fact(sess === 'after' ? 'After-hours range' : sess === 'pre' ? 'Premarket range' : 'Day range', pxs(f.lo) + ' – ' + pxs(f.hi), (sess === 'day' ? 'open ' : 'first trade ') + pxs(f.open)) +
       fact('Premarket', f.pmHi != null ? pxs(f.pmLo) + ' – ' + pxs(f.pmHi) : '—', 'low – high') +
       fact('SSR', f.ssr ? 'On' : 'Off', f.ssr || 'short-sale rule') +
       fact('Halts today', f.halt === 'unknown' || f.halt === undefined ? '—' : f.halt ? f.halt.n + '×' : 'None', f.halt === 'unknown' || f.halt === undefined ? 'halt feed didn’t load' : f.halt ? E(f.halt.last.why) + ' ' + E(f.halt.last.time.slice(0, 5)) + ' ET' + (f.halt.last.resumed ? '' : ', still halted') : 'NasdaqTrader halts feed') + '</div>' : (x && x.err ? '<p class="note">Today’s session data isn’t available for ' + E(sym) + ' (' + E(x.err) + ').</p>' : '<div class="fgrid" aria-busy="true">' + ['Float', 'Short interest', 'Days to cover', 'Rel. volume', 'VWAP', 'Gap', 'Day range', 'Premarket', 'SSR', 'Halts today'].map((k) => fact(k, '<span class="skel fsk"></span>', '&nbsp;')).join('') + '</div>'); // placeholder cells the same size as the facts, so nothing below jumps
@@ -1265,7 +1265,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     return '<div class="wrap">' + backbar(E(sym), 'javascript:history.back()') +
       '<div class="sth">' + tl(sym, 48) + '<div class="nm"><h1 style="margin:0">' + E(sym) + '</h1><small>' + E(nameOf(sym)) + '</small></div>' + (q ? qv(q.price, q.chg, q.pct) : qv(null)) +
       askChip(sym, 'Ask Jump about ' + sym) + '</div>' + '<div class="stg2"><div class="stL">' + (window.V2X && V2X.stockTop ? V2X.stockTop(sym) : '') + myPos(sym, q) +
-      (false ? '' : lab('radar', 'Setup', '', '') + (x && x.tag ? setupBox(sym, sess) : x ? '<p class="note">No setup read for this session.</p>' : rowsBox(skel(2), 'padding:14px;min-height:104px')) + facts +
+      (false ? '' : lab('radar', 'Setup', '', '') + (x && x.tag ? setupBox(sym, sess) : x ? '<p class="note">No setup read for this session.</p>' : rowsBox(skel(2), 'padding:14px;min-height:104px')) + facts + (window.JTADV ? JTADV.ranges(sym) + JTADV.vsSpy(sym) : '') +
       '') +
       '</div><div class="stR">' + lab('news', 'Why it’s moving', '', '') + '<div class="card" style="padding:12px 14px"><small class="why" style="white-space:normal;color:' + w.c + '">' + E(w.t) + '</small>' + (w.h && w.h.url ? '<a class="srcl" href="' + E(w.h.url) + '" target="_blank" rel="noopener">Open the article</a>' : '') + '</div>' +
       (window.V2X && V2X.topNews ? V2X.topNews(sym, nameOf(sym)) : '') +
