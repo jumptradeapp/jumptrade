@@ -55,9 +55,11 @@ export async function gatherAhead(H) {
     Promise.all(kw.map((k) => call('search_news', { keyword: k, start_date: since, end_date: now.day }).then((p) => arr(p).slice(0, 6).map((n) => ({ k, t: n.title, src: n.source, at: n.publish_time, u: /^https:\/\//.test(n.url || '') ? n.url : '', img: /^https:\/\//.test(n.image || '') ? n.image : '' }))))),
     Promise.all(top.map((t) => call('get_stock_news', { symbol: t.s }).then((p) => arr(p).filter((n) => Date.now() - Date.parse(n.publish_time) < 4 * DAY).slice(0, 2).map((n) => ({ k: t.s, t: n.title, src: n.source, at: n.publish_time, u: /^https:\/\//.test(n.url || '') ? n.url : '', img: /^https:\/\//.test(n.image || '') ? n.image : '' }))))),
   ]);
-  const JUNK = /stock price today|live chart|quote (?:&|and) history|price, news|unusual volume|stocks? to (buy|sell)|\bmovers\b|gainers|losers|midday|premarket|pre-market|after-hours|top \d+ /i;
+  // no market-wrap stories: this email carries no index talk (Jason, Nov 21 2026)
+  const WRAP = /\bS&P\b|\bS&amp;P\b|\bDow\b|\bNasdaq\b|stock market today|stocks? (fall|fell|rise|rose|slide|slid|rally|rallied|tumble|sink|sank|jump)/i;
+  const JUNK = /\b(sells|buys|acquires|trims|boosts|raises|lowers) [\d,]+ shares|position in|stake in .* (inc|corp)|stock forecasts?|price prediction|stock price today|live chart|quote (?:&|and) history|price, news|unusual volume|stocks? to (buy|sell)|\bmovers\b|gainers|losers|midday|premarket|pre-market|after-hours|top \d+ /i;
   const pool = []; const st = new Set();
-  [...ns.flat(), ...nk.flat()].forEach((n) => { if (!n || !n.t || !n.u || JUNK.test(n.t)) return; const key = String(n.t).toLowerCase().replace(/[^a-z0-9]+/g, ' ').slice(0, 60); if (st.has(key)) return; st.add(key); pool.push(n); });
+  [...ns.flat(), ...nk.flat()].forEach((n) => { if (!n || !n.t || !n.u || JUNK.test(n.t) || WRAP.test(n.t)) return; const key = String(n.t).toLowerCase().replace(/[^a-z0-9]+/g, ' ').slice(0, 60); if (st.has(key)) return; st.add(key); pool.push(n); });
   const news = pool.slice(0, 4);
   return { type: 'ahead', now, days, eDays, cats, ipos, news, ipoSrc: ipo && ipo.src, catGen: cat && cat.generated, eSrc: ew && ew.src };
 }
@@ -101,7 +103,7 @@ export function renderAhead(d, shell, srow, T) {
   const nE = d.eDays.reduce((s, x) => s + x.tiles.length, 0);
   const pre = [nE ? nE + ' big companies report' : '', d.cats.some((c) => c.type === 'macro') ? 'key economic data' : '', d.ipos.length ? d.ipos.length + ' IPO' + (d.ipos.length > 1 ? 's' : '') : ''].filter(Boolean).join(', ') + (hol.length ? '. Markets closed ' + hol.map((x) => dShort(x).split(',')[0]).join(', ') + ' for ' + holName(hol[0]) + '.' : '.');
   const src = ['earnings from the ' + (d.eSrc || 'Nasdaq earnings calendar') + ' (companies over $10B)', 'catalysts and economic releases from JumpTrade’s catalyst calendar' + (d.catGen ? ' (updated ' + md(d.catGen) + ')' : ''), d.ipos.length ? 'IPOs from ' + (d.ipoSrc || 'the Nasdaq IPO calendar') + ' and the catalyst calendar' : '', d.news.length ? 'headlines from news feeds' : ''].filter(Boolean).join('; ');
-  return Object.assign(shell({ type: 'ahead', theme: T.id, subject, pre: pre.charAt(0).toUpperCase() + pre.slice(1), dateLine: 'Week of ' + rng, headline: hol.length ? holName(hol[0]) + ' week: ' + rng : rng,
+  return Object.assign(shell({ type: 'ahead', theme: T.id, subject, pre: pre.charAt(0).toUpperCase() + pre.slice(1), dateLine: 'Week of ' + rng, headline: hol.length ? holName(hol[0]) + ' week: markets closed ' + hol.map((x) => dShort(x).split(',')[0]).join(', ') + (early.length ? ', early close ' + early.map((x) => dShort(x).split(',')[0]).join(', ') : '') : '',
     cards: [
       sectionBlock('NEXT WEEK', 'Earnings', earn, T),
       sectionBlock('NEXT WEEK', 'Catalysts and the economy', cats, T),

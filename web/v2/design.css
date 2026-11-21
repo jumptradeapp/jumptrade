@@ -2058,3 +2058,36 @@ html[data-x2t="light"] body .hpulse-c .hixc .q b{color:#12141A!important}
 html[data-x2t="light"] body .hpc-sk div{background:rgba(18,20,26,.06)}
 /* Light theme Markets heat tiles: theme names were white on pale tints (unreadable). Dark ink, AA. */
 html[data-x2t="light"] body .ht span{color:#12141A!important;text-shadow:none!important}
+
+/* ===== One pill (Jason, Nov 21 2026: "fix that weird pill that says New: ARKK, make sure it doesn't happen anywhere else") =====
+   Every small label/badge in the app is the same box: a 20px rounded rectangle (6px corners), 0 8px padding, 12px/600 text on one
+   line, centred on the text line it sits in. It never stretches into an oval, never wraps and never clips its text. Tones keep their
+   meaning (amber = new/updated/soon, blue = info, up/down colours where a pill already had them), each AA on its own background. */
+html body :is(.upd,.cuSoon,.catT,.ftag,.tag,.tag2,.stg,.ana,.xtag,.amb,.fnew){
+  display:inline-flex!important;align-items:center;justify-content:center;gap:4px;box-sizing:border-box;
+  height:20px!important;min-height:0!important;width:auto!important;max-width:100%;padding:0 8px!important;
+  border-radius:6px!important;font-size:12px!important;line-height:1!important;font-weight:600;font-style:normal;
+  white-space:nowrap!important;vertical-align:middle;flex:none;overflow:hidden;align-self:center}
+html body :is(.upd,.cuSoon,.fnew){color:#F5C77E!important;background:rgba(242,180,90,.16)!important;border:1px solid rgba(242,180,90,.38)!important}
+html[data-x2t="light"] body :is(.upd,.cuSoon,.fnew){color:#7A4A00!important;background:#FDF0D8!important;border-color:rgba(176,112,0,.32)!important}
+html body .fnew{margin:0 0 0 2px!important}
+html body .upd{margin-right:8px}
+/* the 13F row's second line holds a pill: give it the pill's height so the row doesn't jump */
+html body .row .nm small:has(.fnew){display:flex!important;align-items:center;gap:4px;min-height:20px;white-space:nowrap}
+
+/* Day-progress tile: "Market closed" in the house down coral, not the session blue (Jason, Nov 21 2026).
+   Pre-market / Market open / After hours / Overnight keep the blue: those are live sessions. */
+html body .hbl span.hbk-closed:first-child{color:#EB8C86!important}
+html[data-x2t="light"] body .hbl span.hbk-closed:first-child{color:#B93F38!important}
+/* Info-blue pills (fund style tags, holding change tags, catalyst types...) were pale blue text on white in light: AA blue tone */
+html body :is(.ftag,.tag2,.catT,.ana){color:#BFE0FF;background:rgba(92,176,255,.14);border:1px solid rgba(92,176,255,.32)}
+html[data-x2t="light"] body :is(.ftag,.tag2,.catT,.ana){color:#1F5FB8!important;background:#E8F1FC!important;border-color:rgba(31,95,184,.28)!important}
+/* the selected sort chip on Funds was white-on-pale in light */
+html[data-x2t="light"] body .fsort button.on{color:#174A94!important;background:#E3EEFB!important}
+/* chart legend chips (VWAP / Support / Resistance) in light: darker tones so 12px text clears 4.5:1 on their tint */
+html[data-x2t="light"] .ov-vwap{--ov:#7A4D00}
+html[data-x2t="light"] .ov-sup{--ov:#08664F}
+html[data-x2t="light"] .ov-res{--ov:#A5352D}
+/* the "/" search shortcut hint: 12px, readable in light too */
+html body .nsrch kbd{font-size:12px!important}
+html[data-x2t="light"] body .nsrch kbd{color:#4A5A70!important;border-color:rgba(74,90,112,.35)!important}
