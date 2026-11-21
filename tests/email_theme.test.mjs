@@ -109,7 +109,7 @@ test('change colors meet WCAG AA (4.5:1) on each theme’s surface', () => {
   assert.equal(changeColor(-1, 'p72'), THEMES.p72.dn);
 });
 
-test('Market pulse option C: 3 leading + 3 lagging, horizontal fade bars, 2px tips, mint up / coral down, 13px labels', () => {
+test('Market pulse option C: 3 leading + 3 lagging, horizontal fade bars, 2px tips, swoop-blue up / coral down like the app, 13px labels', () => {
   const html = sectorBlock(MAJOR, THEMES.light);
   assert.match(html, /data-sector-chart="c"/);
   assert.match(html, />Leading</); assert.match(html, />Lagging</);
@@ -119,7 +119,7 @@ test('Market pulse option C: 3 leading + 3 lagging, horizontal fade bars, 2px ti
   for (const n of ['Tech', 'Comms', 'Industrials', 'Energy', 'Materials', 'Financials']) assert.match(html, new RegExp('>' + n + '<'));
   for (const n of ['Health', 'Consumer', 'Utilities', 'Staples', 'Realty']) assert.doesNotMatch(html, new RegExp('>' + n + '<'));
   assert.match(html, /\+1\.24%/); assert.match(html, /−1\.82%/);
-  assert.match(html, /bgcolor="#A8DDB5"/); assert.match(html, /bgcolor="#EB8C86"/);
+  assert.match(html, /bgcolor="#5CB0FF"/); assert.doesNotMatch(html, /#A8DDB5/); assert.match(html, /height:14px/); assert.match(html, /bgcolor="#EB8C86"/);
   assert.match(html, /linear-gradient\(to right,/);
   assert.match(html, /border-radius:0 2px 2px 0/);
   assert.doesNotMatch(html, /dotted/);
@@ -129,7 +129,7 @@ test('Market pulse option C: 3 leading + 3 lagging, horizontal fade bars, 2px ti
   // AA text colors on white carry the meaning
   assert.match(html, /color:#187A44/); assert.match(html, /color:#C8463D/);
   assert.equal(barPct(-1.82, 1.82), 100);
-  assert.equal(barPct(0.01, 4), 8);
+  assert.equal(barPct(0.01, 4), 6);
   assert.match(sectorAlt(MAJOR), /Tech \+1\.24%/);
   assert.equal(fmtSecPct(-0.4), '−0.40%');
   assert.equal(normalizeSectors(MAJOR).length, 11);
@@ -183,7 +183,7 @@ test('light, dark and P72 each render; P72 has the stone top bar, cream type and
     const m = await M.buildMail('close', {}, H);
     assert.equal(m.theme, theme);
     assert.match(m.html, /Market pulse/);
-    assert.match(m.html, /Tech/); assert.match(m.html, /#A8DDB5|#EB8C86/); assert.match(m.html, />Leading</);
+    assert.match(m.html, /Tech/); assert.match(m.html, /bgcolor="#5CB0FF"|bgcolor="#EB8C86"/); assert.match(m.html, />Leading</);
     assert.match(m.html, /class="kicker"/);
     assert.match(m.html, /S&amp;P 500/);
     assert.match(m.html, /Open jumptrade\./);

@@ -203,10 +203,10 @@ export function sectorBarsHtml(rows, theme) {
 // a ~2px tip. Pure HTML tables (no images, no SVG) so Gmail / Apple Mail /
 // Outlook all show real numbers. Bar fills are decorative; the % text carries
 // the meaning in AA colors. No baseline, no dots.
-export const PULSE_UP = '#A8DDB5';
+export const PULSE_UP = '#5CB0FF'; // same swoop blue as the app's pulse C bars (v2.js hBarSvg)
 export const PULSE_DN = '#EB8C86';
 export const PULSE_TIP = 2;
-export const PULSE_BAR_H = 10;
+export const PULSE_BAR_H = 14; // app: 14px bars
 
 // Opaque mix of a bar color into the surface, so the fade still works when a
 // client paints bgcolor under the gradient (a transparent stop would show it).
@@ -233,7 +233,7 @@ export function leadLag(rows) {
 // Bar width as a % of its column: square-root scale like the app, 8% minimum.
 export function barPct(pct, mx) {
   if (!ok(pct) || !(mx > 0) || +pct === 0) return 0;
-  return Math.max(8, Math.min(100, Math.round(100 * Math.sqrt(Math.abs(pct) / mx))));
+  return Math.max(6, Math.min(100, Math.round(100 * Math.sqrt(Math.abs(pct) / mx))));
 }
 
 export function leadLagHtml(rows, theme) {
@@ -251,7 +251,7 @@ export function leadLagHtml(rows, theme) {
     const w = barPct(s.pct, mx);
     const bar = !w ? '<div style="height:' + PULSE_BAR_H + 'px;font-size:0;line-height:0">&nbsp;</div>' : '<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse"><tr>' +
       '<td width="' + w + '%" height="' + PULSE_BAR_H + '" bgcolor="' + fill + '" style="width:' + w + '%;height:' + PULSE_BAR_H + 'px;background-color:' + fill +
-      ';background-image:linear-gradient(to right,' + mixHex(fill, surf, 0.12) + ',' + fill + ');border-radius:0 ' + PULSE_TIP + 'px ' + PULSE_TIP + 'px 0;font-size:0;line-height:0;mso-line-height-rule:exactly">&nbsp;</td>' +
+      ';background-image:linear-gradient(to right,' + mixHex(fill, surf, 0) + ',' + fill + ');border-radius:0 ' + PULSE_TIP + 'px ' + PULSE_TIP + 'px 0;font-size:0;line-height:0;mso-line-height-rule:exactly">&nbsp;</td>' +
       (w < 100 ? '<td style="font-size:0;line-height:0">&nbsp;</td>' : '') + '</tr></table>';
     return '<tr><td style="padding:0 0 ' + (last ? 0 : 14) + 'px">' +
       '<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse"><tr>' +
