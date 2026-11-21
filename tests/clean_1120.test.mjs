@@ -9,13 +9,13 @@ test('clean-1120 pins, nav clip, colors, pulse C, indexes, heat, Ask Jump and ta
   const idx = R('index.html'), sw = R('sw.js');
   const v2 = R('v2/v2.js'), css = R('v2/v2.css'), design = R('v2/design.css');
   const v2x = R('v2/v2x.js'), land = R('landing.js');
-  assert.match(idx, /v2\/v2\.css\?v=105/);
-  assert.match(idx, /v2\/design\.css\?v=22/);
-  assert.match(idx, /v2\/v2\.js\?v=134/);
-  assert.match(idx, /v2x\.js\?v=51/);
+  assert.match(idx, /v2\/v2\.css\?v=106/);
+  assert.match(idx, /v2\/design\.css\?v=23/);
+  assert.match(idx, /v2\/v2\.js\?v=135/);
+  assert.match(idx, /v2x\.js\?v=52/);
   assert.match(idx, /landing\.js\?v=11/);
   assert.match(idx, /v2\/asksheet\.js\?v=1/);
-  assert.match(sw, /jt-shell-v40/);
+  assert.match(sw, /jt-shell-v41/);
   assert.match(sw, /\/v2\/asksheet\.js/);
 
   assert.match(css, /html,body\{max-width:100%;overscroll-behavior:none\}/);
@@ -38,7 +38,7 @@ test('clean-1120 pins, nav clip, colors, pulse C, indexes, heat, Ask Jump and ta
   assert.match(v2, /class="card cbody hdaycard"/);
   assert.match(design, /\.hdaycard/);
 
-  assert.match(v2, /const IDX_LEVELS = \[\['\^GSPC', 'S&P 500'\], \['\^NDX', 'Nasdaq 100'\], \['\^DJI', 'Dow'\], \['\^RUT', 'Russell'\]\]/);
+  assert.match(v2, /const IDX_LEVELS = \[\['\^GSPC', 'S&P 500'\], \['\^NDX', 'Nasdaq 100'\], \['\^DJI', 'Dow'\], \['\^RUT', 'Russell'\], \['BTC-USD', 'Bitcoin', 1, '24\/7'\], \['GC=F', 'Gold', 1, 'Futures'\]\]/);
   assert.match(v2, /function idxPx|const idxPx/);
   assert.match(v2, /IDX_LEVELS\.map/);
   assert.doesNotMatch(v2.slice(v2.indexOf('function marketsScreen')), /IDX\.map\(\(s\) => \{ const x = S\.q\[s\]; return '<a class="card ixc"/);

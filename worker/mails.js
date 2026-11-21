@@ -112,7 +112,10 @@ export const card = (title, inner, sub, theme, kicker) => sectionBlock(kicker ||
 export const bullets = (L) => (L && L.length ? '<ul>' + L.map((m) => '<li>' + (m.b ? '<b>' + ND(m.b) + '</b> ' : '') + ND(m.t) + '</li>').join('') + '</ul>' : '');
 export const INDEX_LEVELS = [['^GSPC', 'S&P 500'], ['^NDX', 'Nasdaq 100'], ['^DJI', 'Dow'], ['^RUT', 'Russell 2000']];
 export const INDEX_ETFS = [['SPY', 'S&P 500 · SPY'], ['QQQ', 'Nasdaq 100 · QQQ'], ['DIA', 'Dow · DIA'], ['IWM', 'Russell 2000 · IWM']];
-export const INDEX_SYMS = INDEX_LEVELS.map((x) => x[0]).concat(INDEX_ETFS.map((x) => x[0]));
+// Bitcoin and Gold get their own tiles next to the indexes (Jason, Nov 20 2026). Real Yahoo quotes, dollar prices:
+// BTC-USD trades 24/7 (its day runs from 00:00 UTC); GC=F is the front-month COMEX gold future, $ per troy ounce.
+export const EXTRA_LEVELS = [['BTC-USD', 'Bitcoin · 24/7'], ['GC=F', 'Gold · futures']];
+export const INDEX_SYMS = INDEX_LEVELS.map((x) => x[0]).concat(INDEX_ETFS.map((x) => x[0]), EXTRA_LEVELS.map((x) => x[0]));
 export const IDX = INDEX_ETFS;
 export function idxTiles(vals, theme, labels) { return indexTiles(vals, theme, labels); }
 function asIndexVal(q, sess) {
@@ -122,6 +125,11 @@ function asIndexVal(q, sess) {
 }
 // Prefer official Yahoo index levels (^GSPC etc.). Fall back to the sector ETFs, labeled as funds, when a session has no index quote (typical pre/after hours).
 export function pickIndexTiles(quotes, sess) {
+  const t = pickIndexTiles0(quotes, sess); const vals = Object.assign({}, t.vals), labels = t.labels.slice();
+  for (const [sym, name] of EXTRA_LEVELS) { const v = asIndexVal(quotes && quotes[sym]); if (v) { vals[sym] = Object.assign({}, v, { level: false }); labels.push([sym, name]); } }
+  return Object.assign({}, t, { vals, labels });
+}
+function pickIndexTiles0(quotes, sess) {
   const take = (pairs, kind, qSess) => {
     const vals = {}, labels = [];
     for (const [sym, name] of pairs) {

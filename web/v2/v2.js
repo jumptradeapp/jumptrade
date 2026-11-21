@@ -63,6 +63,17 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const markBad = (u) => { if (!u || IMGBAD.has(u)) return; IMGBAD.add(u); try { const b = JSON.parse(localStorage.getItem(BADK) || '{}'); b[u] = Date.now(); const k = Object.keys(b); if (k.length > 400) k.slice(0, k.length - 400).forEach((x) => delete b[x]); localStorage.setItem(BADK, JSON.stringify(b)); } catch (e) {} };
   window.v2ImgOk = function (img) { IMGOK.add(img.getAttribute('src')); img.classList.add('ok'); };
   window.v2ImgBad = function (img) { markBad(img.getAttribute('src')); img.remove(); };
+  // News photos (Jason, Nov 20 2026: every news item shows the article's own image). Source order, all real: the feed's
+  // thumbnail (n.image, e.g. Yahoo's), else the story page's og:image / twitter:image, proxied by /api/nimg. Fixed 4:3 box so
+  // rows never jump; lazy; alt text from the headline. No photo -> the box is removed and the row is text only (no logo/icon stand-in).
+  const NIMG = (n, sym) => '/api/nimg?v=3&u=' + encodeURIComponent(n.url) + (n.image ? '&i=' + encodeURIComponent(n.image) : '') + '&s=' + encodeURIComponent(sym || '') + '&t=' + encodeURIComponent(dec(n.title || '').slice(0, 140));
+  function newsImg(n, sym, extra) {
+    if (!n || !/^https:\/\//i.test(n.url || '') || window.JT_PRIV) return '';
+    const u = NIMG(n, sym); if (IMGBAD.has(u)) return '';
+    const ok = IMGOK.has(u); const t = dec(n.title || '').trim();
+    return '<span class="nimgb' + (extra ? ' ' + extra : '') + '"><img alt="' + E(t ? 'Photo from the article: ' + t : 'Photo from the article') + '" loading="lazy" decoding="async" width="160" height="120" src="' + u + '"' + (ok ? ' class="on"' : '') + ' onload="v2ImgOk(this);this.classList.add(\'on\')" onerror="v2NewsBad(this)"></span>';
+  }
+  window.v2NewsBad = function (img) { markBad(img.getAttribute('src')); const b = img.closest ? img.closest('.nimgb') : null; if (b) { const row = b.parentNode; b.remove(); if (row && row.classList) row.classList.add('noimg'); } else img.remove(); };
   window.v2LogoErr = function (img) { markBad(img.getAttribute('src')); const t = img.parentNode; if (!t) return; if (img.dataset.alt && !IMGBAD.has(img.dataset.alt)) { const a = img.dataset.alt; img.removeAttribute('data-alt'); img.src = a; return; } t.classList.remove('wt'); t.innerHTML = '<span class="mono2" style="font-size:' + Math.round((parseInt(t.style.width, 10) || t.offsetWidth) * 0.34) + 'px">' + E((t.dataset.s || '').slice(0, 2)) + '</span>'; keepLogos(t); };
   // Logo pictures are made once per ticker and size, then reused: a row that leaves the list and comes back (or a page you return
   // to) gets the same, already-drawn picture back instead of a new one that loads and fades in again.
@@ -107,8 +118,12 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   const WL_SUGGEST = ['NVDA', 'AAPL', 'TSLA'];
   const wlSyms = () => wl() || WL_SUGGEST;
   const IDX = ['SPY', 'QQQ', 'DIA', 'IWM'];
-  const IDX_LEVELS = [['^GSPC', 'S&P 500'], ['^NDX', 'Nasdaq 100'], ['^DJI', 'Dow'], ['^RUT', 'Russell']];
-  const idxPx = (v) => (v == null || v === '' || !isFinite(v = +v) ? '—' : Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+  // Index levels plus Bitcoin and Gold (Jason, Nov 20 2026). Third field: a dollar price (not index points); fourth: an honest tag.
+  // BTC-USD trades 24/7 and Yahoo measures its day from 00:00 UTC; GC=F is the front-month COMEX gold future ($ per troy ounce).
+  const IDX_LEVELS = [['^GSPC', 'S&P 500'], ['^NDX', 'Nasdaq 100'], ['^DJI', 'Dow'], ['^RUT', 'Russell'], ['BTC-USD', 'Bitcoin', 1, '24/7'], ['GC=F', 'Gold', 1, 'Futures']];
+  const idxPx = (v, usd) => (v == null || v === '' || !isFinite(v = +v) ? '—' : (usd ? '$' : '') + Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+  const idxChg = (v, usd) => (v == null || v === '' || !isFinite(v = +v) ? '' : (v >= 0 ? '+' : '−') + (usd ? '$' : '') + Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+  const idxName = (n, tag) => E(n) + (tag ? ' <em class="hixt">' + E(tag) + '</em>' : '');
 
   function snap(list) {
     const ovn = session() === 'Overnight'; return call('get_stock_snapshot', Object.assign({ symbols: list.join(','), category: 'US_STOCK', extend_hour_required: true }, ovn ? { overnight_required: true } : {})).then((p) => {
@@ -346,7 +361,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     return { title: verb + lead, desc: d };
   }
 
-  const SECTOR_FULL = [['XLK', 'Technology'], ['XLF', 'Financials'], ['XLE', 'Energy'], ['XLV', 'Health Care'], ['XLY', 'Consumer Discretionary'], ['XLP', 'Consumer Staples'], ['XLI', 'Industrials'], ['XLB', 'Materials'], ['XLU', 'Utilities'], ['XLRE', 'Real Estate'], ['XLC', 'Communication Services']];
+  const SECTOR_FULL = [['XLK', 'Technology'], ['XLF', 'Financials'], ['XLE', 'Energy'], ['XLV', 'Health Care'], ['XLY', 'Consumer Discretionary'], ['XLP', 'Consumer Staples'], ['XLI', 'Industrials'], ['XLB', 'Materials'], ['XLU', 'Utilities'], ['XLRE', 'Real Estate'], ['XLC', 'Communication Services'], ['BITQ', 'Crypto']]; // Crypto = Bitwise Crypto Industry Innovators ETF (crypto miners, exchanges, treasuries): a US-listed fund that trades the same hours as the SPDR sectors
   function leadLagSectors() {
     const syms = SECTOR_FULL.map((x) => x[0]);
     if (syms.some((s) => !S.q[s]) && !S.secAsk) {
@@ -393,11 +408,11 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       S.idxAsk = 1;
       snap(IDX_LEVELS.map((x) => x[0])).catch(() => {}).finally(() => { S.idxAsk = 0; render(); });
     }
-    const ix = '<div class="hixg">' + IDX_LEVELS.map(([s, n]) => {
+    const ix = '<div class="hixg">' + IDX_LEVELS.map(([s, n, usd, tag]) => { // level on top, then $ (points) and % side by side
       const q = S.q[s];
-      const price = q ? idxPx(q.price) : '—';
-      const p = q && isFinite(q.pct) ? '<i class="' + cls(q.pct) + '">' + pct(q.pct) + '</i>' : '';
-      return '<div class="hixc"><span class="hixn">' + n + '</span><span class="q"><b>' + price + '</b>' + p + '</span></div>';
+      const price = q ? idxPx(q.price, usd) : '—';
+      const p = q && isFinite(q.pct) ? '<span class="hixd ' + cls(q.pct) + '"><i>' + idxChg(q.chg, usd) + '</i><i>' + pct(q.pct) + '</i></span>' : '';
+      return '<div class="hixc"><span class="hixn">' + idxName(n, tag) + '</span><span class="q"><b>' + price + '</b>' + p + '</span></div>';
     }).join('') + '</div>';
     return card('<div class="pzh"><span class="pzk">' + ic('activity', 16, 2.2) + 'Market pulse</span></div>' + pulseLeadLag() + ix, 'padding:14px 16px;margin-top:14px', 'pulse2 hpulse-c');
   }
@@ -422,11 +437,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     const L = topNews(S.news, DESK.matches ? 8 : 4);
     if (!L.length) return rowsBox('<div class="err">Headlines aren’t loading right now. Try again in a minute.</div>');
     return rowsBox(L.map((n) => {
-      const sym = window.NTH && NTH.tk ? NTH.tk(n) : null; const light = sym && LG && sym in LG && LG[sym] !== 1;
-      const phs = '/api/nimg?v=3&u=' + encodeURIComponent(n.url) + (n.image ? '&i=' + encodeURIComponent(n.image) : '') + '&s=' + encodeURIComponent(sym || '') + '&t=' + encodeURIComponent(dec(n.title).slice(0, 140)); const phOk = IMGOK.has(phs);
-      const ph = IMGBAD.has(phs) ? '' : '<img class="ph' + (phOk ? ' on' : '') + '" alt="" loading="lazy" src="' + phs + '" onload="v2ImgOk(this);this.classList.add(\'on\');this.parentNode.classList.remove(\'wt\')" onerror="v2ImgBad(this)">'; /* redraws keep a loaded photo showing (a refresh used to hide it again) */
-      const fb = sym ? tl(sym, 44) : '<span style="color:#5B9BEA">' + ic('news', 26) + '</span>'; // no article photo: the company logo, or a news icon
-      return '<a class="row nw" href="' + E(n.url) + '" target="_blank" rel="noopener" style="min-height:84px!important"><span class="thumb' + (light && !phOk ? ' wt' : '') + '">' + fb + ph + '</span><span class="nm"><b>' + (isBreaking(n) ? '<span class="brk">Breaking</span>' : '') + E(dec(n.title)) + '</b><small style="margin-top:3px">' + E(dec(n.source || n.source_name || '')) + (ago(n.publish_time) ? ' · ' + ago(n.publish_time) : '') + '</small></span></a>';
+      const sym = window.NTH && NTH.tk ? NTH.tk(n) : null; const im = newsImg(n, sym);
+      return '<a class="row nw' + (im ? '' : ' noimg') + '" href="' + E(n.url) + '" target="_blank" rel="noopener" style="min-height:84px!important">' + im + '<span class="nm"><b>' + (isBreaking(n) ? '<span class="brk">Breaking</span>' : '') + E(dec(n.title)) + '</b><small style="margin-top:3px">' + E(dec(n.source || n.source_name || '')) + (ago(n.publish_time) ? ' · ' + ago(n.publish_time) : '') + '</small></span></a>';
     }).join(''));
   }
   function watchRows() {
@@ -503,7 +515,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       body = !S.funds ? rowsBox(skel(3), 'padding:14px') : !L.length ? rowsBox('<div class="err">No recent 13D/13G filings.</div>') : rowsBox(L.map((d) => '<a class="row" href="#stock/' + encodeURIComponent(d.ticker) + '" style="min-height:62px">' + tl(d.ticker, 34) + '<span class="nm"><b>' + E(d.ticker) + ' <small style="display:inline;color:var(--fg2)">· ' + E(d.form) + (d.stake_pct != null ? ' · ' + d.stake_pct + '% stake' : '') + '</small></b><small>' + E(d.filer) + ' · ' + E(shortD(d.filed)) + '</small></span></a>').join('')); }
     else { loadFil(k); const c = S.filN[k]; const L = c && c.L ? c.L.slice(0, 5) : null;
       body = !c || (!L && !c.err) ? rowsBox(skel(3), 'padding:14px') : c.err ? rowsBox('<div class="err">These headlines aren’t loading right now.</div>') : !L.length ? rowsBox('<div class="err">Nothing new in the last few days.</div>') :
-        rowsBox(L.filter((n) => /^https:\/\//i.test(n.url || '')).map((n) => { const sym = (n.related_symbols || []).find((x) => /^[A-Z]{1,5}$/.test(x)); return '<a class="row nw" href="' + E(n.url) + '" target="_blank" rel="noopener" style="min-height:66px">' + (sym ? tl(sym, 34) : '<span style="color:#5B9BEA;flex:none">' + ic('news', 22) + '</span>') + '<span class="nm"><b style="font-size:14.5px;line-height:19px">' + E(dec(n.title)) + '</b><small>' + E(n.source || '') + (ago(n.publish_time) ? ' · ' + ago(n.publish_time) : '') + '</small></span></a>'; }).join('')); }
+        rowsBox(L.filter((n) => /^https:\/\//i.test(n.url || '')).map((n) => { const sym = (n.related_symbols || []).find((x) => /^[A-Z]{1,5}$/.test(x)); const im = newsImg(n, sym, 'sm'); return '<a class="row nw' + (im ? '' : ' noimg') + '" href="' + E(n.url) + '" target="_blank" rel="noopener" style="min-height:66px">' + im + '<span class="nm"><b style="font-size:14.5px;line-height:19px">' + E(dec(n.title)) + '</b><small>' + E(n.source || '') + (ago(n.publish_time) ? ' · ' + ago(n.publish_time) : '') + '</small></span></a>'; }).join('')); }
     return lab('news', 'What’s happening', k === 'news' ? 'All news' : k === 'f13' || k === 'stake' ? 'All funds' : '', k === 'news' ? '#news' : '#funds') + '<div style="margin:2px 0 10px">' + chipsHTML(tabs, k, 'data-fil') + '</div>' + body;
   }
   // desktop (1024px+): Today in two columns, left = your money and the news, right = the market right now and your watchlist
@@ -1021,7 +1033,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       S.idxAsk = 1;
       snap(IDX_LEVELS.map((x) => x[0])).catch(() => {}).finally(() => { S.idxAsk = 0; render(); });
     }
-    const ix = '<div class="ixg">' + IDX_LEVELS.map(([s, n]) => { const x = S.q[s]; return '<div class="card ixc"><span class="mini">' + E(n) + '</span><b>' + (x ? idxPx(x.price) : '—') + '</b><small class="' + (x ? cls(x.pct) : '') + '">' + (x && isFinite(x.pct) ? pct(x.pct) : '&nbsp;') + '</small></div>'; }).join('') + '</div>';
+    const ix = '<div class="ixg">' + IDX_LEVELS.map(([s, n, usd, tag]) => { const x = S.q[s]; return '<div class="card ixc"><span class="mini">' + idxName(n, tag) + '</span><b>' + (x ? idxPx(x.price, usd) : '—') + '</b><small class="' + (x ? cls(x.pct) : '') + '">' + (x && isFinite(x.pct) ? idxChg(x.chg, usd) + '<i>' + pct(x.pct) + '</i>' : '&nbsp;') + '</small></div>'; }).join('') + '</div>';
     const T2 = themeRows();
     const heat = !T2 ? rowsBox(skel(4), 'padding:14px') : !T2.length ? rowsBox('<div class="err">Theme prices aren’t loading right now.</div>') :
       '<div class="heat">' + T2.map((t, _i, A) => '<a class="ht' + (t.pct >= 0 ? ' hp' : ' hn') + ' ' + moveFill(t.pct, A.map((z) => z.pct)).cls + '" href="#markets/theme/' + E(t.id) + '" style="' + heatStyle(t.pct, A.map((z) => z.pct)) + '"><span>' + E(t.name) + '</span><b class="' + (Math.abs(t.pct) < 0.005 ? '' : t.pct > 0 ? 'up' : 'dn') + '">' + (Math.abs(t.pct) < 0.005 ? '' : t.pct > 0 ? '+' : '−') + Math.abs(t.pct).toFixed(2) + '%</b></a>').join('') + '</div>';
@@ -1508,7 +1520,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   }, 30000);
 
   S.qx = S.qx || {};
-  window.V2 = { extHTML, AT, I, S, call, fastSnap, E, dec, ic, tl, qv, px, pct, cls, head, backbar, topbar, lab, act, rowsBox, snapNote, chipsHTML, skel, nameOf, getJ, render: () => render(), route, toast,
+  window.V2 = { newsImg, extHTML, AT, I, S, call, fastSnap, E, dec, ic, tl, qv, px, pct, cls, head, backbar, topbar, lab, act, rowsBox, snapNote, chipsHTML, skel, nameOf, getJ, render: () => render(), route, toast,
     setupOf, loadSetup, SETUP, sp, sparks, whyText, nfmt, pxs, sgn, agoL, ago2, shortD, wl, HOLD_SYMS, IDX, ACCTS, curSess, BL, DEMO, anRow, loadAnalyst, snapAn, ratW, stockScreen, canLoad,
     askFmt, askCited, askSplit, askDemo, askPlay, askSend, askStop, askPaintLive, askBodyHTML, askMeasureHeight, askCollectSources, askSumEl, card, setupChip, loadFunds, loadMoney };
   if (window.V2X && V2X.init) V2X.init();

@@ -63,9 +63,9 @@ function fakeH(now, over) {
   return Object.assign(H, over || {});
 }
 
-test('the 11 GICS sector ETFs use the short clear names', () => {
-  assert.deepEqual(SECTOR_ETFS.map((s) => s.name), ['Tech', 'Financials', 'Energy', 'Health', 'Consumer', 'Staples', 'Industrials', 'Materials', 'Utilities', 'Realty', 'Comms']);
-  assert.deepEqual(SECTOR_ETFS.map((s) => s.etf), ['XLK', 'XLF', 'XLE', 'XLV', 'XLY', 'XLP', 'XLI', 'XLB', 'XLU', 'XLRE', 'XLC']);
+test('the 11 GICS sector ETFs plus Crypto (BITQ) use the short clear names', () => {
+  assert.deepEqual(SECTOR_ETFS.map((s) => s.name), ['Tech', 'Financials', 'Energy', 'Health', 'Consumer', 'Staples', 'Industrials', 'Materials', 'Utilities', 'Realty', 'Comms', 'Crypto']);
+  assert.deepEqual(SECTOR_ETFS.map((s) => s.etf), ['XLK', 'XLF', 'XLE', 'XLV', 'XLY', 'XLP', 'XLI', 'XLB', 'XLU', 'XLRE', 'XLC', 'BITQ']);
 });
 
 test('change colors meet WCAG AA (4.5:1) on each theme’s surface', () => {
@@ -84,29 +84,13 @@ test('change colors meet WCAG AA (4.5:1) on each theme’s surface', () => {
   assert.equal(THEMES.light.logoInk, false);
   assert.ok(contrast(THEMES.light.headerText, THEMES.light.header) >= 4.5, 'light type on dark header');
   assert.ok(contrast(THEMES.light.headerMuted, THEMES.light.header) >= 4.5, 'muted type on dark header');
-  assert.equal(THEMES.dark.kicker, '#C5CDEB');
-  assert.equal(THEMES.dark.title, '#F2EFE6');
-  assert.equal(THEMES.p72.kicker, '#C5CDEB');
-  assert.equal(THEMES.p72.title, '#F2EFE6');
-  assert.equal(THEMES.p72.serif, false);
-  assert.equal(THEMES.p72.geist, true);
-  assert.equal(THEMES.dark.geist, true);
   assert.ok(contrast(THEMES.light.ink, THEMES.light.page) >= 4.5);
   assert.ok(contrast(THEMES.light.muted, THEMES.light.page) >= 4.5);
-  assert.ok(contrast(THEMES.dark.up, THEMES.dark.card) >= 4.5);
-  assert.ok(contrast(THEMES.dark.dn, THEMES.dark.card) >= 4.5);
-  assert.ok(contrast(THEMES.dark.ink, THEMES.dark.card) >= 4.5);
-  assert.ok(contrast(THEMES.p72.ink, THEMES.p72.header) >= 4.5, 'p72 cream on charcoal');
-  assert.ok(contrast(THEMES.p72.kicker, THEMES.p72.header) >= 4.5, 'p72 periwinkle');
-  assert.ok(contrast(THEMES.p72.topInk, THEMES.p72.topBar) >= 4.5, 'p72 ink on stone');
-  assert.ok(contrast(THEMES.p72.up, THEMES.p72.card) >= 4.5);
-  assert.ok(contrast(THEMES.p72.dn, THEMES.p72.card) >= 4.5);
   // decorative bars still the swoop colors, and they remain readable as fills on dark and charcoal
   assert.equal(BAR_UP, '#5CB0FF'); assert.equal(BAR_DN, '#EB8C86');
-  assert.ok(contrast(BAR_UP, THEMES.p72.header) >= 3);
-  assert.ok(contrast(BAR_DN, THEMES.p72.header) >= 3);
   assert.equal(changeColor(1, 'light'), THEMES.light.up);
-  assert.equal(changeColor(-1, 'p72'), THEMES.p72.dn);
+  assert.equal(changeColor(-1, 'p72'), THEMES.light.dn, 'old theme names fall back to light');
+  assert.deepEqual(Object.keys(THEMES), ['light']);
 });
 
 test('Market pulse option C: 3 leading + 3 lagging, horizontal fade bars, 2px tips, swoop-blue up / coral down like the app, 13px labels', () => {
@@ -177,41 +161,21 @@ test('index tiles are a 2x2 grid with label, big price, triangle percent and dol
   assert.doesNotMatch(levels, /\$19\.92/);
 });
 
-test('light, dark and P72 each render; P72 has the stone top bar, cream type and Geist/Inter headings', async () => {
-  for (const theme of ['light', 'dark', 'p72']) {
+test('every email is light: dark/P72 requests and saved preferences still render the light theme, no auto-darkening', async () => {
+  for (const theme of ['light', 'dark', 'p72', undefined]) {
     const H = fakeH(at('2026-11-18T21:20:00Z')); H.theme = theme;
     const m = await M.buildMail('close', {}, H);
-    assert.equal(m.theme, theme);
+    assert.equal(m.theme, 'light');
     assert.match(m.html, /Market pulse/);
     assert.match(m.html, /Tech/); assert.match(m.html, /bgcolor="#5CB0FF"|bgcolor="#EB8C86"/); assert.match(m.html, />Leading</);
-    assert.match(m.html, /class="kicker"/);
     assert.match(m.html, /S&amp;P 500/);
-    assert.match(m.html, /Open jumptrade\./);
-    if (theme === 'light') {
-      assert.match(m.html, /class="hd" style="background-color:#141416/);
-      assert.match(m.html, /email-logo-rings1120l\.png/);
-      assert.match(m.html, /color-scheme" content="light only"/);
-      assert.doesNotMatch(m.html, /email-logo-rings-ink/);
-    }
-    if (theme === 'dark') {
-      assert.match(m.html, /background-color:#141416/);
-      assert.match(m.html, /color-scheme" content="dark"/);
-      assert.match(m.html, /#C5CDEB/);
-      assert.match(m.html, /#F2EFE6/);
-      assert.match(m.html, /Geist/);
-      assert.doesNotMatch(m.html, /Source Serif/);
-    }
-    if (theme === 'p72') {
-      assert.match(m.html, /background-color:#1C1B1E/);
-      assert.match(m.html, /background-color:#9C9C9A/);
-      assert.match(m.html, /email-logo-rings-ink\.png/);
-      assert.match(m.html, /#C5CDEB/);
-      assert.match(m.html, /#F2EFE6/);
-      assert.match(m.html, /Geist/);
-      assert.match(m.html, /Inter/);
-      assert.doesNotMatch(m.html, /Source Serif/);
-      assert.doesNotMatch(m.html, /Georgia/);
-    }
+    assert.match(m.html, /class="hd" style="background-color:#141416/);
+    assert.match(m.html, /body id="body" style="background-color:#FFFFFF/);
+    assert.match(m.html, /name="color-scheme" content="light only"/);
+    assert.match(m.html, /name="supported-color-schemes" content="light only"/);
+    assert.match(m.html, /:root\{color-scheme:light only;supported-color-schemes:light only\}/);
+    assert.doesNotMatch(m.html, /prefers-color-scheme/);
+    assert.doesNotMatch(m.html, /#1C1B1E|#9C9C9A|email-logo-rings-ink/);
   }
 });
 

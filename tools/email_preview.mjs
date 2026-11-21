@@ -10,7 +10,7 @@ import path from 'node:path';
 
 const WT = path.resolve(process.argv[2] || '/workspace/jt_emails_src');
 const OUT = path.resolve(process.argv[3] || '/workspace/jt_emails_1120');
-const THEMES = ['light', 'dark', 'p72'];
+const THEMES = ['light']; // email is always light (Jason, Nov 20 2026)
 const TYPES = ['morning', 'morning:0', 'close', 'ah', 'week'];
 
 const puppeteer = createRequire('/home/box/.local/lib/node_modules/lighthouse/node_modules/puppeteer-core/package.json')('puppeteer-core');
@@ -23,7 +23,7 @@ fs.mkdirSync(path.join(OUT, 'shots'), { recursive: true });
 const of0 = globalThis.fetch;
 globalThis.fetch = (u, i) => {
   const url = String(u && u.url || u);
-  if (/yahoo\.com/.test(url) && i && i.headers) {
+  if (/(query[12]|yfapi)\.finance\.yahoo\.com/.test(url) && i && i.headers) { // the data API only; article pages keep the worker's own user-agent
     i = Object.assign({}, i, { headers: Object.assign({}, i.headers, { 'user-agent': 'Mozilla/5.0' }) });
   }
   return of0(u, i);

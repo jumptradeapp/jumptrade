@@ -89,10 +89,10 @@
   };
 
   // ---------- per-sector movers (#sector/XLK) ----------
-  const SECF = { XLK: 'Technology', XLF: 'Financials', XLE: 'Energy', XLV: 'Health Care', XLY: 'Consumer Discretionary', XLP: 'Consumer Staples', XLI: 'Industrials', XLB: 'Materials', XLU: 'Utilities', XLRE: 'Real Estate', XLC: 'Communication Services' };
+  const SECF = { XLK: 'Technology', XLF: 'Financials', XLE: 'Energy', XLV: 'Health Care', XLY: 'Consumer Discretionary', XLP: 'Consumer Staples', XLI: 'Industrials', XLB: 'Materials', XLU: 'Utilities', XLRE: 'Real Estate', XLC: 'Communication Services', BITQ: 'Crypto' };
   A.secSort = LS('jt.secsort', 'up');
   function sectorScreen(id) {
-    const etf = String(id || 'XLK').toUpperCase(); const j = X.file('/v2/sectors.json?v=2'); const sec = j && !j.err && j.sectors ? j.sectors[etf] : null; const S = V().S;
+    const etf = String(id || 'XLK').toUpperCase(); const j = X.file('/v2/sectors.json?v=3'); const sec = j && !j.err && j.sectors ? j.sectors[etf] : null; const S = V().S;
     const name = SECF[etf] || (sec && sec.name) || etf;
     const L = sec ? sec.top : []; X.quotes([etf].concat(L.map((x) => x.s)));
     const qe = S.q[etf];
@@ -100,11 +100,11 @@
     rows.sort((a, b) => (A.secSort === 'dn' ? a.q.pct - b.q.pct : b.q.pct - a.q.pct));
     const nm = (r) => (r.q && r.q.name) || V().nameOf(r.s) || r.n;
     const chips = V().chipsHTML([['up', 'Biggest gainers'], ['dn', 'Biggest losers']], A.secSort, 'data-secsort');
-    const etfRow = '<a class="row" href="#stock/' + etf + '">' + V().tl(etf, 38) + '<span class="nm"><b>' + etf + '</b><small>' + E(name) + ' Select Sector SPDR</small></span>' + (qe ? V().qv(qe.price, qe.chg, qe.pct) : V().qv(null)) + '</a>';
+    const etfRow = '<a class="row" href="#stock/' + etf + '">' + V().tl(etf, 38) + '<span class="nm"><b>' + etf + '</b><small>' + E((sec && sec.fund) || (name + ' Select Sector SPDR')) + '</small></span>' + (qe ? V().qv(qe.price, qe.chg, qe.pct) : V().qv(null)) + '</a>';
     const body = !j ? V().rowsBox(V().skel(6), 'padding:14px') : !sec ? V().rowsBox('<div class="err">This sector’s holdings list didn’t load.</div>') :
       V().rowsBox(etfRow, 'margin-top:12px') + chips +
       (rows.length ? V().rowsBox(rows.map((r) => '<a class="row" href="#stock/' + encodeURIComponent(r.s) + '">' + V().tl(r.s, 38) + '<span class="nm"><b>' + E(r.s) + '</b><small>' + E(nm(r)) + '</small></span>' + V().qv(r.q.price, r.q.chg, r.q.pct) + '</a>').join(''), 'margin-top:10px') : V().rowsBox(V().skel(8), 'padding:14px;margin-top:10px')) +
-      '<p class="note">The ' + L.length + ' largest of ' + sec.n + ' holdings in the ' + E(name) + ' Select Sector SPDR (' + etf + '), ' + E((j.asOf || []).join(', ').replace(/^As of /, 'as of ')) + '. Source: State Street. Prices are live.</p>';
+      (sec.fund ? '<p class="note">The ' + L.length + ' US-listed names among ' + sec.n + ' holdings in the ' + E(sec.fund) + ' (' + etf + '), ' + E(String(sec.asOf || '').replace(/^As of /, 'as of ')) + '. Source: ' + E(sec.source || 'the fund') + '. Prices are live.</p>' : '<p class="note">The ' + L.length + ' largest of ' + sec.n + ' holdings in the ' + E(name) + ' Select Sector SPDR (' + etf + '), ' + E((j.asOf || []).join(', ').replace(/^As of /, 'as of ')) + '. Source: State Street. Prices are live.</p>');
     return '<div class="wrap">' + V().backbar(E(name), 'javascript:history.back()') + V().head(name + ' movers', 'Today’s moves in the biggest ' + etf + ' holdings') + body + '</div>';
   }
   D.addEventListener('click', (e) => { const t = e.target.closest && e.target.closest('[data-secsort]'); if (!t) return; e.preventDefault(); A.secSort = t.dataset.secsort; try { localStorage.setItem('jt.secsort', A.secSort); } catch (x) {} V().render(); });
@@ -112,7 +112,7 @@
   X.route = function (h) { const m = /^sector\/([A-Za-z]{2,5})$/.exec(h || ''); if (m) return { v: 'xsector', id: m[1].toUpperCase() }; return r0(h); };
   X.views = function (r) { const o = v0(r); o.xsector = () => sectorScreen(r.id); return o; };
   X.nav.xsector = 2;
-  X.syms = function (r) { if (r && r.v === 'xsector') { const j = X.file('/v2/sectors.json?v=2'); const sec = j && j.sectors ? j.sectors[r.id] : null; return [r.id].concat(sec ? sec.top.map((x) => x.s) : []); } return s0(r); };
+  X.syms = function (r) { if (r && r.v === 'xsector') { const j = X.file('/v2/sectors.json?v=3'); const sec = j && j.sectors ? j.sectors[r.id] : null; return [r.id].concat(sec ? sec.top.map((x) => x.s) : []); } return s0(r); };
 
   // ---------- Form 144 planned sales ----------
   const dS = (d) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(d || '')) return d || ''; const t = new Date(d + 'T12:00:00Z'); return t.toLocaleDateString('en-US', Object.assign({ month: 'short', day: 'numeric', timeZone: 'UTC' }, t.getUTCFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {})); };

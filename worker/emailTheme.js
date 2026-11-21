@@ -1,11 +1,12 @@
-// Email design system: three comparable themes (light default, dark, P72).
-// Light is the send default (max legibility). Colors for change/% pass WCAG AA
+// Email design system: one light theme (white body, #141416 header) for every email. Colors for change/% pass WCAG AA
 // on their surfaces at 14px body text. Decorative bar fills stay #5CB0FF / #EB8C86.
 
 import { E, ND } from './mailsFmt.js';
 import { sectorBlock } from './sectorChart.js';
 
-export const THEME_IDS = ['light', 'dark', 'p72'];
+// Jason, Nov 20 2026: email is always light. One theme for every recipient; no dark variants,
+// and color-scheme "light only" so Apple Mail / Outlook don't auto-darken it.
+export const THEME_IDS = ['light'];
 
 const aa = {
   // #1E8E4E on white is 4.17 (fails AA at 14px). #187A44 is 5.38.
@@ -46,71 +47,11 @@ export const THEMES = {
     serif: false,
     topBar: null,
   },
-  dark: {
-    id: 'dark',
-    scheme: 'dark',
-    page: '#0E0E10',
-    sheet: '#141416',
-    card: '#1C1C20',
-    header: '#141416',
-    headerText: '#F2EFE6',
-    headerMuted: '#A3A3A0',
-    ink: '#F2F2F0',
-    title: '#F2EFE6',
-    muted: '#C5D0DC',
-    hair: '#2A2A2E',
-    tile: '#1C1C20',
-    tileBorder: '#2A2A2E',
-    up: aa.upDark,
-    dn: aa.dnDark,
-    barUp: aa.barUp,
-    barDn: aa.barDn,
-    kicker: '#C5CDEB',
-    kickerBar: '#C5CDEB',
-    btn: '#5CB0FF',
-    btnText: '#03101F',
-    footer: '#141416',
-    logo: 'email-logo-rings1120l.png',
-    logoInk: false,
-    serif: false,
-    geist: true,
-    topBar: null,
-  },
-  p72: {
-    id: 'p72',
-    scheme: 'dark',
-    page: '#1C1B1E',
-    sheet: '#1C1B1E',
-    card: '#252428',
-    header: '#1C1B1E',
-    headerText: '#F2EFE6',
-    headerMuted: '#C4C1B6',
-    ink: '#F2EFE6',
-    title: '#F2EFE6',
-    muted: '#C4C1B6',
-    hair: '#3A393C',
-    tile: '#252428',
-    tileBorder: '#3A393C',
-    up: aa.upDark,
-    dn: aa.dnDark,
-    barUp: aa.barUp,
-    barDn: aa.barDn,
-    kicker: '#C5CDEB',
-    kickerBar: '#C5CDEB',
-    btn: '#F2EFE6',
-    btnText: '#1C1B1E',
-    footer: '#1C1B1E',
-    logo: 'email-logo-rings-ink.png',
-    logoInk: true,
-    serif: false,
-    geist: true,
-    topBar: '#9C9C9A',
-    topInk: '#1C1B1E',
-  },
 };
 
 export function themeOf(id) {
-  return THEMES[id] || THEMES.light;
+  void id; // every email is light, whatever theme a caller or saved preference names
+  return THEMES.light;
 }
 
 export function changeColor(pct, theme) {
@@ -128,7 +69,7 @@ export function cssFor(theme) {
   const titleColor = T.title || T.ink;
   return (
     'a[x-apple-data-detectors],u+#body a,#MessageViewBody a{color:inherit!important;text-decoration:none!important;font-size:inherit!important;font-weight:inherit!important;line-height:inherit!important}' +
-    '*{box-sizing:border-box}body{margin:0;background:' + T.page + ';font-family:' + SANS + ';color:' + T.ink + '}' +
+    ':root{color-scheme:light only;supported-color-schemes:light only}*{box-sizing:border-box}body{margin:0;background:' + T.page + ';font-family:' + SANS + ';color:' + T.ink + '}' +
     '.ph{max-width:520px;margin:0 auto;background:' + T.sheet + '}' +
     '.topbar{background:' + (T.topBar || T.header) + ';padding:14px 20px 12px}' +
     '.hd{background:' + T.header + ';padding:' + (T.topBar ? '8px 20px 22px' : '20px 20px 18px') + ';color:' + T.headerText + '}' +

@@ -2042,3 +2042,25 @@ html[data-design="d7c2"] body .sh{margin:16px 0 8px}
 html[data-design="d7c2"] body .sub{margin:8px 0 12px}
 html[data-design="d7c2"] body .chips,
 html[data-design="d7c2"] body .seg{margin:0 0 12px}
+
+/* Market pulse index tiles in EVERY theme (Nov 20 2026): the layout used to be scoped to D7C2, so the
+   light theme (B-Light / l1-l6) fell back to generic .q rules and broke the grid. Level on top; $ (or
+   points) and % side by side under it. Six tiles: S&P 500, Nasdaq 100, Dow, Russell, Bitcoin, Gold. */
+html body .hpulse-c .hixg{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px 14px;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08)}
+html body .hpulse-c .hixc{min-width:0;display:flex!important;flex-direction:column;align-items:flex-start;gap:2px;text-align:left!important}
+html body .hpulse-c .hixn{display:block;font-family:GeistMono,JBM,"IBM Plex Mono",ui-monospace,monospace!important;font-size:12px!important;line-height:16px;letter-spacing:.10em;text-transform:uppercase;color:#C9D0E8;white-space:nowrap}
+html body .hpulse-c .hixt{font-style:normal;letter-spacing:.04em;text-transform:none;font-size:12px;opacity:.85;margin-left:4px}
+html body .hpulse-c .hixc .q{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:1px;min-width:0;width:100%;text-align:left!important;float:none!important}
+html body .hpulse-c .hixc .q b{display:block;font-family:GeistSans,Inter,system-ui,sans-serif!important;font-size:16px!important;line-height:20px!important;font-weight:500!important;color:#F4F4F5;font-variant-numeric:tabular-nums;letter-spacing:0!important}
+html body .hpulse-c .hixd{display:flex;gap:8px;flex-wrap:wrap;min-width:0}
+html body .hpulse-c .hixd i{font-style:normal!important;font-family:GeistMono,ui-monospace,Menlo,monospace!important;font-size:12px!important;line-height:16px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+@media (min-width:1024px){html body .hpulse-c .hixg{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:14px 18px}html body .hpulse-c .hixc .q b{font-size:18px!important;line-height:22px!important}}
+.ixc .hixt{font-style:normal;font-size:12px;opacity:.85;margin-left:4px;text-transform:none}
+/* Light theme: dark ink on white, AA labels (the pulse names/headers were #F4F4F5 / #C9D0E8 on white). */
+html[data-x2t="light"] body .hpc-name{color:#12141A!important}
+html[data-x2t="light"] body .hpc-chd,html[data-x2t="light"] body .hpulse-c .hixn{color:#4A5263!important}
+html[data-x2t="light"] body .hpulse-c .hixg{border-top-color:#E2E4E8}
+html[data-x2t="light"] body .hpulse-c .hixc .q b{color:#12141A!important}
+html[data-x2t="light"] body .hpc-sk div{background:rgba(18,20,26,.06)}
+/* Light theme Markets heat tiles: theme names were white on pale tints (unreadable). Dark ink, AA. */
+html[data-x2t="light"] body .ht span{color:#12141A!important;text-shadow:none!important}

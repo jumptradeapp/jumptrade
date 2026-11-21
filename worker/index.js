@@ -689,6 +689,47 @@ let CUR_ENV = null;
 const IMG_OK = /^\s*image\/(jpeg|jpg|png|webp|gif|avif)\s*(;|$)/i;
 const IMG_SAFE = { 'content-security-policy': "default-src 'none'; sandbox", 'x-content-type-options': 'nosniff', 'content-disposition': 'inline; filename="img"' };
 function safeHost(u) { try { const h = new URL(u).hostname.toLowerCase(); return !(h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h.endsWith('.internal') || /^[\d.]+$/.test(h) || h.indexOf(':') >= 0 || h.indexOf('.') < 0); } catch (e) { return false; } }
+// Image size from the first bytes of a JPEG / PNG / GIF / WebP (for email <img width height>; no decoding).
+export function imgDims(b) {
+  const u = b instanceof Uint8Array ? b : new Uint8Array(b || []); const n = u.length; const be16 = (i) => (u[i] << 8) | u[i + 1]; const le16 = (i) => u[i] | (u[i + 1] << 8); const le24 = (i) => u[i] | (u[i + 1] << 8) | (u[i + 2] << 16);
+  if (n > 24 && u[0] === 0x89 && u[1] === 0x50) return { w: (u[16] << 24 | u[17] << 16 | u[18] << 8 | u[19]) >>> 0, h: (u[20] << 24 | u[21] << 16 | u[22] << 8 | u[23]) >>> 0 };
+  if (n > 10 && u[0] === 0x47 && u[1] === 0x49) return { w: le16(6), h: le16(8) };
+  if (n > 30 && u[0] === 0x52 && u[8] === 0x57 && u[9] === 0x45) { const f = String.fromCharCode(u[12], u[13], u[14], u[15]);
+    if (f === 'VP8X') return { w: le24(24) + 1, h: le24(27) + 1 }; if (f === 'VP8 ') return { w: le16(26) & 0x3fff, h: le16(28) & 0x3fff }; if (f === 'VP8L') { const x = u[21] | (u[22] << 8) | (u[23] << 16) | (u[24] << 24); return { w: (x & 0x3fff) + 1, h: ((x >> 14) & 0x3fff) + 1 }; } return null; }
+  if (n > 4 && u[0] === 0xFF && u[1] === 0xD8) { let i = 2; while (i + 9 < n) { if (u[i] !== 0xFF) { i++; continue; } const m = u[i + 1]; if (m === 0xD8 || m === 0x01 || (m >= 0xD0 && m <= 0xD7)) { i += 2; continue; } const len = be16(i + 2); if ((m >= 0xC0 && m <= 0xCF) && m !== 0xC4 && m !== 0xC8 && m !== 0xCC) return { h: be16(i + 5), w: be16(i + 7) }; i += 2 + len; } }
+  return null;
+}
+// The story's own photo URL: the page's og:image / twitter:image, else its first real <img>. Null when the page has none.
+async function ogImageOf(u) {
+  if (!/^https:\/\//.test(u || '') || !safeHost(u)) return null;
+  const pg = await fetch(u, { headers: { 'user-agent': NUA, accept: 'text/html' }, redirect: 'follow', cf: { cacheTtl: 3600 } });
+  const html = pg.ok ? (await pg.text()).slice(0, 300000) : '';
+  let im = (html.match(/<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)(?::src)?["'][^>]*content=["']([^"']+)["']/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["'](?:og:image|twitter:image)["']/i) || [])[1];
+  if (!im) { const imgs = [...html.matchAll(/<img[^>]+src=["']([^"']+\.(?:jpe?g|png|webp)[^"']*)["']/gi)].map((m) => m[1]).filter((x) => !/logo|icon|avatar|sprite|pixel|badge/i.test(x)); im = imgs[0]; }
+  if (!im) return null; try { im = new URL(im.replace(/&amp;/g, '&'), pg.url || u).href; } catch (e) { return null; }
+  return /^https:/i.test(im) && safeHost(im) ? im : null;
+}
+// For emails: a direct, absolute photo URL for a story with its pixel size, checked to be a real image. Feed thumbnail first,
+// then the article's og:image, then the same story's Yahoo photo. Null = no photo (the email shows a text-only row).
+export async function articleImage(n) {
+  if (!n) return null; const tries = [];
+  if (/^https:\/\//.test(n.image || '')) tries.push(() => n.image);
+  if (/^https:\/\//.test(n.url || '')) tries.push(() => ogImageOf(n.url).catch(() => null));
+  if (n.title && n.sym) tries.push(() => yThumb(n.title, n.sym).catch(() => null));
+  for (const t of tries) {
+    const src = await t(); if (!src || !/^https:\/\//.test(src) || !safeHost(src)) continue;
+    try {
+      const r = await fetch(src, { headers: { 'user-agent': NUA, range: 'bytes=0-65535' }, cf: { cacheTtl: 86400 } }); const ct = r.headers.get('content-type') || '';
+      if (!(r.ok || r.status === 206) || !IMG_OK.test(ct) || /svg/i.test(ct)) { try { r.body && r.body.cancel(); } catch (e) {} continue; }
+      const total = +((r.headers.get('content-range') || '').split('/')[1] || (r.status === 200 ? r.headers.get('content-length') : 0) || 0); if (total > 1500000) { try { r.body.cancel(); } catch (e) {} continue; } // keep the email light: skip photos over 1.5 MB
+      const rd = r.body.getReader(); const parts = []; let got = 0; while (got < 65536) { const x = await rd.read(); if (x.done) break; parts.push(x.value); got += x.value.length; } try { rd.cancel(); } catch (e) {}
+      const buf = new Uint8Array(got); let o = 0; parts.forEach((p) => { buf.set(p.subarray(0, Math.min(p.length, got - o)), o); o += p.length; });
+      const d = imgDims(buf); if (!d || d.w < 120 || d.h < 60 || d.w / d.h > 3 || d.w / d.h < 0.5) continue; // tiny icons, banners and odd strips aren't article photos
+      return { src, w: d.w, h: d.h };
+    } catch (e) {}
+  }
+  return null;
+}
 T.get_playbook = async () => {
   { const n = etNow(); const closeM = n.early ? 780 : 960; if (/Sat|Sun|Hol/.test(n.wd) || n.hm < 570 || n.hm >= closeM) { const last = CUR_ENV ? await vget(CUR_ENV, 'play_last').catch(() => null) : null; return last && last.data ? { updated: new Date(last.t).toISOString(), from: last.t, data: last.data } : { updated: new Date().toISOString(), data: [] }; } }
   const [run, flow, buzz] = await Promise.all([
@@ -930,6 +971,8 @@ async function wbToken(env, wb) {
 let WBOK = { t: 0, ok: false }, WBFAIL = 0, OVNNO = 0;
 async function wbCall(env, tool, input) {
   const wb = new Webull(env); if (!wb.ready || !WBMAP[tool]) return null;
+  if (tool === 'get_stock_snapshot' && input && input.symbols != null) { // Webull has no index levels (^GSPC), futures (GC=F) or crypto pairs (BTC-USD): those come from Yahoo, never a refused Webull call
+    const L = syms(input.symbols).filter((x) => !/[\^=]|-USD$/.test(x)); if (!L.length) return null; if (L.length !== syms(input.symbols).length) input = Object.assign({}, input, { symbols: L.join(',') }); }
   if (Date.now() - WBOK.t > 60000) { const st = await vget(env, 'tokstate').catch(() => null); WBOK = { t: Date.now(), ok: !!(st && st.status === 'NORMAL') }; }
   if (!WBOK.ok || Date.now() < WBFAIL) return null; // no approved session (or it just failed): go straight to the fallback, no wasted round trip
   const token = await wbToken(env, wb);
@@ -1048,7 +1091,8 @@ async function runTool(tool, input, ctx, env, fresh) {
   const skey = new Request('https://cache.jumptrade/stale/' + tool + '?' + encodeURIComponent(JSON.stringify(input || {})));
   const produce = async () => {
     const w = env && !/news/.test(tool) ? await wbCall(env, tool, input || {}).catch((e) => { WBLAST = { tool, error: String(e.message || e), t: Date.now() }; return null; }) : null;
-    const payload = w ? w.payload : await fn(input || {});
+    let payload = w ? w.payload : await fn(input || {});
+    if (w && tool === 'get_stock_snapshot' && Array.isArray(payload)) { const xs = syms((input || {}).symbols).filter((x) => /[\^=]|-USD$/.test(x)); if (xs.length) { const y = await fn({ symbols: xs }).catch(() => []); payload = payload.concat(Array.isArray(y) ? y : []); } } // index levels, gold futures and Bitcoin ride along from Yahoo
     const res = json(w || !WBMAP[tool] ? { payload } : { payload, src: 'backup' }, 200, { 'cache-control': 'public, max-age=' + (TTL[tool] || 30) }); // src: 'backup' = the free feed (no halt flags), so the app can say so
     if (qsKey && env && ctx) ctx.waitUntil(vput(env, qsKey, { t: Date.now(), p: payload }).catch(() => {}));
     try { await cache.put(key, res.clone()); if (SLOW) await cache.put(skey, json({ payload }, 200, { 'cache-control': 'public, max-age=86400', 'x-jt-t': String(Date.now()) })); } catch (e) {} // the cron has no cache; the Vault copy covers it
@@ -1352,6 +1396,7 @@ function mailH(env, ctx) {
   aiKey(env);
   return {
     etNow: () => etNow(), vget: (...a) => vget(...a), vput: (...a) => vput(...a), vlease: (...a) => vlease(...a),
+    articleImg: (n) => articleImage(n), // a news story's own photo (direct URL + size) for the emails
     wbCall: async (e, t, i) => { const p = await tool(t, i); return p == null ? null : { payload: p }; }, aiCall: (...a) => aiCall(...a), // the morning brief's own calls
     ai: env.ANTHROPIC_API_KEY ? (sys, user, max) => aiCall(env, sys, user, max) : null,
     snap: (list) => { const L = syms(list); const etf = L.filter((s) => /^(SPY|QQQ|DIA|IWM)$/.test(s) || s.charAt(0) === '^' || GROUPS.some((g) => g[2] === s) || SECTOR_TICKERS.indexOf(s) >= 0); const st = L.filter((s) => etf.indexOf(s) < 0);
@@ -1370,7 +1415,7 @@ function mailH(env, ctx) {
       let px, ch, pct, base;
       if (sess === 'ext') { px = +x.extend_hour_last_price; base = +x.price; if (!(px > 0) || !(base > 0)) return null; ch = x.extend_hour_change != null ? +x.extend_hour_change : px - base; pct = x.extend_hour_change_ratio != null ? +x.extend_hour_change_ratio * 100 : (ch / base) * 100; }
       else { px = +x.price; if (x.change_ratio == null) return null; const pc = +x.pre_close; ch = x.change != null ? +x.change : pc > 0 ? px - pc : null; pct = +x.change_ratio * 100; if (ch == null) return null; }
-      const names = { XLK: 'Tech', XLF: 'Financials', XLE: 'Energy', XLV: 'Health', XLY: 'Consumer', XLP: 'Staples', XLI: 'Industrials', XLB: 'Materials', XLU: 'Utilities', XLRE: 'Real Estate', XLC: 'Comms' };
+      const names = { XLK: 'Tech', XLF: 'Financials', XLE: 'Energy', XLV: 'Health', XLY: 'Consumer', XLP: 'Staples', XLI: 'Industrials', XLB: 'Materials', XLU: 'Utilities', XLRE: 'Real Estate', XLC: 'Comms', BITQ: 'Crypto' };
       return { name: names[etf] || etf, etf, pct, v: { px, ch, pct } }; }).filter(Boolean); },
     groups: GROUPS.map((g) => ({ name: g[1], etf: g[2], members: g[3].split(',') })),
     weekChg: (list) => weekChg(list), weekSrc: 'Yahoo Finance daily closes',
@@ -1897,7 +1942,7 @@ async function handleFetch(req, env, ctx) {
       const ck = new Request('https://cache.jumptrade/nimg3/' + encodeURIComponent(u) + '/' + encodeURIComponent((url.searchParams.get('s') || '').toUpperCase())); const hit = url.searchParams.get('j') ? null : await caches.default.match(ck); if (hit) return hit;
       const miss = () => { const m = new Response('', { status: 404, headers: { 'cache-control': 'public, max-age=1800' } }); ctx.waitUntil(caches.default.put(ck, m.clone())); return m; };
       const fi = url.searchParams.get('i') || '';
-      if (/^https:\/\//.test(fi) && safeHost(fi)) { try { const r0 = await fetch(fi, { headers: { 'user-agent': NUA }, cf: { cacheTtl: 86400 } }); const ct0 = r0.headers.get('content-type') || ''; if (r0.ok && IMG_OK.test(ct0)) { const b0 = await r0.arrayBuffer(); if (b0.byteLength > 2000 && b0.byteLength < 3000000) { const res0 = new Response(b0, { headers: Object.assign({ 'content-type': ct0.split(';')[0].trim().toLowerCase(), 'cache-control': 'public, max-age=86400' }, IMG_SAFE) }); ctx.waitUntil(caches.default.put(ck, res0.clone())); return res0; } } } catch (e) {} } // the feed already named the story's photo
+      if (/^https:\/\//.test(fi) && safeHost(fi)) { try { const r0 = await fetch(fi, { headers: { 'user-agent': NUA }, cf: { cacheTtl: 86400 } }); const ct0 = r0.headers.get('content-type') || ''; if (r0.ok && IMG_OK.test(ct0)) { const b0 = await r0.arrayBuffer(); if (b0.byteLength > 2000 && b0.byteLength < 3000000 && (imgDims(new Uint8Array(b0, 0, Math.min(65536, b0.byteLength))) || /avif/i.test(ct0))) { /* real image bytes only: some CDNs answer a bot check page labelled image/jpeg */ const res0 = new Response(b0, { headers: Object.assign({ 'content-type': ct0.split(';')[0].trim().toLowerCase(), 'cache-control': 'public, max-age=86400' }, IMG_SAFE) }); ctx.waitUntil(caches.default.put(ck, res0.clone())); return res0; } } } catch (e) {} } // the feed already named the story's photo
       try {
         const pg = await fetch(u, { headers: { 'user-agent': NUA, accept: 'text/html' }, redirect: 'follow', cf: { cacheTtl: 3600 } });
         const html = pg.ok ? (await pg.text()).slice(0, 300000) : '';
@@ -1907,7 +1952,7 @@ async function handleFetch(req, env, ctx) {
         if (!im) return miss(); im = new URL(im.replace(/&amp;/g, '&'), pg.url || u).href; if (!/^https:/i.test(im) || !safeHost(im)) return miss();
         if (url.searchParams.get('j')) return json({ im }); // check which photo a story gets
         const r = await fetch(im, { headers: { 'user-agent': NUA, referer: u }, cf: { cacheTtl: 86400 } }); const ct = r.headers.get('content-type') || '';
-        if (!r.ok || !IMG_OK.test(ct)) return miss(); const buf = await r.arrayBuffer(); if (buf.byteLength < 2000 || buf.byteLength > 3000000) return miss();
+        if (!r.ok || !IMG_OK.test(ct)) return miss(); const buf = await r.arrayBuffer(); if (buf.byteLength < 2000 || buf.byteLength > 3000000) return miss(); if (!imgDims(new Uint8Array(buf, 0, Math.min(65536, buf.byteLength))) && !/avif/i.test(ct)) return miss(); // a bot-check page labelled image/* is not a photo
         const res = new Response(buf, { headers: Object.assign({ 'content-type': ct.split(';')[0].trim().toLowerCase(), 'cache-control': 'public, max-age=86400' }, IMG_SAFE) }); ctx.waitUntil(caches.default.put(ck, res.clone())); return res;
       } catch (e) { return miss(); }
     }

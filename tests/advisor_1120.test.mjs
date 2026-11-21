@@ -7,11 +7,11 @@ const R = (f) => fs.readFileSync(W + f, 'utf8');
 
 test('advisor.js and advisor.css load after v2x and before v2, with cache pins and in the service worker shell', () => {
   const html = R('index.html');
-  assert.match(html, /\/v2\/v2x\.js\?v=51"><\/script><script src="\/v2\/advisor\.js\?v=1"><\/script>/);
-  assert.match(html, /\/v2\/v2\.js\?v=134/);
+  assert.match(html, /\/v2\/v2x\.js\?v=52"><\/script><script src="\/v2\/advisor\.js\?v=2"><\/script>/);
+  assert.match(html, /\/v2\/v2\.js\?v=135/);
   assert.match(html, /\/v2\/advisor\.css\?v=1/);
   const sw = R('sw.js');
-  assert.match(sw, /jt-shell-v40/);
+  assert.match(sw, /jt-shell-v41/);
   assert.match(sw, /'\/v2\/advisor\.js'/); assert.match(sw, /'\/v2\/advisor\.css'/);
   assert.match(R('v2/v2x.js'), /X\.bars = bars; X\.file = file;/);
 });
@@ -24,13 +24,15 @@ test('Market pulse rows open that sector’s movers, not the ETF page', () => {
   assert.match(a, /o\.xsector = \(\) => sectorScreen\(r\.id\)/);
 });
 
-test('sector holdings are real SPDR holdings with a source and date, 11 sectors', () => {
+test('sector holdings are real fund holdings with a source and date: 11 SPDR sectors + Crypto (BITQ)', () => {
   const j = JSON.parse(R('v2/sectors.json'));
   assert.match(j.source, /State Street/);
   assert.ok(j.asOf.length && /As of \d{2}-[A-Z][a-z]{2}-\d{4}/.test(j.asOf[0]));
   const ks = Object.keys(j.sectors).sort();
-  assert.deepEqual(ks, ['XLB', 'XLC', 'XLE', 'XLF', 'XLI', 'XLK', 'XLP', 'XLRE', 'XLU', 'XLV', 'XLY']);
-  for (const k of ks) { const s = j.sectors[k]; assert.ok(s.top.length >= 20, k); assert.ok(s.top.every((x) => /^[A-Z][A-Z0-9-]{0,6}$/.test(x.s) && x.n && x.w > 0), k); }
+  assert.deepEqual(ks, ['BITQ', 'XLB', 'XLC', 'XLE', 'XLF', 'XLI', 'XLK', 'XLP', 'XLRE', 'XLU', 'XLV', 'XLY']);
+  const bq = j.sectors.BITQ; assert.equal(bq.name, 'Crypto'); assert.equal(bq.source, 'Bitwise'); assert.match(bq.fund, /Bitwise Crypto Industry Innovators ETF/); assert.match(bq.asOf, /As of \d{2}-[A-Z][a-z]{2}-\d{4}/);
+  assert.ok(bq.top.some((x) => x.s === 'COIN') && bq.top.some((x) => x.s === 'MSTR'), 'real crypto names');
+  for (const k of ks) { const s = j.sectors[k]; assert.ok(s.top.length >= (k === 'BITQ' ? 15 : 20), k); assert.ok(s.top.every((x) => /^[A-Z][A-Z0-9-]{0,6}$/.test(x.s) && x.n && x.w > 0), k); }
   assert.equal(j.sectors.XLK.top[0].s, 'AAPL');
 });
 

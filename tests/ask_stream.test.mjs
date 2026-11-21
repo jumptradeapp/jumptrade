@@ -71,8 +71,8 @@ test('Ask Jump plays a reserved-height line-by-line stream with a glowing cursor
   assert.match(css, /\.ajcite\{/);
   assert.match(design, /html\[data-design\] \.ajcur\{background:var\(--acc/);
   const idx = R('index.html');
-  assert.match(idx, /v2\/v2\.js\?v=134/);
-  assert.match(idx, /v2\/design\.css\?v=22/);
-  assert.match(idx, /v2\/v2\.css\?v=105/);
-  assert.match(R('sw.js'), /jt-shell-v40/);
+  assert.match(idx, /v2\/v2\.js\?v=135/);
+  assert.match(idx, /v2\/design\.css\?v=23/);
+  assert.match(idx, /v2\/v2\.css\?v=106/);
+  assert.match(R('sw.js'), /jt-shell-v41/);
 });

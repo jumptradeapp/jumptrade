@@ -1,4 +1,4 @@
-// 11 GICS sector ETFs for the email Market pulse bars.
+// 11 GICS sector ETFs plus Crypto (BITQ) for the email Market pulse bars.
 import { E } from './mailsFmt.js';
 // The email pulse is option C (see leadLagHtml below), the same layout the app
 // uses: Leading / Lagging columns of horizontal fade bars. The older vertical
@@ -19,6 +19,7 @@ export const SECTOR_ETFS = [
   { etf: 'XLU', name: 'Utilities' },
   { etf: 'XLRE', name: 'Realty' },
   { etf: 'XLC', name: 'Comms' },
+  { etf: 'BITQ', name: 'Crypto' }, // Bitwise Crypto Industry Innovators ETF: same proxy as the app's Crypto sector
 ];
 
 export const SECTOR_TICKERS = SECTOR_ETFS.map((s) => s.etf);
