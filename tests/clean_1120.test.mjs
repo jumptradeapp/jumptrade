@@ -33,12 +33,12 @@ test('clean-1120 pins, nav clip, colors, pulse C, indexes, heat, Ask Jump and ta
   assert.match(v2, /Lagging/);
   assert.match(v2, /const h = 14, r = 2, y = 3;/);
   assert.doesNotMatch(v2, /pulseOptionsPage|pulseOptA2|pulseOptA3|pulseopt/);
-  assert.match(v2, /function pulse\(\) \{\s*if \(IDX_LEVELS/);
+  assert.match(v2, /function pulse\(\) \{\s*if \(IDX_FETCH/);
   assert.match(v2, /function dayCard\(/);
   assert.match(v2, /class="card cbody hdaycard"/);
   assert.match(design, /\.hdaycard/);
 
-  assert.match(v2, /const IDX_LEVELS = \[\['\^GSPC', 'S&P 500'\], \['\^NDX', 'Nasdaq 100'\], \['\^DJI', 'Dow'\], \['\^RUT', 'Russell'\], \['BTC-USD', 'Bitcoin', 1, '24\/7'\], \['GC=F', 'Gold', 1, 'Futures'\]\]/);
+  assert.match(v2, /const IDX_LEVELS = \[\['\^GSPC', 'S&P 500'\], \['\^NDX', 'Nasdaq 100'\], \['\^DJI', 'Dow'\], \['\^RUT', 'Russell'\]\]/);
   assert.match(v2, /function idxPx|const idxPx/);
   assert.match(v2, /IDX_LEVELS\.map/);
   assert.doesNotMatch(v2.slice(v2.indexOf('function marketsScreen')), /IDX\.map\(\(s\) => \{ const x = S\.q\[s\]; return '<a class="card ixc"/);

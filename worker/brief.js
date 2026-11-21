@@ -120,7 +120,7 @@ function render(d, w, withMine, theme) {
   const head = W.headline || (sp ? 'S&P ' + fmtPct(sp.pct, 1) + (nq ? ', Nasdaq ' + fmtPct(nq.pct, 1) : '') : '');
   const m = shell({ type: 'morning', theme: T.id, subject, pre: W.pre || '', dateLine: dateLineOf(now.day, now.hm), headline: head,
     cards: [
-      pulseBlock(d.major, tiles.vals, T, img, pulseKicker('morning', now), 'Market pulse', tiles.labels),
+      pulseBlock(d.major, tiles.vals, T, img, pulseKicker('morning', now), 'Market pulse', tiles.labels, tiles.extra),
       fb.length ? sectionBlock('TODAY', 'What matters', bullets(fb), T) : '',
       withMine ? sectionBlock('YOUR LIST', 'Your stocks', mine, T) : '',
       sectionBlock('PRE-MARKET', 'Early movers', mv, T),
@@ -130,7 +130,7 @@ function render(d, w, withMine, theme) {
       coming ? sectionBlock('COMING UP', 'Coming up', coming, T) : '',
     ],
     asOf: (pre ? 'Pre-market prices' : 'Prices') + ' as of ' + hmTxt(now.hm) + ' ET, ' + dateShortY(now.day) + '.', sources: 'Data: ' + (d.src || 'Webull') + (w ? '; written with AI from that data only.' : '; headlines from news feeds; earnings from the Nasdaq calendar.'), link: '#today',
-    text: [...fb.map((x) => '- ' + x.b + ' ' + x.t), '', (pre ? 'INDEXES (PRE-MARKET)' : (now.hm >= closeOf(now) ? 'INDEXES (AFTER HOURS)' : 'INDEXES')), ...tiles.labels.map((x) => x[0] + ' (' + x[1] + ') ' + (tiles.vals[x[0]] ? fmtPxOf(tiles.vals[x[0]]) + ' ' + fmtChgOf(tiles.vals[x[0]]) + ' ' + fmtPct(tiles.vals[x[0]].pct) : '—')),
+    text: [...fb.map((x) => '- ' + x.b + ' ' + x.t), '', (pre ? 'INDEXES (PRE-MARKET)' : (now.hm >= closeOf(now) ? 'INDEXES (AFTER HOURS)' : 'INDEXES')), ...tiles.labels.concat(tiles.extra || []).map((x) => x[0] + ' (' + x[1] + ') ' + (tiles.vals[x[0]] ? fmtPxOf(tiles.vals[x[0]]) + ' ' + fmtChgOf(tiles.vals[x[0]]) + ' ' + fmtPct(tiles.vals[x[0]].pct) : '—')),
       ...(withMine && d.mine.length ? ['', 'YOUR STOCKS', ...d.mine.slice(0, 5).map((r) => r.s + ' ' + (pv(r.q) ? fmtPx(pv(r.q).px) + ' ' + fmtChg(pv(r.q).ch) + ' ' + fmtPct(pv(r.q).pct) : '') + ' ' + (yours[r.s] || ''))] : []),
       '', 'PRE-MARKET MOVERS', ...mvl.map((x) => x.symbol + (x.name ? ' (' + nm(x.name) + ')' : '') + ' ' + (mvv(x) ? fmtPx(mvv(x).px) + ' ' + fmtChg(mvv(x).ch) + ' ' + fmtPct(mvv(x).pct) : '') + ' ' + (movers[x.symbol] || '')), '', ...(W.headlines || []).map((h) => '[' + h.tag + '] ' + h.title)] });
   return m;

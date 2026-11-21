@@ -114,7 +114,7 @@ export const INDEX_LEVELS = [['^GSPC', 'S&P 500'], ['^NDX', 'Nasdaq 100'], ['^DJ
 export const INDEX_ETFS = [['SPY', 'S&P 500 · SPY'], ['QQQ', 'Nasdaq 100 · QQQ'], ['DIA', 'Dow · DIA'], ['IWM', 'Russell 2000 · IWM']];
 // Bitcoin and Gold get their own tiles next to the indexes (Jason, Nov 20 2026). Real Yahoo quotes, dollar prices:
 // BTC-USD trades 24/7 (its day runs from 00:00 UTC); GC=F is the front-month COMEX gold future, $ per troy ounce.
-export const EXTRA_LEVELS = [['BTC-USD', 'Bitcoin · 24/7'], ['GC=F', 'Gold · futures']];
+export const EXTRA_LEVELS = [['BTC-USD', 'Bitcoin'], ['GC=F', 'Gold']];
 export const INDEX_SYMS = INDEX_LEVELS.map((x) => x[0]).concat(INDEX_ETFS.map((x) => x[0]), EXTRA_LEVELS.map((x) => x[0]));
 export const IDX = INDEX_ETFS;
 export function idxTiles(vals, theme, labels) { return indexTiles(vals, theme, labels); }
@@ -126,8 +126,8 @@ function asIndexVal(q, sess) {
 // Prefer official Yahoo index levels (^GSPC etc.). Fall back to the sector ETFs, labeled as funds, when a session has no index quote (typical pre/after hours).
 export function pickIndexTiles(quotes, sess) {
   const t = pickIndexTiles0(quotes, sess); const vals = Object.assign({}, t.vals), labels = t.labels.slice();
-  for (const [sym, name] of EXTRA_LEVELS) { const v = asIndexVal(quotes && quotes[sym]); if (v) { vals[sym] = Object.assign({}, v, { level: false }); labels.push([sym, name]); } }
-  return Object.assign({}, t, { vals, labels });
+  const extra = []; for (const [sym, name] of EXTRA_LEVELS) { const v = asIndexVal(quotes && quotes[sym]); if (v) { vals[sym] = Object.assign({}, v, { level: false }); extra.push([sym, name]); } }
+  return Object.assign({}, t, { vals, labels, extra }); // index tiles stay the live 2x2; Bitcoin/Gold render as plain rows under them
 }
 function pickIndexTiles0(quotes, sess) {
   const take = (pairs, kind, qSess) => {
@@ -267,7 +267,7 @@ export function renderClose(d, w, theme) {
   const built = d.now.hm >= cl ? 'market closed ' + hmTxt(cl) + ' ET' + (d.now.early ? ' (early close)' : '') : 'as of ' + hmTxt(d.now.hm) + ' ET, market still open';
   return Object.assign(shell({ type: 'close', theme: T.id, subject, pre: W.pre || P.map((p) => p.b).join(' '), dateLine: dateLineOf(d.now.day, d.now.hm), headline: head,
     cards: [
-      pulseBlock(major, tiles.vals, T, img, pulseKicker('close', d.now), 'Market pulse', tiles.labels),
+      pulseBlock(major, tiles.vals, T, img, pulseKicker('close', d.now), 'Market pulse', tiles.labels, tiles.extra),
       sectionBlock('TODAY', 'The day in brief', bullets(P), T),
       sectionBlock('SESSION', 'Top gainers', d.up.map(mrow).join(''), T),
       sectionBlock('SESSION', 'Top losers', d.dn.map(mrow).join(''), T),
@@ -275,7 +275,7 @@ export function renderClose(d, w, theme) {
       sectionBlock('WALL STREET', 'Analyst calls today', an, T),
     ],
     asOf: (d.now.hm >= cl ? 'Closing prices for ' : 'Prices as of ' + hmTxt(d.now.hm) + ' ET, ') + dateShortY(d.now.day) + '.', sources: 'Data: ' + (d.src || 'market data') + '; earnings from the Nasdaq calendar; analyst calls from Yahoo Finance; why lines link the news story found.', link: '#today',
-    text: [...P.map((p) => '- ' + p.b + ' ' + p.t), '', 'INDEXES', ...tiles.labels.map((x) => pline(x[0], x[1], tiles.vals[x[0]])), '', ...(major.length ? ['SECTORS', sectorAlt(major), ''] : []), 'TOP GAINERS', ...d.up.map((x) => pline(x.symbol, nameOf(x, d.names), qv(x)) + (whyText(x, d) ? ' — ' + whyText(x, d) : '')), '', 'TOP LOSERS', ...d.dn.map((x) => pline(x.symbol, nameOf(x, d.names), qv(x)) + (whyText(x, d) ? ' — ' + whyText(x, d) : '')),
+    text: [...P.map((p) => '- ' + p.b + ' ' + p.t), '', 'INDEXES', ...tiles.labels.concat(tiles.extra || []).map((x) => pline(x[0], x[1], tiles.vals[x[0]])), '', ...(major.length ? ['SECTORS', sectorAlt(major), ''] : []), 'TOP GAINERS', ...d.up.map((x) => pline(x.symbol, nameOf(x, d.names), qv(x)) + (whyText(x, d) ? ' — ' + whyText(x, d) : '')), '', 'TOP LOSERS', ...d.dn.map((x) => pline(x.symbol, nameOf(x, d.names), qv(x)) + (whyText(x, d) ? ' — ' + whyText(x, d) : '')),
       ...(d.reported.length ? ['', 'EARNINGS', ...d.reported.map((t) => pline(t.s, shortName(t.n), qv(d.eq[t.s])) + ' ' + (t.res || '') + ' ' + epsLine(t))] : []),
       ...(d.tonight.length ? ['', 'REPORTING TONIGHT', ...d.tonight.map((t) => t.s + ' (' + shortName(t.n) + ')')] : [])] }), { counts: { up: d.up.length, dn: d.dn.length, secs: major.length, er: d.reported.length + d.tonight.length, an: d.an.length }, theme: T.id });
 }
@@ -309,7 +309,7 @@ export function renderAH(d, w, theme) {
   const built = d.now.hm >= ae ? 'after-hours trading closed ' + hmTxt(ae) + ' ET' : 'after hours so far, as of ' + hmTxt(d.now.hm) + ' ET';
   return Object.assign(shell({ type: 'ah', theme: T.id, subject, pre: W.pre || P.map((p) => p.b).join(' '), dateLine: dateLineOf(d.now.day, d.now.hm), headline: W.headline || (top ? top.symbol + ' leads after hours' : (sp ? 'S&P ' + fmtPct(sp.pct, 1) + ' after hours' : 'After-hours trading')),
     cards: [
-      pulseBlock(d.major, tiles.vals, T, img, pulseKicker('ah', d.now), 'Market pulse', tiles.labels),
+      pulseBlock(d.major, tiles.vals, T, img, pulseKicker('ah', d.now), 'Market pulse', tiles.labels, tiles.extra),
       sectionBlock('AFTER HOURS', 'The session in brief', bullets(P), T),
       sectionBlock('RESULTS', 'Earnings reactions', er, T),
       sectionBlock('MOVERS', 'After-hours gainers', d.up.map(mrow).join(''), T),
@@ -349,7 +349,7 @@ export function renderWeek(d, w, theme) {
   const subject = W.subject || (moveSubject('Weekly recap', sp, nq) + ' for the week');
   return Object.assign(shell({ type: 'week', theme: T.id, subject, pre: W.pre || P.map((p) => p.b).join(' '), dateLine: dateLineOf(d.now.day, d.now.hm), headline: W.headline || (sp ? 'S&P ' + fmtPct(sp.pct, 1) + ' for the week' + (nq ? ', Nasdaq ' + fmtPct(nq.pct, 1) : '') : 'The week in markets'),
     cards: [
-      pulseBlock(major, tiles.vals, T, img, pulseKicker('week', d.now), 'Market pulse', tiles.labels),
+      pulseBlock(major, tiles.vals, T, img, pulseKicker('week', d.now), 'Market pulse', tiles.labels, tiles.extra),
       sectionBlock('THE WEEK', 'In brief', bullets(P), T),
       sectionBlock('MOVERS', 'Biggest gainers this week', d.up.map(wrow).join(''), T),
       sectionBlock('MOVERS', 'Biggest losers this week', d.dn.map(wrow).join(''), T),
@@ -357,7 +357,7 @@ export function renderWeek(d, w, theme) {
       sectionBlock('ECONOMY', 'Economy next week', mac, T),
     ],
     asOf: 'Prices are closing prices for ' + wkTxt + ', ' + d.now.day.slice(0, 4) + '.', sources: 'Data: ' + d.src + '; earnings from the Nasdaq calendar.', link: '#calendar',
-    text: [...P.map((p) => '- ' + p.b + ' ' + p.t), '', 'INDEXES (WEEK)', ...tiles.labels.map((x) => pline(x[0], x[1], tiles.vals[x[0]])), '', ...(major.length ? ['SECTORS', sectorAlt(major), ''] : []), 'BIGGEST GAINERS', ...d.up.map((x) => pline(x.symbol, nameOf(x, d.names), x)), '', 'BIGGEST LOSERS', ...d.dn.map((x) => pline(x.symbol, nameOf(x, d.names), x)),
+    text: [...P.map((p) => '- ' + p.b + ' ' + p.t), '', 'INDEXES (WEEK)', ...tiles.labels.concat(tiles.extra || []).map((x) => pline(x[0], x[1], tiles.vals[x[0]])), '', ...(major.length ? ['SECTORS', sectorAlt(major), ''] : []), 'BIGGEST GAINERS', ...d.up.map((x) => pline(x.symbol, nameOf(x, d.names), x)), '', 'BIGGEST LOSERS', ...d.dn.map((x) => pline(x.symbol, nameOf(x, d.names), x)),
       ...(days.length ? ['', 'EARNINGS NEXT WEEK', ...days.map((x) => dateShort(x.d) + ': ' + x.tiles.slice(0, 4).map((t) => t.s + ' (' + shortName(t.n) + ')').join(', '))] : [])] }),
   { counts: { up: d.up.length, dn: d.dn.length, secs: major.length, cal: days.length, pool: d.nPool }, theme: T.id });
 }

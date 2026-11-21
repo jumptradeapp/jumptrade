@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import { imgDims } from '../worker/index.js';
 import { pickIndexTiles, INDEX_SYMS, EXTRA_LEVELS } from '../worker/mails.js';
 import { newsPicks } from '../worker/brief.js';
-import { indexTiles } from '../worker/emailTheme.js';
+import { pulseBlock } from '../worker/emailTheme.js';
 const W = new URL('../web/', import.meta.url).pathname;
 const R = (p) => fs.readFileSync(W + p, 'utf8');
 
@@ -17,20 +17,22 @@ test('Crypto (BITQ) competes in the app pulse ranking and its movers screen list
   assert.match(adv, /sec\.fund/); assert.match(adv, /Source: ' \+ E\(sec\.source/);
 });
 
-test('Bitcoin and Gold tiles: real symbols, $ price, $ and % change side by side, honest tags', () => {
+test('Bitcoin and Gold: plain rows under the live index grid (name, price, $ and % on one line); index tiles unchanged', () => {
   const v2 = R('v2/v2.js');
-  assert.match(v2, /\['BTC-USD', 'Bitcoin', 1, '24\/7'\], \['GC=F', 'Gold', 1, 'Futures'\]/);
-  assert.match(v2, /class="hixd ' \+ cls\(q\.pct\) \+ '"><i>' \+ idxChg\(q\.chg, usd\) \+ '<\/i><i>' \+ pct\(q\.pct\)/);
-  assert.deepEqual(EXTRA_LEVELS.map((x) => x[0]), ['BTC-USD', 'GC=F']);
+  assert.match(v2, /const IDX_LEVELS = \[\['\^GSPC', 'S&P 500'\], \['\^NDX', 'Nasdaq 100'\], \['\^DJI', 'Dow'\], \['\^RUT', 'Russell'\]\];/);
+  assert.match(v2, /const XTRA = \[\['BTC-USD', 'Bitcoin', '24\/7'\], \['GC=F', 'Gold', ''\]\];/);
+  assert.match(v2, /return '<div class="hixc"><span class="hixn">' \+ n \+ '<\/span><span class="q"><b>' \+ price \+ '<\/b>' \+ p \+ '<\/span><\/div>';/); // live tile markup
+  assert.match(v2, /usdChg\(q\.chg\)/);
+  assert.deepEqual(EXTRA_LEVELS, [['BTC-USD', 'Bitcoin'], ['GC=F', 'Gold']]);
   assert.ok(INDEX_SYMS.includes('BTC-USD') && INDEX_SYMS.includes('GC=F'));
   const L = { px: 1, ch: 1, pct: 1 };
   const t = pickIndexTiles({ '^GSPC': L, '^NDX': L, '^DJI': L, '^RUT': L, 'BTC-USD': { px: 58999.15, ch: -3072.2, pct: -4.95 }, 'GC=F': { px: 3539, ch: -146.5, pct: -3.98 } });
-  assert.deepEqual(t.labels.slice(4), [['BTC-USD', 'Bitcoin · 24/7'], ['GC=F', 'Gold · futures']]);
-  const html = indexTiles(t.vals, 'light', t.labels);
-  assert.match(html, /\$58,999\.15/); assert.match(html, /−\$3,072\.20/); assert.match(html, /−4\.95%/); assert.match(html, /\$3,539\.00/);
-  // missing quote -> no tile, never a made-up number
+  assert.equal(t.labels.length, 4); // the 2x2 tiles stay as live
+  assert.deepEqual(t.extra, [['BTC-USD', 'Bitcoin'], ['GC=F', 'Gold']]);
+  const html = pulseBlock([], t.vals, 'light', null, 'THE CLOSE', 'Market pulse', t.labels, t.extra);
+  assert.match(html, /class="xs"/); assert.match(html, /\$58,999\.15/); assert.match(html, /−\$3,072\.20&nbsp;&nbsp;−4\.95%/); assert.match(html, /\$3,539\.00/);
   const t2 = pickIndexTiles({ '^GSPC': L, '^NDX': L, '^DJI': L, '^RUT': L });
-  assert.equal(t2.labels.length, 4);
+  assert.deepEqual(t2.extra, []); // missing quote -> no row, never a made-up number
 });
 
 test('app news rows: article photo in a fixed 4:3 box, lazy, real alt text, no logo/icon stand-in', () => {
