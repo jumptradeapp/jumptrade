@@ -2,7 +2,9 @@
 // (only from the data given, never invented), and sent through Resend from brief@jumptrade.app.
 // Who gets it and when it goes out: see mails.js (the email center). Numbers always come from the data, never from the AI.
 
-const FROM = 'JUMPTRADE <brief@jumptrade.app>';
+// Sender (Jason, Nov 21 2026): the inbox shows exactly "JumpTrade" (capital J and T, not all caps). Every email goes out
+// through sendMail below (morning, close, after-hours, weekly, invites, the diag check), so this is the one place it's set.
+export const FROM = 'JumpTrade <brief@jumptrade.app>';
 import { E, ND, fmtPct, fmtPx, fmtChg, fmtPxOf, fmtChgOf, srow, bullets, shell, INDEX_SYMS, dateShort, dateShortY, hmTxt, shortName, unsubUrl, ORIGIN, MAIL_RE, cleanMail, recipients, loadSubs, realMover, themeOf, sectionBlock, pulseBlock, moveSubject, dateLineOf, SECTOR_TICKERS, SECTOR_ETFS, pickIndexTiles, pulseKicker, newsKicker, indexSession, closeOf } from './mails.js';
 const arr = (p) => (Array.isArray(p) ? p : (p && (p.data || p.list || p.items)) || []);
 const pctOf = (q) => { if (!q) return null; const pre = /PRE|POST|AFTER/i.test(q.trade_status || '') && q.extend_hour_change_ratio != null && q.extend_hour_last_price; const pc = +q.pre_close; const px = pre ? +q.extend_hour_last_price : +q.price;
@@ -42,7 +44,7 @@ async function gather(env, H) {
   return { now, idx, mine: mineRows, up, dn, news, newsSym, ew, major, src: H.srcName ? H.srcName() : 'Webull', cal: arr(cal).slice(0, 40).map((c) => ({ e: c.event_name, at: c.publish_time, f: c.forecast_value, p: c.prior_value, fed: c.is_fed_related })) };
 }
 
-const SYS = 'You write the JUMPTRADE morning brief, a short pre-market email for retail investors. HARD RULES: use ONLY facts in the DATA. Never invent numbers, events, causes, deals or quotes. If you do not know why a stock moved, say "No news yet". Plain, simple English, short phrases, no jargon (no EPS, no "guided", say "profit" or "a share"). No advice, no predictions. Return JSON only.';
+const SYS = 'You write the JumpTrade morning brief, a short pre-market email for retail investors. HARD RULES: use ONLY facts in the DATA. Never invent numbers, events, causes, deals or quotes. If you do not know why a stock moved, say "No news yet". Plain, simple English, short phrases, no jargon (no EPS, no "guided", say "profit" or "a share"). No advice, no predictions. Return JSON only.';
 
 async function write(env, H, d) {
   const q = (o) => o && { price: pxOf(o), pct: pctOf(o) && +pctOf(o).toFixed(2) };

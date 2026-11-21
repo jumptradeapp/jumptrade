@@ -18,7 +18,7 @@ export const TYPES = {
 };
 export const TYPE_IDS = Object.keys(TYPES);
 export const ORIGIN = 'https://jumptrade.app';
-const FROM_ADDR = 'brief@jumptrade.app';
+const FROM_ADDR = 'brief@jumptrade.app'; // display name "JumpTrade" is set in brief.js FROM, which every send uses
 
 // ---------- send windows (Eastern time; holidays and early closes come from market.js) ----------
 // Returns the period id the email belongs to (the day, or the Saturday for the weekly) when `n` is inside its window, else null.
