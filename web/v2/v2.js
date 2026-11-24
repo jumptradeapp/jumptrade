@@ -527,7 +527,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     loadFunds(); if (!S.funds) return lab('bank', 'Recent 13F filings', 'All funds', '#funds') + skelRows(5, 64); if (S.funds.err) return '';
     const F = (S.funds.funds || []).filter((f) => f.h && f.h.length && f.filed).sort((a, b) => b.filed.localeCompare(a.filed) || (b.total || 0) - (a.total || 0)); if (!F.length) return '';
     const last = F[0].filed; const fresh = F.filter((f) => recentDay(f.filed, 7)).length; const top = F.slice(0, 5); const fb = fundBuys(8);
-    return lab('bank', 'Recent 13F filings', 'All funds', '#funds') + (fresh ? '<p class="filh">' + updPill(last) + fresh + ' funds filed in the last week.</p>' : '') +
+    return lab('bank', 'Recent 13F filings', 'All funds', '#funds') + (fresh ? '<p class="filh">' + updPill(last) + fresh + (fresh === 1 ? ' fund' : ' funds') + ' filed in the last week.</p>' : '') +
       (fb.L.length ? '<div class="fbuy" style="margin-bottom:10px">' + fb.L.map((x) => { const q = S.q[x.s]; return '<a class="fbc" href="#stock/' + encodeURIComponent(x.s) + '">' + tl(x.s, 30) + '<b>' + E(x.s) + '</b><small>' + x.f.length + ' funds bought</small>' + (q ? '<i class="' + cls(q.pct) + '">' + pct(q.pct) + '</i>' : '') + '</a>'; }).join('') + '</div>' : '') +
       rowsBox(top.map((f) => { const nw = f.h.filter((h) => h[3] === 'new' && /^[A-Z.]{1,6}$/.test(h[0])).slice(0, 2).map((h) => h[0]); const ad = f.h.filter((h) => h[3] === 'added' && /^[A-Z.]{1,6}$/.test(h[0])).slice(0, 2).map((h) => h[0]);
         const what = nw.length ? 'New: ' + nw.join(', ') : ad.length ? 'Added: ' + ad.join(', ') : 'No new buys';
@@ -920,7 +920,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
       list = list.slice().sort((x, y) => (star.indexOf(y.slug) >= 0) - (star.indexOf(x.slug) >= 0) || (srt === 'day' ? (fday(y) == null ? -1e9 : fday(y)) - (fday(x) == null ? -1e9 : fday(x)) : srt === 'az' ? x.fund.localeCompare(y.fund) : (y.total || 0) - (x.total || 0)));
       const fresh = F.filter((f) => recentDay(f.filed, 7)); const last = F.reduce((m, f) => (f.filed > m ? f.filed : m), '');
       const fb = fundBuys();
-      body = (fresh.length ? '<p class="filh" style="margin-top:4px">' + updPill(last) + fresh.length + ' funds just filed their ' + E(fresh[0].period) + ' 13Fs.</p>' : '') +
+      body = (fresh.length ? '<p class="filh" style="margin-top:4px">' + updPill(last) + fresh.length + (fresh.length === 1 ? ' fund just filed its ' : ' funds just filed their ') + E(fresh[0].period) + (fresh.length === 1 ? ' 13F.</p>' : ' 13Fs.</p>') : '') +
         (fb.L.length ? '<div class="lab" style="margin-top:6px">Most bought this quarter</div><div class="fbuy">' + fundBuys(8).L.map((x) => { const q = S.q[x.s]; return '<a class="fbc" href="#stock/' + encodeURIComponent(x.s) + '">' + tl(x.s, 30) + '<b>' + E(x.s) + '</b><small>' + x.f.length + ' funds</small>' + (q ? '<i class="' + cls(q.pct) + '">' + pct(q.pct) + '</i>' : '') + '</a>'; }).join('') + '</div>' : '') +
         '<div style="margin-top:14px">' + chipsHTML(FIL, S.fcat, 'data-fcat') + '</div>' +
         '<div class="fsort"><span>' + list.length + ' funds</span>' + [['size', 'Biggest'], ['day', 'Today'], ['az', 'A–Z']].map((x) => '<button class="' + (srt === x[0] ? 'on' : '') + '" data-fsort="' + x[0] + '">' + x[1] + '</button>').join('') + '</div>' +
@@ -1291,6 +1291,17 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   // ---------- analyst feed ----------
   const AN_UNI = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'META', 'TSLA', 'AVGO', 'AMD', 'NFLX', 'JPM', 'V', 'LLY', 'UNH', 'XOM', 'COST', 'WMT', 'ORCL', 'CRM', 'PLTR', 'MU', 'INTC', 'QCOM', 'ADBE', 'BA', 'DIS', 'NKE', 'UBER', 'COIN', 'HOOD', 'SMCI', 'ARM'];
   S.anF = 'all'; S.anTab = 'live';
+  // when Yahoo's analyst history has nothing recent, show this week's analyst headlines from the live news feed instead of an empty page
+  function anNewsFallback(rows) {
+    if (S.news == null) loadNews();
+    const RX = /\b(upgrad|downgrad|initiat|reiterat|price target|target (raised|cut|lowered|to)|raises .{0,40}target|cuts .{0,40}target|lowers .{0,40}target|overweight|underweight|outperform|underperform|buy rating|sell rating|neutral rating)/i;
+    const L = (S.news || []).filter((n) => RX.test(dec(n.title || '')) && Date.now() - Date.parse(n.publish_time) < 7 * 864e5).slice(0, 30);
+    const newest = rows && rows.length ? Math.max.apply(null, rows.map((a) => a.t || 0)) : 0;
+    const head = '<p class="note" style="margin:10px 2px 6px">' + (newest ? 'Yahoo’s analyst history hasn’t added a call since ' + new Date(newest).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '.' : 'No calls in Yahoo’s analyst history this week.') + (L.length ? ' Here are this week’s analyst headlines from the news instead.' : '') + '</p>';
+    if (!L.length) return head + rowsBox('<div class="err">' + (S.news == null ? 'Checking the news…' : 'No analyst headlines in the news this week either.') + '</div>');
+    return head + rowsBox(L.map((n) => { const sym = window.NTH && NTH.tk ? NTH.tk(n) : null; const im = newsImg(n, sym);
+      return '<a class="row nw' + (im ? '' : ' noimg') + '" href="' + E(n.url) + '" target="_blank" rel="noopener">' + im + '<span class="nm"><b>' + E(dec(n.title)) + '</b><small style="margin-top:3px">' + E(dec(n.source || n.source_name || '')) + (ago(n.publish_time) ? ' · ' + ago(n.publish_time) : '') + '</small></span></a>'; }).join(''));
+  }
   function analystsScreen() {
     const uni = Array.from(new Set(HOLD_SYMS.concat(wlSyms(), AN_UNI))).slice(0, 40); loadAnalyst(uni, 7, 'feed');
     if (S.anTab === 'week' && !S.ratW) { S.ratW = { loading: 1 }; getJ('/ratings.json').then((j) => { S.ratW = j; fastSnap(Array.from(new Set((j.ratings || []).map((r) => r.ticker))).slice(0, 80)).then(render).catch(() => {}); }).catch(() => { S.ratW = { err: 1 }; }).then(render); }
@@ -1300,7 +1311,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     if (S.anTab === 'live') {
       const an = S.an.feed; const rows = an && an.p && an.p.data;
       body = chipsHTML(F, S.anF, 'data-anf') + (!an || (!rows && !an.err) ? rowsBox(skel(6), 'padding:14px;margin-top:10px') : an.err && window.JT_PRIV ? rowsBox(srvOnly('Analyst calls history', '#analysts'), 'margin-top:10px') : an.err ? rowsBox('<div class="err">Yahoo is refusing the analyst-history request from our data feed right now, so there’s nothing live to show (we don’t show old calls as new). Retrying every minute. The Weekly roundup tab has the saved list.</div>', 'margin-top:10px') :
-        (rows.filter(keep).length ? rowsBox(rows.filter(keep).slice(0, 80).map((a) => anRow(a, true)).join(''), 'margin-top:10px') : rowsBox('<div class="err">No matching calls in the last 7 days.</div>', 'margin-top:10px'))) +
+        (rows.filter(keep).length ? rowsBox(rows.filter(keep).slice(0, 80).map((a) => anRow(a, true)).join(''), 'margin-top:10px') : anNewsFallback(rows))) +
         '<p class="note">Last 7 days for your watchlist, your holdings and ' + AN_UNI.length + ' large caps. Source: Yahoo Finance analyst history' + (an && an.t ? ', checked ' + ago2(an.t) : '') + '. Yahoo doesn’t give analyst names or note links.' + (an && an.p && an.p.failed && an.p.failed.length ? ' ' + an.p.failed.length + ' tickers didn’t load this time (' + E(an.p.failed.slice(0, 6).join(', ')) + (an.p.failed.length > 6 ? '…' : '') + '); retrying in a minute.' : '') + '</p>';
     } else {
       const W = S.ratW; const L = W && W.ratings;
