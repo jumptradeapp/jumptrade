@@ -1294,7 +1294,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   // when Yahoo's analyst history has nothing recent, show this week's analyst headlines from the live news feed instead of an empty page
   function anNewsFallback(rows) {
     if (S.news == null) loadNews();
-    const RX = /\b(upgrad|downgrad|initiat|reiterat|price target|target (raised|cut|lowered|to)|raises .{0,40}target|cuts .{0,40}target|lowers .{0,40}target|overweight|underweight|outperform|underperform|buy rating|sell rating|neutral rating)/i;
+    const RX = /(upgrad|downgrad|initiat|reiterat|price target|price objective|\btargets?\b|\bratings?\b|overweight|underweight|outperform|underperform|equal.weight)/i;
     const L = (S.news || []).filter((n) => RX.test(dec(n.title || '')) && Date.now() - Date.parse(n.publish_time) < 7 * 864e5).slice(0, 30);
     const newest = rows && rows.length ? Math.max.apply(null, rows.map((a) => a.t || 0)) : 0;
     const head = '<p class="note" style="margin:10px 2px 6px">' + (newest ? 'Yahoo’s analyst history hasn’t added a call since ' + new Date(newest).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '.' : 'No calls in Yahoo’s analyst history this week.') + (L.length ? ' Here are this week’s analyst headlines from the news instead.' : '') + '</p>';
