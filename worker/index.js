@@ -1088,6 +1088,20 @@ async function wbRoutes(url, env, req) {
   return null;
 }
 
+// Before the open, Webull still measures the latest pre-market trade against the close two sessions back (seen 9:29 AM: NVDA $159.14 '+26.77%' vs Friday,
+// when Monday closed at $165.05). Put it right: the regular price/change are yesterday's close vs the day before, and the pre-market trade is measured from yesterday's close.
+async function preRoll(rows) {
+  const e = etParts(Date.now() / 1000), wd = new Date(Date.now() - 5 * 3600000).getUTCDay(); if (wd === 0 || wd === 6 || e.m < 240 || e.m >= 570) return rows;
+  const L = rows.filter((r) => r && r.symbol && !/[\^=]|-USD$/.test(r.symbol)).map((r) => r.symbol); if (!L.length) return rows;
+  const y = await quotes(L).catch(() => []); const Y = {}; y.forEach((q) => { if (q && q.symbol) Y[q.symbol] = q; });
+  return rows.map((r) => { const q = r && Y[r.symbol]; const last = q && +q.price, prev = q && +q.pre_close, px = +r.price, pc = +r.pre_close;
+    if (!(last > 0) || !(prev > 0) || !(px > 0) || !(pc > 0)) return r;
+    if (Math.abs(pc - last) / last < 0.0005) return r; // Webull already counts from yesterday's close: nothing to fix
+    if (Math.abs(pc - prev) / prev > 0.002) return r; // not the two-sessions-back case either: leave it alone
+    const ext = +r.extend_hour_last_price > 0 ? +r.extend_hour_last_price : px;
+    return Object.assign({}, r, { price: String(last), close: String(last), pre_close: String(prev), change: String(+(last - prev).toFixed(4)), change_ratio: String((last - prev) / prev),
+      extend_hour_last_price: String(ext), extend_hour_change: String(+(ext - last).toFixed(4)), extend_hour_change_ratio: String((ext - last) / last), market_state: 'PRE', rolled: 1 }); });
+}
 async function runTool(tool, input, ctx, env, fresh) {
   const fn = T[tool] || (WBMAP[tool] ? async () => { throw Object.assign(new Error('This data isn’t available right now'), { status: 503 }); } : null); /* say 'unavailable', never a fake empty result */ if (!fn) return json({ error: { code: 'tool_error', message: 'Unknown tool ' + tool } }, 404);
   if (input && typeof input === 'object' && 'category' in input) { input = Object.assign({}, input); delete input.category; } // same answer either way: share one cache entry
@@ -1103,6 +1117,7 @@ async function runTool(tool, input, ctx, env, fresh) {
     const w = env && !/news/.test(tool) ? await wbCall(env, tool, input || {}).catch((e) => { WBLAST = { tool, error: String(e.message || e), t: Date.now() }; return null; }) : null;
     let payload = w ? w.payload : await fn(input || {});
     if (w && tool === 'get_stock_snapshot' && Array.isArray(payload)) { const xs = syms((input || {}).symbols).filter((x) => /[\^=]|-USD$/.test(x)); if (xs.length) { const y = await fn({ symbols: xs }).catch(() => []); payload = payload.concat(Array.isArray(y) ? y : []); } } // index levels, gold futures and Bitcoin ride along from Yahoo
+    if (w && tool === 'get_stock_snapshot' && Array.isArray(payload)) payload = await preRoll(payload).catch(() => payload);
     const res = json(w || !WBMAP[tool] ? { payload } : { payload, src: 'backup' }, 200, { 'cache-control': 'public, max-age=' + (TTL[tool] || 30) }); // src: 'backup' = the free feed (no halt flags), so the app can say so
     if (qsKey && env && ctx) ctx.waitUntil(vput(env, qsKey, { t: Date.now(), p: payload }).catch(() => {}));
     try { await cache.put(key, res.clone()); if (SLOW) await cache.put(skey, json({ payload }, 200, { 'cache-control': 'public, max-age=86400', 'x-jt-t': String(Date.now()) })); } catch (e) {} // the cron has no cache; the Vault copy covers it
@@ -2003,12 +2018,15 @@ async function handleFetch(req, env, ctx) {
     }
     if (url.pathname.indexOf('/api/logo/') === 0) { // backup logos for tickers missing from the built-in set
       const sym = safeDecode(url.pathname.slice(10)).toUpperCase().replace(/[^A-Z.\-]/g, '').slice(0, 6); if (!sym) return new Response('', { status: 404 });
-      const ck = new Request('https://cache.jumptrade/logo/' + sym); const hit = await caches.default.match(ck); if (hit) return hit;
+      const ck = new Request('https://cache.jumptrade/logo2/' + sym); const hit = await caches.default.match(ck); if (hit) return hit;
       for (const src of ['https://assets.parqet.com/logos/symbol/' + sym + '?format=png&size=128', 'https://financialmodelingprep.com/image-stock/' + sym + '.png']) {
         try { const r = await fetch(src, { headers: { 'user-agent': NUA }, cf: { cacheTtl: 604800 } }); const ct = r.headers.get('content-type') || '';
           if (r.ok && IMG_OK.test(ct)) { const buf = await r.arrayBuffer(); if (buf.byteLength > 300) { const res = new Response(buf, { headers: Object.assign({ 'content-type': ct.split(';')[0].trim().toLowerCase(), 'cache-control': 'public, max-age=604800' }, IMG_SAFE) }); ctx.waitUntil(caches.default.put(ck, res.clone())); return res; } } } catch (e) {}
       }
-      const miss = new Response('', { status: 404, headers: { 'cache-control': 'public, max-age=86400' } }); ctx.waitUntil(caches.default.put(ck, miss.clone())); return miss;
+      // no logo anywhere: a clean ticker monogram instead of a 404 (no broken image, no console error)
+      const t = sym.slice(0, sym.length > 4 ? 3 : 4), fs = t.length <= 2 ? 44 : t.length === 3 ? 36 : 28;
+      const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1D3A63"/><stop offset="1" stop-color="#0B1A2E"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="url(#g)"/><text x="64" y="64" dy=".35em" text-anchor="middle" font-family="Inter,Helvetica,Arial,sans-serif" font-size="' + fs + '" font-weight="700" fill="#DCEBFA" letter-spacing="1">' + t + '</text></svg>';
+      const miss = new Response(svg, { headers: Object.assign({ 'content-type': 'image/svg+xml', 'cache-control': 'public, max-age=86400', 'x-jt-mono': '1' }, IMG_SAFE) }); ctx.waitUntil(caches.default.put(ck, miss.clone())); return miss;
     }
     if (url.pathname === '/api/tool' && req.method === 'GET') { const raw = url.searchParams.get('input') || '{}'; if (raw.length > 16000) return json({ error: { code: 'too_big' } }, 413); let inp = {}; try { inp = JSON.parse(raw); } catch (e) {} return runTool(url.searchParams.get('tool'), inp, ctx, env); }
     if (url.pathname === '/api/scan') { try { const f = await scanAll(false); return json({ ok: true, count: f.length, top: f.slice(0, 8).map((q) => q.symbol + ' ' + (q.regularMarketChangePercent || 0).toFixed(1) + '%') }); } catch (e) { return json({ ok: false, error: String(e.message || e) }); } }
