@@ -2,6 +2,9 @@
    The app was written against Claude's page runtime (window.claude.use('mcp'), 'db', 'user', 'sample').
    Here those calls go to this site's own server (/api/tool), so the same app code runs unchanged. */
 window.JT_HASH0 = location.hash; // the link the app was opened with, before the app rewrites it
+// every same-origin request carries the sign-in token too, so data files and tools load on the first try even before the session cookie is (re)set
+(function () { const f0 = window.fetch.bind(window); window.fetch = function (u, o) { try { const url = typeof u === 'string' ? u : (u && u.url) || ''; const same = url.charAt(0) === '/' && url.charAt(1) !== '/' || url.indexOf(location.origin + '/') === 0; const tk = localStorage.getItem('jt.tok');
+  if (same && tk && typeof u === 'string') { o = Object.assign({}, o || {}); const h = new Headers(o.headers || {}); if (!h.has('authorization')) h.set('authorization', 'Bearer ' + tk); o.headers = h; if (!o.credentials) o.credentials = 'same-origin'; } } catch (e) {} return f0(u, o); }; })();
 (function () {
   const SERVER_NAME = 'Webull';
   // Friends have no brokerage: watchlists live on their phone (same request/answer shapes the app already uses).

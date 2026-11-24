@@ -144,7 +144,17 @@ async function sparkQuotes(list) {
 // ---------- tools ----------
 const T = {};
 
-T.get_stock_snapshot = async (i) => quotes(i.symbols);
+// Yahoo sometimes leaves an index level stuck at the last close (seen with ^RUT): when its tracking ETF has a fresher trade, move the index by the ETF's % today and say so
+const IDXPX = { '^GSPC': 'SPY', '^NDX': 'QQQ', '^DJI': 'DIA', '^RUT': 'IWM' };
+T.get_stock_snapshot = async (i) => {
+  const L = syms(i.symbols); const extra = [...new Set(L.filter((x) => IDXPX[x]).map((x) => IDXPX[x]).filter((x) => L.indexOf(x) < 0))];
+  const out = await quotes(L.concat(extra)); if (!extra.length && !L.some((x) => IDXPX[x])) return out;
+  const by = {}; out.forEach((r) => { by[r.symbol] = r; });
+  for (const ix of Object.keys(IDXPX)) { const r = by[ix], e = by[IDXPX[ix]]; if (!r || !e || !e.trade_time || !(+r.price > 0) || e.change_ratio == null) continue;
+    if (e.trade_time - (r.trade_time || 0) > 30 * 60000 && new Date(e.trade_time - 5 * 3600000).toISOString().slice(0, 10) !== new Date((r.trade_time || 0) - 5 * 3600000).toISOString().slice(0, 10)) {
+      const base = +r.price, pc = +e.change_ratio; r.pre_close = base; r.price = +(base * (1 + pc)).toFixed(2); r.close = r.price; r.change = +(r.price - base).toFixed(2); r.change_ratio = pc; r.trade_time = e.trade_time; r.est = 'from ' + IDXPX[ix]; } }
+  return out.filter((r) => extra.indexOf(r.symbol) < 0);
+};
 
 // Live market news from many newsrooms at once (their public RSS feeds), newest first, with each story's photo when the feed names one.
 const NEWS_FEEDS = [
