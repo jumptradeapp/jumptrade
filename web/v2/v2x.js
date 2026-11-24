@@ -985,9 +985,10 @@
   const SUGID = { xwa: 1, xla: 1, xca: 1, xcb: 1, xins: 1, xbq: 1 }; let sugEl = null, sugFor = null, sugL = [];
   const sugTok = (inp) => { const v = inp.value; const i = v.lastIndexOf(','); return inp.id === 'xbq' ? v.slice(i + 1).trim() : v.trim(); };
   const sugHide = () => { if (sugEl) sugEl.remove(); sugEl = null; sugFor = null; sugL = []; };
+  const SUGTOP = new Set('AAPL MSFT NVDA AMZN GOOGL GOOG META TSLA AVGO BRK.B JPM LLY V UNH XOM MA COST HD PG JNJ WMT NFLX ORCL CRM AMD ABBV BAC KO PEP MRK TMO ADBE CSCO ACN MCD LIN ABT WFC INTU DIS IBM GE CAT QCOM TXN AMGN PFE VZ T CMCSA NOW UBER ISRG BKNG GS MS SPGI RTX HON LOW AMAT MU INTC PLTR COIN HOOD SMCI ARM SNOW SHOP PYPL SQ XYZ SOFI RIVN LCID NIO BABA TSM ASML SONY TM NKE SBUX BA F GM DAL UAL AAL CCL DKNG RBLX ROKU SNAP PINS SPOT ZM CRWD PANW NET DDOG MDB OKTA ZS ANET MRVL LRCX KLAC ON MPWR SPY QQQ IWM DIA VOO VTI GLD SLV TLT'.split(' '));
   function sugMatch(q) { const j = symsAll(); if (!j || !q) return []; const U = q.toUpperCase().replace(/^\$/, ''), lq = q.toLowerCase(); const ex = [], pre = [], nmh = [];
     for (const r of j) { if (r[0] === U) ex.push(r); else if (r[0].indexOf(U) === 0) pre.push(r); else if (q.length > 1 && String(r[1]).toLowerCase().indexOf(lq) >= 0) nmh.push(r); }
-    return ex.concat(pre.sort((a, b) => a[0].length - b[0].length).slice(0, 6), nmh.sort((a, b) => String(a[1]).toLowerCase().indexOf(lq) - String(b[1]).toLowerCase().indexOf(lq)).slice(0, 6)).slice(0, 6); }
+    const top = (r) => (SUGTOP.has(r[0]) ? 0 : 1); return ex.concat(pre.sort((a, b) => top(a) - top(b) || a[0].length - b[0].length).slice(0, 6), nmh.sort((a, b) => top(a) - top(b) || String(a[1]).toLowerCase().indexOf(lq) - String(b[1]).toLowerCase().indexOf(lq) || String(a[1]).length - String(b[1]).length).slice(0, 6)).slice(0, 6); } // big, well-known names first
   function sugShow(inp) { const q = sugTok(inp); sugL = sugMatch(q); if (!sugL.length || (sugL.length === 1 && sugL[0][0] === q.toUpperCase())) { sugHide(); return; }
     if (!sugEl) { sugEl = D.createElement('div'); sugEl.className = 'xsug'; sugEl.setAttribute('role', 'listbox'); D.body.appendChild(sugEl); }
     sugFor = inp; const b = inp.getBoundingClientRect(); sugEl.style.left = Math.max(8, b.left) + 'px'; sugEl.style.top = (b.bottom + 6) + 'px'; sugEl.style.width = Math.max(240, b.width) + 'px';
