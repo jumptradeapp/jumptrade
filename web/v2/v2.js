@@ -489,7 +489,9 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
     // live prices can reorder the five: rank by the live % (same order the price column shows) and flash a row that moves up or down
     const L = S.tg.map((x) => { const lq = curSess() === 'day' ? S.q[x.symbol] : null; const p = lq && lq.pct != null ? lq.pct : +x.change_ratio * 100, pr = lq && lq.price ? lq.price : +x.price, c = lq && lq.chg != null ? lq.chg : isFinite(+x.change) ? +x.change : pr - pr / (1 + p / 100); return { x, p, pr, c }; }).sort((a, b) => b.p - a.p);
     S.tgFl = S.tgFl || {}; S.tgMv = S.tgMv || {}; rankMoves(S.tgMv, L.map((r) => [r.x.symbol, r.p]), S.tgFl);
-    return rowsBox(L.map(({ x, p, pr, c }) => { const f = S.tgFl[x.symbol]; const fl = f && Date.now() - f.t < 650 ? ' ' + f.c : ''; return '<a class="row' + fl + '" href="#stock/' + encodeURIComponent(x.symbol) + '" style="min-height:62px">' + tl(x.symbol, 36) + '<span class="nm"><b>' + E(x.symbol) + '</b><small>' + E(x.name || nameOf(x.symbol)) + '</small></span><span style="flex:none">' + sp(x.symbol, p >= 0, 52, 24) + '</span><span class="q"><b>' + pxs(pr) + '</b><small class="' + cls(p) + '">' + (c >= 0 ? '+' : '−') + '$' + Math.abs(c).toFixed(Math.abs(c) < 1 ? 2 : 2) + '<i>' + pct(p) + '</i></small></span></a>'; }).join(''));
+    const ss = curSess(); loadSetup(L.map((r) => r.x.symbol), ss); // same live read as the Movers page (refreshes every minute): Squeeze setup, Continuation, Fade, Dump
+    const tag = (sym) => { const st = setupOf(sym, ss); return st && st.tag && SETUP[st.tag] ? ' <i class="stg ' + SETUP[st.tag][1] + '">' + SETUP[st.tag][0] + '</i>' : ''; };
+    return rowsBox(L.map(({ x, p, pr, c }) => { const f = S.tgFl[x.symbol]; const fl = f && Date.now() - f.t < 650 ? ' ' + f.c : ''; return '<a class="row' + fl + '" href="#stock/' + encodeURIComponent(x.symbol) + '" style="min-height:62px">' + tl(x.symbol, 36) + '<span class="nm"><b>' + E(x.symbol) + tag(x.symbol) + '</b><small>' + E(x.name || nameOf(x.symbol)) + '</small></span><span style="flex:none">' + sp(x.symbol, p >= 0, 52, 24) + '</span><span class="q"><b>' + pxs(pr) + '</b><small class="' + cls(p) + '">' + (c >= 0 ? '+' : '−') + '$' + Math.abs(c).toFixed(Math.abs(c) < 1 ? 2 : 2) + '<i>' + pct(p) + '</i></small></span></a>'; }).join(''));
   }
   // ---------- Filings & approvals (Today): 13F buying, big stakes, FDA & trial news, deals ----------
   S.fil = 'news'; S.filN = {}; if (S.fil === 'f13') S.fil = 'news';
@@ -1120,7 +1122,7 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
 
   // ---------- setup tags + catalyst + per-ticker facts (Movers, radar, stock page) ----------
   // Tag rules live in the worker (get_mover_setup); the app only shows them. Rules-based read, not advice.
-  const SETUP = { sq: ['Squeeze setup', 'sq'], cont: ['Continuation', 'ct'], fade: ['Fade', 'fd'], dump: ['Dump', 'dmp'], stay: ['Stay away', 'sty'] };
+  const SETUP = { sq: ['Squeezing', 'sq'], cont: ['Continuation', 'ct'], fade: ['Fading', 'fd'], dump: ['Dumping', 'dmp'], stay: ['Stay away', 'sty'] };
   S.setup = {}; S.setupOpen = {}; S.setupLoading = {};
   const setupOf = (s, sess) => (S.setup[sess || 'day'] || {})[s];
   function loadSetup(list, sess) {
