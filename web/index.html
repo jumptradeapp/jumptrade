@@ -13,9 +13,10 @@
 <script>try{var t=JSON.parse(localStorage.getItem("jt.v2theme"))}catch(e){t=localStorage.getItem("jt.v2theme")}if(t==="black"||t==="swoop")t="midnight";if(t==="auto")t=matchMedia("(prefers-color-scheme: light)").matches?"light":"midnight";if(t)document.documentElement.dataset.x2t=t;</script>
 <script>/* look: D7C2 Advisor for dark, B-Light for light. Alts: ?design=n|s|g|d4|d5|d6|d7|d6a|d6b|d6c|d6d|d7a|d7b|d7c|d7d|d7c2 (dark) or l1|l2|l3|l4|l5|l6 (light), kept on this device; ?design=off or ?design=b gives B Terminal. */try{var dq=new URLSearchParams(location.search).get("design");if(dq!==null){dq=dq.toLowerCase();if(dq==="off")dq="b";if(/^(b|n|s|g|d4|d5|d6|d7|d6a|d6b|d6c|d6d|d7a|d7b|d7c|d7d|d7c2|l1|l2|l3|l4|l5|l6)$/.test(dq)){localStorage.setItem("jt.design",JSON.stringify(dq));var isLt=/^l/.test(dq);try{localStorage.setItem("jt.v2theme",JSON.stringify(isLt?"light":"midnight"))}catch(e2){}document.documentElement.dataset.x2t=isLt?"light":"midnight"}else localStorage.removeItem("jt.design")}var dalt=null;try{dalt=JSON.parse(localStorage.getItem("jt.design")||"null")}catch(e3){dalt=localStorage.getItem("jt.design")}var xt=document.documentElement.dataset.x2t;if(/^(?:b|[nsg]|d[4-7]|d6[a-d]|d7[a-d]|d7c2)$/.test(dalt)&&xt!=="light")document.documentElement.dataset.design=dalt;else if(/^l[1-6]$/.test(dalt)&&xt==="light")document.documentElement.dataset.design=dalt;else document.documentElement.dataset.design=xt==="light"?"bl":"d7c2"}catch(e){document.documentElement.dataset.design=document.documentElement.dataset.x2t==="light"?"bl":"d7c2"}</script>
 <link rel="stylesheet" href="/v2/v2.css?v=107"><link rel="stylesheet" href="/v2/design.css?v=25"><link rel="stylesheet" href="/v2/advisor.css?v=2">
+<link rel="stylesheet" href="/v2/admin.css?v=1">
 <script>/* the sign-in screen (auth.js) draws this mark: the blue jump. logo */window.jmMark=function(s){return '<img src="/v2/img/mark-rings.png?v=3" alt="" style="height:'+Math.round((s||64)*0.8)+'px;width:auto;display:block;margin:0 auto">';};</script>
 <script src="/shim.js?v=1794708210"></script>
-<script src="/landing.js?v=11"></script><script src="/auth.js?v=1795060001"></script>
+<script src="/landing.js?v=11"></script><script src="/auth.js?v=1795060002"></script>
 <script src="/nthumb.js?v=1"></script>
 </head>
 <body>

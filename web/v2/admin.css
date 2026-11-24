@@ -1,0 +1,71 @@
+/* Admin panel (owner only); carried over from the classic app's stylesheet so it renders in the new design */
+body.fs-open{overflow:hidden}
+#jtAdmin{--amber:#F2C27A;--blue:#3B7BFF;--blue-2:#4C8DFF;--blue-3:#2A63E8;--green-1:#66C99A;--muted-2:#AEB9C8;--muted-7:#AEB7C6;--muted-9:#7D8796;--red-1:#EC9191;--red-hot:#FF5A5A;--text:#ECEBE8;--text-3:#C9D2E0;font-family:inherit}
+#jtAdmin{position:fixed;inset:0;z-index:9000;background:#0A0E15;display:none;flex-direction:column;overflow-y:auto;padding:max(12px,env(safe-area-inset-top)) 14px max(20px,env(safe-area-inset-bottom));color:var(--text)}
+#jtAdmin.on{display:flex}
+.adTop{display:flex;justify-content:space-between;align-items:center}
+.adTop h2{margin:0;font-size:26px;font-weight:700}
+.adTop h2 em{color:var(--blue);font-style:normal}
+.adTop small{font-size:12px;color:var(--muted-2)}
+/* all seven Admin tabs show at once on a phone: they wrap onto a second line instead of hiding off the right edge (Emails was out of sight) */
+.adTabs{display:flex;flex-wrap:wrap;gap:4px;margin:14px 0 12px;padding:3px;border-radius:12px;background:rgba(255,255,255,.05)}
+.adTabs button{flex:1 1 auto;min-width:22%;white-space:nowrap;padding:8px 4px;border-radius:9px;border:0;background:none;color:var(--muted-7);font:inherit;font-size:13.5px;font-weight:600;cursor:pointer}
+.adTabs button.on{background:var(--blue-3);color:#fff}
+.adTabs i{font-style:normal;font-size:12px;padding:1px 6px;border-radius:999px;background:rgba(255,255,255,.16);color:#DDE3EC;margin-left:2px}
+.adTabs i.nw{background:var(--red-hot);color:#fff}
+.adList{display:flex;flex-direction:column;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03)}
+.adRow{display:flex;align-items:center;gap:10px;padding:11px 12px;border-top:1px solid rgba(255,255,255,.05);font-size:14px;color:var(--text-3)}
+.adRow:first-child{border-top:0}
+.adRow span{flex:1;min-width:0}
+.adRow b{color:#fff;font-weight:600}
+.adRow small{color:var(--muted-9);font-size:12px;white-space:nowrap}
+.adRow.nw,.adF.nw{background:rgba(76,141,255,.10)}
+.adI{flex:none;width:8px;height:8px;border-radius:50%;background:var(--muted-9)}
+.adI.join{background:var(--green-1)}
+.adI.device{background:#9CC0FF}
+.adI.visit{background:var(--blue-2)}
+.adI.wait{background:var(--amber)}
+.adI.off{background:var(--red-1)}
+.adU{padding:12px;border-top:1px solid rgba(255,255,255,.05)}
+.adU:first-child{border-top:0}
+.adU.off{opacity:.55}
+.adUt{display:flex;justify-content:space-between;align-items:baseline}
+.adUt b{font-size:16px;font-weight:600}
+.adUt small{font-size:12px;color:var(--muted-2)}
+.adStats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0 8px}
+.adStats div{padding:8px;border-radius:10px;background:rgba(255,255,255,.05);text-align:center}
+.adStats b{display:block;font-size:18px;font-weight:600}
+.adStats span{font-size:11.5px;color:var(--muted-2)}
+.adUm{font-size:12px;color:var(--muted-9);margin-bottom:8px}
+.adF{padding:12px;border-top:1px solid rgba(255,255,255,.05)}
+.adF:first-child{border-top:0}
+.adFm{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px;font-size:12.5px;color:var(--muted-2)}
+.adFm small{margin-left:auto;color:var(--muted-9)}
+.adFm .k{font-weight:700}
+.adFm .k.bug{color:var(--red-1)}
+.adFm .k.idea{color:var(--green-1)}
+.adFm .k.ux{color:#9CC0FF}
+.adF p{margin:6px 0 0;font-size:14.5px;line-height:1.45;color:var(--text);white-space:pre-wrap}
+.adNew{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.adNew input{padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#fff;font:inherit;font-size:16px}
+.adBtn{padding:11px 14px;border-radius:12px;border:0;background:var(--blue-3);color:#fff;font:inherit;font-size:14.5px;font-weight:600;cursor:pointer}
+.adBtn.ghost{background:rgba(255,255,255,.07);color:var(--text-3)}
+.adBtn.sm{padding:7px 12px;font-size:13px;flex:none}
+.adX{border:0;background:none;color:var(--red-1);font:inherit;font-size:12.5px;cursor:pointer}
+.adLink{padding:12px;border-radius:12px;background:rgba(76,141,255,.1);border:1px solid rgba(76,141,255,.3);display:flex;flex-direction:column;gap:8px}
+.adLink code{font-size:12.5px;word-break:break-all;color:#CFE0FF}
+.adLinkB{display:flex;gap:8px}
+.adLinkB .adBtn{flex:1}
+.adLink small{font-size:12px;color:var(--muted-2)}
+.adSet{margin-top:16px;display:flex;flex-direction:column;gap:10px}
+.adSetR{display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07)}
+.adSetR span{flex:1;display:flex;flex-direction:column;gap:3px}
+.adSetR b{font-size:14.5px;font-weight:600}
+.adSetR small{font-size:12.5px;color:var(--muted-2);line-height:1.4}
+.adTog{flex:none;width:48px;height:28px;border-radius:999px;border:0;background:rgba(255,255,255,.15);position:relative;cursor:pointer}
+.adTog::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .2s}
+.adTog.on{background:var(--blue-3)}
+.adTog.on::after{left:23px}
+@media (display-mode:standalone){:is(#_,html) .bg,:is(#_,html) #jtGate,:is(#_,html) #splash,:is(#_,html) #jtAdmin,:is(#_,html) #fsChart{top:0!important;bottom:auto!important;height:100vh!important;min-height:0!important}}
+:is(#_,html) body .glass,:is(#_,html) body .wlFlat,:is(#_,html) body .tile,:is(#_,html) body .pmList,:is(#_,html) body .lay,:is(#_,html) body .empty,:is(#_,html) body .a2card,:is(#_,html) body .adList,:is(#_,html) body .adSetR,:is(#_,html) body .cmppk,:is(#_,html) body .bldS,:is(#_,html) body .bldRes{border-radius:10px!important}
+:is(#_,html) body .glass .stat,:is(#_,html) body .rstats div,:is(#_,html) body .adStats div,:is(#_,html) body .skel{border-radius:7px!important}
