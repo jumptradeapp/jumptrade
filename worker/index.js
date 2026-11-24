@@ -1078,6 +1078,13 @@ async function wbRoutes(url, env, req) {
     return new Response(out.join('\n'), { headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } });
   }
   if (url.pathname === '/api/wb/newsfeed') { const r = await T.get_news_feed(); return json({ sources: r.sources, n: r.data.length, img: r.data.filter((x) => x.image).length, top: r.data.slice(0, 5).map((x) => [x.publish_time, x.source_name, x.title]) }); } // owner-only check of the live news feeds
+  if (url.pathname === '/api/wb/wltest') { // owner-only check that Webull answers the watchlist routes (names + counts only)
+    const tok = await vget(env, 'token'); const r = await wb.raw('GET', '/market-data/watchlists/list', {}, null, tok && tok.token);
+    const L = Array.isArray(r.data) ? r.data : (r.data && (r.data.data || r.data.list || r.data.watchlists)) || [];
+    const m = L.find((w) => /^mosaic$/i.test(w.name || '')); let n = null, st2 = null;
+    if (m) { const q = await wb.raw('GET', '/market-data/watchlists/instruments/list', { watchlist_id: m.watchlist_id }, null, tok && tok.token); st2 = q.status; const I = Array.isArray(q.data) ? q.data : (q.data && (q.data.instruments || q.data.data || q.data.list)) || []; n = I.length; }
+    return json({ status: r.status, lists: L.length, mosaic: !!m, itemsStatus: st2, mosaicCount: n, keys: r.data && !Array.isArray(r.data) ? Object.keys(r.data).slice(0, 6) : null });
+  }
   if (url.pathname === '/api/wb/raw') { // market-data only (never account tools)
     const tool = url.searchParams.get('tool'); if (!WBMAP[tool]) return json({ error: 'not a market-data tool' }, 400);
     let inp = {}; try { inp = JSON.parse(url.searchParams.get('input') || '{}'); } catch (e) {}
@@ -1328,6 +1335,22 @@ async function ownerRoutes(url, req, env) {
     }
     const nt = { token: r.data.token, expires: r.data.expires, status: r.data.status || 'PENDING', created: Date.now() }; await vput(env, 'trtoken', nt); await vput(env, 'token', nt); await vput(env, 'tokstate', { status: nt.status, created: Date.now(), http: 200 }); WBOK.t = 0; OWNACC = null; // one approved login serves prices and accounts
     return json({ ok: true, status: r.data.status, message: r.data.status === 'NORMAL' ? 'Connected.' : 'Webull texts you a code. Open the Webull app, tap Check Now on the API login prompt, enter the code, then come back. You have 5 minutes.' });
+  }
+  // your Webull watchlists (read-only), for the watchlist picker on Today and the Watchlist page. Owner + unlock only, like accounts.
+  if (url.pathname === '/api/owner/watchlists' || url.pathname === '/api/owner/wlitems') {
+    if (!unlocked) return json({ error: 'locked' }, 403);
+    const wb = new Webull(env); if (!wb.ready) return json({ error: 'no_webull', message: 'Webull keys aren’t set on the server.' }, 503);
+    const tk = await vget(env, 'token').catch(() => null); const tok = tk && tk.token;
+    const lst = (p) => (Array.isArray(p) ? p : (p && (p.data || p.list || p.watchlists || p.instruments || p.items || p.result)) || []);
+    if (url.pathname === '/api/owner/watchlists') {
+      let r = await wb.raw('GET', '/market-data/watchlists/list', {}, null, tok); if (r.status !== 200 && tok) r = await wb.raw('GET', '/market-data/watchlists/list', {}, null, null);
+      if (r.status !== 200) return json({ error: 'webull', status: r.status, message: String((r.data && (r.data.message || r.data.msg)) || '').slice(0, 120) }, 502);
+      return json({ lists: lst(r.data).filter((w) => w && w.watchlist_id).map((w) => ({ id: String(w.watchlist_id), name: String(w.name || 'Watchlist') })) }, 200, { 'cache-control': 'no-store' });
+    }
+    const id = String(url.searchParams.get('id') || '').slice(0, 80); if (!id) return json({ error: 'id' }, 400);
+    let r = await wb.raw('GET', '/market-data/watchlists/instruments/list', { watchlist_id: id }, null, tok); if (r.status !== 200 && tok) r = await wb.raw('GET', '/market-data/watchlists/instruments/list', { watchlist_id: id }, null, null);
+    if (r.status !== 200) return json({ error: 'webull', status: r.status }, 502);
+    return json({ syms: lst(r.data).map((x) => x && x.symbol).filter((s) => /^[A-Z.]{1,6}$/.test(s || '')) }, 200, { 'cache-control': 'no-store' });
   }
   if (url.pathname === '/api/owner/accounts') {
     if (!unlocked) return json({ error: 'locked' }, 403);

@@ -136,12 +136,12 @@
     return out;
   }
   // opens on your current holdings every time the app starts (when you have any); picking another list holds for the rest of the visit
-  function activeList() { const v = LS(); const L = allLists(); if (!st.lpPicked) { const h = L.find((l) => l.id === 'hold'); if (h) return h; } if (v.fresh && window.JT_WB && JT_WB.length) { const c = JT_WB.find((w) => /core/i.test(w.name)) || JT_WB[0]; v.active = 'wb:' + c.id; delete v.fresh; lsSet('jt.lists', v); } return L.find((l) => l.id === v.active) || L[0]; }
+  function activeList() { const v = LS(); const L = allLists(); if (!st.lpPicked) { const h = L.find((l) => l.id === 'hold'); if (h) return h; } if (v.fresh && window.JT_WB && JT_WB.length) { const c = JT_WB.find((w) => /^mosaic$/i.test(w.name)) || JT_WB.find((w) => /core/i.test(w.name)) || JT_WB[0]; v.active = 'wb:' + c.id; delete v.fresh; lsSet('jt.lists', v); } return L.find((l) => l.id === v.active) || L[0]; }
   function mirror(syms) { const o = lsGet('jt.webwl', {}) || {}; o.mine = syms || []; lsSet('jt.webwl', o); try { localStorage.setItem('jt.wlown', '1'); } catch (e) {} } // older parts of the app (alerts, news) read this
   function wlFull() { const l = activeList(); if (l.src === 'webull' && !l.syms && window.JT_WBLOAD) { JT_WBLOAD(l.id.slice(3)).then(() => { mirror((activeList().syms || [])); R(); }).catch(() => {}); return []; } return (l.syms || []).slice(); }
   function wlSave(L) { const l = activeList(); const v = LS();
     if (l.src === 'app') { const it = v.lists.find((x) => x.id === l.id); it.syms = L; lsSet('jt.lists', v); }
-    else if (l.src === 'webull') { if (window.JT_WBSET) JT_WBSET(l.id.slice(3), L); }
+    else if (l.src === 'webull') { if (window.JT_WBSET) JT_WBSET(l.id.slice(3), L); else { V().toast('Add or remove stocks on this list in Webull. It updates here.'); return false; } }
     else { V().toast(l.src === 'hold' ? 'Your positions come from your brokerage. Make your own list to add stocks.' : 'This list follows its model and can’t be edited. Make your own list to change it.'); return false; }
     mirror(L); return true; }
   function setActive(id) { st.lpPicked = true; if (id === 'hold') { mirror(wlFull()); R(); return; } const v = LS(); v.active = id; delete v.fresh; lsSet('jt.lists', v); mirror(wlFull()); R(); }
