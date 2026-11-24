@@ -1011,3 +1011,14 @@
   D.addEventListener('change', (e) => { if (e.target && e.target.dataset && e.target.dataset.xsz) readSz(); });
   applyTheme();
 })();
+
+/* sticky header: mark the page as scrolled so the header gets its see-through backdrop */
+(function () {
+  var on = false;
+  function chk(t) {
+    var y = (t && t !== document && t.scrollTop) || window.scrollY || (document.scrollingElement && document.scrollingElement.scrollTop) || 0;
+    var s = y > 6; if (s !== on) { on = s; document.documentElement.classList.toggle('jt-sc', s); }
+  }
+  document.addEventListener('scroll', function (e) { chk(e.target); }, { capture: true, passive: true });
+  window.addEventListener('hashchange', function () { setTimeout(function () { chk(null); }, 60); });
+})();

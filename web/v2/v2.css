@@ -1331,3 +1331,10 @@ html body .tnc .tnr .nm{min-width:0;flex:1 1 auto}html body .tnc .tnr .nm small{
 
 /* fund holdings legend: logo next to each ticker (Nov 21) */
 .dnl .tl{border-radius:6px}.dnl .tl img{width:14px;height:14px}
+
+/* sticky header: stays on scroll, lightly see-through once the page moves */
+.app2 .wrap>.top{position:sticky!important;top:env(safe-area-inset-top,0px);z-index:40}
+.app2 .wrap>.top::before{content:"";position:absolute;z-index:-1;left:50%;width:100vw;transform:translateX(-50%);top:calc(-1 * env(safe-area-inset-top,0px));bottom:0;background:transparent;transition:background-color .2s ease,box-shadow .2s ease,-webkit-backdrop-filter .2s ease,backdrop-filter .2s ease;pointer-events:none}
+html.jt-sc .app2 .wrap>.top::before{background:rgba(10,12,16,.72);-webkit-backdrop-filter:saturate(160%) blur(16px);backdrop-filter:saturate(160%) blur(16px);box-shadow:0 1px 0 rgba(255,255,255,.07)}
+html[data-x2t="light"].jt-sc .app2 .wrap>.top::before{background:rgba(250,250,252,.78);box-shadow:0 1px 0 rgba(0,0,0,.08)}
+@media (min-width:900px){.app2 .wrap>.top::before{left:0;width:auto;right:0;transform:none}}
