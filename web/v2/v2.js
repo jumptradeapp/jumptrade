@@ -1294,8 +1294,8 @@ const RIB="<svg class=\"ribbon\" width=\"160\" height=\"236\" viewBox=\"0 0 160 
   // when Yahoo's analyst history has nothing recent, show this week's analyst headlines from the live news feed instead of an empty page
   function anNewsFallback(rows) {
     if (S.news == null) loadNews();
-    const RX = /(upgrad|downgrad|initiat|reiterat|price target|price objective|\btargets?\b|\bratings?\b|overweight|underweight|outperform|underperform|equal.weight)/i;
-    const L = (S.news || []).filter((n) => RX.test(dec(n.title || '')) && Date.now() - Date.parse(n.publish_time) < 7 * 864e5).slice(0, 30);
+    const RX = /(upgrad|downgrad|initiat|reiterat|price target|price objective|\bratings?\b|overweight|underweight|outperform|underperform|equal.weight)/i, RT = /\b(price )?targets?\b/; // lowercase 'target' only, so Target the retailer doesn't count
+    const seen = {}; const L = (S.news || []).filter((n) => { const t = dec(n.title || ''), k = t.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 60); if (seen[k] || !(RX.test(t) || RT.test(t)) || !(Date.now() - Date.parse(n.publish_time) < 7 * 864e5)) return false; seen[k] = 1; return true; }).slice(0, 30);
     const newest = rows && rows.length ? Math.max.apply(null, rows.map((a) => a.t || 0)) : 0;
     const head = '<p class="note" style="margin:10px 2px 6px">' + (newest ? 'Yahoo’s analyst history hasn’t added a call since ' + new Date(newest).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '.' : 'No calls in Yahoo’s analyst history this week.') + (L.length ? ' Here are this week’s analyst headlines from the news instead.' : '') + '</p>';
     if (!L.length) return head + rowsBox('<div class="err">' + (S.news == null ? 'Checking the news…' : 'No analyst headlines in the news this week either.') + '</div>');
