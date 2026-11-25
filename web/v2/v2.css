@@ -1338,3 +1338,8 @@ html body .tnc .tnr .nm{min-width:0;flex:1 1 auto}html body .tnc .tnr .nm small{
 html.jt-sc .app2 .wrap>.top::before{background:rgba(10,12,16,.72);-webkit-backdrop-filter:saturate(160%) blur(16px);backdrop-filter:saturate(160%) blur(16px);box-shadow:0 1px 0 rgba(255,255,255,.07)}
 html[data-x2t="light"].jt-sc .app2 .wrap>.top::before{background:rgba(250,250,252,.78);box-shadow:0 1px 0 rgba(0,0,0,.08)}
 @media (min-width:900px){.app2 .wrap>.top::before{left:0;width:auto;right:0;transform:none}}
+/* stock page: pre-market / after-hours price under the header */
+.stext{display:flex;align-items:center;gap:8px;margin:-4px 2px 12px;font-size:14px;color:#9FB3C8}
+.stext svg{width:16px;height:16px;flex:none}.stext b{color:#E9F1F7;font-size:15px;font-variant-numeric:tabular-nums}
+.stext em{font-style:normal;font-weight:600;font-variant-numeric:tabular-nums}.stext em.up{color:#3FCB8E}.stext em.dn{color:#F2706A}
+html[data-x2t="light"] .stext{color:#5A6B80}html[data-x2t="light"] .stext b{color:#14233A}
